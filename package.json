@@ -1,20 +1,19 @@
 {
   "name": "noxtmstudio",
   "version": "1.0.0",
-  "description": "Full-stack web application with React frontend and Node.js backend",
+  "description": "Full-Stack Application - React Frontend + Node.js Backend + MongoDB",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd backend && npm run dev",
-    "client": "cd frontend && npm start",
-    "build": "cd frontend && npm run build",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "start": "cd backend && npm start"
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "deploy": "cd frontend && npm run build && cd ../backend && npm start"
   },
-  "keywords": ["fullstack", "react", "nodejs", "typescript"],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
-}
+    "concurrently": "^8.2.0"
+  },
+  "keywords": ["react", "nodejs", "express", "mongodb", "fullstack"],
+  "author": "Noxtm Studio",
+  "license": "MIT"
+} 

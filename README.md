@@ -1,239 +1,172 @@
-# NoxtmStudio - Full-Stack Web Application
+# 🚀 Noxtm Studio - Full-Stack Application
 
-A modern full-stack web application built with React, Node.js, TypeScript, and MongoDB.
+A modern full-stack web application built with React, Node.js, Express, and MongoDB, deployed on Contabo VPS.
 
-## 🚀 Features
+## 🏗️ Architecture
 
-- **Authentication System**: JWT-based authentication with refresh tokens
-- **User Management**: User registration, login, and profile management
-- **Project Management**: Create, view, and manage projects
-- **Modern UI**: Responsive design with Tailwind CSS
-- **JavaScript**: Modern ES6+ syntax across frontend and backend
-- **Production Ready**: Optimized for deployment
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Node.js** with Express.js
-- **JavaScript** with modern ES6+ syntax
-- **MongoDB** with Mongoose ODM
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **express-validator** for input validation
-
-### Frontend
-- **React 18** with JavaScript
-- **React Router** for navigation
-- **React Query** for data fetching
-- **React Hook Form** for form management
-- **Custom CSS** for styling
-- **Lucide React** for icons
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js (v16 or higher)
-- MongoDB (local or cloud instance)
-- npm or yarn
-
-### Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd noxtmstudio
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm run install-all
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   # Backend
-   cp backend/env.example backend/.env
-   # Edit backend/.env with your configuration
-   ```
-
-4. **Start development servers**
-   ```bash
-   npm run dev
-   ```
-
-## 🔧 Configuration
-
-### Backend Environment Variables
-
-Create a `.env` file in the `backend` directory:
-
-```env
-# Server Configuration
-PORT=5000
-NODE_ENV=production
-
-# Database Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/noxtmstudio?retryWrites=true&w=majority
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production
-
-# Frontend URL (for CORS)
-FRONTEND_URL=https://your-frontend-domain.com
-```
-
-### Frontend Environment Variables
-
-Create a `.env` file in the `frontend` directory:
-
-```env
-REACT_APP_API_URL=https://your-backend-domain.com/api
-```
-
-## 🚀 Production Deployment
-
-### Backend Deployment (Node.js)
-
-1. **Start the backend**
-   ```bash
-   cd backend
-   npm start
-   ```
-
-2. **Deploy to your preferred platform**:
-   - **Heroku**: Use the provided `Procfile`
-   - **Vercel**: Configure for Node.js
-   - **Railway**: Connect your repository
-   - **DigitalOcean App Platform**: Deploy as Node.js app
-
-3. **Set environment variables** in your deployment platform
-
-### Frontend Deployment (React)
-
-1. **Build the frontend**
-   ```bash
-   cd frontend
-   npm run build
-   ```
-
-2. **Deploy to your preferred platform**:
-   - **Vercel**: Connect your repository
-   - **Netlify**: Drag and drop the `build` folder
-   - **GitHub Pages**: Use GitHub Actions
-   - **AWS S3 + CloudFront**: For static hosting
-
-### Database Setup
-
-1. **MongoDB Atlas** (Recommended for production):
-   - Create a free cluster
-   - Get your connection string
-   - Update `MONGODB_URI` in your environment variables
-
-2. **Local MongoDB** (Development only):
-   - Install MongoDB locally
-   - Use `mongodb://localhost:27017/noxtmstudio`
+- **Frontend**: React 18 + Vite
+- **Backend**: Node.js + Express.js
+- **Database**: MongoDB Atlas (Cloud)
+- **Server**: Contabo VPS (185.137.122.61)
+- **Process Manager**: PM2
+- **Reverse Proxy**: Nginx
 
 ## 📁 Project Structure
 
 ```
 noxtmstudio/
-├── backend/                 # Node.js backend
-│   ├── src/
-│   │   ├── controllers/     # Route controllers
-│   │   ├── middleware/      # Custom middleware
-│   │   ├── models/          # Mongoose models
-│   │   ├── routes/          # API routes
-│   │   └── index.ts         # Server entry point
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/                # React frontend
-│   ├── src/
-│   │   ├── components/      # Reusable components
-│   │   ├── contexts/        # React contexts
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API services
-│   │   └── App.tsx          # Main app component
-│   ├── package.json
-│   └── index.css            # Custom CSS styles
-├── package.json             # Root package.json
-└── README.md
+├── backend/           # Node.js/Express API server
+│   ├── server.js     # Main server file
+│   └── package.json  # Backend dependencies
+├── frontend/         # React application
+│   ├── src/         # React source code
+│   ├── public/      # Static assets
+│   └── package.json # Frontend dependencies
+├── package.json      # Root package.json
+└── README.md        # This file
 ```
 
-## 🔒 Security Features
+## 🚀 Quick Start
 
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: bcryptjs for secure password storage
-- **Input Validation**: express-validator for request validation
-- **CORS Protection**: Configured for production domains
-- **Helmet**: Security headers middleware
-- **Rate Limiting**: Built-in protection against abuse
+### Local Development
 
-## 🧪 API Endpoints
+1. **Install dependencies:**
+   ```bash
+   npm run install-all
+   ```
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/verify` - Verify token
-- `POST /api/auth/refresh` - Refresh token
+2. **Start development servers:**
+   ```bash
+   npm run dev
+   ```
+   - Backend: http://localhost:3000
+   - Frontend: http://localhost:3001
 
-### Users
-- `GET /api/users/profile` - Get user profile
-- `PUT /api/users/profile` - Update user profile
-- `DELETE /api/users/profile` - Delete user profile
+3. **Build for production:**
+   ```bash
+   npm run build
+   ```
 
-### Projects
-- `GET /api/projects` - Get all public projects
-- `POST /api/projects` - Create new project
-- `GET /api/projects/:id` - Get project by ID
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
+### Production Deployment
 
-## 🚀 Available Scripts
+The application is automatically deployed on the Contabo VPS at `185.137.122.61`.
 
-### Root
-- `npm run dev` - Start both frontend and backend in development
-- `npm run install-all` - Install dependencies for all packages
-- `npm run build` - Build frontend for production
+## 🌐 API Endpoints
 
-### Backend
-- `npm run dev` - Start development server with nodemon
-- `npm start` - Start production server
+- `GET /api/health` - Health check
+- `GET /api/version` - API version information
+- `GET /*` - Serves React frontend
 
-### Frontend
-- `npm start` - Start development server
-- `npm run build` - Build for production
-- `npm test` - Run tests
+## 🔧 Deployment Commands
 
-## 🤝 Contributing
+### On VPS (185.137.122.61):
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+```bash
+# SSH to server
+ssh root@185.137.122.61
 
-## 📄 License
+# Navigate to project
+cd /var/www/noxtmstudio
 
-This project is licensed under the MIT License.
+# Deploy updates
+./deploy.sh
+```
 
-## 🆘 Support
+### Deployment Script (`deploy.sh`):
 
-If you encounter any issues or have questions:
+```bash
+#!/bin/bash
+cd /var/www/noxtmstudio
 
-1. Check the [Issues](../../issues) page
-2. Create a new issue with detailed information
-3. Include your environment details and error messages
+# Pull latest changes
+git pull origin main
 
-## 🔄 Updates
+# Install backend dependencies
+npm install
 
-To update the application:
+# Navigate to frontend and build
+cd frontend
+npm install
+npm run build
+cd ..
 
-1. Pull the latest changes
-2. Update dependencies: `npm run install-all`
-3. Test locally: `npm run dev`
-4. Deploy to production
+# Restart backend
+pm2 restart noxtmstudio-backend
+
+echo "Deployment completed!"
+```
+
+## 📊 Monitoring
+
+### Check Services Status:
+```bash
+# PM2 processes
+pm2 status
+
+# Nginx status
+systemctl status nginx
+
+# MongoDB Atlas connection status
+# Check PM2 logs for database connection status
+
+# View logs
+pm2 logs noxtmstudio-backend
+```
+
+## 🔒 Security
+
+- Firewall configured (SSH, HTTP, HTTPS)
+- Helmet.js for security headers
+- CORS enabled
+- Environment variables for sensitive data
+
+## 🚀 Features
+
+- ✅ **Full-Stack Architecture**: React + Node.js + MongoDB
+- ✅ **Production Ready**: Built and optimized for production
+- ✅ **Auto-Deployment**: Git-based deployment workflow
+- ✅ **Process Management**: PM2 for reliable backend operation
+- ✅ **Reverse Proxy**: Nginx for efficient request routing
+- ✅ **Database**: MongoDB Atlas with cloud connection pooling
+- ✅ **Security**: Helmet.js, CORS, and security best practices
+- ✅ **Monitoring**: Built-in health checks and status endpoints
+
+## 🌟 Tech Stack
+
+- **Frontend**: React 18, Vite, CSS3
+- **Backend**: Node.js, Express.js, Mongoose
+- **Database**: MongoDB Atlas (Cloud)
+- **Build Tools**: Vite, npm scripts
+- **Deployment**: PM2, Nginx, Git
+- **Server**: Ubuntu 22.04 LTS on Contabo VPS
+
+## 📝 Environment Variables
+
+Create a `.env` file in the backend directory:
+
+```env
+PORT=3000
+MONGODB_URI=mongodb+srv://noxtmstudio:nXALwVOSJEqRG2F2@cluster0.4jneyth.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+NODE_ENV=production
+```
+
+**Note**: The application is now configured to use MongoDB Atlas cloud database instead of local MongoDB.
+
+## 🔄 Update Workflow
+
+1. **Code locally** on your machine
+2. **Push to GitHub**: `git push origin main`
+3. **Deploy on VPS**: SSH and run `./deploy.sh`
+
+## 📞 Support
+
+For deployment issues or questions, check:
+- PM2 logs: `pm2 logs noxtmstudio-backend`
+- Nginx logs: `tail -f /var/log/nginx/error.log`
+- MongoDB Atlas connection: Check PM2 logs for database status
 
 ---
 
-**Happy Coding! 🎉**
+**Deployed on**: Contabo VPS (185.137.122.61)  
+**Last Updated**: August 23, 2025  
+**Status**: ✅ Production Ready
