@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import './Auth.css';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { login, error: authError, isLoading: authLoading, clearError } = useAuth();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -22,6 +26,10 @@ const Login = () => {
         ...prev,
         [name]: ''
       }));
+    }
+    // Clear auth error when user starts typing
+    if (authError) {
+      clearError();
     }
   };
 
@@ -54,14 +62,12 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      console.log('Login attempt:', formData);
-      // Handle successful login
-      alert('Login successful! (This is a demo)');
+      await login(formData);
+      // Login successful, redirect to home
+      navigate('/');
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ general: 'Login failed. Please try again.' });
+      // Error is handled by AuthContext, we just need to stop loading
     } finally {
       setIsLoading(false);
     }
@@ -80,9 +86,9 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            {errors.general && (
+            {(errors.general || authError) && (
               <div className="error-message general-error">
-                {errors.general}
+                {errors.general || authError}
               </div>
             )}
 
@@ -96,7 +102,7 @@ const Login = () => {
                 onChange={handleChange}
                 className={errors.email ? 'error' : ''}
                 placeholder="Enter your email"
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               />
               {errors.email && <span className="error-message">{errors.email}</span>}
             </div>
@@ -111,7 +117,7 @@ const Login = () => {
                 onChange={handleChange}
                 className={errors.password ? 'error' : ''}
                 placeholder="Enter your password"
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               />
               {errors.password && <span className="error-message">{errors.password}</span>}
             </div>
@@ -129,10 +135,10 @@ const Login = () => {
 
             <button 
               type="submit" 
-              className={`btn btn-primary btn-full ${isLoading ? 'loading' : ''}`}
-              disabled={isLoading}
+              className={`btn btn-primary btn-full ${(isLoading || authLoading) ? 'loading' : ''}`}
+              disabled={isLoading || authLoading}
             >
-              {isLoading ? (
+              {(isLoading || authLoading) ? (
                 <>
                   <span className="spinner"></span>
                   Signing in...

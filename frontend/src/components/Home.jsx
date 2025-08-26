@@ -1,23 +1,43 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import './Home.css';
 
 const Home = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <div className="home">
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <h1 className="hero-title">
-            Welcome to <span className="brand">Noxtm Studio</span>
-          </h1>
-          <p className="hero-subtitle">
-            Your creative digital partner for innovative web solutions
-          </p>
-          <div className="hero-buttons">
-            <Link to="/signup" className="btn btn-primary">Get Started</Link>
-            <Link to="/login" className="btn btn-secondary">Sign In</Link>
-          </div>
+          {isAuthenticated ? (
+            <>
+              <h1 className="hero-title">
+                Welcome back, <span className="brand">{user?.firstName}!</span>
+              </h1>
+              <p className="hero-subtitle">
+                Ready to continue your creative journey with Noxtm Studio?
+              </p>
+              <div className="hero-buttons">
+                <button className="btn btn-primary">Dashboard</button>
+                <button className="btn btn-secondary" onClick={logout}>Logout</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="hero-title">
+                Welcome to <span className="brand">Noxtm Studio</span>
+              </h1>
+              <p className="hero-subtitle">
+                Your creative digital partner for innovative web solutions
+              </p>
+              <div className="hero-buttons">
+                <Link to="/signup" className="btn btn-primary">Get Started</Link>
+                <Link to="/login" className="btn btn-secondary">Sign In</Link>
+              </div>
+            </>
+          )}
         </div>
         <div className="hero-visual">
           <div className="floating-elements">

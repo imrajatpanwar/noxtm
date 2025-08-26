@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import './Auth.css';
 
 const Signup = () => {
+  const navigate = useNavigate();
+  const { signup, error: authError, isLoading: authLoading, clearError } = useAuth();
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -25,6 +29,10 @@ const Signup = () => {
         ...prev,
         [name]: ''
       }));
+    }
+    // Clear auth error when user starts typing
+    if (authError) {
+      clearError();
     }
   };
 
@@ -73,14 +81,14 @@ const Signup = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-      console.log('Signup attempt:', formData);
-      // Handle successful signup
-      alert('Account created successfully! (This is a demo)');
+      // Remove confirmPassword before sending to API
+      const { confirmPassword, ...signupData } = formData;
+      await signup(signupData);
+      // Signup successful, redirect to home
+      navigate('/');
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ general: 'Account creation failed. Please try again.' });
+      // Error is handled by AuthContext, we just need to stop loading
     } finally {
       setIsLoading(false);
     }
@@ -99,9 +107,9 @@ const Signup = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            {errors.general && (
+            {(errors.general || authError) && (
               <div className="error-message general-error">
-                {errors.general}
+                {errors.general || authError}
               </div>
             )}
 
@@ -116,7 +124,7 @@ const Signup = () => {
                   onChange={handleChange}
                   className={errors.firstName ? 'error' : ''}
                   placeholder="First name"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 />
                 {errors.firstName && <span className="error-message">{errors.firstName}</span>}
               </div>
@@ -131,7 +139,7 @@ const Signup = () => {
                   onChange={handleChange}
                   className={errors.lastName ? 'error' : ''}
                   placeholder="Last name"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 />
                 {errors.lastName && <span className="error-message">{errors.lastName}</span>}
               </div>
@@ -192,10 +200,10 @@ const Signup = () => {
 
             <button 
               type="submit" 
-              className={`btn btn-primary btn-full ${isLoading ? 'loading' : ''}`}
-              disabled={isLoading}
+              className={`btn btn-primary btn-full ${(isLoading || authLoading) ? 'loading' : ''}`}
+              disabled={isLoading || authLoading}
             >
-              {isLoading ? (
+              {(isLoading || authLoading) ? (
                 <>
                   <span className="spinner"></span>
                   Creating account...
