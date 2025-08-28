@@ -1,19 +1,21 @@
 {
-  "name": "noxtmstudio",
+  "name": "react-mongo-app",
   "version": "1.0.0",
-  "description": "Full-Stack Application - React Frontend + Node.js Backend + MongoDB",
-  "main": "index.js",
+  "description": "React app with MongoDB backend for Contabo deployment",
+  "main": "Backend/server.js",
   "scripts": {
-    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
-    "build": "cd frontend && npm run build",
-    "start": "cd backend && npm start",
-    "deploy": "cd frontend && npm run build && cd ../backend && npm start"
+    "start": "cd Backend && npm start",
+    "dev": "cd Backend && npm run dev",
+    "build": "cd Frontend && npm run build",
+    "install-frontend": "cd Frontend && npm install",
+    "install-backend": "cd Backend && npm install",
+    "install-all": "npm run install-backend && npm run install-frontend",
+    "test": "cd Backend && npm test",
+    "deploy": "bash deploy.sh"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.0"
-  },
-  "keywords": ["react", "nodejs", "express", "mongodb", "fullstack"],
-  "author": "Noxtm Studio",
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": ["react", "mongodb", "express", "node"],
+  "author": "",
   "license": "MIT"
-} 
+}

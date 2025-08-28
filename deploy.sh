@@ -1,25 +1,47 @@
 #!/bin/bash
 
-echo "🚀 Starting Noxtm Studio deployment..."
+# React MongoDB App Deployment Script
+# This script automates the deployment process on your Contabo server
 
-# Navigate to project directory
-cd /var/www/noxtmstudio
+echo "🚀 Starting deployment process..."
 
-echo "📥 Pulling latest changes from GitHub..."
-git pull origin main
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: package.json not found. Please run this script from the project root."
+    exit 1
+fi
 
+# Install backend dependencies
 echo "📦 Installing backend dependencies..."
-npm install
+cd Backend && npm install && cd ..
 
-echo "🔨 Building React frontend..."
-cd frontend
-npm install
-npm run build
-cd ..
+# Install frontend dependencies
+echo "📦 Installing frontend dependencies..."
+cd Frontend && npm install && cd ..
 
-echo "🔄 Restarting backend service..."
-pm2 restart noxtmstudio-backend
+# Build the React app
+echo "🔨 Building React app..."
+cd Frontend && npm run build && cd ..
 
-echo "✅ Deployment completed successfully!"
-echo "🌐 Your app is now running at: http://185.137.122.61"
-echo "📊 Check status with: pm2 status" 
+# Check if build was successful
+if [ ! -d "Frontend/build" ]; then
+    echo "❌ Error: Build failed. Frontend/build directory not found."
+    exit 1
+fi
+
+echo "✅ Build completed successfully!"
+
+# Check if .env file exists in Backend
+if [ ! -f "Backend/.env" ]; then
+    echo "⚠️  Warning: Backend/.env file not found. Please create one from env.example"
+    echo "   cp Backend/env.example Backend/.env"
+    echo "   Then edit Backend/.env with your configuration"
+fi
+
+echo "🎉 Deployment preparation completed!"
+echo ""
+echo "Next steps:"
+echo "1. Make sure MongoDB is running"
+echo "2. Set up your Backend/.env file with proper configuration"
+echo "3. Start the server with: npm start"
+echo "4. Or use PM2: cd Backend && pm2 start ecosystem.config.js"

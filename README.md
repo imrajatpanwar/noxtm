@@ -1,172 +1,309 @@
-# 🚀 Noxtm Studio - Full-Stack Application
+# React MongoDB App
 
-A modern full-stack web application built with React, Node.js, Express, and MongoDB, deployed on Contabo VPS.
+A full-stack web application built with React, Node.js, Express, and MongoDB. Perfect for deployment on Contabo servers.
 
-## 🏗️ Architecture
+## Features
 
-- **Frontend**: React 18 + Vite
-- **Backend**: Node.js + Express.js
-- **Database**: MongoDB Atlas (Cloud)
-- **Server**: Contabo VPS (185.137.122.61)
-- **Process Manager**: PM2
-- **Reverse Proxy**: Nginx
+- **User Authentication**: Login and signup with JWT tokens
+- **Secure Backend**: Express.js API with MongoDB integration
+- **Modern Frontend**: React with responsive design
+- **Production Ready**: Configured for server deployment
+- **Simple Setup**: No complex build tools, just plain JavaScript
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-noxtmstudio/
-├── backend/           # Node.js/Express API server
-│   ├── server.js     # Main server file
-│   └── package.json  # Backend dependencies
-├── frontend/         # React application
-│   ├── src/         # React source code
-│   ├── public/      # Static assets
-│   └── package.json # Frontend dependencies
-├── package.json      # Root package.json
-└── README.md        # This file
+├── Frontend/              # React application
+│   ├── public/
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── App.js         # Main app component
+│   │   └── index.js       # React entry point
+│   └── package.json       # Frontend dependencies
+├── Backend/               # Express server
+│   ├── server.js          # Main server file
+│   ├── package.json       # Backend dependencies
+│   ├── ecosystem.config.js # PM2 configuration
+│   ├── test-app.js        # Testing script
+│   └── env.example        # Environment variables template
+├── package.json           # Root package.json
+├── deploy.sh             # Deployment script
+└── README.md             # This file
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### Local Development
+### Prerequisites
 
-1. **Install dependencies:**
+- Node.js (v14 or higher)
+- MongoDB (local or cloud)
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
    ```bash
-   npm run install-all
+   git clone <your-repo-url>
+   cd react-mongo-app
    ```
 
-2. **Start development servers:**
+2. **Install dependencies**
    ```bash
+   # Install server dependencies
+   npm install
+   
+   # Install client dependencies
+   cd client
+   npm install
+   cd ..
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   # Copy the example environment file
+   cp env.example .env
+   
+   # Edit .env with your configuration
+   nano .env
+   ```
+
+4. **Configure MongoDB**
+   - For local development: Install MongoDB locally
+   - For production: Use MongoDB Atlas or your preferred cloud provider
+   - Update `MONGODB_URI` in your `.env` file
+
+5. **Start the application**
+   ```bash
+   # Development mode (runs both frontend and backend)
    npm run dev
+   
+   # Or run separately:
+   # Terminal 1: Backend
+   npm start
+   
+   # Terminal 2: Frontend
+   cd client
+   npm start
    ```
-   - Backend: http://localhost:3000
-   - Frontend: http://localhost:3001
 
-3. **Build for production:**
+## Deployment on Contabo Server
+
+### 1. Server Setup
+
+1. **Connect to your Contabo server via SSH**
+   ```bash
+   ssh root@your-server-ip
+   ```
+
+2. **Install Node.js and npm**
+   ```bash
+   # Update system
+   apt update && apt upgrade -y
+   
+   # Install Node.js
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   apt-get install -y nodejs
+   
+   # Verify installation
+   node --version
+   npm --version
+   ```
+
+3. **Install MongoDB** (if using local MongoDB)
+   ```bash
+   # Install MongoDB
+   wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+   echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+   sudo apt-get update
+   sudo apt-get install -y mongodb-org
+   
+   # Start MongoDB
+   sudo systemctl start mongod
+   sudo systemctl enable mongod
+   ```
+
+### 2. Application Deployment
+
+1. **Upload your code to the server**
+   ```bash
+   # From your local machine
+   scp -r . root@your-server-ip:/var/www/react-app
+   ```
+
+2. **SSH into your server and navigate to the project**
+   ```bash
+   ssh root@your-server-ip
+   cd /var/www/react-app
+   ```
+
+3. **Install dependencies**
+   ```bash
+   npm install
+   cd client && npm install && cd ..
+   ```
+
+4. **Build the React app**
    ```bash
    npm run build
    ```
 
-### Production Deployment
+5. **Set up environment variables**
+   ```bash
+   cp env.example .env
+   nano .env
+   ```
+   
+   Update the `.env` file with your production settings:
+   ```env
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/react-app
+   JWT_SECRET=your-very-long-random-secret-key-here
+   ```
 
-The application is automatically deployed on the Contabo VPS at `185.137.122.61`.
+### 3. Process Management with PM2
 
-## 🌐 API Endpoints
+1. **Install PM2**
+   ```bash
+   npm install -g pm2
+   ```
 
-- `GET /api/health` - Health check
-- `GET /api/version` - API version information
-- `GET /*` - Serves React frontend
+2. **Create PM2 configuration**
+   ```bash
+   # Create ecosystem file
+   nano ecosystem.config.js
+   ```
 
-## 🔧 Deployment Commands
+   Add this content:
+   ```javascript
+   module.exports = {
+     apps: [{
+       name: 'react-mongo-app',
+       script: 'server.js',
+       instances: 1,
+       autorestart: true,
+       watch: false,
+       max_memory_restart: '1G',
+       env: {
+         NODE_ENV: 'production',
+         PORT: 5000
+       }
+     }]
+   };
+   ```
 
-### On VPS (185.137.122.61):
+3. **Start the application**
+   ```bash
+   pm2 start ecosystem.config.js
+   pm2 save
+   pm2 startup
+   ```
 
-```bash
-# SSH to server
-ssh root@185.137.122.61
+### 4. Nginx Configuration (Optional)
 
-# Navigate to project
-cd /var/www/noxtmstudio
+1. **Install Nginx**
+   ```bash
+   apt install nginx -y
+   ```
 
-# Deploy updates
-./deploy.sh
-```
+2. **Create Nginx configuration**
+   ```bash
+   nano /etc/nginx/sites-available/react-app
+   ```
 
-### Deployment Script (`deploy.sh`):
+   Add this content:
+   ```nginx
+   server {
+       listen 80;
+       server_name your-domain.com;
+       
+       location / {
+           proxy_pass http://localhost:5000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
 
-```bash
-#!/bin/bash
-cd /var/www/noxtmstudio
+3. **Enable the site**
+   ```bash
+   ln -s /etc/nginx/sites-available/react-app /etc/nginx/sites-enabled/
+   nginx -t
+   systemctl restart nginx
+   ```
 
-# Pull latest changes
-git pull origin main
+### 5. SSL Certificate (Optional)
 
-# Install backend dependencies
-npm install
+1. **Install Certbot**
+   ```bash
+   apt install certbot python3-certbot-nginx -y
+   ```
 
-# Navigate to frontend and build
-cd frontend
-npm install
-npm run build
-cd ..
+2. **Obtain SSL certificate**
+   ```bash
+   certbot --nginx -d your-domain.com
+   ```
 
-# Restart backend
-pm2 restart noxtmstudio-backend
+## API Endpoints
 
-echo "Deployment completed!"
-```
+- `POST /api/register` - User registration
+- `POST /api/login` - User login
+- `GET /api/profile` - Get user profile (protected)
+- `GET /api/dashboard` - Get dashboard data (protected)
 
-## 📊 Monitoring
+## Environment Variables
 
-### Check Services Status:
-```bash
-# PM2 processes
-pm2 status
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | 5000 |
+| `MONGODB_URI` | MongoDB connection string | mongodb://localhost:27017/react-app |
+| `JWT_SECRET` | JWT signing secret | your-secret-key |
 
-# Nginx status
-systemctl status nginx
+## Development
 
-# MongoDB Atlas connection status
-# Check PM2 logs for database connection status
+### Available Scripts
 
-# View logs
-pm2 logs noxtmstudio-backend
-```
+- `npm start` - Start the production server
+- `npm run dev` - Start development server with nodemon
+- `npm run build` - Build the React app
+- `npm run install-all` - Install both server and client dependencies
 
-## 🔒 Security
+### Adding New Features
 
-- Firewall configured (SSH, HTTP, HTTPS)
-- Helmet.js for security headers
-- CORS enabled
-- Environment variables for sensitive data
+1. **Backend**: Add new routes in `server.js`
+2. **Frontend**: Create new components in `client/src/components/`
+3. **Database**: Add new schemas in `server.js`
 
-## 🚀 Features
+## Security Considerations
 
-- ✅ **Full-Stack Architecture**: React + Node.js + MongoDB
-- ✅ **Production Ready**: Built and optimized for production
-- ✅ **Auto-Deployment**: Git-based deployment workflow
-- ✅ **Process Management**: PM2 for reliable backend operation
-- ✅ **Reverse Proxy**: Nginx for efficient request routing
-- ✅ **Database**: MongoDB Atlas with cloud connection pooling
-- ✅ **Security**: Helmet.js, CORS, and security best practices
-- ✅ **Monitoring**: Built-in health checks and status endpoints
+- Change the default JWT secret in production
+- Use HTTPS in production
+- Implement rate limiting for API endpoints
+- Add input validation and sanitization
+- Use environment variables for sensitive data
 
-## 🌟 Tech Stack
+## Troubleshooting
 
-- **Frontend**: React 18, Vite, CSS3
-- **Backend**: Node.js, Express.js, Mongoose
-- **Database**: MongoDB Atlas (Cloud)
-- **Build Tools**: Vite, npm scripts
-- **Deployment**: PM2, Nginx, Git
-- **Server**: Ubuntu 22.04 LTS on Contabo VPS
+### Common Issues
 
-## 📝 Environment Variables
+1. **MongoDB connection failed**
+   - Check if MongoDB is running
+   - Verify connection string in `.env`
+   - Check firewall settings
 
-Create a `.env` file in the backend directory:
+2. **Port already in use**
+   - Change PORT in `.env`
+   - Kill existing processes: `lsof -ti:5000 | xargs kill -9`
 
-```env
-PORT=3000
-MONGODB_URI=mongodb+srv://noxtmstudio:nXALwVOSJEqRG2F2@cluster0.4jneyth.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-NODE_ENV=production
-```
+3. **Build errors**
+   - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+   - Check Node.js version compatibility
 
-**Note**: The application is now configured to use MongoDB Atlas cloud database instead of local MongoDB.
+## License
 
-## 🔄 Update Workflow
-
-1. **Code locally** on your machine
-2. **Push to GitHub**: `git push origin main`
-3. **Deploy on VPS**: SSH and run `./deploy.sh`
-
-## 📞 Support
-
-For deployment issues or questions, check:
-- PM2 logs: `pm2 logs noxtmstudio-backend`
-- Nginx logs: `tail -f /var/log/nginx/error.log`
-- MongoDB Atlas connection: Check PM2 logs for database status
-
----
-
-**Deployed on**: Contabo VPS (185.137.122.61)  
-**Last Updated**: August 23, 2025  
-**Status**: ✅ Production Ready
+MIT License - feel free to use this project for your own applications.
