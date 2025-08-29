@@ -1,4 +1,4 @@
-# React MongoDB App
+# NoxtmStudio - React MongoDB App
 
 A full-stack web application built with React, Node.js, Express, and MongoDB. Perfect for deployment on Contabo servers.
 
@@ -43,28 +43,29 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd react-mongo-app
+   git clone https://github.com/imrajatpanwar/noxtmstudio.git
+   cd noxtmstudio
    ```
 
 2. **Install dependencies**
    ```bash
    # Install server dependencies
-   npm install
+   npm run install-backend
    
    # Install client dependencies
-   cd client
-   npm install
-   cd ..
+   npm run install-frontend
+   
+   # Or install all at once
+   npm run install-all
    ```
 
 3. **Set up environment variables**
    ```bash
    # Copy the example environment file
-   cp env.example .env
+   cp Backend/env.example Backend/.env
    
    # Edit .env with your configuration
-   nano .env
+   nano Backend/.env
    ```
 
 4. **Configure MongoDB**
@@ -82,7 +83,7 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
    npm start
    
    # Terminal 2: Frontend
-   cd client
+   cd Frontend
    npm start
    ```
 
@@ -127,19 +128,18 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 1. **Upload your code to the server**
    ```bash
    # From your local machine
-   scp -r . root@your-server-ip:/var/www/react-app
+   scp -r . root@your-server-ip:/var/www/noxtmstudio
    ```
 
 2. **SSH into your server and navigate to the project**
    ```bash
    ssh root@your-server-ip
-   cd /var/www/react-app
+   cd /var/www/noxtmstudio
    ```
 
 3. **Install dependencies**
    ```bash
-   npm install
-   cd client && npm install && cd ..
+   npm run install-all
    ```
 
 4. **Build the React app**
@@ -149,14 +149,14 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 
 5. **Set up environment variables**
    ```bash
-   cp env.example .env
-   nano .env
+   cp Backend/env.example Backend/.env
+   nano Backend/.env
    ```
    
    Update the `.env` file with your production settings:
    ```env
    PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/react-app
+   MONGODB_URI=mongodb://localhost:27017/noxtmstudio
    JWT_SECRET=your-very-long-random-secret-key-here
    ```
 
@@ -167,32 +167,9 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
    npm install -g pm2
    ```
 
-2. **Create PM2 configuration**
+2. **Start the application**
    ```bash
-   # Create ecosystem file
-   nano ecosystem.config.js
-   ```
-
-   Add this content:
-   ```javascript
-   module.exports = {
-     apps: [{
-       name: 'react-mongo-app',
-       script: 'server.js',
-       instances: 1,
-       autorestart: true,
-       watch: false,
-       max_memory_restart: '1G',
-       env: {
-         NODE_ENV: 'production',
-         PORT: 5000
-       }
-     }]
-   };
-   ```
-
-3. **Start the application**
-   ```bash
+   cd Backend
    pm2 start ecosystem.config.js
    pm2 save
    pm2 startup
@@ -207,7 +184,7 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 
 2. **Create Nginx configuration**
    ```bash
-   nano /etc/nginx/sites-available/react-app
+   nano /etc/nginx/sites-available/noxtmstudio
    ```
 
    Add this content:
@@ -232,7 +209,7 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 
 3. **Enable the site**
    ```bash
-   ln -s /etc/nginx/sites-available/react-app /etc/nginx/sites-enabled/
+   ln -s /etc/nginx/sites-available/noxtmstudio /etc/nginx/sites-enabled/
    nginx -t
    systemctl restart nginx
    ```
@@ -261,7 +238,7 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | 5000 |
-| `MONGODB_URI` | MongoDB connection string | mongodb://localhost:27017/react-app |
+| `MONGODB_URI` | MongoDB connection string | mongodb://localhost:27017/noxtmstudio |
 | `JWT_SECRET` | JWT signing secret | your-secret-key |
 
 ## Development
@@ -275,9 +252,9 @@ A full-stack web application built with React, Node.js, Express, and MongoDB. Pe
 
 ### Adding New Features
 
-1. **Backend**: Add new routes in `server.js`
-2. **Frontend**: Create new components in `client/src/components/`
-3. **Database**: Add new schemas in `server.js`
+1. **Backend**: Add new routes in `Backend/server.js`
+2. **Frontend**: Create new components in `Frontend/src/components/`
+3. **Database**: Add new schemas in `Backend/server.js`
 
 ## Security Considerations
 
