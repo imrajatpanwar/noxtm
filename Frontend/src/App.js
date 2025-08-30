@@ -7,8 +7,8 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 
-// Set base URL for axios - in production, this will be the same domain
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || '';
+// Set base URL for axios - use the current domain with HTTPS protocol
+axios.defaults.baseURL = window.location.origin;
 
 function App() {
   const [user, setUser] = useState(null);
