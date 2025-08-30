@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from './components/Navbar';
+import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import Footer from './components/Footer';
 
 // Set base URL for axios - use the current domain with HTTPS protocol
 axios.defaults.baseURL = window.location.origin;
@@ -73,11 +74,7 @@ function App() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
-  };
+
 
   if (loading) {
     return (
@@ -97,7 +94,7 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Navbar user={user} onLogout={logout} />
+        <Header />
         <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route 
@@ -113,6 +110,7 @@ function App() {
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>
+        <Footer />
       </div>
     </Router>
   );
