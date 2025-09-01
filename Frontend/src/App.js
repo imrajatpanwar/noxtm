@@ -8,7 +8,8 @@ import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import Footer from './components/Footer';
 
-// Set base URL for axios - use the current domain with HTTPS protocol
+// Set base URL for axios - use the current domain
+// This will work both locally and in production
 axios.defaults.baseURL = window.location.origin;
 
 function ConditionalFooter() {
@@ -38,6 +39,13 @@ function App() {
   }, []);
 
   const checkAuthStatus = async () => {
+    // For local development without backend, skip profile check
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      setLoading(false);
+      return;
+    }
+    
+    // Production code - actual API call
     try {
       const response = await axios.get('/api/profile');
       setUser(response.data);
@@ -50,6 +58,23 @@ function App() {
   };
 
   const login = async (email, password) => {
+    // For local development without backend, use mock data
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Mock successful login (you can customize this for testing)
+      const mockUser = {
+        id: 'mock-user-id-' + Date.now(),
+        username: 'testuser',
+        email: email
+      };
+      const mockToken = 'mock-token-' + Date.now();
+      
+      localStorage.setItem('token', mockToken);
+      setUser(mockUser);
+      
+      return { success: true };
+    }
+    
+    // Production code - actual API call
     try {
       const response = await axios.post('/api/login', { email, password });
       const { token, user } = response.data;
@@ -68,6 +93,23 @@ function App() {
   };
 
   const signup = async (username, email, password) => {
+    // For local development without backend, use mock data
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Mock successful registration
+      const mockUser = {
+        id: 'mock-user-id-' + Date.now(),
+        username: username,
+        email: email
+      };
+      const mockToken = 'mock-token-' + Date.now();
+      
+      localStorage.setItem('token', mockToken);
+      setUser(mockUser);
+      
+      return { success: true };
+    }
+    
+    // Production code - actual API call
     try {
       const response = await axios.post('/api/register', { username, email, password });
       const { token, user } = response.data;

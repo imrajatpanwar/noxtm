@@ -5,6 +5,7 @@ import poweredByNoxtm from './image/powered_by_noxtm.svg';
 
 function Signup({ onSignup }) {
   const [formData, setFormData] = useState({
+    username: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -41,7 +42,7 @@ function Signup({ onSignup }) {
       return;
     }
 
-    const result = await onSignup(formData.email, formData.password);
+    const result = await onSignup(formData.username, formData.email, formData.password);
     
     if (result.success) {
       setMessage('Account created successfully!');
@@ -102,6 +103,20 @@ function Signup({ onSignup }) {
 
             {/* Email Signup Form */}
             <form onSubmit={handleSubmit} className="email-signup-form">
+              <div className="form-group">
+                <label htmlFor="username" className="form-label">Username</label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="Enter your username..."
+                  className="form-input"
+                  required
+                />
+              </div>
+              
               <div className="form-group">
                 <label htmlFor="email" className="form-label">Email</label>
                 <input
