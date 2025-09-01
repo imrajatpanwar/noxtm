@@ -13,8 +13,7 @@
     "test": "cd Backend && npm test",
     "deploy": "bash deploy.sh"
   },
-  "dependencies": {},
-  "devDependencies": {},
+
   "keywords": ["react", "mongodb", "express", "node"],
   "author": "",
   "license": "MIT"
