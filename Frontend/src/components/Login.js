@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import poweredByNoxtm from './image/powered_by_noxtm.svg';
 
@@ -165,7 +165,7 @@ function Login({ onLogin }) {
             {/* Create Account Link */}
             <div className="create-account-section">
               <p className="create-account-text">
-                Don't have an account? <a href="/signup" className="create-account-link">Create Account</a>
+                Don't have an account? <Link to="/signup" className="create-account-link">Create Account</Link>
               </p>
             </div>
 
