@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
+import poweredByNoxtm from './image/powered_by_noxtm.svg';
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -50,7 +51,7 @@ function Login({ onLogin }) {
         {/* Left Side - Welcome Content */}
         <div className="login-left-side">
           <div className="powered-by-logo">
-            <img src="/src/components/image/powered_by_noxtm.svg" alt="Powered by Noxtm" />
+            <img src={poweredByNoxtm} alt="Powered by Noxtm" />
           </div>
           <div className="welcome-content">
             <h1 className="welcome-title">Discover Noxtm Studio</h1>

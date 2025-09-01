@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Signup.css';
+import poweredByNoxtm from './image/powered_by_noxtm.svg';
 
 function Signup({ onSignup }) {
   const [formData, setFormData] = useState({
@@ -60,7 +61,7 @@ function Signup({ onSignup }) {
         {/* Left Side - Welcome Content */}
         <div className="signup-left-side">
           <div className="powered-by-logo">
-            <img src="/src/components/image/powered_by_noxtm.svg" alt="Powered by Noxtm" />
+            <img src={poweredByNoxtm} alt="Powered by Noxtm" />
           </div>
           <div className="welcome-content">
             <h1 className="welcome-title">Join Noxtm Studio</h1>
