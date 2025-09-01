@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Header from './components/Header';
 import Home from './components/Home';
@@ -10,6 +10,17 @@ import Footer from './components/Footer';
 
 // Set base URL for axios - use the current domain with HTTPS protocol
 axios.defaults.baseURL = window.location.origin;
+
+function ConditionalFooter() {
+  const location = useLocation();
+  const hideFooterRoutes = ['/login', '/signup'];
+  
+  if (hideFooterRoutes.includes(location.pathname)) {
+    return null;
+  }
+  
+  return <Footer />;
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -110,7 +121,7 @@ function App() {
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
           />
         </Routes>
-        <Footer />
+        <ConditionalFooter />
       </div>
     </Router>
   );
