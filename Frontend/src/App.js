@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { Toaster } from 'sonner';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -14,7 +15,7 @@ axios.defaults.baseURL = window.location.origin;
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup'];
+  const hideFooterRoutes = ['/login', '/signup', '/dashboard'];
   
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
@@ -147,6 +148,7 @@ function App() {
   return (
     <Router>
       <div className="App">
+        <Toaster position="top-right" richColors />
         <Header />
         <Routes>
           <Route path="/" element={<Home user={user} />} />
