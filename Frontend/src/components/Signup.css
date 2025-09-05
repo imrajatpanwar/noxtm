@@ -1,7 +1,7 @@
 /* Signup Page Styles */
 .signup-page {
   min-height: 91vh;
-  background-color: #ffffff;
+  background-color: #F5F5F5;
 }
 
 .signup-split-container {
@@ -12,7 +12,6 @@
 /* Left Side - Welcome Content */
 .signup-left-side {
   flex: 1 1;
-  background-color: #ffffff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -57,7 +56,6 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background-color: #ffffff;
 }
 
 .signup-form {
