@@ -59,24 +59,25 @@ function App() {
   };
 
   const login = async (email, password) => {
-    // For local development without backend, use mock data
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // Mock successful login (you can customize this for testing)
-      const mockUser = {
-        id: 'mock-user-id-' + Date.now(),
-        username: 'testuser',
-        email: email
-      };
-      const mockToken = 'mock-token-' + Date.now();
-      
-      localStorage.setItem('token', mockToken);
-      setUser(mockUser);
-      
-      return { success: true };
-    }
-    
-    // Production code - actual API call
     try {
+      // For local development without backend, use mock data
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Mock successful login (you can customize this for testing)
+        const mockUser = {
+          id: 'mock-user-id-' + Date.now(),
+          username: 'testuser',
+          email: email
+        };
+        const mockToken = 'mock-token-' + Date.now();
+        
+        localStorage.setItem('token', mockToken);
+        setUser(mockUser);
+        
+        return { success: true };
+      }
+      
+      // Production code - actual API call
+      console.log('Attempting login for:', email);
       const response = await axios.post('/api/login', { email, password });
       const { token, user } = response.data;
       
@@ -86,9 +87,10 @@ function App() {
       
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
       return { 
         success: false, 
-        message: error.response?.data?.message || 'Login failed' 
+        message: error.response?.data?.message || error.message || 'Login failed. Please try again.' 
       };
     }
   };
