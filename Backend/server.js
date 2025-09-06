@@ -118,22 +118,45 @@ app.post('/api/register', async (req, res) => {
 // Login
 app.post('/api/login', async (req, res) => {
   try {
+    console.log('Login attempt:', { 
+      body: req.body, 
+      headers: req.headers['content-type'],
+      timestamp: new Date().toISOString()
+    });
+
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      console.log('Login failed: Missing email or password');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      console.log('Login failed: Invalid data types');
+      return res.status(400).json({ message: 'Invalid email or password format' });
+    }
+
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
+      console.log('Login failed: User not found for email:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      console.log('Login failed: Invalid password for email:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET);
+    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, {
+      expiresIn: '24h'
+    });
+
+    console.log('Login successful for user:', user.email);
 
     res.json({
       message: 'Login successful',
@@ -145,7 +168,11 @@ app.post('/api/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: 'Server error' });
   }
 });
