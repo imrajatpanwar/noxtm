@@ -14,21 +14,36 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../Frontend/build')));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/react-app', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log('Connected to MongoDB successfully');
-}).catch((err) => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+// MongoDB Connection with timeout and fallback
+let mongoConnected = false;
+
+const connectWithTimeout = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtmstudio', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // 5 second timeout
+      connectTimeoutMS: 5000,
+    });
+    console.log('Connected to MongoDB successfully');
+    mongoConnected = true;
+  } catch (err) {
+    console.warn('MongoDB connection failed, running without database:', err.message);
+    mongoConnected = false;
+  }
+};
+
+// Try to connect to MongoDB
+connectWithTimeout();
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.on('error', (err) => {
+  console.warn('MongoDB connection error:', err.message);
+  mongoConnected = false;
+});
 db.once('open', () => {
   console.log('Connected to MongoDB');
+  mongoConnected = true;
 });
 
 // User Schema
@@ -70,7 +85,7 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     message: 'Server is running',
     timestamp: new Date().toISOString(),
-    mongodb: db.readyState === 1 ? 'connected' : 'disconnected'
+    mongodb: mongoConnected ? 'connected' : 'disconnected'
   });
 });
 
@@ -121,7 +136,8 @@ app.post('/api/login', async (req, res) => {
     console.log('Login attempt:', { 
       body: req.body, 
       headers: req.headers['content-type'],
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      mongoConnected
     });
 
     const { email, password } = req.body;
@@ -137,7 +153,38 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password format' });
     }
 
-    // Find user
+    // If MongoDB is not connected, use demo credentials for testing
+    if (!mongoConnected) {
+      console.log('MongoDB not connected, using demo login');
+      
+      // Demo credentials for testing
+      if (email.toLowerCase() === 'demo@noxtmstudio.com' && password === 'demo123') {
+        const token = jwt.sign({ 
+          userId: 'demo-user-id', 
+          username: 'demouser' 
+        }, JWT_SECRET, {
+          expiresIn: '24h'
+        });
+
+        console.log('Demo login successful');
+        return res.json({
+          message: 'Login successful (Demo Mode)',
+          token,
+          user: {
+            id: 'demo-user-id',
+            username: 'demouser',
+            email: email
+          }
+        });
+      } else {
+        console.log('Demo login failed: Invalid credentials');
+        return res.status(400).json({ 
+          message: 'Database not available. Use demo@noxtmstudio.com / demo123 for testing' 
+        });
+      }
+    }
+
+    // Find user in MongoDB
     const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
       console.log('Login failed: User not found for email:', email);
