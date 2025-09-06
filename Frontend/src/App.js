@@ -78,8 +78,34 @@ function App() {
       
       // Production code - actual API call
       console.log('Attempting login for:', email);
-      const response = await axios.post('/api/login', { email, password });
+      console.log('API base URL:', axios.defaults.baseURL);
+      
+      // Validate input before sending
+      if (!email || !password) {
+        return { 
+          success: false, 
+          message: 'Please enter both email and password.' 
+        };
+      }
+      
+      const response = await axios.post('/api/login', { 
+        email: email.trim(), 
+        password: password 
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
+      });
+      
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        return { 
+          success: false, 
+          message: 'Invalid response from server. Please try again.' 
+        };
+      }
       
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -87,10 +113,40 @@ function App() {
       
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const serverMessage = error.response.data?.message;
+        
+        if (status === 400) {
+          errorMessage = serverMessage || 'Invalid email or password.';
+        } else if (status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (status === 401) {
+          errorMessage = 'Invalid credentials. Please check your email and password.';
+        } else {
+          errorMessage = serverMessage || `Server error (${status}). Please try again.`;
+        }
+      } else if (error.request) {
+        // Network error - no response received
+        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        // Other error
+        errorMessage = error.message || 'An unexpected error occurred.';
+      }
+      
       return { 
         success: false, 
-        message: error.response?.data?.message || error.message || 'Login failed. Please try again.' 
+        message: errorMessage
       };
     }
   };
