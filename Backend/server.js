@@ -51,7 +51,40 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  role: { 
+    type: String, 
+    required: true, 
+    default: 'Web Developer',
+    enum: [
+      'Admin',
+      'Project Manager', 
+      'Data Miner',
+      'Data Analyst',
+      'Social Media Manager',
+      'Human Resource',
+      'Graphic Designer',
+      'Web Developer',
+      'SEO Manager'
+    ]
+  },
+  access: [{
+    type: String,
+    enum: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing']
+  }],
+  status: {
+    type: String,
+    required: true,
+    default: 'Active',
+    enum: ['Active', 'Inactive']
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Update the updatedAt field before saving
+userSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 const User = mongoose.model('User', userSchema);
@@ -103,11 +136,14 @@ app.post('/api/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
+    // Create new user with default access
     const user = new User({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role: 'Web Developer', // Default role
+      access: ['Projects'], // Default access
+      status: 'Active'
     });
 
     await user.save();
@@ -255,6 +291,140 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all users (protected route)
+app.get('/api/users', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      // Return mock data when MongoDB is not connected
+      const mockUsers = [
+        { 
+          _id: '1', 
+          username: 'Rajat Panwar', 
+          email: 'rajat@noxtm.com', 
+          role: 'Admin', 
+          status: 'Active',
+          access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        { 
+          _id: '2', 
+          username: 'Sarah Johnson', 
+          email: 'sarah.johnson@company.com', 
+          role: 'Project Manager', 
+          status: 'Active',
+          access: ['Projects'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        { 
+          _id: '3', 
+          username: 'Mike Davis', 
+          email: 'mike.davis@company.com', 
+          role: 'Social Media Manager', 
+          status: 'Active',
+          access: ['Digital Media', 'Marketing'],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
+      
+      return res.json({
+        message: 'Users retrieved successfully (Demo Mode)',
+        users: mockUsers,
+        total: mockUsers.length
+      });
+    }
+
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Users retrieved successfully',
+      users: users,
+      total: users.length
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user role and access (protected route)
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, access, status } = req.body;
+
+    if (!mongoConnected) {
+      // Mock response when MongoDB is not connected
+      return res.json({
+        message: 'User updated successfully (Demo Mode)',
+        user: {
+          _id: id,
+          role: role,
+          access: access,
+          status: status,
+          updatedAt: new Date()
+        }
+      });
+    }
+
+    const updateData = {};
+    if (role) updateData.role = role;
+    if (access) updateData.access = access;
+    if (status) updateData.status = status;
+    updateData.updatedAt = new Date();
+
+    const user = await User.findByIdAndUpdate(
+      id, 
+      updateData, 
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'User updated successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid data provided' });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete user (protected route)
+app.delete('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoConnected) {
+      // Mock response when MongoDB is not connected
+      return res.json({
+        message: 'User deleted successfully (Demo Mode)'
+      });
+    }
+
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
