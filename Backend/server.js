@@ -7,7 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // Middleware
 app.use(cors());
@@ -189,35 +189,12 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password format' });
     }
 
-    // If MongoDB is not connected, use demo credentials for testing
+    // If MongoDB is not connected, return error
     if (!mongoConnected) {
-      console.log('MongoDB not connected, using demo login');
-      
-      // Demo credentials for testing
-      if (email.toLowerCase() === 'demo@noxtmstudio.com' && password === 'demo123') {
-        const token = jwt.sign({ 
-          userId: 'demo-user-id', 
-          username: 'demouser' 
-        }, JWT_SECRET, {
-          expiresIn: '24h'
-        });
-
-        console.log('Demo login successful');
-        return res.json({
-          message: 'Login successful (Demo Mode)',
-          token,
-          user: {
-            id: 'demo-user-id',
-            username: 'demouser',
-            email: email
-          }
-        });
-      } else {
-        console.log('Demo login failed: Invalid credentials');
-        return res.status(400).json({ 
-          message: 'Database not available. Use demo@noxtmstudio.com / demo123 for testing' 
-        });
-      }
+      console.log('MongoDB not connected, cannot authenticate');
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
     }
 
     // Find user in MongoDB
@@ -299,44 +276,8 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     if (!mongoConnected) {
-      // Return mock data when MongoDB is not connected
-      const mockUsers = [
-        { 
-          _id: '1', 
-          username: 'Rajat Panwar', 
-          email: 'rajat@noxtm.com', 
-          role: 'Admin', 
-          status: 'Active',
-          access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        { 
-          _id: '2', 
-          username: 'Sarah Johnson', 
-          email: 'sarah.johnson@company.com', 
-          role: 'Project Manager', 
-          status: 'Active',
-          access: ['Projects'],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        { 
-          _id: '3', 
-          username: 'Mike Davis', 
-          email: 'mike.davis@company.com', 
-          role: 'Social Media Manager', 
-          status: 'Active',
-          access: ['Digital Media', 'Marketing'],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
-      
-      return res.json({
-        message: 'Users retrieved successfully (Demo Mode)',
-        users: mockUsers,
-        total: mockUsers.length
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
       });
     }
 
@@ -360,16 +301,8 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     const { role, access, status } = req.body;
 
     if (!mongoConnected) {
-      // Mock response when MongoDB is not connected
-      return res.json({
-        message: 'User updated successfully (Demo Mode)',
-        user: {
-          _id: id,
-          role: role,
-          access: access,
-          status: status,
-          updatedAt: new Date()
-        }
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
       });
     }
 
@@ -408,9 +341,8 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     if (!mongoConnected) {
-      // Mock response when MongoDB is not connected
-      return res.json({
-        message: 'User deleted successfully (Demo Mode)'
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
       });
     }
 

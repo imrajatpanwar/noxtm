@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from './config/api';
 import { Toaster } from 'sonner';
 import Header from './components/Header';
 import Home from './components/Home';
@@ -9,9 +9,7 @@ import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import Footer from './components/Footer';
 
-// Set base URL for axios - use the current domain
-// This will work both locally and in production
-axios.defaults.baseURL = window.location.origin;
+// API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
@@ -27,32 +25,32 @@ function ConditionalFooter() {
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token');
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       checkAuthStatus();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkAuthStatus = async () => {
-    // For local development without backend, skip profile check
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      setLoading(false);
-      return;
-    }
-    
-    // Production code - actual API call
     try {
-      const response = await axios.get('/api/profile');
+      const response = await api.get('/profile');
       setUser(response.data);
+      setError(null);
     } catch (error) {
+      console.error('Auth check failed:', error);
       localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
+      
+      // Only set error for network issues, not auth failures
+      if (error.code === 'NETWORK_ERROR' || !error.response) {
+        setError('Unable to connect to server. Please check your connection.');
+      }
     } finally {
       setLoading(false);
     }
@@ -60,25 +58,7 @@ function App() {
 
   const login = async (email, password) => {
     try {
-      // For local development without backend, use mock data
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Mock successful login (you can customize this for testing)
-        const mockUser = {
-          id: 'mock-user-id-' + Date.now(),
-          username: 'testuser',
-          email: email
-        };
-        const mockToken = 'mock-token-' + Date.now();
-        
-        localStorage.setItem('token', mockToken);
-        setUser(mockUser);
-        
-        return { success: true };
-      }
-      
-      // Production code - actual API call
       console.log('Attempting login for:', email);
-      console.log('API base URL:', axios.defaults.baseURL);
       
       // Validate input before sending
       if (!email || !password) {
@@ -88,14 +68,9 @@ function App() {
         };
       }
       
-      const response = await axios.post('/api/login', { 
+      const response = await api.post('/login', { 
         email: email.trim(), 
         password: password 
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000 // 10 second timeout
       });
       
       const { token, user } = response.data;
@@ -108,7 +83,6 @@ function App() {
       }
       
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       
       return { success: true };
@@ -152,29 +126,11 @@ function App() {
   };
 
   const signup = async (username, email, password) => {
-    // For local development without backend, use mock data
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // Mock successful registration
-      const mockUser = {
-        id: 'mock-user-id-' + Date.now(),
-        username: username,
-        email: email
-      };
-      const mockToken = 'mock-token-' + Date.now();
-      
-      localStorage.setItem('token', mockToken);
-      setUser(mockUser);
-      
-      return { success: true };
-    }
-    
-    // Production code - actual API call
     try {
-      const response = await axios.post('/api/register', { username, email, password });
+      const response = await api.post('/register', { username, email, password });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       
       return { success: true };
@@ -186,19 +142,36 @@ function App() {
     }
   };
 
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
 
 
   if (loading) {
     return (
       <div style={{ 
         display: 'flex', 
+        flexDirection: 'column',
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
         fontSize: '1.2rem',
-        color: '#666'
+        color: '#666',
+        gap: '1rem'
       }}>
-        Loading...
+        <div>Loading...</div>
+        {error && (
+          <div style={{ 
+            color: '#ef4444', 
+            fontSize: '1rem',
+            textAlign: 'center',
+            maxWidth: '400px'
+          }}>
+            {error}
+          </div>
+        )}
       </div>
     );
   }
@@ -207,7 +180,7 @@ function App() {
     <Router>
       <div className="App">
         <Toaster position="top-right" richColors />
-        <Header />
+        <Header user={user} onLogout={logout} />
         <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route 
@@ -220,7 +193,7 @@ function App() {
           />
           <Route 
             path="/dashboard" 
-            element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} 
+            element={user ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/login" />} 
           />
         </Routes>
         <ConditionalFooter />

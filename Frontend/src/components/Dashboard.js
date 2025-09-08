@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../config/api';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import LeadsFlow from './LeadsFlow';
@@ -54,25 +54,7 @@ function Dashboard({ user }) {
 
   const fetchDashboardData = async () => {
     try {
-      // For local development without backend, use mock data
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Mock dashboard data
-        const mockData = {
-          data: {
-            totalUsers: 1,
-            recentActivity: [
-              { action: 'User logged in', timestamp: new Date() },
-              { action: 'New user registered', timestamp: new Date() }
-            ]
-          }
-        };
-        setDashboardData(mockData);
-        setLoading(false);
-        return;
-      }
-      
-      // Production code - actual API call
-      const response = await axios.get('/api/dashboard');
+      const response = await api.get('/dashboard');
       setDashboardData(response.data);
     } catch (error) {
       setError('Failed to load dashboard data');
