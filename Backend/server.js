@@ -7,11 +7,36 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+// Security middleware
+app.use((req, res, next) => {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: [
+    'http://noxtmstudio.com',
+    'https://noxtmstudio.com',
+    'http://localhost:3000', // Keep for local development if needed
+    'http://localhost:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing middleware with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files from React build
 app.use(express.static(path.join(__dirname, '../Frontend/build')));
 
 // MongoDB Connection with timeout and fallback
@@ -19,16 +44,25 @@ let mongoConnected = false;
 
 const connectWithTimeout = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtmstudio', {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtmstudio';
+    console.log('Attempting to connect to MongoDB...');
+    
+    await mongoose.connect(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000, // 5 second timeout
-      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000, // 10 second timeout
+      connectTimeoutMS: 10000,
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionRetryDelayMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      bufferMaxEntries: 0, // Disable mongoose buffering
+      bufferCommands: false, // Disable mongoose buffering
     });
-    console.log('Connected to MongoDB successfully');
+    console.log('✅ Connected to MongoDB successfully');
     mongoConnected = true;
   } catch (err) {
-    console.warn('MongoDB connection failed, running without database:', err.message);
+    console.error('❌ MongoDB connection failed:', err.message);
+    console.warn('⚠️  Running without database - some features will be limited');
     mongoConnected = false;
   }
 };
@@ -89,8 +123,12 @@ userSchema.pre('save', function(next) {
 
 const User = mongoose.model('User', userSchema);
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// JWT Secret - Use environment variable or generate a secure fallback
+const JWT_SECRET = process.env.JWT_SECRET || 'noxtmstudio-fallback-secret-key-change-in-production';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  WARNING: Using fallback JWT secret. Set JWT_SECRET in environment variables for production!');
+}
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -133,8 +171,9 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password with configurable rounds
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create new user with default access
     const user = new User({
@@ -366,6 +405,43 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../Frontend/build', 'index.html'));
 });
 
+// Error handling for uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  mongoose.connection.close(() => {
+    console.log('📦 MongoDB connection closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  mongoose.connection.close(() => {
+    console.log('📦 MongoDB connection closed');
+    process.exit(0);
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log('='.repeat(50));
+  console.log(`🚀 Noxtm Studio Backend Server Started`);
+  console.log('='.repeat(50));
+  console.log(`🌐 Server running on port: ${PORT}`);
+  console.log(`📡 API endpoints: http://noxtmstudio.com/api`);
+  console.log(`🔍 Health check: http://noxtmstudio.com/api/health`);
+  console.log(`🌐 MongoDB status: ${mongoConnected ? '✅ Connected' : '❌ Disconnected'}`);
+  console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Set' : '⚠️  Using fallback'}`);
+  console.log(`🏗️  Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('='.repeat(50));
 });

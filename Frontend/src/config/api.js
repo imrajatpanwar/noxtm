@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 // Create axios instance with proper configuration
+const PRODUCTION_BACKEND_URL = 'http://noxtmstudio.com/api';
+
 const api = axios.create({
-  baseURL: window.location.origin + '/api', // Always use current domain for production backend
+  baseURL: PRODUCTION_BACKEND_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

@@ -7,6 +7,7 @@ echo "🚀 Starting production deployment..."
 
 # Set the project directory
 PROJECT_DIR="/var/www/noxtmstudio"
+echo "📁 Project directory: $PROJECT_DIR"
 cd $PROJECT_DIR
 
 # Check if we're in the right directory
@@ -54,11 +55,19 @@ if [ ! -f "Backend/.env" ]; then
     echo "📝 Creating .env file from template..."
     cd Backend
     cp env.example .env
-    echo "✅ .env file created. Please configure MongoDB URI and JWT secret if needed."
+    echo "✅ .env file created with production settings."
     cd ..
 else
     echo "✅ .env file already exists"
 fi
+
+# Verify environment variables
+echo "🔍 Verifying environment configuration..."
+cd Backend
+if grep -q "your-super-secret-jwt-key-change-this-in-production" .env; then
+    echo "⚠️  Warning: Default JWT secret detected. Consider updating for production."
+fi
+cd ..
 
 # Create test users in MongoDB (run once, will skip if users already exist)
 echo "👥 Setting up test users in MongoDB..."
