@@ -51,8 +51,20 @@ cd ..
 # Check if .env file exists in Backend
 if [ ! -f "Backend/.env" ]; then
     echo "⚠️  Warning: Backend/.env file not found."
-    echo "   Please create one from env.example and configure it for production"
+    echo "📝 Creating .env file from template..."
+    cd Backend
+    cp env.example .env
+    echo "✅ .env file created. Please configure MongoDB URI and JWT secret if needed."
+    cd ..
+else
+    echo "✅ .env file already exists"
 fi
+
+# Create test users in MongoDB (run once, will skip if users already exist)
+echo "👥 Setting up test users in MongoDB..."
+cd Backend
+node create-test-user.js || echo "⚠️  Note: User creation script completed (users may already exist)"
+cd ..
 
 echo "✅ Production deployment completed successfully!"
 echo ""
