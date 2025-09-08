@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe } from 'react-icons/fi';
 import './Sidebar.css';
 
 function Sidebar({ activeSection, onSectionChange }) {
@@ -10,6 +10,8 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [financeManagementExpanded, setFinanceManagementExpanded] = useState(false);
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
+  const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
+  const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const toggleEmailMarketing = () => {
@@ -40,16 +42,32 @@ function Sidebar({ activeSection, onSectionChange }) {
     setSettingsConfigExpanded(!settingsConfigExpanded);
   };
 
+  const toggleLeadManagement = () => {
+    setLeadManagementExpanded(!leadManagementExpanded);
+  };
+
+  const toggleSocialMedia = () => {
+    setSocialMediaExpanded(!socialMediaExpanded);
+  };
+
   // All sidebar items for search functionality
   const allSidebarItems = [
     // Dashboard
     { name: 'Overview', section: 'overview', category: 'Dashboard' },
     
-    // Data Center
-    { name: 'Leads Flow', section: 'leads-flow', category: 'Data Center' },
-    { name: 'Client Leads', section: 'client-leads', category: 'Data Center' },
-    { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Data Center' },
-    { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Data Center' },
+    // Lead Management
+    { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
+    { name: 'Client Leads', section: 'client-leads', category: 'Lead Management' },
+    { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
+    { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
+    
+    // Digital Media Management
+    { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
+    { name: 'Instagram', section: 'instagram', category: 'Digital Media Management' },
+    { name: 'LinkedIn', section: 'linkedin', category: 'Digital Media Management' },
+    { name: 'YouTube', section: 'youtube', category: 'Digital Media Management' },
+    { name: 'X.com', section: 'x-com', category: 'Digital Media Management' },
+    { name: 'Reddit', section: 'reddit', category: 'Digital Media Management' },
     
     // Projects
     { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
@@ -179,33 +197,51 @@ function Sidebar({ activeSection, onSectionChange }) {
       {/* Data Center Section */}
       <div className="sidebar-section">
         <h4 className="sidebar-section-title">DATA CENTER</h4>
-        <div 
-          className={`sidebar-item ${activeSection === 'leads-flow' ? 'active' : ''}`}
-          onClick={() => onSectionChange('leads-flow')}
-        >
-          <FiTrendingUp className="sidebar-icon" />
-          <span>Leads Flow</span>
-        </div>
-        <div 
-          className={`sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
-          onClick={() => onSectionChange('client-leads')}
-        >
-          <FiUsers className="sidebar-icon" />
-          <span>Client Leads</span>
-        </div>
-        <div 
-          className={`sidebar-item ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
-          onClick={() => onSectionChange('campaign-metrics')}
-        >
-          <FiBarChart2 className="sidebar-icon" />
-          <span>Campaign Metrics</span>
-        </div>
-        <div 
-          className={`sidebar-item ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
-          onClick={() => onSectionChange('conversion-tracking')}
-        >
-          <FiTarget className="sidebar-icon" />
-          <span>Conversion Tracking</span>
+        <div className="sidebar-item-container">
+          <div 
+            className={`sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
+            onClick={toggleLeadManagement}
+          >
+            <FiTarget className="sidebar-icon" />
+            <span>Lead Management</span>
+            {leadManagementExpanded ? 
+              <FiChevronDown className="sidebar-chevron" /> : 
+              <FiChevronRight className="sidebar-chevron" />
+            }
+          </div>
+          
+          {leadManagementExpanded && (
+            <div className="sidebar-submenu">
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'leads-flow' ? 'active' : ''}`}
+                onClick={() => onSectionChange('leads-flow')}
+              >
+                <FiTrendingUp className="sidebar-icon" />
+                <span>Leads Flow</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
+                onClick={() => onSectionChange('client-leads')}
+              >
+                <FiUsers className="sidebar-icon" />
+                <span>Client Leads</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
+                onClick={() => onSectionChange('campaign-metrics')}
+              >
+                <FiBarChart2 className="sidebar-icon" />
+                <span>Campaign Metrics</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
+                onClick={() => onSectionChange('conversion-tracking')}
+              >
+                <FiTarget className="sidebar-icon" />
+                <span>Conversion Tracking</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -251,6 +287,71 @@ function Sidebar({ activeSection, onSectionChange }) {
         >
           <FiVideo className="sidebar-icon" />
           <span>Meeting</span>
+        </div>
+      </div>
+
+      {/* Digital Media Management Section */}
+      <div className="sidebar-section">
+        <h4 className="sidebar-section-title">DIGITAL MEDIA MANAGEMENT</h4>
+        <div className="sidebar-item-container">
+          <div 
+            className={`sidebar-item ${activeSection === 'social-media' ? 'active' : ''}`}
+            onClick={toggleSocialMedia}
+          >
+            <FiGlobe className="sidebar-icon" />
+            <span>Social Media</span>
+            {socialMediaExpanded ? 
+              <FiChevronDown className="sidebar-chevron" /> : 
+              <FiChevronRight className="sidebar-chevron" />
+            }
+          </div>
+          
+          {socialMediaExpanded && (
+            <div className="sidebar-submenu">
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'meta-ads' ? 'active' : ''}`}
+                onClick={() => onSectionChange('meta-ads')}
+              >
+                <FiTarget className="sidebar-icon" />
+                <span>Meta Ads</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'instagram' ? 'active' : ''}`}
+                onClick={() => onSectionChange('instagram')}
+              >
+                <FiCamera className="sidebar-icon" />
+                <span>Instagram</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'linkedin' ? 'active' : ''}`}
+                onClick={() => onSectionChange('linkedin')}
+              >
+                <FiLinkedin className="sidebar-icon" />
+                <span>LinkedIn</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'youtube' ? 'active' : ''}`}
+                onClick={() => onSectionChange('youtube')}
+              >
+                <FiYoutube className="sidebar-icon" />
+                <span>YouTube</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'x-com' ? 'active' : ''}`}
+                onClick={() => onSectionChange('x-com')}
+              >
+                <FiTwitter className="sidebar-icon" />
+                <span>X.com</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'reddit' ? 'active' : ''}`}
+                onClick={() => onSectionChange('reddit')}
+              >
+                <FiMessageSquare className="sidebar-icon" />
+                <span>Reddit</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
