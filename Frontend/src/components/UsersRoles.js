@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CiSearch } from 'react-icons/ci';
-import axios from 'axios';
+import api from '../config/api';
 import './UsersRoles.css';
 
 function UsersRoles() {
@@ -33,11 +33,7 @@ function UsersRoles() {
         return;
       }
 
-      const response = await axios.get('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/users');
 
       // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => ({
@@ -69,14 +65,7 @@ function UsersRoles() {
         return;
       }
 
-      await axios.put(`/api/users/${userId}`, 
-        { role: newRole },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
+      await api.put(`/users/${userId}`, { role: newRole });
 
       // Update local state
       setUsers(users.map(user => 
