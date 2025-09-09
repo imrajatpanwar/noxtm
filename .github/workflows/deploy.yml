@@ -1,0 +1,41 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to Production Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USER }}
+        key: ${{ secrets.PROD_SSH_KEY }}
+        script: |
+          cd /var/www/noxtmstudio
+          echo "🚀 Starting automated deployment..."
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Install dependencies
+          cd Backend && npm install --production && cd ..
+          cd Frontend && npm install && cd ..
+          
+          # Build frontend
+          cd Frontend && npm run build && cd ..
+          
+          # Restart services
+          cd Backend
+          pm2 restart noxtmstudio-backend --env production
+          cd ..
+          
+          # Show status
+          pm2 status
+          
+          echo "✅ Deployment completed successfully!"
