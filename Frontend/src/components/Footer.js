@@ -55,7 +55,7 @@ function Footer() {
         </div>
         
         <div className="footer-bottom">
-          <p>&copy; 2024 NOXTM STUDIO. All rights reserved.</p>
+          <p>&copy; 2024 NOXTM STUDIO. All rights reserved. | Version v00.01</p>
         </div>
       </div>
     </footer>
