@@ -353,18 +353,43 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       return res.status(503).json({ 
         message: 'Database connection unavailable. Please try again later.' 
       });
+
+// Update user permissions (protected route - admin only)
+app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { permissions } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
     }
 
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    
+    // Find user and update permissions
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Merge new permissions with existing ones
+    user.permissions = { ...user.permissions, ...permissions };
+    user.updatedAt = new Date();
+    await user.save();
+
     res.json({
-      message: 'Users retrieved successfully',
-      users: users,
-      total: users.length
+      message: 'User permissions updated successfully',
+      user: {
+        _id: user._id,
+        permissions: user.permissions
+      }
     });
   } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error updating user permissions:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid permissions data provided' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -408,45 +433,24 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-// Update user permissions (protected route - admin only)
-app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { permissions } = req.body;
-
-    if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
-      });
     }
 
-    // Find user and update permissions
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Merge new permissions with existing ones
-    user.permissions = { ...user.permissions, ...permissions };
-    user.updatedAt = new Date();
-    await user.save();
-
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    
     res.json({
-      message: 'User permissions updated successfully',
-      user: {
-        _id: user._id,
-        permissions: user.permissions
-      }
+      message: 'Users retrieved successfully',
+      users: users,
+      total: users.length
     });
   } catch (error) {
-    console.error('Error updating user permissions:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: 'Invalid permissions data provided' });
-    }
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
+
+
+
 
 // Delete user (protected route)
 app.delete('/api/users/:id', authenticateToken, async (req, res) => {
