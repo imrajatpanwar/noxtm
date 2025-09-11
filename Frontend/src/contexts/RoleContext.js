@@ -150,6 +150,8 @@ export const RoleProvider = ({ children }) => {
       
       const response = await api.get('/users');
       
+      console.log('Fetched users from backend:', response.data.users);
+      
       // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => {
         // Get default permissions for the user's role
@@ -179,6 +181,8 @@ export const RoleProvider = ({ children }) => {
           permissions: mergedPermissions
         };
       });
+      
+      console.log('Transformed users:', transformedUsers);
       
       return transformedUsers;
     } catch (error) {
@@ -240,9 +244,18 @@ export const RoleProvider = ({ children }) => {
       // Check if we're using demo data (string IDs) vs real backend data (ObjectIds)
       const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
       
+      console.log('User ID:', userId, 'Type:', typeof userId, 'Is demo data:', isDemoData);
+      console.log('Token exists:', !!token);
+      
       if (token && !isDemoData) {
         // Update on backend
+        console.log('Making API call to update permissions:', { userId, permissions });
+        console.log('API URL:', `/users/${userId}/permissions`);
         const response = await api.put(`/users/${userId}/permissions`, { permissions });
+        
+        console.log('API response:', response.data);
+        console.log('User permissions from response:', response.data.user.permissions);
+        console.log('User access from response:', response.data.user.access);
         
         // Get the updated permissions from the response
         const updatedPermissions = response.data.user.permissions || {};
@@ -261,11 +274,20 @@ export const RoleProvider = ({ children }) => {
               }
             });
             
-            return { ...user, permissions: mergedPermissions };
+            // Sync access array with permissions
+            const accessArray = [];
+            if (mergedPermissions[MODULES.DATA_CENTER]) accessArray.push('Data Cluster');
+            if (mergedPermissions[MODULES.PROJECTS]) accessArray.push('Projects');
+            if (mergedPermissions[MODULES.FINANCE_MANAGEMENT]) accessArray.push('Finance');
+            if (mergedPermissions[MODULES.DIGITAL_MEDIA]) accessArray.push('Digital Media');
+            if (mergedPermissions[MODULES.MARKETING]) accessArray.push('Marketing');
+            
+            return { ...user, permissions: mergedPermissions, access: accessArray };
           }
           return user;
         });
         
+        console.log('Updated users after permission change:', updatedUsers);
         setUsers(updatedUsers);
         localStorage.setItem('usersData', JSON.stringify(updatedUsers));
         
@@ -277,11 +299,22 @@ export const RoleProvider = ({ children }) => {
         return { success: true };
       } else if (isDemoData) {
         // For demo data, just update locally
-        const updatedUsers = users.map(user => 
-          user.id === userId 
-            ? { ...user, permissions: { ...user.permissions, ...permissions } }
-            : user
-        );
+        const updatedUsers = users.map(user => {
+          if (user.id === userId) {
+            const updatedUserPermissions = { ...user.permissions, ...permissions };
+            
+            // Sync access array with permissions
+            const accessArray = [];
+            if (updatedUserPermissions[MODULES.DATA_CENTER]) accessArray.push('Data Cluster');
+            if (updatedUserPermissions[MODULES.PROJECTS]) accessArray.push('Projects');
+            if (updatedUserPermissions[MODULES.FINANCE_MANAGEMENT]) accessArray.push('Finance');
+            if (updatedUserPermissions[MODULES.DIGITAL_MEDIA]) accessArray.push('Digital Media');
+            if (updatedUserPermissions[MODULES.MARKETING]) accessArray.push('Marketing');
+            
+            return { ...user, permissions: updatedUserPermissions, access: accessArray };
+          }
+          return user;
+        });
         
         setUsers(updatedUsers);
         localStorage.setItem('usersData', JSON.stringify(updatedUsers));

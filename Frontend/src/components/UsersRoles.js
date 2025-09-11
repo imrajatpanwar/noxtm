@@ -313,6 +313,7 @@ function UsersRoles() {
           user={selectedUser}
           onClose={handleCloseSidePanel}
           isVisible={showSidePanel}
+          onPermissionUpdate={fetchUsers}
         />
       )}
 
@@ -321,7 +322,7 @@ function UsersRoles() {
 }
 
 // User Details Side Panel Component
-function UserDetailsSidePanel({ user, onClose, isVisible }) {
+function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) {
   const { updateUserPermissions, getUserPermissions, currentUser } = useRole();
   const [userPermissions, setUserPermissions] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
@@ -330,7 +331,10 @@ function UserDetailsSidePanel({ user, onClose, isVisible }) {
     if (user) {
       const permissions = getUserPermissions(user.id);
       setUserPermissions(permissions);
-      setIsAdmin(currentUser?.role === 'Admin');
+      const isCurrentUserAdmin = currentUser?.role === 'Admin';
+      setIsAdmin(isCurrentUserAdmin);
+      console.log('Current user role:', currentUser?.role);
+      console.log('Is admin:', isCurrentUserAdmin);
     }
   }, [user, getUserPermissions, currentUser]);
 
@@ -384,6 +388,11 @@ function UserDetailsSidePanel({ user, onClose, isVisible }) {
         // Refresh the permissions to ensure UI is in sync with backend
         const refreshedPermissions = getUserPermissions(user.id);
         setUserPermissions(refreshedPermissions);
+        
+        // Notify parent component to refresh users list
+        if (onPermissionUpdate) {
+          onPermissionUpdate();
+        }
       } else {
         console.error('Failed to update permissions:', result.error);
         toast.error(`Failed to update permissions: ${result.error}`);

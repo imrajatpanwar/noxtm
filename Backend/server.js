@@ -358,10 +358,28 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 
     const users = await User.find().select('-password').sort({ createdAt: -1 });
     
+    // Ensure access array is synced with permissions for all users
+    const usersWithSyncedAccess = users.map(user => {
+      const accessArray = [];
+      if (user.permissions.dataCenter) accessArray.push('Data Cluster');
+      if (user.permissions.projects) accessArray.push('Projects');
+      if (user.permissions.financeManagement) accessArray.push('Finance');
+      if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media');
+      if (user.permissions.marketing) accessArray.push('Marketing');
+      
+      // Only update if access array is different
+      if (JSON.stringify(user.access) !== JSON.stringify(accessArray)) {
+        user.access = accessArray;
+        user.save(); // Save in background, don't wait
+      }
+      
+      return user;
+    });
+    
     res.json({
       message: 'Users retrieved successfully',
-      users: users,
-      total: users.length
+      users: usersWithSyncedAccess,
+      total: usersWithSyncedAccess.length
     });
   } catch (error) {
     console.error('Get users error:', error);
@@ -374,6 +392,8 @@ app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async
   try {
     const { userId } = req.params;
     const { permissions } = req.body;
+
+    console.log('Received permission update request:', { userId, permissions });
 
     if (!mongoConnected) {
       return res.status(503).json({ 
@@ -389,14 +409,31 @@ app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async
 
     // Merge new permissions with existing ones
     user.permissions = { ...user.permissions, ...permissions };
+    
+    // Sync access array with permissions
+    const accessArray = [];
+    if (user.permissions.dataCenter) accessArray.push('Data Cluster');
+    if (user.permissions.projects) accessArray.push('Projects');
+    if (user.permissions.financeManagement) accessArray.push('Finance');
+    if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media');
+    if (user.permissions.marketing) accessArray.push('Marketing');
+    
+    user.access = accessArray;
     user.updatedAt = new Date();
+    
+    console.log('Saving user with permissions:', user.permissions);
+    console.log('Saving user with access:', user.access);
+    
     await user.save();
+    
+    console.log('User saved successfully');
 
     res.json({
       message: 'User permissions updated successfully',
       user: {
         _id: user._id,
-        permissions: user.permissions
+        permissions: user.permissions,
+        access: user.access
       }
     });
   } catch (error) {
