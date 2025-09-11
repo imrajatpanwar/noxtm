@@ -36,21 +36,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from React build with proper cache control
-app.use(express.static(path.join(__dirname, '../Frontend/build'), {
-  etag: false,
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-    } else if (path.match(/\.[a-f0-9]{8,}\.(js|css)$/)) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-    }
-  }
-}));
+// Backend API only - frontend served separately
+// Comment out static file serving since frontend runs on different port
+// app.use(express.static(path.join(__dirname, '../Frontend/build')));
 
 // MongoDB Connection with timeout and fallback
 let mongoConnected = false;
@@ -491,10 +479,8 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/build', 'index.html'));
-});
+// API-only backend - no frontend serving
+// Frontend is served on a different port
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (err) => {

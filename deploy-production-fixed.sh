@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Fixed Production Deployment Script for noxtmstudio
-# This script ensures zero caching issues and proper service restart
+# Production Deployment Script for noxtmstudio with Separate Frontend and Backend
+# Frontend runs on port 3000, Backend runs on port 5000
 
-echo "🚀 Starting ZERO-CACHE production deployment..."
+echo "🚀 Starting production deployment with separate services..."
 
 # Set the project directory
 PROJECT_DIR="/var/www/noxtmstudio"
@@ -59,6 +59,8 @@ echo "📦 Installing frontend dependencies (fresh)..."
 cd Frontend 
 rm -rf node_modules package-lock.json
 npm install
+# Install express for frontend server
+npm install express
 cd ..
 
 # Build the React app for production with no cache
@@ -84,26 +86,42 @@ else
     echo "✅ .env file exists"
 fi
 
-# CRITICAL: Clear Node.js require cache by restarting with fresh environment
-echo "🔄 Starting backend service with fresh Node.js process..."
+# Start Backend Service
+echo "🖥️  Starting backend service on port 5000..."
 cd Backend
-
-# Start PM2 with production environment
 NODE_ENV=production pm2 start ecosystem.config.js --env production
 
-# Wait for startup
+# Wait for backend startup
 sleep 3
 
-# Check if service started successfully
-pm2 status | grep "online" > /dev/null
+# Check if backend started successfully
+pm2 status | grep "noxtmstudio-backend.*online" > /dev/null
 if [ $? -eq 0 ]; then
-    echo "✅ Backend service started successfully"
+    echo "✅ Backend service started successfully on port 5000"
 else
     echo "❌ Error: Backend service failed to start"
     pm2 logs noxtmstudio-backend --lines 20
     exit 1
 fi
+cd ..
 
+# Start Frontend Service
+echo "🌐 Starting frontend service on port 3000..."
+cd Frontend
+NODE_ENV=production pm2 start ecosystem.config.js --env production
+
+# Wait for frontend startup
+sleep 3
+
+# Check if frontend started successfully
+pm2 status | grep "noxtmstudio-frontend.*online" > /dev/null
+if [ $? -eq 0 ]; then
+    echo "✅ Frontend service started successfully on port 3000"
+else
+    echo "❌ Error: Frontend service failed to start"
+    pm2 logs noxtmstudio-frontend --lines 20
+    exit 1
+fi
 cd ..
 
 # Set up test users (if needed)
@@ -123,11 +141,18 @@ echo "📋 Recent backend logs:"
 pm2 logs noxtmstudio-backend --lines 5
 
 echo ""
-echo "✅ ZERO-CACHE deployment completed successfully!"
+echo "📋 Recent frontend logs:"
+pm2 logs noxtmstudio-frontend --lines 5
+
 echo ""
-echo "🌐 Your application is now running with the latest changes"
-echo "🔄 All caches cleared, fresh build generated, processes restarted"
-echo "📱 Frontend: Fresh build in Frontend/build/"
-echo "🖥️  Backend: Fresh PM2 process running"
+echo "✅ Deployment completed successfully!"
 echo ""
-echo "🎉 New code should now be live on production!"
+echo "🎯 Services running:"
+echo "   - Backend API: http://localhost:5000 (noxtmstudio-backend)"
+echo "   - Frontend: http://localhost:3000 (noxtmstudio-frontend)"
+echo ""
+echo "📝 Make sure your Nginx is configured to:"
+echo "   - Proxy noxtmstudio.com to port 3000 (frontend)"
+echo "   - Proxy noxtmstudio.com/api/* to port 5000 (backend)"
+echo ""
+echo "🎉 Both frontend and backend are now running as separate services!"
