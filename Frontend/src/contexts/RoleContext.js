@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initializeDemoData } from '../data/demoUsers';
 import api from '../config/api';
 
 const RoleContext = createContext();
@@ -172,9 +171,6 @@ export const RoleProvider = ({ children }) => {
   // Load user data from localStorage or API
   useEffect(() => {
     const loadUserData = async () => {
-      // Initialize demo data if needed
-      initializeDemoData();
-      
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       setCurrentUser(userData);
       
