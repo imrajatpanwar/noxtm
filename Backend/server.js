@@ -36,8 +36,21 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, '../Frontend/build')));
+// Serve static files from React build with proper cache control
+app.use(express.static(path.join(__dirname, '../Frontend/build'), {
+  etag: false,
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (path.match(/\.[a-f0-9]{8,}\.(js|css)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+  }
+}));
 
 // MongoDB Connection with timeout and fallback
 let mongoConnected = false;
