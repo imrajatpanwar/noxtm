@@ -98,6 +98,19 @@ const userSchema = new mongoose.Schema({
       'SEO Manager'
     ]
   },
+  // Custom permissions that override role defaults
+  permissions: {
+    dashboard: { type: Boolean, default: true },
+    dataCenter: { type: Boolean },
+    projects: { type: Boolean },
+    digitalMediaManagement: { type: Boolean },
+    marketing: { type: Boolean },
+    hrManagement: { type: Boolean },
+    financeManagement: { type: Boolean },
+    seoManagement: { type: Boolean },
+    internalPolicies: { type: Boolean },
+    settingsConfiguration: { type: Boolean }
+  },
   access: [{
     type: String,
     enum: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing']
@@ -143,6 +156,31 @@ const authenticateToken = (req, res, next) => {
     req.user = user;
     next();
   });
+};
+
+// Middleware to require admin access
+const requireAdmin = async (req, res, next) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 // Routes
@@ -331,7 +369,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 });
 
 // Update user role and access (protected route)
-app.put('/api/users/:id', authenticateToken, async (req, res) => {
+app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role, access, status } = req.body;
@@ -368,6 +406,45 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Invalid data provided' });
     }
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user permissions (protected route - admin only)
+app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { permissions } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
+    }
+
+    // Find user and update permissions
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Merge new permissions with existing ones
+    user.permissions = { ...user.permissions, ...permissions };
+    user.updatedAt = new Date();
+    await user.save();
+
+    res.json({
+      message: 'User permissions updated successfully',
+      user: {
+        _id: user._id,
+        permissions: user.permissions
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user permissions:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid permissions data provided' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
