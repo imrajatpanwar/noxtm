@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity } from 'react-icons/fi';
+import { useRole } from '../contexts/RoleContext';
+import { isSectionTitleVisible, hasPermissionForSection } from '../utils/sidebarPermissions';
 import './Sidebar.css';
 
 function Sidebar({ activeSection, onSectionChange }) {
+  const { userPermissions } = useRole();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
@@ -12,6 +15,7 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
+  const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const toggleEmailMarketing = () => {
@@ -48,6 +52,10 @@ function Sidebar({ activeSection, onSectionChange }) {
 
   const toggleSocialMedia = () => {
     setSocialMediaExpanded(!socialMediaExpanded);
+  };
+
+  const toggleSeoManagement = () => {
+    setSeoManagementExpanded(!seoManagementExpanded);
   };
 
   // All sidebar items for search functionality
@@ -110,23 +118,28 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Company Policies', section: 'company-policies', category: 'Internal Policies' },
     { name: 'Company Handbook', section: 'company-handbook', category: 'Internal Policies' },
     
-            // Settings & Configuration
+            // SEO Management
+        { name: 'Website Analytics', section: 'website-analytics', category: 'SEO Management' },
+        { name: 'SEO Insights', section: 'seo-insights', category: 'SEO Management' },
+        { name: 'Web Settings', section: 'web-settings', category: 'SEO Management' },
+        { name: 'Website Blogs', section: 'blogs', category: 'SEO Management' },
+        
+        // Settings & Configuration
         { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
-        { name: 'Web Settings', section: 'web-settings', category: 'Settings & Configuration' },
-        { name: 'Blogs', section: 'blogs', category: 'Settings & Configuration' },
         { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
-        { name: 'Website Analytics', section: 'website-analytics', category: 'Settings & Configuration' },
         { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
         { name: 'Profile Settings', section: 'profile-settings', category: 'Settings & Configuration' },
   ];
 
-  // Filter items based on search query
+  // Filter items based on search query and permissions
   const filteredItems = searchQuery.trim() === '' 
     ? [] 
-    : allSidebarItems.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    : allSidebarItems.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            item.category.toLowerCase().includes(searchQuery.toLowerCase());
+        const hasPermission = hasPermissionForSection(item.section, userPermissions);
+        return matchesSearch && hasPermission;
+      });
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -195,74 +208,90 @@ function Sidebar({ activeSection, onSectionChange }) {
       </div>
       
       {/* Data Center Section */}
-      <div className="sidebar-section">
-        <h4 className="sidebar-section-title">DATA CENTER</h4>
-        <div className="sidebar-item-container">
-          <div 
-            className={`sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
-            onClick={toggleLeadManagement}
-          >
-            <FiTarget className="sidebar-icon" />
-            <span>Lead Management</span>
-            {leadManagementExpanded ? 
-              <FiChevronDown className="sidebar-chevron" /> : 
-              <FiChevronRight className="sidebar-chevron" />
-            }
+      {isSectionTitleVisible('DATA CENTER', userPermissions) && (
+        <div className="sidebar-section">
+          <h4 className="sidebar-section-title">DATA CENTER</h4>
+          <div className="sidebar-item-container">
+            <div 
+              className={`sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
+              onClick={toggleLeadManagement}
+            >
+              <FiTarget className="sidebar-icon" />
+              <span>Lead Management</span>
+              {leadManagementExpanded ? 
+                <FiChevronDown className="sidebar-chevron" /> : 
+                <FiChevronRight className="sidebar-chevron" />
+              }
+            </div>
+            
+            {leadManagementExpanded && (
+              <div className="sidebar-submenu">
+                {hasPermissionForSection('leads-flow', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'leads-flow' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('leads-flow')}
+                  >
+                    <FiTrendingUp className="sidebar-icon" />
+                    <span>Leads Flow</span>
+                  </div>
+                )}
+                {hasPermissionForSection('client-leads', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('client-leads')}
+                  >
+                    <FiUsers className="sidebar-icon" />
+                    <span>Client Leads</span>
+                  </div>
+                )}
+                {hasPermissionForSection('campaign-metrics', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('campaign-metrics')}
+                  >
+                    <FiBarChart2 className="sidebar-icon" />
+                    <span>Campaign Metrics</span>
+                  </div>
+                )}
+                {hasPermissionForSection('conversion-tracking', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('conversion-tracking')}
+                  >
+                    <FiTarget className="sidebar-icon" />
+                    <span>Conversion Tracking</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          
-          {leadManagementExpanded && (
-            <div className="sidebar-submenu">
-              <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'leads-flow' ? 'active' : ''}`}
-                onClick={() => onSectionChange('leads-flow')}
-              >
-                <FiTrendingUp className="sidebar-icon" />
-                <span>Leads Flow</span>
-              </div>
-              <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
-                onClick={() => onSectionChange('client-leads')}
-              >
-                <FiUsers className="sidebar-icon" />
-                <span>Client Leads</span>
-              </div>
-              <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
-                onClick={() => onSectionChange('campaign-metrics')}
-              >
-                <FiBarChart2 className="sidebar-icon" />
-                <span>Campaign Metrics</span>
-              </div>
-              <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
-                onClick={() => onSectionChange('conversion-tracking')}
-              >
-                <FiTarget className="sidebar-icon" />
-                <span>Conversion Tracking</span>
-              </div>
+        </div>
+      )}
+      
+      {/* Projects Section */}
+      {isSectionTitleVisible('PROJECTS', userPermissions) && (
+        <div className="sidebar-section">
+          <h4 className="sidebar-section-title">PROJECTS</h4>
+          {hasPermissionForSection('our-projects', userPermissions) && (
+            <div 
+              className={`sidebar-item ${activeSection === 'our-projects' ? 'active' : ''}`}
+              onClick={() => onSectionChange('our-projects')}
+            >
+              <FiFolder className="sidebar-icon" />
+              <span>Client / Projects</span>
+            </div>
+          )}
+          {hasPermissionForSection('project-delivered', userPermissions) && (
+            <div 
+              className={`sidebar-item ${activeSection === 'project-delivered' ? 'active' : ''}`}
+              onClick={() => onSectionChange('project-delivered')}
+            >
+              <FiPackage className="sidebar-icon" />
+              <span>Project Delivered</span>
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Projects Section */}
-      <div className="sidebar-section">
-        <h4 className="sidebar-section-title">PROJECTS</h4>
-        <div 
-          className={`sidebar-item ${activeSection === 'our-projects' ? 'active' : ''}`}
-          onClick={() => onSectionChange('our-projects')}
-        >
-          <FiFolder className="sidebar-icon" />
-          <span>Client / Projects</span>
-        </div>
-        <div 
-          className={`sidebar-item ${activeSection === 'project-delivered' ? 'active' : ''}`}
-          onClick={() => onSectionChange('project-delivered')}
-        >
-          <FiPackage className="sidebar-icon" />
-          <span>Project Delivered</span>
-        </div>
-      </div>
+      )}
 
       {/* Team Communication Section */}
       <div className="sidebar-section">
@@ -590,6 +619,64 @@ function Sidebar({ activeSection, onSectionChange }) {
         </div>
       </div>
 
+      {/* SEO Management Section */}
+      {isSectionTitleVisible('SEO MANAGEMENT', userPermissions) && (
+        <div className="sidebar-section">
+          <h4 className="sidebar-section-title">SEO MANAGEMENT</h4>
+          
+          <div className="sidebar-item-container">
+            <div 
+              className={`sidebar-item ${activeSection === 'seo-management' ? 'active' : ''}`}
+              onClick={toggleSeoManagement}
+            >
+              <FiActivity className="sidebar-icon" />
+              <span>SEO Management</span>
+              {seoManagementExpanded ? 
+                <FiChevronDown className="sidebar-chevron" /> : 
+                <FiChevronRight className="sidebar-chevron" />
+              }
+            </div>
+            
+            {seoManagementExpanded && (
+              <div className="sidebar-submenu">
+                {hasPermissionForSection('website-analytics', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('website-analytics')}
+                  >
+                    <span>Website Analytics</span>
+                  </div>
+                )}
+                {hasPermissionForSection('seo-insights', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('seo-insights')}
+                  >
+                    <span>SEO Insights</span>
+                  </div>
+                )}
+                {hasPermissionForSection('web-settings', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('web-settings')}
+                  >
+                    <span>Web Settings</span>
+                  </div>
+                )}
+                {hasPermissionForSection('blogs', userPermissions) && (
+                  <div 
+                    className={`sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('blogs')}
+                  >
+                    <span>Website Blogs</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Internal Policies Section */}
       <div className="sidebar-section">
         <h4 className="sidebar-section-title">INTERNAL POLICIES</h4>
@@ -652,41 +739,23 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <span>Manage Integrations</span>
               </div>
               <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
-                onClick={() => onSectionChange('web-settings')}
-              >
-                <span>Web Settings</span>
-              </div>
-              <div 
-                className={`sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
-                onClick={() => onSectionChange('blogs')}
-              >
-                <span>Blogs</span>
-              </div>
-              <div 
                 className={`sidebar-item sidebar-subitem ${activeSection === 'users-roles' ? 'active' : ''}`}
                 onClick={() => onSectionChange('users-roles')}
               >
                 <span>Users & Roles</span>
               </div>
-                                    <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('website-analytics')}
-                      >
-                        <span>Website Analytics</span>
-                      </div>
-                      <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'credentials' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('credentials')}
-                      >
-                        <span>Credentials</span>
-                      </div>
-                      <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'profile-settings' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('profile-settings')}
-                      >
-                        <span>Profile Settings</span>
-                      </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'credentials' ? 'active' : ''}`}
+                onClick={() => onSectionChange('credentials')}
+              >
+                <span>Credentials</span>
+              </div>
+              <div 
+                className={`sidebar-item sidebar-subitem ${activeSection === 'profile-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('profile-settings')}
+              >
+                <span>Profile Settings</span>
+              </div>
                     </div>
                   )}
                 </div>

@@ -73,6 +73,7 @@
   max-width: 700px;
   margin-left: auto;
   margin-right: auto;
+  text-align: center;
 }
 
 .cta-buttons {
@@ -369,7 +370,7 @@
 }
 
 .pricing-amount {
-  font-family: 'Switzer', sans-serif;
+  font-family: 'Helvetica', sans-serif;
   font-size: 1.25rem;
   font-weight: 700;
   color: #111827;

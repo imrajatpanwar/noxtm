@@ -3,23 +3,6 @@ import React from 'react';
 function Overview({ user, dashboardData, error }) {
   return (
     <>
-      {/* Version Display */}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        padding: '8px 12px',
-        borderRadius: '6px',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        zIndex: 1000,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        v00.01
-      </div>
-
       <h1>Welcome to your Dashboard, {user.username}!</h1>
       
       {error && (
