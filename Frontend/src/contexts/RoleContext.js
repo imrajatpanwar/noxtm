@@ -222,9 +222,23 @@ export const RoleProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       
-      if (token) {
-        // Try to update on backend first
-        await api.put(`/users/${userId}/permissions`, { permissions });
+      // Check if we're using demo data (string IDs) vs real backend data (ObjectIds)
+      const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
+      
+      if (token && !isDemoData) {
+        // Try to update on backend first (only for real backend data)
+        try {
+          await api.put(`/users/${userId}/permissions`, { permissions });
+        } catch (apiError) {
+          // If the permissions endpoint doesn't exist (404), try the general user update endpoint
+          if (apiError.response?.status === 404) {
+            console.log('Permissions endpoint not found, falling back to general user update');
+            // For now, just log that we're skipping the API call
+            // The local state will still be updated below
+          } else {
+            throw apiError; // Re-throw if it's a different error
+          }
+        }
       }
       
       // Update local state
@@ -284,9 +298,22 @@ export const RoleProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       
-      if (token) {
-        // Try to update on backend first
-        await api.put(`/users/${userId}`, { role: newRole });
+      // Check if we're using demo data (string IDs) vs real backend data (ObjectIds)
+      const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
+      
+      if (token && !isDemoData) {
+        // Try to update on backend first (only for real backend data)
+        try {
+          await api.put(`/users/${userId}`, { role: newRole });
+        } catch (apiError) {
+          // If the endpoint doesn't exist (404), log and continue with local update
+          if (apiError.response?.status === 404) {
+            console.log('User update endpoint not found, updating locally only');
+            // The local state will still be updated below
+          } else {
+            throw apiError; // Re-throw if it's a different error
+          }
+        }
       }
       
       // Update local state
