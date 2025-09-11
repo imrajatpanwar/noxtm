@@ -25,6 +25,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# CRITICAL: Clean all old build files and caches
+echo "🧹 Cleaning old build files and caches..."
+rm -rf Frontend/build
+rm -rf Frontend/node_modules/.cache
+rm -rf Backend/node_modules/.cache
+echo "✅ Old build files and caches cleared"
+
 # Install backend dependencies
 echo "📦 Installing backend dependencies..."
 cd Backend && npm install --production && cd ..
@@ -43,7 +50,26 @@ if [ ! -d "Frontend/build" ]; then
     exit 1
 fi
 
-# Restart the backend service using PM2
+# CRITICAL: Stop PM2 completely to clear all cached modules
+echo "🛑 Stopping PM2 services completely..."
+pm2 stop all
+pm2 delete all
+pm2 kill
+echo "✅ PM2 services stopped and cleared"
+
+# Wait a moment for processes to fully terminate
+sleep 3
+
+# Start the backend service fresh
+echo "🔄 Starting backend service fresh..."
+cd Backend
+pm2 start ecosystem.config.js --env production
+cd ..
+
+# Show recent logs to verify everything is working
+echo ""
+echo "📋 Recent backend logs:"
+pm2 logs noxtmstudio-backend --lines 10
 echo "🔄 Restarting backend service..."
 cd Backend
 pm2 restart ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
