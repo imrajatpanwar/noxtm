@@ -40,6 +40,7 @@ import Blogs from './Blogs';
 import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import ProfileSettings from './ProfileSettings';
+import SeoInsights from './SeoInsights';
 import './Dashboard.css';
 
 function Dashboard({ user }) {
@@ -151,6 +152,8 @@ function Dashboard({ user }) {
         return <UsersRoles />;
       case 'website-analytics':
         return <WebsiteAnalytics />;
+      case 'seo-insights':
+        return <SeoInsights />;
       case 'profile-settings':
         return <ProfileSettings />;
       default:

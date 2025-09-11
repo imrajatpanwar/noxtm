@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './config/api';
 import { Toaster } from 'sonner';
+import { RoleProvider } from './contexts/RoleContext';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -177,28 +178,30 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Toaster position="top-right" richColors />
-        <Header user={user} onLogout={logout} />
-        <Routes>
-          <Route path="/" element={<Home user={user} />} />
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />} 
-          />
-          <Route 
-            path="/signup" 
-            element={user ? <Navigate to="/dashboard" /> : <Signup onSignup={signup} />} 
-          />
-          <Route 
-            path="/dashboard" 
-            element={user ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/login" />} 
-          />
-        </Routes>
-        <ConditionalFooter />
-      </div>
-    </Router>
+    <RoleProvider>
+      <Router>
+        <div className="App">
+          <Toaster position="top-right" richColors />
+          <Header user={user} onLogout={logout} />
+          <Routes>
+            <Route path="/" element={<Home user={user} />} />
+            <Route 
+              path="/login" 
+              element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />} 
+            />
+            <Route 
+              path="/signup" 
+              element={user ? <Navigate to="/dashboard" /> : <Signup onSignup={signup} />} 
+            />
+            <Route 
+              path="/dashboard" 
+              element={user ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/login" />} 
+            />
+          </Routes>
+          <ConditionalFooter />
+        </div>
+      </Router>
+    </RoleProvider>
   );
 }
 

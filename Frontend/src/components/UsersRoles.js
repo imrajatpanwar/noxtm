@@ -1,13 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CiSearch } from 'react-icons/ci';
+import { toast } from 'sonner';
 import api from '../config/api';
+import { useRole, MODULES } from '../contexts/RoleContext';
 import './UsersRoles.css';
 
 function UsersRoles() {
+  const { 
+    users: contextUsers, 
+    setUsers: setContextUsers, 
+    updateUserRole
+  } = useRole();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showSidePanel, setShowSidePanel] = useState(false);
 
   const roles = [
     'Admin',
@@ -22,13 +31,18 @@ function UsersRoles() {
   ];
 
   // Fetch users from backend
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       
       if (!token) {
-        setError('No authentication token found');
+        // Use demo data if no token
+        console.log('No token found, using demo data');
+        const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
+        if (demoUsers.length > 0) {
+          setUsers(demoUsers);
+        }
         setLoading(false);
         return;
       }
@@ -46,45 +60,98 @@ function UsersRoles() {
       }));
 
       setUsers(transformedUsers);
+      setContextUsers(transformedUsers); // Update context as well
       setError(null);
     } catch (error) {
       console.error('Error fetching users:', error);
-      setError('Failed to fetch users: ' + (error.response?.data?.message || error.message));
+      // Fall back to demo data on error
+      const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
+      if (demoUsers.length > 0) {
+        setUsers(demoUsers);
+        setError(null); // Clear error if we have demo data
+        console.log('Using demo data due to API error');
+      } else {
+        setError('Failed to fetch users: ' + (error.response?.data?.message || error.message));
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [setContextUsers]);
 
   // Update user role
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const token = localStorage.getItem('token');
+      setError(null); // Clear any previous errors
       
-      if (!token) {
-        setError('No authentication token found');
-        return;
+      const result = await updateUserRole(userId, newRole);
+      
+      if (result.success) {
+        // Update local state immediately for UI responsiveness
+        setUsers(users.map(user => 
+          user.id === userId ? { ...user, role: newRole } : user
+        ));
+        toast.success(`User role updated to ${newRole}`);
+      } else {
+        setError(`Failed to update user role: ${result.error}`);
+        toast.error(`Failed to update user role: ${result.error}`);
       }
-
-      await api.put(`/users/${userId}`, { role: newRole });
-
-      // Update local state
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      ));
     } catch (error) {
       console.error('Error updating user role:', error);
-      setError('Failed to update user role: ' + (error.response?.data?.message || error.message));
+      setError('Failed to update user role: ' + error.message);
+      toast.error('Failed to update user role: ' + error.message);
     }
   };
 
   // Load users on component mount
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    // Initialize demo data if needed
+    const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
+    if (demoUsers.length === 0) {
+      // Import and initialize demo data
+      import('../data/demoUsers').then(({ initializeDemoData }) => {
+        initializeDemoData();
+        // Try to fetch users after initialization
+        fetchUsers();
+      });
+    } else {
+      // Try to fetch from API first, fall back to demo data
+      fetchUsers();
+    }
+  }, [fetchUsers]);
+
+
+  // Sync with context users when they change
+  useEffect(() => {
+    if (contextUsers && contextUsers.length > 0) {
+      setUsers(contextUsers);
+      setLoading(false);
+    }
+  }, [contextUsers]);
+
+  // Fallback: Load users from localStorage if available
+  useEffect(() => {
+    const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
+    if (storedUsers.length > 0 && users.length === 0 && !loading) {
+      setUsers(storedUsers);
+      setLoading(false);
+    }
+  }, [users.length, loading]);
 
   const handleAccessAdd = (userId) => {
     // This would typically open a modal or dropdown to add access
     console.log('Add access for user:', userId);
+  };
+
+  // Handle user details click
+  const handleUserClick = (user) => {
+    setSelectedUser(user);
+    setShowSidePanel(true);
+  };
+
+  // Handle side panel close
+  const handleCloseSidePanel = () => {
+    setShowSidePanel(false);
+    setTimeout(() => setSelectedUser(null), 300); // Delay clearing user to allow animation
   };
 
   const getAccessColor = (access) => {
@@ -184,7 +251,7 @@ function UsersRoles() {
                   <input type="checkbox" className="user-checkbox" />
                 </td>
                 <td className="user-details">
-                  <div className="user-info">
+                  <div className="user-info clickable-user" onClick={() => handleUserClick(user)}>
                     <div className="user-avatar">
                       <div className="avatar-icon">👤</div>
                     </div>
@@ -240,7 +307,244 @@ function UsersRoles() {
         </table>
       </div>
 
+      {/* User Details Side Panel */}
+      {showSidePanel && (
+        <UserDetailsSidePanel 
+          user={selectedUser}
+          onClose={handleCloseSidePanel}
+          isVisible={showSidePanel}
+        />
+      )}
+
     </div>
+  );
+}
+
+// User Details Side Panel Component
+function UserDetailsSidePanel({ user, onClose, isVisible }) {
+  const { updateUserPermissions, getUserPermissions, currentUser } = useRole();
+  const [userPermissions, setUserPermissions] = useState({});
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const permissions = getUserPermissions(user.id);
+      setUserPermissions(permissions);
+      setIsAdmin(currentUser?.role === 'Admin');
+    }
+  }, [user, getUserPermissions, currentUser]);
+
+  if (!user) return null;
+
+  // Mock additional user data - in real app this would come from API
+  const userDetails = {
+    ...user,
+    currentProjects: 5,
+    totalProjects: 21,
+    joinDate: '10 - 04 - 2024',
+    phone: '+91 9098989281',
+    location: 'Coffee Estate Homestay, Mullayanagiri Road, Kaimara, Chikmagalur, Karnataka - 577101, India',
+    languages: ['English', 'Hindi'],
+    maritalStatus: 'Single',
+    employmentId: '0020192',
+    responseTime: '24m'
+  };
+
+  const getModuleDisplayName = (module) => {
+    const displayNames = {
+      [MODULES.DASHBOARD]: 'Dashboard',
+      [MODULES.DATA_CENTER]: 'Data Center',
+      [MODULES.PROJECTS]: 'Projects',
+      [MODULES.DIGITAL_MEDIA]: 'Digital Media Management',
+      [MODULES.MARKETING]: 'Marketing',
+      [MODULES.HR_MANAGEMENT]: 'HR Management',
+      [MODULES.FINANCE_MANAGEMENT]: 'Finance Management',
+      [MODULES.SEO_MANAGEMENT]: 'SEO Management',
+      [MODULES.INTERNAL_POLICIES]: 'Internal Policies',
+      [MODULES.SETTINGS_CONFIG]: 'Settings & Configuration'
+    };
+    return displayNames[module] || module;
+  };
+
+  const handlePermissionChange = async (module, value) => {
+    if (!isAdmin) return;
+    
+    try {
+      const result = await updateUserPermissions(user.id, { [module]: value });
+      
+      if (result.success) {
+        // Update local state immediately for UI responsiveness
+        const updatedPermissions = {
+          ...userPermissions,
+          [module]: value
+        };
+        setUserPermissions(updatedPermissions);
+        toast.success(`Permission ${value ? 'granted' : 'revoked'} for ${getModuleDisplayName(module)}`);
+      } else {
+        console.error('Failed to update permissions:', result.error);
+        toast.error(`Failed to update permissions: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast.error('Failed to update permissions: ' + error.message);
+    }
+  };
+
+  return (
+    <>
+      {/* Overlay */}
+      <div 
+        className={`side-panel-overlay ${isVisible ? 'visible' : ''}`}
+        onClick={onClose}
+      />
+      
+      {/* Side Panel */}
+      <div className={`user-details-side-panel ${isVisible ? 'visible' : ''}`}>
+        {/* Header */}
+        <div className="side-panel-header">
+          <h3>User Preview</h3>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        {/* User Info */}
+        <div className="side-panel-content">
+          <div className="user-profile-section">
+            <div className="user-avatar-large">
+              <div className="avatar-icon-large">👤</div>
+            </div>
+            <div className="user-info-text">
+              <h2>{userDetails.name}</h2>
+              <div className="user-status-indicator">
+                <span className="status-dot-green"></span>
+                <span className="status-text">Online</span>
+              </div>
+              <p className="user-email-large">{userDetails.email}</p>
+            </div>
+          </div>
+
+          {/* Project Stats */}
+          <div className="project-stats">
+            <div className="stat-item">
+              <div className="stat-label">Currently</div>
+              <div className="stat-value">{userDetails.currentProjects}</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-label">Total Projects</div>
+              <div className="stat-value">{userDetails.totalProjects}</div>
+            </div>
+          </div>
+
+          {/* User Details Section */}
+          <div className="details-section">
+            <h4>User Details</h4>
+            <div className="detail-grid-two-column">
+              <div className="detail-row">
+                <div className="detail-item-left">
+                  <span className="detail-label">E-mail</span>
+                  <span className="detail-value">{userDetails.email}</span>
+                </div>
+                <div className="detail-item-right">
+                  <span className="detail-label">Join Date</span>
+                  <span className="detail-value blue-text">{userDetails.joinDate}</span>
+                </div>
+              </div>
+              <div className="detail-row">
+                <div className="detail-item-left">
+                  <span className="detail-label">Phone No.</span>
+                  <span className="detail-value blue-text">{userDetails.phone}</span>
+                </div>
+                <div className="detail-item-right">
+                  <span className="detail-label">Designation</span>
+                  <span className="detail-value">{userDetails.role}</span>
+                </div>
+              </div>
+              <div className="detail-row">
+                <div className="detail-item-left">
+                  <span className="detail-label">Location</span>
+                  <span className="detail-value">{userDetails.location}</span>
+                </div>
+                <div className="detail-item-right">
+                  <span className="detail-label">Employment ID</span>
+                  <span className="detail-value">{userDetails.employmentId}</span>
+                </div>
+              </div>
+              <div className="detail-row">
+                <div className="detail-item-left">
+                  <span className="detail-label">Language Spoken</span>
+                  <span className="detail-value">{userDetails.languages.join(', ')}</span>
+                </div>
+                <div className="detail-item-right">
+                  <span className="detail-label">Status</span>
+                  <span className="detail-value">{userDetails.status}</span>
+                </div>
+              </div>
+              <div className="detail-row">
+                <div className="detail-item-left">
+                  <span className="detail-label">Marital Status</span>
+                  <span className="detail-value">{userDetails.maritalStatus}</span>
+                </div>
+                <div className="detail-item-right">
+                  <span className="detail-label">Response Time</span>
+                  <span className="detail-value">{userDetails.responseTime}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Permissions Section */}
+          <div className="permissions-section">
+            <h4>Permission {isAdmin && <span style={{fontSize: '12px', color: '#6B7280', fontWeight: 'normal'}}>(Click to modify)</span>}</h4>
+            <div className="permissions-grid-two-column">
+              <div className="permission-column">
+                {Object.entries(MODULES).slice(0, Math.ceil(Object.entries(MODULES).length / 2)).map(([key, module]) => (
+                  <div key={module} className="permission-item">
+                    <input 
+                      type="checkbox" 
+                      id={module}
+                      checked={userPermissions[module] || false}
+                      onChange={(e) => handlePermissionChange(module, e.target.checked)}
+                      disabled={!isAdmin}
+                      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                    />
+                    <label 
+                      htmlFor={module}
+                      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                    >
+                      {getModuleDisplayName(module)}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <div className="permission-column">
+                {Object.entries(MODULES).slice(Math.ceil(Object.entries(MODULES).length / 2)).map(([key, module]) => (
+                  <div key={module} className="permission-item">
+                    <input 
+                      type="checkbox" 
+                      id={module}
+                      checked={userPermissions[module] || false}
+                      onChange={(e) => handlePermissionChange(module, e.target.checked)}
+                      disabled={!isAdmin}
+                      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                    />
+                    <label 
+                      htmlFor={module}
+                      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                    >
+                      {getModuleDisplayName(module)}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {!isAdmin && (
+              <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '12px', fontStyle: 'italic' }}>
+                Only administrators can modify permissions
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
