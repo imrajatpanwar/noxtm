@@ -380,13 +380,25 @@ function UserDetailsSidePanel({ user, onClose, isVisible }) {
         };
         setUserPermissions(updatedPermissions);
         toast.success(`Permission ${value ? 'granted' : 'revoked'} for ${getModuleDisplayName(module)}`);
+        
+        // Refresh the permissions to ensure UI is in sync with backend
+        const refreshedPermissions = getUserPermissions(user.id);
+        setUserPermissions(refreshedPermissions);
       } else {
         console.error('Failed to update permissions:', result.error);
         toast.error(`Failed to update permissions: ${result.error}`);
+        
+        // Revert the checkbox state on error
+        const currentPermissions = getUserPermissions(user.id);
+        setUserPermissions(currentPermissions);
       }
     } catch (error) {
       console.error('Error updating permissions:', error);
       toast.error('Failed to update permissions: ' + error.message);
+      
+      // Revert the checkbox state on error
+      const currentPermissions = getUserPermissions(user.id);
+      setUserPermissions(currentPermissions);
     }
   };
 

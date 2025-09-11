@@ -366,6 +366,20 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       return res.status(503).json({ 
         message: 'Database connection unavailable. Please try again later.' 
       });
+    }
+
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Users retrieved successfully',
+      users: users,
+      total: users.length
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // Update user permissions (protected route - admin only)
 app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
@@ -443,20 +457,6 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: 'Invalid data provided' });
     }
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-    }
-
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    
-    res.json({
-      message: 'Users retrieved successfully',
-      users: users,
-      total: users.length
-    });
-  } catch (error) {
-    console.error('Get users error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

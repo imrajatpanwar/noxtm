@@ -151,15 +151,34 @@ export const RoleProvider = ({ children }) => {
       const response = await api.get('/users');
       
       // Transform backend data to match frontend format
-      const transformedUsers = response.data.users.map(user => ({
-        id: user._id,
-        name: user.username,
-        email: user.email,
-        role: user.role,
-        status: user.status || 'Active',
-        access: user.access || [],
-        permissions: user.permissions || {}
-      }));
+      const transformedUsers = response.data.users.map(user => {
+        // Get default permissions for the user's role
+        const roleDefaultPermissions = DEFAULT_PERMISSIONS[user.role] || {};
+        
+        // Merge backend permissions with role defaults
+        // Backend permissions override role defaults
+        const mergedPermissions = { ...roleDefaultPermissions };
+        
+        // Apply user-specific permissions from backend
+        if (user.permissions) {
+          Object.keys(user.permissions).forEach(key => {
+            // Only override if the permission is explicitly set in backend
+            if (user.permissions[key] !== undefined && user.permissions[key] !== null) {
+              mergedPermissions[key] = user.permissions[key];
+            }
+          });
+        }
+        
+        return {
+          id: user._id,
+          name: user.username,
+          email: user.email,
+          role: user.role,
+          status: user.status || 'Active',
+          access: user.access || [],
+          permissions: mergedPermissions
+        };
+      });
       
       return transformedUsers;
     } catch (error) {
@@ -222,54 +241,61 @@ export const RoleProvider = ({ children }) => {
       const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
       
       if (token && !isDemoData) {
-        // Try to update on backend first (only for real backend data)
-        try {
-          await api.put(`/users/${userId}/permissions`, { permissions });
-        } catch (apiError) {
-          // If the permissions endpoint doesn't exist (404), try the general user update endpoint
-          if (apiError.response?.status === 404) {
-            console.log('Permissions endpoint not found, falling back to general user update');
-            // For now, just log that we're skipping the API call
-            // The local state will still be updated below
-          } else {
-            throw apiError; // Re-throw if it's a different error
+        // Update on backend
+        const response = await api.put(`/users/${userId}/permissions`, { permissions });
+        
+        // Get the updated permissions from the response
+        const updatedPermissions = response.data.user.permissions || {};
+        
+        // Update local state with the backend response
+        const updatedUsers = users.map(user => {
+          if (user.id === userId) {
+            // Get default permissions for the user's role
+            const roleDefaultPermissions = DEFAULT_PERMISSIONS[user.role] || {};
+            
+            // Merge with updated permissions from backend
+            const mergedPermissions = { ...roleDefaultPermissions };
+            Object.keys(updatedPermissions).forEach(key => {
+              if (updatedPermissions[key] !== undefined && updatedPermissions[key] !== null) {
+                mergedPermissions[key] = updatedPermissions[key];
+              }
+            });
+            
+            return { ...user, permissions: mergedPermissions };
           }
+          return user;
+        });
+        
+        setUsers(updatedUsers);
+        localStorage.setItem('usersData', JSON.stringify(updatedUsers));
+        
+        // If updating current user, update current permissions
+        if (userId === currentUser?.id) {
+          setUserPermissions(prev => ({ ...prev, ...permissions }));
         }
+        
+        return { success: true };
+      } else if (isDemoData) {
+        // For demo data, just update locally
+        const updatedUsers = users.map(user => 
+          user.id === userId 
+            ? { ...user, permissions: { ...user.permissions, ...permissions } }
+            : user
+        );
+        
+        setUsers(updatedUsers);
+        localStorage.setItem('usersData', JSON.stringify(updatedUsers));
+        
+        if (userId === currentUser?.id) {
+          setUserPermissions(prev => ({ ...prev, ...permissions }));
+        }
+        
+        return { success: true };
       }
       
-      // Update local state
-      const updatedUsers = users.map(user => 
-        user.id === userId 
-          ? { ...user, permissions: { ...user.permissions, ...permissions } }
-          : user
-      );
-      
-      setUsers(updatedUsers);
-      localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-      
-      // If updating current user, update current permissions
-      if (userId === currentUser?.id) {
-        setUserPermissions(prev => ({ ...prev, ...permissions }));
-      }
-      
-      return { success: true };
+      return { success: false, error: 'No valid token or user data' };
     } catch (error) {
       console.error('Error updating user permissions:', error);
-      
-      // Still update locally as fallback
-      const updatedUsers = users.map(user => 
-        user.id === userId 
-          ? { ...user, permissions: { ...user.permissions, ...permissions } }
-          : user
-      );
-      
-      setUsers(updatedUsers);
-      localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-      
-      if (userId === currentUser?.id) {
-        setUserPermissions(prev => ({ ...prev, ...permissions }));
-      }
-      
       return { 
         success: false, 
         error: error.response?.data?.message || error.message 
@@ -282,11 +308,9 @@ export const RoleProvider = ({ children }) => {
     const user = users.find(u => u.id === userId);
     if (!user) return {};
     
-    // Merge default role permissions with user-specific overrides
-    const defaultPerms = DEFAULT_PERMISSIONS[user.role] || {};
-    const userSpecificPerms = user.permissions || {};
-    
-    return { ...defaultPerms, ...userSpecificPerms };
+    // User permissions are already merged in fetchUsersFromBackend
+    // Just return the user's permissions
+    return user.permissions || {};
   };
 
   // Update user role (admin function)
