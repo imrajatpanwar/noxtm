@@ -8,13 +8,14 @@ import Home from './components/Home';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import AccessRestricted from './components/AccessRestricted';
 import Footer from './components/Footer';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/dashboard'];
+  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted'];
   
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
@@ -31,7 +32,18 @@ function App() {
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token');
-    if (token) {
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      // Load user from localStorage first for immediate display
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setLoading(false);
+      
+      // Then verify with backend
+      checkAuthStatus();
+    } else if (token) {
+      // Token exists but no user data, fetch from backend
       checkAuthStatus();
     } else {
       setLoading(false);
@@ -41,11 +53,14 @@ function App() {
   const checkAuthStatus = async () => {
     try {
       const response = await api.get('/profile');
-      setUser(response.data);
+      const userData = response.data;
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
       setError(null);
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setUser(null);
       
       // Only set error for network issues, not auth failures
@@ -84,9 +99,10 @@ function App() {
       }
       
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
       
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
       console.error('Login error details:', {
         message: error.message,
@@ -132,9 +148,10 @@ function App() {
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
       
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
       return { 
         success: false, 
@@ -146,6 +163,14 @@ function App() {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+  };
+
+  // Helper function to check if user has restricted access
+  const isUserRestricted = (user) => {
+    if (!user || !user.role) return true;
+    
+    // Simple check: if role is 'User', they are restricted
+    return user.role === 'User';
   };
 
 
@@ -195,7 +220,21 @@ function App() {
             />
             <Route 
               path="/dashboard" 
-              element={user ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/login" />} 
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <Dashboard user={user} onLogout={logout} />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              } 
+            />
+            <Route 
+              path="/access-restricted" 
+              element={<AccessRestricted />} 
             />
           </Routes>
           <ConditionalFooter />

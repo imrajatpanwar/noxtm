@@ -47,7 +47,8 @@ function Signup({ onSignup }) {
     if (result.success) {
       setMessage('Account created successfully!');
       setTimeout(() => {
-        navigate('/dashboard');
+        // New users will be redirected to access restricted page
+        navigate('/access-restricted');
       }, 1000);
     } else {
       setMessage(result.message);

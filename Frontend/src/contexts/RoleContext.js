@@ -27,6 +27,18 @@ export const MODULES = {
 
 // Default role permissions
 export const DEFAULT_PERMISSIONS = {
+  User: {
+    [MODULES.DASHBOARD]: false,
+    [MODULES.DATA_CENTER]: false,
+    [MODULES.PROJECTS]: false,
+    [MODULES.DIGITAL_MEDIA]: false,
+    [MODULES.MARKETING]: false,
+    [MODULES.HR_MANAGEMENT]: false,
+    [MODULES.FINANCE_MANAGEMENT]: false,
+    [MODULES.SEO_MANAGEMENT]: false,
+    [MODULES.INTERNAL_POLICIES]: false,
+    [MODULES.SETTINGS_CONFIG]: false
+  },
   Admin: {
     [MODULES.DASHBOARD]: true,
     [MODULES.DATA_CENTER]: true,

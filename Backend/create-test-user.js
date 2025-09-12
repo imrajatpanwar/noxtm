@@ -10,8 +10,9 @@ const userSchema = new mongoose.Schema({
   role: { 
     type: String, 
     required: true, 
-    default: 'Web Developer',
+    default: 'User',
     enum: [
+      'User',
       'Admin',
       'Project Manager', 
       'Data Miner',
@@ -66,7 +67,19 @@ async function createTestUser() {
       password: hashedPassword,
       role: 'Admin',
       access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
-      status: 'Active'
+      status: 'Active',
+      permissions: {
+        dashboard: true,
+        dataCenter: true,
+        projects: true,
+        digitalMediaManagement: true,
+        marketing: true,
+        hrManagement: true,
+        financeManagement: true,
+        seoManagement: true,
+        internalPolicies: true,
+        settingsConfiguration: true
+      }
     });
 
     await adminUser.save();
@@ -75,14 +88,26 @@ async function createTestUser() {
     console.log('Email: admin@noxtmstudio.com');
     console.log('Password: admin123');
 
-    // Create a regular user for testing
+    // Create a regular user for testing (with some permissions)
     const testUser = new User({
       username: 'Test User',
       email: 'test@noxtmstudio.com',
       password: await bcrypt.hash('test123', 10),
       role: 'Web Developer',
       access: ['Projects'],
-      status: 'Active'
+      status: 'Active',
+      permissions: {
+        dashboard: true,
+        dataCenter: false,
+        projects: true,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: true,
+        internalPolicies: false,
+        settingsConfiguration: true
+      }
     });
 
     await testUser.save();
