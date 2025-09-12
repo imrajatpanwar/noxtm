@@ -167,10 +167,15 @@ function App() {
 
   // Helper function to check if user has restricted access
   const isUserRestricted = (user) => {
-    if (!user || !user.role) return true;
+    if (!user || !user.role) {
+      console.log('No user or role found, restricting access');
+      return true;
+    }
     
-    // Simple check: if role is 'User', they are restricted
-    return user.role === 'User';
+    // Only 'User' role should be restricted, all other roles (Admin, Web Developer, etc.) should have access
+    const isRestricted = user.role === 'User';
+    console.log(`User role: ${user.role}, Is restricted: ${isRestricted}`);
+    return isRestricted;
   };
 
 
@@ -223,11 +228,14 @@ function App() {
               element={
                 user ? (
                   isUserRestricted(user) ? (
+                    // User role - redirect to AccessRestricted
                     <AccessRestricted />
                   ) : (
+                    // Admin, Web Developer, Project Manager, etc. - allow dashboard access
                     <Dashboard user={user} onLogout={logout} />
                   )
                 ) : (
+                  // No user logged in - redirect to login
                   <Navigate to="/login" />
                 )
               } 

@@ -43,7 +43,7 @@ import ProfileSettings from './ProfileSettings';
 import SeoInsights from './SeoInsights';
 import './Dashboard.css';
 
-function Dashboard({ user }) {
+function Dashboard({ user, onLogout }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -155,7 +155,7 @@ function Dashboard({ user }) {
       case 'seo-insights':
         return <SeoInsights />;
       case 'profile-settings':
-        return <ProfileSettings />;
+        return <ProfileSettings user={user} onLogout={onLogout} />;
       default:
         return (
           <div className="dashboard-card">
