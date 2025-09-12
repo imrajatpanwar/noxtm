@@ -9,7 +9,8 @@ function UsersRoles() {
   const { 
     users: contextUsers, 
     setUsers: setContextUsers, 
-    updateUserRole
+    updateUserRole,
+    currentUser
   } = useRole();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,9 @@ function UsersRoles() {
     'Web Developer',
     'SEO Manager'
   ];
+
+  // Check if current user is admin
+  const isCurrentUserAdmin = currentUser?.role === 'Admin';
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -80,6 +84,12 @@ function UsersRoles() {
 
   // Update user role
   const handleRoleChange = async (userId, newRole) => {
+    // Check if current user is admin
+    if (!isCurrentUserAdmin) {
+      toast.error('Only administrators can change user roles');
+      return;
+    }
+
     try {
       setError(null); // Clear any previous errors
       
@@ -200,11 +210,40 @@ function UsersRoles() {
 
   return (
     <div className="users-roles-container">
+      {/* Admin Warning for Non-Admin Users */}
+      {!isCurrentUserAdmin && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <div style={{ fontSize: '1.25rem' }}>⚠️</div>
+          <div>
+            <p style={{ margin: '0 0 0.25rem 0', fontWeight: '600', color: '#92400e' }}>
+              Limited Access
+            </p>
+            <p style={{ margin: '0', fontSize: '0.9rem', color: '#92400e' }}>
+              You can view user information but cannot modify roles. Only administrators can change user roles and permissions.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="users-roles-header">
         <div className="header-content">
           <div className="header-left">
             <h2>Users & Roles Management</h2>
             <p>Manage user accounts, roles, and permissions across your organization.</p>
+            {isCurrentUserAdmin && (
+              <p style={{ fontSize: '0.9rem', color: '#059669', margin: '0.5rem 0 0 0' }}>
+                🔧 Admin Mode: You can modify user roles and permissions
+              </p>
+            )}
           </div>
         </div>
 
@@ -285,11 +324,28 @@ function UsersRoles() {
                     value={user.role} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     className="role-select"
+                    disabled={!isCurrentUserAdmin}
+                    style={{
+                      opacity: isCurrentUserAdmin ? 1 : 0.6,
+                      cursor: isCurrentUserAdmin ? 'pointer' : 'not-allowed',
+                      backgroundColor: isCurrentUserAdmin ? 'white' : '#f3f4f6'
+                    }}
+                    title={!isCurrentUserAdmin ? 'Only administrators can change user roles' : ''}
                   >
                     {roles.map(role => (
                       <option key={role} value={role}>{role}</option>
                     ))}
                   </select>
+                  {!isCurrentUserAdmin && (
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#6b7280', 
+                      marginLeft: '0.5rem',
+                      fontStyle: 'italic'
+                    }}>
+                      Admin only
+                    </span>
+                  )}
                 </td>
                 <td className="user-status">
                   <span className={`status-badge ${user.status.toLowerCase()}`}>

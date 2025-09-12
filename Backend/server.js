@@ -200,7 +200,7 @@ app.get('/api/health', (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -212,26 +212,160 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create new user with User role (restricted access)
+    // Validate role if provided, otherwise default to 'User'
+    const validRoles = ['User', 'Admin', 'Project Manager', 'Data Miner', 'Data Analyst', 'Social Media Manager', 'Human Resource', 'Graphic Designer', 'Web Developer', 'SEO Manager'];
+    const userRole = role && validRoles.includes(role) ? role : 'User';
+
+    // Get default permissions for the role
+    const getDefaultPermissions = (userRole) => {
+      const rolePermissions = {
+        'User': {
+          dashboard: false,
+          dataCenter: false,
+          projects: false,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: false,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'Admin': {
+          dashboard: true,
+          dataCenter: true,
+          projects: true,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: true,
+          financeManagement: true,
+          seoManagement: true,
+          internalPolicies: true,
+          settingsConfiguration: true
+        },
+        'Web Developer': {
+          dashboard: true,
+          dataCenter: false,
+          projects: true,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: true
+        },
+        'Project Manager': {
+          dashboard: true,
+          dataCenter: true,
+          projects: true,
+          digitalMediaManagement: false,
+          marketing: true,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'Data Miner': {
+          dashboard: true,
+          dataCenter: true,
+          projects: false,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: false,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'Data Analyst': {
+          dashboard: true,
+          dataCenter: true,
+          projects: false,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'Social Media Manager': {
+          dashboard: true,
+          dataCenter: false,
+          projects: false,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'Human Resource': {
+          dashboard: true,
+          dataCenter: false,
+          projects: false,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: true,
+          financeManagement: false,
+          seoManagement: false,
+          internalPolicies: true,
+          settingsConfiguration: false
+        },
+        'Graphic Designer': {
+          dashboard: true,
+          dataCenter: false,
+          projects: true,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: false,
+          internalPolicies: false,
+          settingsConfiguration: false
+        },
+        'SEO Manager': {
+          dashboard: true,
+          dataCenter: true,
+          projects: false,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: false
+        }
+      };
+      return rolePermissions[userRole] || rolePermissions['User'];
+    };
+
+    // Get default access array based on permissions
+    const getDefaultAccess = (permissions) => {
+      const access = [];
+      if (permissions.dataCenter) access.push('Data Cluster');
+      if (permissions.projects) access.push('Projects');
+      if (permissions.financeManagement) access.push('Finance');
+      if (permissions.digitalMediaManagement) access.push('Digital Media');
+      if (permissions.marketing) access.push('Marketing');
+      return access;
+    };
+
+    const defaultPermissions = getDefaultPermissions(userRole);
+    const defaultAccess = getDefaultAccess(defaultPermissions);
+
+    // Create new user with specified role
     const user = new User({
       username,
       email,
       password: hashedPassword,
-      role: 'User', // Default role for new signups
-      access: [], // No access by default - restricted
+      role: userRole,
+      access: defaultAccess,
       status: 'Active',
-      permissions: {
-        dashboard: false,
-        dataCenter: false,
-        projects: false,
-        digitalMediaManagement: false,
-        marketing: false,
-        hrManagement: false,
-        financeManagement: false,
-        seoManagement: false,
-        internalPolicies: false,
-        settingsConfiguration: false
-      }
+      permissions: defaultPermissions
     });
 
     await user.save();
