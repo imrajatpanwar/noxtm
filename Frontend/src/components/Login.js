@@ -30,7 +30,12 @@ function Login({ onLogin }) {
     if (result.success) {
       toast.success('Login successful! Welcome back!');
       setTimeout(() => {
-        navigate('/dashboard');
+        // Check if user has restricted access (simple role check)
+        if (result.user.role === 'User') {
+          navigate('/access-restricted');
+        } else {
+          navigate('/dashboard');
+        }
       }, 1000);
     } else {
       toast.error(result.message || 'Login failed. Please try again.');

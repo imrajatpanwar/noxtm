@@ -86,8 +86,9 @@ const userSchema = new mongoose.Schema({
   role: { 
     type: String, 
     required: true, 
-    default: 'Web Developer',
+    default: 'User',
     enum: [
+      'User',
       'Admin',
       'Project Manager', 
       'Data Miner',
@@ -211,14 +212,26 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create new user with default access
+    // Create new user with User role (restricted access)
     const user = new User({
       username,
       email,
       password: hashedPassword,
-      role: 'Web Developer', // Default role
-      access: ['Projects'], // Default access
-      status: 'Active'
+      role: 'User', // Default role for new signups
+      access: [], // No access by default - restricted
+      status: 'Active',
+      permissions: {
+        dashboard: false,
+        dataCenter: false,
+        projects: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
+      }
     });
 
     await user.save();
@@ -232,7 +245,10 @@ app.post('/api/register', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        access: user.access,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -299,7 +315,10 @@ app.post('/api/login', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        access: user.access,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -343,6 +362,36 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user profile (protected route)
+app.get('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
+    }
+
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      access: user.access,
+      permissions: user.permissions,
+      status: user.status,
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
