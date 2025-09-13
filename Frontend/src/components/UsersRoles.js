@@ -142,8 +142,8 @@ function UsersRoles() {
     try {
       setError(null); // Clear any previous errors
       
-      // If role is changed to "User", set status to "In Review"
-      const newStatus = newRole === 'User' ? 'In Review' : undefined;
+      // Set status based on role: User = "In Review", any other role = "Active"
+      const newStatus = newRole === 'User' ? 'In Review' : 'Active';
       
       const result = await updateUserRole(userId, newRole, newStatus);
       
@@ -153,12 +153,11 @@ function UsersRoles() {
           user.id === userId ? { 
             ...user, 
             role: newRole,
-            ...(newStatus && { status: newStatus })
+            status: newStatus
           } : user
         ));
         
-        const statusMessage = newStatus ? ` and status set to ${newStatus}` : '';
-        toast.success(`User role updated to ${newRole}${statusMessage}`);
+        toast.success(`User role updated to ${newRole} and status set to ${newStatus}`);
       } else {
         setError(`Failed to update user role: ${result.error}`);
         toast.error(`Failed to update user role: ${result.error}`);
