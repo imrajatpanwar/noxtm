@@ -3,7 +3,7 @@ import { CiSearch } from 'react-icons/ci';
 import { FiEdit3, FiEye, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
-import { useRole, MODULES } from '../contexts/RoleContext';
+import { useRole, MODULES, DEFAULT_PERMISSIONS } from '../contexts/RoleContext';
 import './UsersRoles.css';
 
 function UsersRoles() {
@@ -299,6 +299,8 @@ function UsersRoles() {
   };
 
 
+
+
   // Function to get all access permissions for a user (role-based + custom)
   const getAllUserAccess = (user) => {
     const allAccess = [];
@@ -319,20 +321,23 @@ function UsersRoles() {
     
     return allAccess;
   };
+
   const getAccessColor = (access) => {
-  const colors = {
-    'Data Cluster': '#8B5CF6',
-    'Projects': '#10B981',
-    'Finance': '#EF4444',
-    'Digital Media': '#3B82F6',
-    'Marketing': '#F59E0B',
-    'HR Management': '#EC4899',
-    'SEO Management': '#06B6D4',
-    'Settings': '#8B5A2B',
-    'Dashboard': '#6366F1',
-    'Internal Policies': '#A78BFA'
-  };
-  return colors[access] || '#6B7280';
+    const colors = {
+      'Data Cluster': '#8B5CF6',
+      'Data Center': '#8B5CF6',
+      'Projects': '#10B981',
+      'Finance': '#EF4444',
+      'Digital Media': '#3B82F6',
+      'Team Communication': '#F97316',
+      'Marketing': '#F59E0B',
+      'HR Management': '#EC4899',
+      'SEO Management': '#06B6D4',
+      'Settings': '#8B5A2B',
+      'Dashboard': '#6366F1',
+      'Internal Policies': '#A78BFA'
+    };
+    return colors[access] || '#6B7280';
   };
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -684,6 +689,47 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
   const [userPermissions, setUserPermissions] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Function to get access color for styling
+  const getAccessColor = (access) => {
+    const colors = {
+      'Data Cluster': '#8B5CF6',
+      'Data Center': '#8B5CF6',
+      'Projects': '#10B981',
+      'Finance': '#EF4444',
+      'Digital Media': '#3B82F6',
+      'Team Communication': '#F97316',
+      'Marketing': '#F59E0B',
+      'HR Management': '#EC4899',
+      'SEO Management': '#06B6D4',
+      'Settings': '#8B5A2B',
+      'Dashboard': '#6366F1',
+      'Internal Policies': '#A78BFA'
+    };
+    return colors[access] || '#6B7280';
+  };
+
+  // Function to get role-based access for a user
+  const getRoleBasedAccess = (role) => {
+    const rolePermissions = DEFAULT_PERMISSIONS[role] || {};
+    const moduleToDisplayName = {
+      [MODULES.DASHBOARD]: 'Dashboard',
+      [MODULES.DATA_CENTER]: 'Data Center',
+      [MODULES.PROJECTS]: 'Projects',
+      [MODULES.DIGITAL_MEDIA]: 'Digital Media',
+      [MODULES.TEAM_COMMUNICATION]: 'Team Communication',
+      [MODULES.MARKETING]: 'Marketing',
+      [MODULES.HR_MANAGEMENT]: 'HR Management',
+      [MODULES.FINANCE_MANAGEMENT]: 'Finance',
+      [MODULES.SEO_MANAGEMENT]: 'SEO Management',
+      [MODULES.INTERNAL_POLICIES]: 'Internal Policies',
+      [MODULES.SETTINGS_CONFIG]: 'Settings'
+    };
+    
+    return Object.keys(rolePermissions)
+      .filter(module => rolePermissions[module])
+      .map(module => moduleToDisplayName[module] || module);
+  };
+
   useEffect(() => {
     if (user) {
       // Initialize permissions based on user's actual access
@@ -697,6 +743,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
         'Projects': MODULES.PROJECTS,
         'Digital Media Management': MODULES.DIGITAL_MEDIA,
         'Digital Media': MODULES.DIGITAL_MEDIA,
+        'Team Communication': MODULES.TEAM_COMMUNICATION,
         'Marketing': MODULES.MARKETING,
         'HR Management': MODULES.HR_MANAGEMENT,
         'Finance Management': MODULES.FINANCE_MANAGEMENT,
@@ -752,6 +799,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       [MODULES.DATA_CENTER]: 'Data Center',
       [MODULES.PROJECTS]: 'Projects',
       [MODULES.DIGITAL_MEDIA]: 'Digital Media Management',
+      [MODULES.TEAM_COMMUNICATION]: 'Team Communication',
       [MODULES.MARKETING]: 'Marketing',
       [MODULES.HR_MANAGEMENT]: 'HR Management',
       [MODULES.FINANCE_MANAGEMENT]: 'Finance Management',
@@ -907,6 +955,34 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
                   <span className="detail-value">{userDetails.responseTime}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Role-Based Access Section */}
+          <div className="role-access-section" style={{ marginBottom: '20px' }}>
+            <h4>Role-Based Access</h4>
+            <div className="role-access-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {getRoleBasedAccess(userDetails.role).map((access, index) => (
+                <span 
+                  key={index}
+                  className="access-tag"
+                  style={{ 
+                    backgroundColor: getAccessColor(access),
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {access}
+                </span>
+              ))}
+              {getRoleBasedAccess(userDetails.role).length === 0 && (
+                <span style={{ fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                  No role-based access defined
+                </span>
+              )}
             </div>
           </div>
 
