@@ -684,6 +684,7 @@ function UsersRoles() {
           onClose={handleCloseSidePanel}
           isVisible={showSidePanel}
           onPermissionUpdate={fetchUsers}
+          setUsers={setUsers}
         />
       )}
 
@@ -692,7 +693,7 @@ function UsersRoles() {
 }
 
 // User Details Side Panel Component
-function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) {
+function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, setUsers }) {
   const { updateUserPermissions, getUserPermissions, currentUser } = useRole();
   const [userPermissions, setUserPermissions] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
@@ -840,6 +841,32 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
         // Refresh the permissions to ensure UI is in sync with backend
         const refreshedPermissions = getUserPermissions(user.id);
         setUserPermissions(refreshedPermissions);
+        // Update the main users list immediately for live UI updates
+        setUsers(prevUsers => {
+          return prevUsers.map(u => {
+            if (u.id === user.id) {
+              const updatedUser = { ...u };
+              if (!updatedUser.customAccess) {
+                updatedUser.customAccess = [];
+              }
+              
+              const moduleDisplayName = getModuleDisplayName(module);
+              if (value) {
+                // Add permission if not already present
+                if (!updatedUser.customAccess.includes(moduleDisplayName)) {
+                  updatedUser.customAccess.push(moduleDisplayName);
+                }
+              } else {
+                // Remove permission
+                updatedUser.customAccess = updatedUser.customAccess.filter(
+                  access => access !== moduleDisplayName
+                );
+              }
+              return updatedUser;
+            }
+            return u;
+          });
+        });
         
         // Notify parent component to refresh users list
         if (onPermissionUpdate) {
