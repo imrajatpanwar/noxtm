@@ -22,6 +22,19 @@ function UsersRoles() {
 
   // Check if current user is admin
   const isCurrentUserAdmin = currentUser?.role === 'Admin';
+  
+  // Debug logging
+  console.log('Current user from context:', currentUser);
+  console.log('Is current user admin:', isCurrentUserAdmin);
+  
+  // Fallback: Check localStorage if context user is not available
+  const localStorageUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdminFromLocalStorage = localStorageUser?.role === 'Admin';
+  console.log('User from localStorage:', localStorageUser);
+  console.log('Is admin from localStorage:', isAdminFromLocalStorage);
+  
+  // Use either context user or localStorage user for admin check
+  const finalIsAdmin = isCurrentUserAdmin || isAdminFromLocalStorage;
 
   // Fetch available roles from backend
   const fetchRoles = useCallback(async () => {
@@ -119,7 +132,7 @@ function UsersRoles() {
   // Update user role
   const handleRoleChange = async (userId, newRole) => {
     // Check if current user is admin
-    if (!isCurrentUserAdmin) {
+    if (!finalIsAdmin) {
       toast.error('Only administrators can change user roles');
       return;
     }
@@ -163,7 +176,7 @@ function UsersRoles() {
   // Handle user actions (Delete, Terminated, Active)
   const handleUserAction = async (userId, action) => {
     // Check if current user is admin
-    if (!isCurrentUserAdmin) {
+    if (!finalIsAdmin) {
       toast.error('Only administrators can perform user actions');
       return;
     }
@@ -316,7 +329,7 @@ function UsersRoles() {
   return (
     <div className="users-roles-container">
       {/* Admin Warning for Non-Admin Users */}
-      {!isCurrentUserAdmin && (
+      {!finalIsAdmin && (
         <div style={{
           backgroundColor: '#fef3c7',
           border: '1px solid #f59e0b',
@@ -344,7 +357,7 @@ function UsersRoles() {
           <div className="header-left">
             <h2>Users & Roles Management</h2>
             <p>Manage user accounts, roles, and permissions across your organization.</p>
-            {isCurrentUserAdmin && (
+            {finalIsAdmin && (
               <p style={{ fontSize: '0.9rem', color: '#059669', margin: '0.5rem 0 0 0' }}>
                 🔧 Admin Mode: You can modify user roles and permissions
               </p>
@@ -429,13 +442,13 @@ function UsersRoles() {
                     value={user.role} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     className="role-select"
-                    disabled={!isCurrentUserAdmin}
+                    disabled={!finalIsAdmin}
                     style={{
-                      opacity: isCurrentUserAdmin ? 1 : 0.6,
-                      cursor: isCurrentUserAdmin ? 'pointer' : 'not-allowed',
-                      backgroundColor: isCurrentUserAdmin ? 'white' : '#f3f4f6'
+                      opacity: finalIsAdmin ? 1 : 0.6,
+                      cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
+                      backgroundColor: finalIsAdmin ? 'white' : '#f3f4f6'
                     }}
-                    title={!isCurrentUserAdmin ? 'Only administrators can change user roles' : ''}
+                    title={!finalIsAdmin ? 'Only administrators can change user roles' : ''}
                   >
                     {availableRoles.map(role => (
                       <option key={role} value={role}>
@@ -443,7 +456,7 @@ function UsersRoles() {
                       </option>
                     ))}
                   </select>
-                  {!isCurrentUserAdmin && (
+                  {!finalIsAdmin && (
                     <span style={{ 
                       fontSize: '0.75rem', 
                       color: '#6b7280', 
