@@ -744,6 +744,12 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
   const handlePermissionChange = async (module, value) => {
     if (!isAdmin) return;
     
+    // Update local state immediately for live UI updates
+    const updatedPermissions = {
+      ...userPermissions,
+      [module]: value
+    };
+    setUserPermissions(updatedPermissions);    
     try {
       const result = await updateUserPermissions(user.id, { [module]: value });
       
