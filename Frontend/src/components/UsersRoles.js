@@ -302,7 +302,7 @@ function UsersRoles() {
 
 
   // Function to get all access permissions for a user (role-based + custom)
-  // Function to get only role-based access for a user
+  // eslint-disable-next-line no-unused-vars
   const getRoleBasedAccessOnly = (user) => {
     if (user.access && user.access.length > 0) {
       return user.access;
@@ -750,11 +750,9 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
         'Data Cluster': MODULES.DATA_CENTER,
         'Projects': MODULES.PROJECTS,
         'Digital Media Management': MODULES.DIGITAL_MEDIA,
-        'Digital Media Management': MODULES.DIGITAL_MEDIA,
         'Team Communication': MODULES.TEAM_COMMUNICATION,
         'Marketing': MODULES.MARKETING,
         'HR Management': MODULES.HR_MANAGEMENT,
-        'Finance Management': MODULES.FINANCE_MANAGEMENT,
         'Finance Management': MODULES.FINANCE_MANAGEMENT,
         'SEO Management': MODULES.SEO_MANAGEMENT,
         'Internal Policies': MODULES.INTERNAL_POLICIES,
