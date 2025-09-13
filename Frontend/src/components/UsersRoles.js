@@ -298,6 +298,27 @@ function UsersRoles() {
     setTimeout(() => setSelectedUser(null), 300); // Delay clearing user to allow animation
   };
 
+
+  // Function to get all access permissions for a user (role-based + custom)
+  const getAllUserAccess = (user) => {
+    const allAccess = [];
+    
+    // Add role-based access
+    if (user.access && user.access.length > 0) {
+      allAccess.push(...user.access);
+    }
+    
+    // Add custom access (if different from role-based)
+    if (user.customAccess && user.customAccess.length > 0) {
+      user.customAccess.forEach(customAccess => {
+        if (!allAccess.includes(customAccess)) {
+          allAccess.push(customAccess);
+        }
+      });
+    }
+    
+    return allAccess;
+  };
   const getAccessColor = (access) => {
   const colors = {
     'Data Cluster': '#8B5CF6',
@@ -435,7 +456,7 @@ function UsersRoles() {
                 </td>
                 <td className="user-access">
                   <div className="access-tags">
-                    {user.access.map((access, index) => (
+                    {getAllUserAccess(user).map((access, index) => (
                       <span 
                         key={index} 
                         className="access-tag"
