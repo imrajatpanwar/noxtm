@@ -146,6 +146,20 @@ function UsersRoles() {
     }
   };
 
+  // Update user role and status
+  const updateUserRoleAndStatus = async (userId, role, status) => {
+    try {
+      const response = await api.put(`/users/${userId}`, { role, status });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating user role and status:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message 
+      };
+    }
+  };
+
   // Handle user actions (Delete, Terminated, Active)
   const handleUserAction = async (userId, action) => {
     // Check if current user is admin
@@ -169,22 +183,24 @@ function UsersRoles() {
           toast.success('User deleted successfully');
         }
       } else if (action === 'terminated') {
-        // Change role to User (Restricted Access)
-        const result = await updateUserRole(userId, 'User');
+        // Change role to User (Restricted Access) and status to Terminated
+        const result = await updateUserRoleAndStatus(userId, 'User', 'Terminated');
         if (result.success) {
+          // Update both role and status
           setUsers(users.map(user => 
-            user.id === userId ? { ...user, role: 'User' } : user
+            user.id === userId ? { ...user, role: 'User', status: 'Terminated' } : user
           ));
-          toast.success('User role changed to User (Restricted Access)');
+          toast.success('User terminated - role changed to User (Restricted Access)');
         } else {
           toast.error(`Failed to terminate user: ${result.error}`);
         }
       } else if (action === 'active') {
-        // Give dashboard access (change to Web Developer role as default)
-        const result = await updateUserRole(userId, 'Web Developer');
+        // Give dashboard access (change to Web Developer role as default) and status to Active
+        const result = await updateUserRoleAndStatus(userId, 'Web Developer', 'Active');
         if (result.success) {
+          // Update both role and status
           setUsers(users.map(user => 
-            user.id === userId ? { ...user, role: 'Web Developer' } : user
+            user.id === userId ? { ...user, role: 'Web Developer', status: 'Active' } : user
           ));
           toast.success('User activated with dashboard access');
         } else {
@@ -439,8 +455,19 @@ function UsersRoles() {
                   )}
                 </td>
                 <td className="user-status">
-                  <span className={`status-badge ${user.status.toLowerCase()}`}>
-                    {user.status}
+                  <span 
+                    className={`status-badge ${user.status.toLowerCase()}`}
+                    style={{
+                      backgroundColor: user.status === 'Active' ? '#dcfce7' : 
+                                     user.status === 'Terminated' ? '#fef2f2' : '#f3f4f6',
+                      color: user.status === 'Active' ? '#166534' : 
+                             user.status === 'Terminated' ? '#dc2626' : '#6b7280',
+                      border: user.status === 'Active' ? '1px solid #bbf7d0' : 
+                              user.status === 'Terminated' ? '1px solid #fecaca' : '1px solid #e5e7eb'
+                    }}
+                  >
+                    {user.status === 'Terminated' ? '❌ Terminated' : 
+                     user.status === 'Active' ? '✅ Active' : user.status}
                   </span>
                 </td>
                 <td className="user-actions">

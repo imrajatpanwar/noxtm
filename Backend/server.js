@@ -121,7 +121,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: 'Active',
-    enum: ['Active', 'Inactive']
+    enum: ['Active', 'Inactive', 'Terminated']
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
