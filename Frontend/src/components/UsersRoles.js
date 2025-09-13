@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CiSearch } from 'react-icons/ci';
+import { FiEdit3, FiEye, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import { useRole, MODULES } from '../contexts/RoleContext';
@@ -182,12 +183,6 @@ function UsersRoles() {
 
   // Handle menu actions
   const handleMenuAction = async (userId, action) => {
-    // Check if current user is admin
-    if (!finalIsAdmin) {
-      toast.error('Only administrators can perform user actions');
-      return;
-    }
-
     // Close menu
     setOpenMenuId(null);
 
@@ -195,11 +190,26 @@ function UsersRoles() {
       setError(null); // Clear any previous errors
       
       if (action === 'edit') {
+        // Check if current user is admin for edit action
+        if (!finalIsAdmin) {
+          toast.error('Only administrators can edit user profiles');
+          return;
+        }
         // Open edit panel or navigate to edit page
         setSelectedUser(users.find(user => user.id === userId));
         setShowSidePanel(true);
         toast.info('Edit user panel opened');
+      } else if (action === 'view') {
+        // View profile - no admin check needed
+        setSelectedUser(users.find(user => user.id === userId));
+        setShowSidePanel(true);
+        toast.info('Viewing user profile');
       } else if (action === 'delete') {
+        // Check if current user is admin for delete action
+        if (!finalIsAdmin) {
+          toast.error('Only administrators can delete users');
+          return;
+        }
         // Confirm deletion
         if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
           const response = await api.delete(`/users/${userId}`);
@@ -552,8 +562,9 @@ function UsersRoles() {
                         borderRadius: '0.5rem',
                         boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                         zIndex: 1000,
-                        minWidth: '120px',
-                        padding: '0.5rem 0'
+                        minWidth: '160px',
+                        padding: '0',
+                        overflow: 'hidden'
                       }}>
                         <button
                           onClick={() => handleMenuAction(user.id, 'edit')}
@@ -561,19 +572,43 @@ function UsersRoles() {
                             width: '100%',
                             padding: '0.75rem 1rem',
                             border: 'none',
-                            background: 'none',
+                            background: 'white',
                             textAlign: 'left',
                             cursor: 'pointer',
                             fontSize: '0.875rem',
                             color: '#374151',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem'
+                            gap: '0.75rem',
+                            borderBottom: '1px solid #f3f4f6'
                           }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
                         >
-                          ✏️ Edit
+                          <FiEdit3 size={16} color="#374151" />
+                          Edit Profile
+                        </button>
+                        <button
+                          onClick={() => handleMenuAction(user.id, 'view')}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem 1rem',
+                            border: 'none',
+                            background: '#f3f4f6',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            color: '#374151',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            borderBottom: '1px solid #e5e7eb'
+                          }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#e5e7eb'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                        >
+                          <FiEye size={16} color="#374151" />
+                          View Profile
                         </button>
                         <button
                           onClick={() => handleMenuAction(user.id, 'delete')}
@@ -581,19 +616,20 @@ function UsersRoles() {
                             width: '100%',
                             padding: '0.75rem 1rem',
                             border: 'none',
-                            background: 'none',
+                            background: '#fef2f2',
                             textAlign: 'left',
                             cursor: 'pointer',
                             fontSize: '0.875rem',
                             color: '#dc2626',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.5rem'
+                            gap: '0.75rem'
                           }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#fef2f2'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#fee2e2'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#fef2f2'}
                         >
-                          🗑️ Delete
+                          <FiTrash2 size={16} color="#dc2626" />
+                          Delete Profile
                   </button>
                       </div>
                     )}
