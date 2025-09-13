@@ -133,6 +133,8 @@ function UsersRoles() {
 
   // Update user role
   const handleRoleChange = async (userId, newRole) => {
+    console.log('handleRoleChange called:', { userId, newRole, finalIsAdmin });
+    
     // Check if current user is admin
     if (!finalIsAdmin) {
       toast.error('Only administrators can change user roles');
@@ -144,8 +146,10 @@ function UsersRoles() {
       
       // Set status based on role: User = "In Review", any other role = "Active"
       const newStatus = newRole === 'User' ? 'In Review' : 'Active';
+      console.log('Setting new status:', newStatus);
       
       const result = await updateUserRole(userId, newRole, newStatus);
+      console.log('updateUserRole result:', result);
       
       if (result.success) {
         // Update local state immediately for UI responsiveness
