@@ -359,7 +359,7 @@ export const RoleProvider = ({ children }) => {
   };
 
   // Update user role (admin function)
-  const updateUserRole = async (userId, newRole) => {
+  const updateUserRole = async (userId, newRole, newStatus = null) => {
     try {
       const token = localStorage.getItem('token');
       
@@ -369,7 +369,11 @@ export const RoleProvider = ({ children }) => {
       if (token && !isDemoData) {
         // Try to update on backend first (only for real backend data)
         try {
-          await api.put(`/users/${userId}`, { role: newRole });
+          const updateData = { role: newRole };
+          if (newStatus) {
+            updateData.status = newStatus;
+          }
+          await api.put(`/users/${userId}`, updateData);
         } catch (apiError) {
           // If the endpoint doesn't exist (404), log and continue with local update
           if (apiError.response?.status === 404) {
@@ -382,9 +386,16 @@ export const RoleProvider = ({ children }) => {
       }
       
       // Update local state
-      const updatedUsers = users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      );
+      const updatedUsers = users.map(user => {
+        if (user.id === userId) {
+          const updatedUser = { ...user, role: newRole };
+          if (newStatus) {
+            updatedUser.status = newStatus;
+          }
+          return updatedUser;
+        }
+        return user;
+      });
       
       setUsers(updatedUsers);
       localStorage.setItem('usersData', JSON.stringify(updatedUsers));
@@ -394,9 +405,16 @@ export const RoleProvider = ({ children }) => {
       console.error('Error updating user role:', error);
       
       // Still update locally as fallback
-      const updatedUsers = users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      );
+      const updatedUsers = users.map(user => {
+        if (user.id === userId) {
+          const updatedUser = { ...user, role: newRole };
+          if (newStatus) {
+            updatedUser.status = newStatus;
+          }
+          return updatedUser;
+        }
+        return user;
+      });
       
       setUsers(updatedUsers);
       localStorage.setItem('usersData', JSON.stringify(updatedUsers));

@@ -19,6 +19,7 @@ function UsersRoles() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [availableRoles, setAvailableRoles] = useState([]);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   // Check if current user is admin
   const isCurrentUserAdmin = currentUser?.role === 'Admin';
@@ -140,14 +141,23 @@ function UsersRoles() {
     try {
       setError(null); // Clear any previous errors
       
-      const result = await updateUserRole(userId, newRole);
+      // If role is changed to "User", set status to "In Review"
+      const newStatus = newRole === 'User' ? 'In Review' : undefined;
+      
+      const result = await updateUserRole(userId, newRole, newStatus);
       
       if (result.success) {
         // Update local state immediately for UI responsiveness
         setUsers(users.map(user => 
-          user.id === userId ? { ...user, role: newRole } : user
+          user.id === userId ? { 
+            ...user, 
+            role: newRole,
+            ...(newStatus && { status: newStatus })
+          } : user
         ));
-        toast.success(`User role updated to ${newRole}`);
+        
+        const statusMessage = newStatus ? ` and status set to ${newStatus}` : '';
+        toast.success(`User role updated to ${newRole}${statusMessage}`);
       } else {
         setError(`Failed to update user role: ${result.error}`);
         toast.error(`Failed to update user role: ${result.error}`);
@@ -469,18 +479,22 @@ function UsersRoles() {
                 </td>
                 <td className="user-status">
                   <span 
-                    className={`status-badge ${user.status.toLowerCase()}`}
+                    className={`status-badge ${user.status.toLowerCase().replace(' ', '-')}`}
                     style={{
                       backgroundColor: user.status === 'Active' ? '#dcfce7' : 
-                                     user.status === 'Terminated' ? '#fef2f2' : '#f3f4f6',
+                                     user.status === 'Terminated' ? '#fef2f2' : 
+                                     user.status === 'In Review' ? '#fef3c7' : '#f3f4f6',
                       color: user.status === 'Active' ? '#166534' : 
-                             user.status === 'Terminated' ? '#dc2626' : '#6b7280',
+                             user.status === 'Terminated' ? '#dc2626' : 
+                             user.status === 'In Review' ? '#92400e' : '#6b7280',
                       border: user.status === 'Active' ? '1px solid #bbf7d0' : 
-                              user.status === 'Terminated' ? '1px solid #fecaca' : '1px solid #e5e7eb'
+                              user.status === 'Terminated' ? '1px solid #fecaca' : 
+                              user.status === 'In Review' ? '1px solid #fde68a' : '1px solid #e5e7eb'
                     }}
                   >
                     {user.status === 'Terminated' ? '❌ Terminated' : 
-                     user.status === 'Active' ? 'Active' : user.status}
+                     user.status === 'Active' ? 'Active' : 
+                     user.status === 'In Review' ? '⏳ In Review' : user.status}
                   </span>
                 </td>
                 <td className="user-actions">
@@ -492,18 +506,18 @@ function UsersRoles() {
                           e.target.value = ''; // Reset selection
                         }
                       }}
-                      disabled={!isCurrentUserAdmin}
+                      disabled={!finalIsAdmin}
                       style={{
                         padding: '0.5rem',
                         border: '1px solid #d1d5db',
                         borderRadius: '0.375rem',
-                        backgroundColor: isCurrentUserAdmin ? 'white' : '#f3f4f6',
-                        color: isCurrentUserAdmin ? '#374151' : '#9ca3af',
-                        cursor: isCurrentUserAdmin ? 'pointer' : 'not-allowed',
+                        backgroundColor: finalIsAdmin ? 'white' : '#f3f4f6',
+                        color: finalIsAdmin ? '#374151' : '#9ca3af',
+                        cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
                         fontSize: '0.875rem',
                         minWidth: '120px'
                       }}
-                      title={!isCurrentUserAdmin ? 'Only administrators can perform actions' : 'Select an action'}
+                      title={!finalIsAdmin ? 'Only administrators can perform actions' : 'Select an action'}
                     >
                       <option value="">Actions</option>
                       <option value="active" style={{ color: '#059669' }}>
