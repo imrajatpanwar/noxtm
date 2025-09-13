@@ -661,8 +661,43 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
 
   useEffect(() => {
     if (user) {
-      const permissions = getUserPermissions(user.id);
+      // Initialize permissions based on user's actual access
+      let permissions = {};
+      
+      // Create a mapping from display names to module keys
+      const displayNameToModuleKey = {
+        'Dashboard': MODULES.DASHBOARD,
+        'Data Center': MODULES.DATA_CENTER,
+        'Projects': MODULES.PROJECTS,
+        'Digital Media Management': MODULES.DIGITAL_MEDIA,
+        'Marketing': MODULES.MARKETING,
+        'HR Management': MODULES.HR_MANAGEMENT,
+        'Finance Management': MODULES.FINANCE_MANAGEMENT,
+        'SEO Management': MODULES.SEO_MANAGEMENT,
+        'Internal Policies': MODULES.INTERNAL_POLICIES,
+        'Settings & Configuration': MODULES.SETTINGS_CONFIG
+      };
+      
+      // If user has custom access, use that
+      if (user.customAccess && user.customAccess.length > 0) {
+        user.customAccess.forEach(access => {
+          const moduleKey = displayNameToModuleKey[access] || access;
+          permissions[moduleKey] = true;
+        });
+      } else if (user.access && user.access.length > 0) {
+        // Use user.access array and map display names to module keys
+        user.access.forEach(access => {
+          const moduleKey = displayNameToModuleKey[access] || access;
+          permissions[moduleKey] = true;
+        });
+      } else {
+        // Fallback to backend permissions
+        permissions = getUserPermissions(user.id);
+      }      
       setUserPermissions(permissions);
+      console.log("User permissions loaded:", permissions);
+      console.log("Display name to module key mapping:", displayNameToModuleKey);      console.log("User access array:", user.access);
+      console.log("User custom access:", user.customAccess);
       const isCurrentUserAdmin = currentUser?.role === 'Admin';
       setIsAdmin(isCurrentUserAdmin);
       console.log('Current user role:', currentUser?.role);
