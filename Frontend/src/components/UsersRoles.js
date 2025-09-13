@@ -299,14 +299,23 @@ function UsersRoles() {
   };
 
   const getAccessColor = (access) => {
-    const colors = {
-      'Data Cluster': '#8B5CF6',
-      'Projects': '#10B981',
-      'Finance': '#EF4444',
-      'Digital Media': '#3B82F6',
-      'Marketing': '#F59E0B'
-    };
-    return colors[access] || '#6B7280';
+  const colors = {
+    'Data Cluster': '#8B5CF6',
+    'DATA CLUSTER': '#8B5CF6',
+    'Projects': '#10B981',
+    'PROJECTS': '#10B981',
+    'Finance': '#EF4444',
+    'FINANCE': '#EF4444',
+    'Digital Media': '#3B82F6',
+    'DIGITAL MEDIA': '#3B82F6',
+    'Marketing': '#F59E0B',
+    'MARKETING': '#F59E0B',
+    'HR Management': '#EC4899',
+    'SEO Management': '#06B6D4',
+    'Settings': '#8B5A2B',
+    'Dashboard': '#6366F1',
+    'Internal Policies': '#A78BFA'
+  };    return colors[access] || '#6B7280';
   };
 
   const filteredUsers = users.filter(user => 
@@ -668,16 +677,20 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       const displayNameToModuleKey = {
         'Dashboard': MODULES.DASHBOARD,
         'Data Center': MODULES.DATA_CENTER,
+        'DATA CLUSTER': MODULES.DATA_CENTER,
         'Projects': MODULES.PROJECTS,
+        'PROJECTS': MODULES.PROJECTS,
         'Digital Media Management': MODULES.DIGITAL_MEDIA,
+        'DIGITAL MEDIA': MODULES.DIGITAL_MEDIA,
         'Marketing': MODULES.MARKETING,
+        'MARKETING': MODULES.MARKETING,
         'HR Management': MODULES.HR_MANAGEMENT,
         'Finance Management': MODULES.FINANCE_MANAGEMENT,
+        'FINANCE': MODULES.FINANCE_MANAGEMENT,
         'SEO Management': MODULES.SEO_MANAGEMENT,
         'Internal Policies': MODULES.INTERNAL_POLICIES,
         'Settings & Configuration': MODULES.SETTINGS_CONFIG
-      };
-      
+      };      
       // If user has custom access, use that
       if (user.customAccess && user.customAccess.length > 0) {
         user.customAccess.forEach(access => {
@@ -697,7 +710,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       setUserPermissions(permissions);
       console.log("User permissions loaded:", permissions);
       console.log("Display name to module key mapping:", displayNameToModuleKey);      console.log("User access array:", user.access);
-      console.log("User custom access:", user.customAccess);
+      console.log("User access array mapped to permissions:", Object.keys(permissions));      console.log("User custom access:", user.customAccess);
       const isCurrentUserAdmin = currentUser?.role === 'Admin';
       setIsAdmin(isCurrentUserAdmin);
       console.log('Current user role:', currentUser?.role);
