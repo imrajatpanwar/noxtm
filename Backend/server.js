@@ -689,8 +689,8 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
 
 
 
-// Delete user (protected route)
-app.delete('/api/users/:id', authenticateToken, async (req, res) => {
+// Delete user (protected route - admin only)
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
