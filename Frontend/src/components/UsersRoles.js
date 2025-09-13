@@ -146,6 +146,58 @@ function UsersRoles() {
     }
   };
 
+  // Handle user actions (Delete, Terminated, Active)
+  const handleUserAction = async (userId, action) => {
+    // Check if current user is admin
+    if (!isCurrentUserAdmin) {
+      toast.error('Only administrators can perform user actions');
+      return;
+    }
+
+    try {
+      setError(null); // Clear any previous errors
+      
+      if (action === 'delete') {
+        // Delete user
+        const confirmed = window.confirm('Are you sure you want to delete this user? This action cannot be undone.');
+        if (!confirmed) return;
+        
+        const response = await api.delete(`/users/${userId}`);
+        if (response.status === 200) {
+          // Remove user from local state
+          setUsers(users.filter(user => user.id !== userId));
+          toast.success('User deleted successfully');
+        }
+      } else if (action === 'terminated') {
+        // Change role to User (Restricted Access)
+        const result = await updateUserRole(userId, 'User');
+        if (result.success) {
+          setUsers(users.map(user => 
+            user.id === userId ? { ...user, role: 'User' } : user
+          ));
+          toast.success('User role changed to User (Restricted Access)');
+        } else {
+          toast.error(`Failed to terminate user: ${result.error}`);
+        }
+      } else if (action === 'active') {
+        // Give dashboard access (change to Web Developer role as default)
+        const result = await updateUserRole(userId, 'Web Developer');
+        if (result.success) {
+          setUsers(users.map(user => 
+            user.id === userId ? { ...user, role: 'Web Developer' } : user
+          ));
+          toast.success('User activated with dashboard access');
+        } else {
+          toast.error(`Failed to activate user: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error performing user action:', error);
+      setError('Failed to perform action: ' + error.message);
+      toast.error('Failed to perform action: ' + error.message);
+    }
+  };
+
   // Load users and roles on component mount
   useEffect(() => {
     // Fetch roles first
@@ -392,9 +444,39 @@ function UsersRoles() {
                   </span>
                 </td>
                 <td className="user-actions">
-                  <button className="actions-menu-btn">
-                    ⋯
-                  </button>
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select 
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleUserAction(user.id, e.target.value);
+                          e.target.value = ''; // Reset selection
+                        }
+                      }}
+                      disabled={!isCurrentUserAdmin}
+                      style={{
+                        padding: '0.5rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        backgroundColor: isCurrentUserAdmin ? 'white' : '#f3f4f6',
+                        color: isCurrentUserAdmin ? '#374151' : '#9ca3af',
+                        cursor: isCurrentUserAdmin ? 'pointer' : 'not-allowed',
+                        fontSize: '0.875rem',
+                        minWidth: '120px'
+                      }}
+                      title={!isCurrentUserAdmin ? 'Only administrators can perform actions' : 'Select an action'}
+                    >
+                      <option value="">Actions</option>
+                      <option value="active" style={{ color: '#059669' }}>
+                        ✅ Active (Dashboard Access)
+                      </option>
+                      <option value="terminated" style={{ color: '#dc2626' }}>
+                        ❌ Terminated (Restricted)
+                      </option>
+                      <option value="delete" style={{ color: '#dc2626' }}>
+                        🗑️ Delete User
+                      </option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             ))}
