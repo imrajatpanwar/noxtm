@@ -409,7 +409,7 @@ function UsersRoles() {
       <div className="users-roles-header">
         <div className="header-content">
           <div className="header-left">
-            <h2>Users & Roles Management</h2>
+            <h2>Users Users & Roles Management Roles Management <span className="realtime-indicator" title="Real-time updates enabled"></span></h2>
             <p>Manage user accounts, roles, and permissions across your organization.</p>
           </div>
         </div>
@@ -469,11 +469,13 @@ function UsersRoles() {
                 </td>
                 <td className="user-access">
                   <div className="access-tags">
-                    {getAllUserAccess(user).map((access, index) => (
+                    {
+                    getAllUserAccess(user).map((access, index) => (
                       <span 
-                        key={index} 
+                        key={`${user.id}-${access}-${index}`} 
                         className="access-tag"
                         style={{ backgroundColor: getAccessColor(access) }}
+                        title={`Real-time: ${access} access`}
                       >
                         {access}
                       </span>
@@ -997,7 +999,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
             <div className="role-access-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {getRoleBasedAccess(userDetails.role).map((access, index) => (
                 <span 
-                  key={index}
+                  key={`${user.id}-${access}-${index}`}
                   className="access-tag"
                   style={{ 
                     backgroundColor: getAccessColor(access),

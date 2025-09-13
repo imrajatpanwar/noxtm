@@ -1,3 +1,104 @@
+/* Real-time Animation Styles */
+.access-tag {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+  opacity: 1;
+}
+
+.access-tag.adding {
+  animation: permissionAdd 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.access-tag.removing {
+  animation: permissionRemove 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes permissionAdd {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes permissionRemove {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.permission-checkbox {
+  transition: all 0.2s ease-in-out;
+}
+
+.permission-checkbox:checked {
+  transform: scale(1.1);
+}
+
+.permission-checkbox:not(:checked) {
+  transform: scale(1);
+}
+
+/* Loading state for real-time updates */
+.permission-loading {
+  position: relative;
+  opacity: 0.7;
+}
+
+.permission-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #3B82F6;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Real-time status indicators */
+.realtime-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #10B981;
+  border-radius: 50%;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
 .users-roles-container {
   padding: 24px;
   max-width: 1200px;
@@ -432,6 +533,107 @@
 }
 
 @media (max-width: 768px) {
+/* Real-time Animation Styles */
+.access-tag {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+  opacity: 1;
+}
+
+.access-tag.adding {
+  animation: permissionAdd 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.access-tag.removing {
+  animation: permissionRemove 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes permissionAdd {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes permissionRemove {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.permission-checkbox {
+  transition: all 0.2s ease-in-out;
+}
+
+.permission-checkbox:checked {
+  transform: scale(1.1);
+}
+
+.permission-checkbox:not(:checked) {
+  transform: scale(1);
+}
+
+/* Loading state for real-time updates */
+.permission-loading {
+  position: relative;
+  opacity: 0.7;
+}
+
+.permission-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #3B82F6;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Real-time status indicators */
+.realtime-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #10B981;
+  border-radius: 50%;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
   .users-roles-container {
     padding: 16px;
   }
@@ -459,6 +661,107 @@
 }
 
 @media (max-width: 480px) {
+/* Real-time Animation Styles */
+.access-tag {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+  opacity: 1;
+}
+
+.access-tag.adding {
+  animation: permissionAdd 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.access-tag.removing {
+  animation: permissionRemove 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes permissionAdd {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes permissionRemove {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.permission-checkbox {
+  transition: all 0.2s ease-in-out;
+}
+
+.permission-checkbox:checked {
+  transform: scale(1.1);
+}
+
+.permission-checkbox:not(:checked) {
+  transform: scale(1);
+}
+
+/* Loading state for real-time updates */
+.permission-loading {
+  position: relative;
+  opacity: 0.7;
+}
+
+.permission-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #3B82F6;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Real-time status indicators */
+.realtime-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #10B981;
+  border-radius: 50%;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
   .users-roles-container {
     padding: 12px;
   }
