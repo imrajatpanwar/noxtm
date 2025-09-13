@@ -220,16 +220,16 @@ app.post('/api/register', async (req, res) => {
     const getDefaultPermissions = (userRole) => {
       const rolePermissions = {
         'User': {
-          dashboard: false,
-          dataCenter: false,
-          projects: false,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: false,
-          internalPolicies: false,
-          settingsConfiguration: false
+        dashboard: false,
+        dataCenter: false,
+        projects: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
         },
         'Admin': {
           dashboard: true,
@@ -566,6 +566,22 @@ app.get('/api/users', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get available roles from MongoDB schema (protected route)
+app.get('/api/roles', authenticateToken, async (req, res) => {
+  try {
+    // Get the available roles from the User schema enum
+    const availableRoles = userSchema.paths.role.enumValues;
+    
+    res.json({ 
+      roles: availableRoles,
+      message: 'Available roles retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Get roles error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

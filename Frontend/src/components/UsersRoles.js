@@ -18,21 +18,55 @@ function UsersRoles() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showSidePanel, setShowSidePanel] = useState(false);
-
-  const roles = [
-    'Admin',
-    'Project Manager', 
-    'Data Miner',
-    'Data Analyst',
-    'Social Media Manager',
-    'Human Resource',
-    'Graphic Designer',
-    'Web Developer',
-    'SEO Manager'
-  ];
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   // Check if current user is admin
   const isCurrentUserAdmin = currentUser?.role === 'Admin';
+
+  // Fetch available roles from backend
+  const fetchRoles = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        // Fallback to hardcoded roles if no token
+        const fallbackRoles = [
+          'User',
+          'Admin',
+          'Project Manager', 
+          'Data Miner',
+          'Data Analyst',
+          'Social Media Manager',
+          'Human Resource',
+          'Graphic Designer',
+          'Web Developer',
+          'SEO Manager'
+        ];
+        setAvailableRoles(fallbackRoles);
+        return;
+      }
+
+      const response = await api.get('/roles');
+      console.log('Fetched roles from backend:', response.data.roles);
+      setAvailableRoles(response.data.roles || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      // Fallback to hardcoded roles on error
+      const fallbackRoles = [
+        'User',
+        'Admin',
+        'Project Manager', 
+        'Data Miner',
+        'Data Analyst',
+        'Social Media Manager',
+        'Human Resource',
+        'Graphic Designer',
+        'Web Developer',
+        'SEO Manager'
+      ];
+      setAvailableRoles(fallbackRoles);
+    }
+  }, []);
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -112,8 +146,11 @@ function UsersRoles() {
     }
   };
 
-  // Load users on component mount
+  // Load users and roles on component mount
   useEffect(() => {
+    // Fetch roles first
+    fetchRoles();
+    
     // Initialize demo data if needed
     const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
     if (demoUsers.length === 0) {
@@ -127,7 +164,7 @@ function UsersRoles() {
       // Try to fetch from API first, fall back to demo data
       fetchUsers();
     }
-  }, [fetchUsers]);
+  }, [fetchUsers, fetchRoles]);
 
 
   // Sync with context users when they change
@@ -332,8 +369,10 @@ function UsersRoles() {
                     }}
                     title={!isCurrentUserAdmin ? 'Only administrators can change user roles' : ''}
                   >
-                    {roles.map(role => (
-                      <option key={role} value={role}>{role}</option>
+                    {availableRoles.map(role => (
+                      <option key={role} value={role}>
+                        {role === 'User' ? 'User (Restricted Access)' : role}
+                      </option>
                     ))}
                   </select>
                   {!isCurrentUserAdmin && (
