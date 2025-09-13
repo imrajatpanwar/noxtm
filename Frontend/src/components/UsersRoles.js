@@ -301,23 +301,18 @@ function UsersRoles() {
   const getAccessColor = (access) => {
   const colors = {
     'Data Cluster': '#8B5CF6',
-    'DATA CLUSTER': '#8B5CF6',
     'Projects': '#10B981',
-    'PROJECTS': '#10B981',
     'Finance': '#EF4444',
-    'FINANCE': '#EF4444',
     'Digital Media': '#3B82F6',
-    'DIGITAL MEDIA': '#3B82F6',
     'Marketing': '#F59E0B',
-    'MARKETING': '#F59E0B',
     'HR Management': '#EC4899',
     'SEO Management': '#06B6D4',
     'Settings': '#8B5A2B',
     'Dashboard': '#6366F1',
     'Internal Policies': '#A78BFA'
-  };    return colors[access] || '#6B7280';
   };
-
+  return colors[access] || '#6B7280';
+  };
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -677,22 +672,18 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       const displayNameToModuleKey = {
         'Dashboard': MODULES.DASHBOARD,
         'Data Center': MODULES.DATA_CENTER,
-        'DATA CLUSTER': MODULES.DATA_CENTER,
+        'Data Cluster': MODULES.DATA_CENTER,
         'Projects': MODULES.PROJECTS,
-        'PROJECTS': MODULES.PROJECTS,
         'Digital Media Management': MODULES.DIGITAL_MEDIA,
-        'DIGITAL MEDIA': MODULES.DIGITAL_MEDIA,
+        'Digital Media': MODULES.DIGITAL_MEDIA,
         'Marketing': MODULES.MARKETING,
-        'MARKETING': MODULES.MARKETING,
         'HR Management': MODULES.HR_MANAGEMENT,
         'Finance Management': MODULES.FINANCE_MANAGEMENT,
-        'FINANCE': MODULES.FINANCE_MANAGEMENT,
+        'Finance': MODULES.FINANCE_MANAGEMENT,
         'SEO Management': MODULES.SEO_MANAGEMENT,
         'Internal Policies': MODULES.INTERNAL_POLICIES,
         'Settings & Configuration': MODULES.SETTINGS_CONFIG
-      };      
-      // If user has custom access, use that
-      if (user.customAccess && user.customAccess.length > 0) {
+      };      if (user.customAccess && user.customAccess.length > 0) {
         user.customAccess.forEach(access => {
           const moduleKey = displayNameToModuleKey[access] || access;
           permissions[moduleKey] = true;
