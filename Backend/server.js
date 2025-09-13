@@ -649,6 +649,8 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role, access, status } = req.body;
+    
+    console.log('PUT /api/users/:id - Request received:', { id, role, access, status });
 
     if (!mongoConnected) {
       return res.status(503).json({ 
@@ -819,6 +821,8 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Update user error:', error);
+    console.error('Request body:', req.body);
+    console.error('Update data:', updateData);
     if (error.name === 'ValidationError') {
       console.error('Validation error details:', error.errors);
       return res.status(400).json({ message: 'Invalid data provided', details: error.errors });
