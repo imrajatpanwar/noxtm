@@ -302,6 +302,15 @@ function UsersRoles() {
 
 
   // Function to get all access permissions for a user (role-based + custom)
+  // Function to get only role-based access for a user
+  const getRoleBasedAccessOnly = (user) => {
+    if (user.access && user.access.length > 0) {
+      return user.access;
+    }
+    return [];
+  };
+
+  // Function to get all access permissions for a user (role-based + custom)
   const getAllUserAccess = (user) => {
     const allAccess = [];
     
@@ -321,19 +330,18 @@ function UsersRoles() {
     
     return allAccess;
   };
-
   const getAccessColor = (access) => {
     const colors = {
       'Data Cluster': '#8B5CF6',
       'Data Center': '#8B5CF6',
       'Projects': '#10B981',
-      'Finance': '#EF4444',
-      'Digital Media': '#3B82F6',
+      'Finance Management': '#EF4444',
+      'Digital Media Management': '#3B82F6',
       'Team Communication': '#F97316',
       'Marketing': '#F59E0B',
       'HR Management': '#EC4899',
       'SEO Management': '#06B6D4',
-      'Settings': '#8B5A2B',
+      'Settings & Configuration': '#8B5A2B',
       'Dashboard': '#6366F1',
       'Internal Policies': '#A78BFA'
     };
@@ -695,13 +703,13 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       'Data Cluster': '#8B5CF6',
       'Data Center': '#8B5CF6',
       'Projects': '#10B981',
-      'Finance': '#EF4444',
-      'Digital Media': '#3B82F6',
+      'Finance Management': '#EF4444',
+      'Digital Media Management': '#3B82F6',
       'Team Communication': '#F97316',
       'Marketing': '#F59E0B',
       'HR Management': '#EC4899',
       'SEO Management': '#06B6D4',
-      'Settings': '#8B5A2B',
+      'Settings & Configuration': '#8B5A2B',
       'Dashboard': '#6366F1',
       'Internal Policies': '#A78BFA'
     };
@@ -715,14 +723,14 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
       [MODULES.DASHBOARD]: 'Dashboard',
       [MODULES.DATA_CENTER]: 'Data Center',
       [MODULES.PROJECTS]: 'Projects',
-      [MODULES.DIGITAL_MEDIA]: 'Digital Media',
+      [MODULES.DIGITAL_MEDIA]: 'Digital Media Management',
       [MODULES.TEAM_COMMUNICATION]: 'Team Communication',
       [MODULES.MARKETING]: 'Marketing',
       [MODULES.HR_MANAGEMENT]: 'HR Management',
-      [MODULES.FINANCE_MANAGEMENT]: 'Finance',
+      [MODULES.FINANCE_MANAGEMENT]: 'Finance Management',
       [MODULES.SEO_MANAGEMENT]: 'SEO Management',
       [MODULES.INTERNAL_POLICIES]: 'Internal Policies',
-      [MODULES.SETTINGS_CONFIG]: 'Settings'
+      [MODULES.SETTINGS_CONFIG]: 'Settings & Configuration'
     };
     
     return Object.keys(rolePermissions)
@@ -742,12 +750,12 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate }) 
         'Data Cluster': MODULES.DATA_CENTER,
         'Projects': MODULES.PROJECTS,
         'Digital Media Management': MODULES.DIGITAL_MEDIA,
-        'Digital Media': MODULES.DIGITAL_MEDIA,
+        'Digital Media Management': MODULES.DIGITAL_MEDIA,
         'Team Communication': MODULES.TEAM_COMMUNICATION,
         'Marketing': MODULES.MARKETING,
         'HR Management': MODULES.HR_MANAGEMENT,
         'Finance Management': MODULES.FINANCE_MANAGEMENT,
-        'Finance': MODULES.FINANCE_MANAGEMENT,
+        'Finance Management': MODULES.FINANCE_MANAGEMENT,
         'SEO Management': MODULES.SEO_MANAGEMENT,
         'Internal Policies': MODULES.INTERNAL_POLICIES,
         'Settings & Configuration': MODULES.SETTINGS_CONFIG
