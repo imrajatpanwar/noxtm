@@ -68,16 +68,16 @@ function UsersRoles() {
       // Fallback to hardcoded roles on error
       const fallbackRoles = [
         'User',
-        'Admin',
-        'Project Manager', 
-        'Data Miner',
-        'Data Analyst',
-        'Social Media Manager',
-        'Human Resource',
-        'Graphic Designer',
-        'Web Developer',
-        'SEO Manager'
-      ];
+    'Admin',
+    'Project Manager', 
+    'Data Miner',
+    'Data Analyst',
+    'Social Media Manager',
+    'Human Resource',
+    'Graphic Designer',
+    'Web Developer',
+    'SEO Manager'
+  ];
       setAvailableRoles(fallbackRoles);
     }
   }, []);
@@ -169,65 +169,45 @@ function UsersRoles() {
     }
   };
 
-  // Update user role and status
-  const updateUserRoleAndStatus = async (userId, role, status) => {
-    try {
-      const response = await api.put(`/users/${userId}`, { role, status });
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error updating user role and status:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message 
-      };
-    }
+
+  // Toggle menu visibility
+  const toggleMenu = (userId) => {
+    setOpenMenuId(openMenuId === userId ? null : userId);
   };
 
-  // Handle user actions (Delete, Terminated, Active)
-  const handleUserAction = async (userId, action) => {
+  // Close menu when clicking outside
+  const closeMenu = () => {
+    setOpenMenuId(null);
+  };
+
+  // Handle menu actions
+  const handleMenuAction = async (userId, action) => {
     // Check if current user is admin
     if (!finalIsAdmin) {
       toast.error('Only administrators can perform user actions');
       return;
     }
 
+    // Close menu
+    setOpenMenuId(null);
+
     try {
       setError(null); // Clear any previous errors
       
-      if (action === 'delete') {
-        // Delete user
-        const confirmed = window.confirm('Are you sure you want to delete this user? This action cannot be undone.');
-        if (!confirmed) return;
-        
-        const response = await api.delete(`/users/${userId}`);
-        if (response.status === 200) {
-          // Remove user from local state
-          setUsers(users.filter(user => user.id !== userId));
-          toast.success('User deleted successfully');
-        }
-      } else if (action === 'terminated') {
-        // Change role to User (Restricted Access) and status to Terminated
-        const result = await updateUserRoleAndStatus(userId, 'User', 'Terminated');
-        if (result.success) {
-          // Update both role and status
-          setUsers(users.map(user => 
-            user.id === userId ? { ...user, role: 'User', status: 'Terminated' } : user
-          ));
-          toast.success('User terminated - role changed to User (Restricted Access)');
-        } else {
-          toast.error(`Failed to terminate user: ${result.error}`);
-        }
-      } else if (action === 'active') {
-        // Give dashboard access (change to Web Developer role as default) and status to Active
-        const result = await updateUserRoleAndStatus(userId, 'Web Developer', 'Active');
-        if (result.success) {
-          // Update both role and status
-          setUsers(users.map(user => 
-            user.id === userId ? { ...user, role: 'Web Developer', status: 'Active' } : user
-          ));
-          toast.success('User activated with dashboard access');
-        } else {
-          toast.error(`Failed to activate user: ${result.error}`);
+      if (action === 'edit') {
+        // Open edit panel or navigate to edit page
+        setSelectedUser(users.find(user => user.id === userId));
+        setShowSidePanel(true);
+        toast.info('Edit user panel opened');
+      } else if (action === 'delete') {
+        // Confirm deletion
+        if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+          const response = await api.delete(`/users/${userId}`);
+          if (response.status === 200) {
+            // Remove user from local state
+            setUsers(users.filter(user => user.id !== userId));
+            toast.success('User deleted successfully');
+          }
         }
       }
     } catch (error) {
@@ -257,6 +237,19 @@ function UsersRoles() {
     }
   }, [fetchUsers, fetchRoles]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && !event.target.closest('.user-actions')) {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenuId]);
 
   // Sync with context users when they change
   useEffect(() => {
@@ -499,37 +492,111 @@ function UsersRoles() {
                 </td>
                 <td className="user-actions">
                   <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <select 
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleUserAction(user.id, e.target.value);
-                          e.target.value = ''; // Reset selection
-                        }
-                      }}
+                    {/* 3-dot menu button */}
+                    <button
+                      onClick={() => toggleMenu(user.id)}
                       disabled={!finalIsAdmin}
                       style={{
-                        padding: '0.5rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.375rem',
-                        backgroundColor: finalIsAdmin ? 'white' : '#f3f4f6',
-                        color: finalIsAdmin ? '#374151' : '#9ca3af',
+                        background: 'none',
+                        border: 'none',
                         cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
-                        fontSize: '0.875rem',
-                        minWidth: '120px'
+                        padding: '0.5rem',
+                        borderRadius: '0.375rem',
+                        opacity: finalIsAdmin ? 1 : 0.5,
+                        fontSize: '1.2rem',
+                        color: '#6b7280',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '2rem',
+                        height: '2rem'
                       }}
-                      title={!finalIsAdmin ? 'Only administrators can perform actions' : 'Select an action'}
+                      title={!finalIsAdmin ? 'Only administrators can perform actions' : 'User actions'}
                     >
-                      <option value="">Actions</option>
-                      <option value="active" style={{ color: '#059669' }}>
-                        ✅ Active (Dashboard Access)
-                      </option>
-                      <option value="terminated" style={{ color: '#dc2626' }}>
-                        ❌ Terminated (Restricted)
-                      </option>
-                      <option value="delete" style={{ color: '#dc2626' }}>
-                        🗑️ Delete User
-                      </option>
-                    </select>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '2px',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ 
+                          width: '4px', 
+                          height: '4px', 
+                          backgroundColor: '#6b7280', 
+                          borderRadius: '50%' 
+                        }}></div>
+                        <div style={{ 
+                          width: '4px', 
+                          height: '4px', 
+                          backgroundColor: '#6b7280', 
+                          borderRadius: '50%' 
+                        }}></div>
+                        <div style={{ 
+                          width: '4px', 
+                          height: '4px', 
+                          backgroundColor: '#6b7280', 
+                          borderRadius: '50%' 
+                        }}></div>
+                      </div>
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {openMenuId === user.id && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: '0',
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        zIndex: 1000,
+                        minWidth: '120px',
+                        padding: '0.5rem 0'
+                      }}>
+                        <button
+                          onClick={() => handleMenuAction(user.id, 'edit')}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem 1rem',
+                            border: 'none',
+                            background: 'none',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            color: '#374151',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleMenuAction(user.id, 'delete')}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem 1rem',
+                            border: 'none',
+                            background: 'none',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            color: '#dc2626',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                        >
+                          🗑️ Delete
+                  </button>
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>
