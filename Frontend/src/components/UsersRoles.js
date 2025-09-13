@@ -369,11 +369,6 @@ function UsersRoles() {
           <div className="header-left">
             <h2>Users & Roles Management</h2>
             <p>Manage user accounts, roles, and permissions across your organization.</p>
-            {finalIsAdmin && (
-              <p style={{ fontSize: '0.9rem', color: '#059669', margin: '0.5rem 0 0 0' }}>
-                🔧 Admin Mode: You can modify user roles and permissions
-              </p>
-            )}
           </div>
         </div>
 
