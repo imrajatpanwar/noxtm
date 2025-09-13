@@ -467,7 +467,7 @@ function UsersRoles() {
                     }}
                   >
                     {user.status === 'Terminated' ? '❌ Terminated' : 
-                     user.status === 'Active' ? '✅ Active' : user.status}
+                     user.status === 'Active' ? 'Active' : user.status}
                   </span>
                 </td>
                 <td className="user-actions">
