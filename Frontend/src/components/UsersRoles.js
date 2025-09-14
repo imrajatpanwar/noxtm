@@ -4,8 +4,9 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import './UsersRoles.css';
 
+
 function UsersRoles() {
-  const { users, setUsers, updateUserRole, currentUser } = useRole();
+  const { users, setUsers, updateUserRole, currentUser, updateUserPermissions } = useRole();
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [error, setError] = useState('');
@@ -49,6 +50,22 @@ function UsersRoles() {
     } catch (error) {
       console.error('Error updating user role:', error);
       toast.error('Failed to update user role');
+    }
+  };
+
+
+  const handlePermissionChange = async (userId, permission, value) => {
+    try {
+      const result = await updateUserPermissions(userId, { [permission]: value });
+      if (result.success) {
+        toast.success('Permission updated successfully');
+        fetchUsers(); // Refresh the list
+      } else {
+        toast.error('Failed to update permission: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error updating permission:', error);
+      toast.error('Failed to update permission');
     }
   };
 
@@ -213,6 +230,8 @@ function UsersRoles() {
           onClose={handleCloseSidePanel}
           isVisible={showSidePanel}
           setUsers={setUsers}
+          handlePermissionChange={handlePermissionChange}
+          currentUser={currentUser}
         />
       )}
     </div>
@@ -220,7 +239,7 @@ function UsersRoles() {
 }
 
 // User Details Side Panel Component
-function UserDetailsSidePanel({ user, onClose, isVisible, setUsers }) {
+function UserDetailsSidePanel({ user, onClose, isVisible, setUsers, handlePermissionChange, currentUser }) {
   if (!user) return null;
 
   // Mock additional user data - in real app this would come from API
@@ -314,6 +333,134 @@ function UserDetailsSidePanel({ user, onClose, isVisible, setUsers }) {
                   <span className="detail-label">Employment ID</span>
                   <span className="detail-value">{userDetails.employmentId}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Permissions Section */}
+          <div className="details-section">
+            <h4>Permissions (Click to modify)</h4>
+            <div className="permissions-grid">
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.dashboard || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'dashboard', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Dashboard</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.dataCenter || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'dataCenter', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Data Center</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.projects || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'projects', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Projects</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.teamCommunication || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'teamCommunication', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Team Communication</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.digitalMediaManagement || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'digitalMediaManagement', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Digital Media Management</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.marketing || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'marketing', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Marketing</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.hrManagement || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'hrManagement', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">HR Management</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.financeManagement || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'financeManagement', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Finance Management</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.seoManagement || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'seoManagement', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">SEO Management</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.internalPolicies || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'internalPolicies', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Internal Policies</span>
+                </label>
+              </div>
+              <div className="permission-item">
+                <label className="permission-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={user.permissions?.settingsConfiguration || false}
+                    onChange={(e) => handlePermissionChange(user.id, 'settingsConfiguration', e.target.checked)}
+                    disabled={currentUser?.role !== 'Admin'}
+                  />
+                  <span className="permission-label">Settings & Configuration</span>
+                </label>
               </div>
             </div>
           </div>
