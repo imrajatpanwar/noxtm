@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity } from 'react-icons/fi';
-import { useRole } from '../contexts/RoleContext';
-import { isSectionTitleVisible, hasPermissionForSection } from '../utils/sidebarPermissions';
 import './Sidebar.css';
 
 function Sidebar({ activeSection, onSectionChange }) {
-  const { userPermissions } = useRole();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
@@ -137,8 +134,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     : allSidebarItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             item.category.toLowerCase().includes(searchQuery.toLowerCase());
-        const hasPermission = hasPermissionForSection(item.section, userPermissions);
-        return matchesSearch && hasPermission;
       });
 
   const handleSearchChange = (e) => {
@@ -208,7 +203,6 @@ function Sidebar({ activeSection, onSectionChange }) {
       </div>
       
       {/* Data Center Section */}
-      {isSectionTitleVisible('DATA CENTER', userPermissions) && (
         <div className="sidebar-section">
           <h4 className="sidebar-section-title">DATA CENTER</h4>
           <div className="sidebar-item-container">
@@ -226,7 +220,6 @@ function Sidebar({ activeSection, onSectionChange }) {
             
             {leadManagementExpanded && (
               <div className="sidebar-submenu">
-                {hasPermissionForSection('leads-flow', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'leads-flow' ? 'active' : ''}`}
                     onClick={() => onSectionChange('leads-flow')}
@@ -235,7 +228,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>Leads Flow</span>
                   </div>
                 )}
-                {hasPermissionForSection('client-leads', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
                     onClick={() => onSectionChange('client-leads')}
@@ -244,7 +236,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>Client Leads</span>
                   </div>
                 )}
-                {hasPermissionForSection('campaign-metrics', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
                     onClick={() => onSectionChange('campaign-metrics')}
@@ -253,7 +244,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>Campaign Metrics</span>
                   </div>
                 )}
-                {hasPermissionForSection('conversion-tracking', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
                     onClick={() => onSectionChange('conversion-tracking')}
@@ -269,10 +259,8 @@ function Sidebar({ activeSection, onSectionChange }) {
       )}
       
       {/* Projects Section */}
-      {isSectionTitleVisible('PROJECTS', userPermissions) && (
         <div className="sidebar-section">
           <h4 className="sidebar-section-title">PROJECTS</h4>
-          {hasPermissionForSection('our-projects', userPermissions) && (
             <div 
               className={`sidebar-item ${activeSection === 'our-projects' ? 'active' : ''}`}
               onClick={() => onSectionChange('our-projects')}
@@ -281,7 +269,6 @@ function Sidebar({ activeSection, onSectionChange }) {
               <span>Client / Projects</span>
             </div>
           )}
-          {hasPermissionForSection('project-delivered', userPermissions) && (
             <div 
               className={`sidebar-item ${activeSection === 'project-delivered' ? 'active' : ''}`}
               onClick={() => onSectionChange('project-delivered')}
@@ -620,7 +607,6 @@ function Sidebar({ activeSection, onSectionChange }) {
       </div>
 
       {/* SEO Management Section */}
-      {isSectionTitleVisible('SEO MANAGEMENT', userPermissions) && (
         <div className="sidebar-section">
           <h4 className="sidebar-section-title">SEO MANAGEMENT</h4>
           
@@ -639,7 +625,6 @@ function Sidebar({ activeSection, onSectionChange }) {
             
             {seoManagementExpanded && (
               <div className="sidebar-submenu">
-                {hasPermissionForSection('website-analytics', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
                     onClick={() => onSectionChange('website-analytics')}
@@ -647,7 +632,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>Website Analytics</span>
                   </div>
                 )}
-                {hasPermissionForSection('seo-insights', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
                     onClick={() => onSectionChange('seo-insights')}
@@ -655,7 +639,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>SEO Insights</span>
                   </div>
                 )}
-                {hasPermissionForSection('web-settings', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
                     onClick={() => onSectionChange('web-settings')}
@@ -663,7 +646,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <span>Web Settings</span>
                   </div>
                 )}
-                {hasPermissionForSection('blogs', userPermissions) && (
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
                     onClick={() => onSectionChange('blogs')}

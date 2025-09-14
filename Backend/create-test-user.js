@@ -68,18 +68,6 @@ async function createTestUser() {
       role: 'Admin',
       access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
       status: 'Active',
-      permissions: {
-        dashboard: true,
-        dataCenter: true,
-        projects: true,
-        digitalMediaManagement: true,
-        marketing: true,
-        hrManagement: true,
-        financeManagement: true,
-        seoManagement: true,
-        internalPolicies: true,
-        settingsConfiguration: true
-      }
     });
 
     await adminUser.save();
@@ -96,18 +84,6 @@ async function createTestUser() {
       role: 'Web Developer',
       access: ['Projects'],
       status: 'Active',
-      permissions: {
-        dashboard: true,
-        dataCenter: false,
-        projects: true,
-        digitalMediaManagement: false,
-        marketing: false,
-        hrManagement: false,
-        financeManagement: false,
-        seoManagement: true,
-        internalPolicies: false,
-        settingsConfiguration: true
-      }
     });
 
     await testUser.save();

@@ -128,114 +128,8 @@ export const RoleProvider = ({ children }) => {
   };
 
   // Update user permissions (admin function)
-  const updateUserPermissions = async (userId, permissions) => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Check if we're using demo data (string IDs) vs real backend data (ObjectIds)
-      const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
-      
-      console.log('User ID:', userId, 'Type:', typeof userId, 'Is demo data:', isDemoData);
-      console.log('Token exists:', !!token);
-      
-      if (token && !isDemoData) {
-        // Update on backend
-        console.log('Making API call to update permissions:', { userId, permissions });
-        console.log('API URL:', `/users/${userId}/permissions`);
-        const response = await api.put(`/users/${userId}/permissions`, { permissions });
-        
-        console.log('API response:', response.data);
-        console.log('User permissions from response:', response.data.user.permissions);
-        console.log('User access from response:', response.data.user.access);
-        
-        // Get the updated permissions from the response
-        const updatedPermissions = response.data.user.permissions || {};
-        
-        // Update local state with the backend response
-        const updatedUsers = users.map(user => {
-          if (user.id === userId) {
-            // Get default permissions for the user's role
-            const roleDefaultPermissions = DEFAULT_PERMISSIONS[user.role] || {};
-            
-            // Merge with updated permissions from backend
-            const mergedPermissions = { ...roleDefaultPermissions };
-            Object.keys(updatedPermissions).forEach(key => {
-              if (updatedPermissions[key] !== undefined && updatedPermissions[key] !== null) {
-                mergedPermissions[key] = updatedPermissions[key];
-              }
-            });
-            
-            // Sync access array with permissions
-            const accessArray = [];
-            if (mergedPermissions[MODULES.DATA_CENTER]) accessArray.push('Data Cluster');
-            if (mergedPermissions[MODULES.PROJECTS]) accessArray.push('Projects');
-            if (mergedPermissions[MODULES.FINANCE_MANAGEMENT]) accessArray.push('Finance');
-            if (mergedPermissions[MODULES.DIGITAL_MEDIA]) accessArray.push('Digital Media');
-            if (mergedPermissions[MODULES.MARKETING]) accessArray.push('Marketing');
-            
-            return { ...user, permissions: mergedPermissions, access: accessArray };
-          }
-          return user;
-        });
-        
-        console.log('Updated users after permission change:', updatedUsers);
-        setUsers(updatedUsers);
-        localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-        
-        // If updating current user, update current permissions
-        if (userId === currentUser?.id) {
-          setUserPermissions(prev => ({ ...prev, ...permissions }));
-        }
-        
-        return { success: true };
-      } else if (isDemoData) {
-        // For demo data, just update locally
-        const updatedUsers = users.map(user => {
-          if (user.id === userId) {
-            const updatedUserPermissions = { ...user.permissions, ...permissions };
-            
-            // Sync access array with permissions
-            const accessArray = [];
-            if (updatedUserPermissions[MODULES.DATA_CENTER]) accessArray.push('Data Cluster');
-            if (updatedUserPermissions[MODULES.PROJECTS]) accessArray.push('Projects');
-            if (updatedUserPermissions[MODULES.FINANCE_MANAGEMENT]) accessArray.push('Finance');
-            if (updatedUserPermissions[MODULES.DIGITAL_MEDIA]) accessArray.push('Digital Media');
-            if (updatedUserPermissions[MODULES.MARKETING]) accessArray.push('Marketing');
-            
-            return { ...user, permissions: updatedUserPermissions, access: accessArray };
-          }
-          return user;
-        });
-        
-        setUsers(updatedUsers);
-        localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-        
-        if (userId === currentUser?.id) {
-          setUserPermissions(prev => ({ ...prev, ...permissions }));
-        }
-        
-        return { success: true };
-      }
-      
-      return { success: false, error: 'No valid token or user data' };
-    } catch (error) {
-      console.error('Error updating user permissions:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message 
-      };
-    }
-  };
 
   // Get user permissions
-  const getUserPermissions = (userId) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return {};
-    
-    // User permissions are already merged in fetchUsersFromBackend
-    // Just return the user's permissions
-    return user.permissions || {};
-  };
 
   // Update user role (admin function)
   const updateUserRole = async (userId, newRole, newStatus = null) => {
@@ -306,22 +200,13 @@ export const RoleProvider = ({ children }) => {
   };
 
   // Get all users with their permissions
-  const getAllUsersWithPermissions = () => {
-    return users.map(user => ({
-      ...user,
-      permissions: getUserPermissions(user.id)
-    }));
-  };
 
   const value = {
     currentUser,
     userPermissions,
     users,
     hasPermission,
-    updateUserPermissions,
     updateUserRole,
-    getUserPermissions,
-    getAllUsersWithPermissions,
     setUsers,
     fetchUsersFromBackend,
     MODULES,

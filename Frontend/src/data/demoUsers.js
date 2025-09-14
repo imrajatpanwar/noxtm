@@ -9,8 +9,6 @@ export const demoUsers = [
     role: 'Admin',
     status: 'Active',
     access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
-    permissions: {} // Admin gets all permissions by default
-  },
   {
     id: '2',
     name: 'Sarah Johnson',
@@ -18,10 +16,6 @@ export const demoUsers = [
     role: 'Project Manager',
     status: 'Active',
     access: ['Projects', 'Marketing'],
-    permissions: {
-      // Custom permissions that override default role permissions
-      financeManagement: true // Give this PM access to finance
-    }
   },
   {
     id: '3',
@@ -30,8 +24,6 @@ export const demoUsers = [
     role: 'Data Analyst',
     status: 'Active',
     access: ['Data Cluster'],
-    permissions: {} // Uses default role permissions
-  },
   {
     id: '4',
     name: 'Emily Rodriguez',
@@ -39,9 +31,6 @@ export const demoUsers = [
     role: 'Social Media Manager',
     status: 'Active',
     access: ['Digital Media', 'Marketing'],
-    permissions: {
-      projects: true // Give access to projects as well
-    }
   },
   {
     id: '5',
@@ -50,8 +39,6 @@ export const demoUsers = [
     role: 'Human Resource',
     status: 'Active',
     access: ['Human Resources'],
-    permissions: {} // Uses default role permissions
-  },
   {
     id: '6',
     name: 'Lisa Parker',
@@ -59,9 +46,6 @@ export const demoUsers = [
     role: 'Graphic Designer',
     status: 'Active',
     access: ['Projects', 'Digital Media'],
-    permissions: {
-      seoManagement: true // Give designer access to SEO tools
-    }
   },
   {
     id: '7',
@@ -70,8 +54,6 @@ export const demoUsers = [
     role: 'Web Developer',
     status: 'Active',
     access: ['Projects'],
-    permissions: {} // Uses default role permissions
-  },
   {
     id: '8',
     name: 'Rachel Kim',
@@ -79,8 +61,6 @@ export const demoUsers = [
     role: 'SEO Manager',
     status: 'Active',
     access: ['Digital Media', 'Marketing'],
-    permissions: {} // Uses default role permissions
-  },
   {
     id: '9',
     name: 'Tom Anderson',
@@ -88,8 +68,6 @@ export const demoUsers = [
     role: 'Data Miner',
     status: 'Inactive',
     access: ['Data Cluster'],
-    permissions: {} // Uses default role permissions
-  }
 ];
 
 // Function to initialize demo data in localStorage
