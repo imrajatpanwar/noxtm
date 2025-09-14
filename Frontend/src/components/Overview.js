@@ -16,6 +16,8 @@ function Overview({ user, dashboardData, error }) {
           <h3>Profile Information</h3>
           <p><strong>Username:</strong> {user.username}</p>
           <p><strong>Email:</strong> {user.email}</p>
+          <p><strong>Role:</strong> {user.role}</p>
+          <p><strong>Status:</strong> {user.role === 'User' ? 'In Review' : 'Active'}</p>
           <p><strong>User ID:</strong> {user.id}</p>
         </div>
         
@@ -24,7 +26,7 @@ function Overview({ user, dashboardData, error }) {
             <div className="dashboard-card">
               <h3>Statistics</h3>
               <p><strong>Total Users:</strong> {dashboardData.data.totalUsers}</p>
-              <p><strong>Status:</strong> Active</p>
+              <p><strong>Status:</strong> {user.role === 'User' ? 'In Review' : 'Active'}</p>
             </div>
             
             <div className="dashboard-card">

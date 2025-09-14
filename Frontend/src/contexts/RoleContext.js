@@ -72,7 +72,7 @@ export const RoleProvider = ({ children }) => {
           name: user.username,
           email: user.email,
           role: user.role,
-          status: user.status || 'Active',
+          status: user.role === 'User' ? 'In Review' : (user.status || 'Active'),
           access: user.access || [],
           permissions: mergedPermissions
         };
@@ -115,7 +115,7 @@ export const RoleProvider = ({ children }) => {
           name: user.username,
           email: user.email,
           role: user.role,
-          status: user.status || 'Active',
+          status: user.role === 'User' ? 'In Review' : (user.status || 'Active'),
           access: user.access || [],
           permissions: user.permissions || {}
         }));
