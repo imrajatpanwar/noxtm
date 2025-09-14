@@ -8,7 +8,7 @@ import './UsersRoles.css';
 
 function UsersRoles() {
   const { 
-    users: contextUsers, 
+     
     setUsers: setContextUsers, 
     updateUserRole,
     currentUser
@@ -22,87 +22,55 @@ function UsersRoles() {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  // Check if current user is admin
+  // Simplified admin check - prioritize context user, fallback to localStorage
   const isCurrentUserAdmin = currentUser?.role === 'Admin';
-  
-  // Debug logging
-  console.log('Current user from context:', currentUser);
-  console.log('Is current user admin:', isCurrentUserAdmin);
-  
-  // Fallback: Check localStorage if context user is not available
   const localStorageUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdminFromLocalStorage = localStorageUser?.role === 'Admin';
-  console.log('User from localStorage:', localStorageUser);
-  console.log('Is admin from localStorage:', isAdminFromLocalStorage);
-  
-  // Use either context user or localStorage user for admin check
   const finalIsAdmin = isCurrentUserAdmin || isAdminFromLocalStorage;
+
+  console.log('Admin check:', { currentUser: currentUser?.role, localUser: localStorageUser?.role, finalIsAdmin });
 
   // Fetch available roles from backend
   const fetchRoles = useCallback(async () => {
+    const fallbackRoles = [
+      'User', 'Admin', 'Project Manager', 'Data Miner', 'Data Analyst',
+      'Social Media Manager', 'Human Resource', 'Graphic Designer',
+      'Web Developer', 'SEO Manager'
+    ];
+
     try {
       const token = localStorage.getItem('token');
-      
       if (!token) {
-        // Fallback to hardcoded roles if no token
-        const fallbackRoles = [
-          'User',
-          'Admin',
-          'Project Manager', 
-          'Data Miner',
-          'Data Analyst',
-          'Social Media Manager',
-          'Human Resource',
-          'Graphic Designer',
-          'Web Developer',
-          'SEO Manager'
-        ];
         setAvailableRoles(fallbackRoles);
         return;
       }
 
       const response = await api.get('/roles');
       console.log('Fetched roles from backend:', response.data.roles);
-      setAvailableRoles(response.data.roles || []);
+      setAvailableRoles(response.data.roles || fallbackRoles);
     } catch (error) {
       console.error('Error fetching roles:', error);
-      // Fallback to hardcoded roles on error
-      const fallbackRoles = [
-        'User',
-    'Admin',
-    'Project Manager', 
-    'Data Miner',
-    'Data Analyst',
-    'Social Media Manager',
-    'Human Resource',
-    'Graphic Designer',
-    'Web Developer',
-    'SEO Manager'
-  ];
       setAvailableRoles(fallbackRoles);
     }
   }, []);
 
-  // Fetch users from backend
+  // Consolidated user fetching logic
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('token');
       
       if (!token) {
-        // Use demo data if no token
         console.log('No token found, using demo data');
         const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
-        if (demoUsers.length > 0) {
-          setUsers(demoUsers);
-        }
-        setLoading(false);
+        setUsers(demoUsers);
+        setContextUsers(demoUsers);
         return;
       }
 
+      // Try API call first
       const response = await api.get('/users');
-
-      // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => ({
         id: user._id,
         name: user.username,
@@ -113,16 +81,16 @@ function UsersRoles() {
       }));
 
       setUsers(transformedUsers);
-      setContextUsers(transformedUsers); // Update context as well
-      setError(null);
+      setContextUsers(transformedUsers);
+      
     } catch (error) {
-      console.error('Error fetching users:', error);
-      // Fall back to demo data on error
+      console.error('API Error, falling back to demo data:', error);
+      // Fallback to demo data only on API error
       const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
       if (demoUsers.length > 0) {
         setUsers(demoUsers);
-        setError(null); // Clear error if we have demo data
-        console.log('Using demo data due to API error');
+        setContextUsers(demoUsers);
+        setError(null); // Clear error since we have fallback data
       } else {
         setError('Failed to fetch users: ' + (error.response?.data?.message || error.message));
       }
@@ -135,16 +103,13 @@ function UsersRoles() {
   const handleRoleChange = async (userId, newRole) => {
     console.log('handleRoleChange called:', { userId, newRole, finalIsAdmin });
     
-    // Check if current user is admin
     if (!finalIsAdmin) {
       toast.error('Only administrators can change user roles');
       return;
     }
 
     try {
-      setError(null); // Clear any previous errors
-      
-      // Set status based on role: User = "In Review", any other role = "Active"
+      setError(null);
       const newStatus = newRole === 'User' ? 'In Review' : 'Active';
       console.log('Setting new status:', newStatus);
       
@@ -153,7 +118,7 @@ function UsersRoles() {
       
       if (result.success) {
         // Update local state immediately for UI responsiveness
-        setUsers(users.map(user => 
+        setUsers(prevUsers => prevUsers.map(user => 
           user.id === userId ? { 
             ...user, 
             role: newRole,
@@ -173,52 +138,39 @@ function UsersRoles() {
     }
   };
 
-
   // Toggle menu visibility
   const toggleMenu = (userId) => {
     setOpenMenuId(openMenuId === userId ? null : userId);
   };
 
-  // Close menu when clicking outside
-  const closeMenu = () => {
-    setOpenMenuId(null);
-  };
-
   // Handle menu actions
   const handleMenuAction = async (userId, action) => {
-    // Close menu
     setOpenMenuId(null);
 
     try {
-      setError(null); // Clear any previous errors
+      setError(null);
       
       if (action === 'edit') {
-        // Check if current user is admin for edit action
         if (!finalIsAdmin) {
           toast.error('Only administrators can edit user profiles');
           return;
         }
-        // Open edit panel or navigate to edit page
         setSelectedUser(users.find(user => user.id === userId));
         setShowSidePanel(true);
         toast.info('Edit user panel opened');
       } else if (action === 'view') {
-        // View profile - no admin check needed
         setSelectedUser(users.find(user => user.id === userId));
         setShowSidePanel(true);
         toast.info('Viewing user profile');
       } else if (action === 'delete') {
-        // Check if current user is admin for delete action
         if (!finalIsAdmin) {
           toast.error('Only administrators can delete users');
           return;
         }
-        // Confirm deletion
         if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
           const response = await api.delete(`/users/${userId}`);
           if (response.status === 200) {
-            // Remove user from local state
-            setUsers(users.filter(user => user.id !== userId));
+            setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
             toast.success('User deleted successfully');
           }
         }
@@ -230,22 +182,17 @@ function UsersRoles() {
     }
   };
 
-  // Load users and roles on component mount
+  // Initialize data on component mount
   useEffect(() => {
-    // Fetch roles first
     fetchRoles();
     
-    // Initialize demo data if needed
     const demoUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
     if (demoUsers.length === 0) {
-      // Import and initialize demo data
       import('../data/demoUsers').then(({ initializeDemoData }) => {
         initializeDemoData();
-        // Try to fetch users after initialization
         fetchUsers();
       });
     } else {
-      // Try to fetch from API first, fall back to demo data
       fetchUsers();
     }
   }, [fetchUsers, fetchRoles]);
@@ -254,7 +201,7 @@ function UsersRoles() {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (openMenuId && !event.target.closest('.user-actions')) {
-        closeMenu();
+        setOpenMenuId(null);
       }
     };
 
@@ -264,62 +211,28 @@ function UsersRoles() {
     };
   }, [openMenuId]);
 
-  // Sync with context users when they change
-  useEffect(() => {
-    if (contextUsers && contextUsers.length > 0) {
-      setUsers(contextUsers);
-      setLoading(false);
-    }
-  }, [contextUsers]);
-
-  // Fallback: Load users from localStorage if available
-  useEffect(() => {
-    const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
-    if (storedUsers.length > 0 && users.length === 0 && !loading) {
-      setUsers(storedUsers);
-      setLoading(false);
-    }
-  }, [users.length, loading]);
-
+  // Helper functions
   const handleAccessAdd = (userId) => {
-    // This would typically open a modal or dropdown to add access
     console.log('Add access for user:', userId);
   };
 
-  // Handle user details click
   const handleUserClick = (user) => {
     setSelectedUser(user);
     setShowSidePanel(true);
   };
 
-  // Handle side panel close
   const handleCloseSidePanel = () => {
     setShowSidePanel(false);
-    setTimeout(() => setSelectedUser(null), 300); // Delay clearing user to allow animation
+    setTimeout(() => setSelectedUser(null), 300);
   };
 
-
-
-
-  // Function to get all access permissions for a user (role-based + custom)
-  // eslint-disable-next-line no-unused-vars
-  const getRoleBasedAccessOnly = (user) => {
-    if (user.access && user.access.length > 0) {
-      return user.access;
-    }
-    return [];
-  };
-
-  // Function to get all access permissions for a user (role-based + custom)
   const getAllUserAccess = (user) => {
     const allAccess = [];
     
-    // Add role-based access
     if (user.access && user.access.length > 0) {
       allAccess.push(...user.access);
     }
     
-    // Add custom access (if different from role-based)
     if (user.customAccess && user.customAccess.length > 0) {
       user.customAccess.forEach(customAccess => {
         if (!allAccess.includes(customAccess)) {
@@ -330,6 +243,7 @@ function UsersRoles() {
     
     return allAccess;
   };
+
   const getAccessColor = (access) => {
     const colors = {
       'Data Cluster': '#8B5CF6',
@@ -347,10 +261,11 @@ function UsersRoles() {
     };
     return colors[access] || '#6B7280';
   };
+
   const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -364,7 +279,7 @@ function UsersRoles() {
     );
   }
 
-  if (error) {
+  if (error && users.length === 0) {
     return (
       <div className="users-roles-container">
         <div className="error-container">
@@ -406,10 +321,34 @@ function UsersRoles() {
         </div>
       )}
 
+      {/* Display error banner if there's an error but we have fallback data */}
+      {error && users.length > 0 && (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <div style={{ fontSize: '1.25rem' }}>ℹ️</div>
+          <div>
+            <p style={{ margin: '0 0 0.25rem 0', fontWeight: '600', color: '#dc2626' }}>
+              Using Offline Data
+            </p>
+            <p style={{ margin: '0', fontSize: '0.9rem', color: '#dc2626' }}>
+              Unable to connect to server. Showing cached data. Some information may be outdated.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="users-roles-header">
         <div className="header-content">
           <div className="header-left">
-            <h2>Users Users & Roles Management Roles Management <span className="realtime-indicator" title="Real-time updates enabled"></span></h2>
+            <h2>Users & Roles Management <span className="realtime-indicator" title="Real-time updates enabled"></span></h2>
             <p>Manage user accounts, roles, and permissions across your organization.</p>
           </div>
         </div>
@@ -426,7 +365,7 @@ function UsersRoles() {
               <CiSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search users, emails, or roles"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
@@ -469,13 +408,12 @@ function UsersRoles() {
                 </td>
                 <td className="user-access">
                   <div className="access-tags">
-                    {
-                    getAllUserAccess(user).map((access, index) => (
+                    {getAllUserAccess(user).map((access, index) => (
                       <span 
                         key={`${user.id}-${access}-${index}`} 
                         className="access-tag"
                         style={{ backgroundColor: getAccessColor(access) }}
-                        title={`Real-time: ${access} access`}
+                        title={`Access: ${access}`}
                       >
                         {access}
                       </span>
@@ -483,6 +421,8 @@ function UsersRoles() {
                     <button 
                       className="add-access-btn"
                       onClick={() => handleAccessAdd(user.id)}
+                      disabled={!finalIsAdmin}
+                      title={!finalIsAdmin ? 'Only administrators can modify access' : 'Add access'}
                     >
                       +
                     </button>
@@ -490,7 +430,7 @@ function UsersRoles() {
                 </td>
                 <td className="user-role">
                   <select 
-                    value={user.role} 
+                    value={user.role || 'User'} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     className="role-select"
                     disabled={!finalIsAdmin}
@@ -499,7 +439,7 @@ function UsersRoles() {
                       cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
                       backgroundColor: finalIsAdmin ? 'white' : '#f3f4f6'
                     }}
-                    title={!finalIsAdmin ? 'Only administrators can change user roles' : ''}
+                    title={!finalIsAdmin ? 'Only administrators can change user roles' : 'Change user role'}
                   >
                     {availableRoles.map(role => (
                       <option key={role} value={role}>
@@ -520,7 +460,7 @@ function UsersRoles() {
                 </td>
                 <td className="user-status">
                   <span 
-                    className={`status-badge ${user.status.toLowerCase().replace(' ', '-')}`}
+                    className={`status-badge ${user.status?.toLowerCase().replace(' ', '-')}`}
                     style={{
                       backgroundColor: user.status === 'Active' ? '#dcfce7' : 
                                      user.status === 'Terminated' ? '#fef2f2' : 
@@ -535,22 +475,19 @@ function UsersRoles() {
                   >
                     {user.status === 'Terminated' ? '❌ Terminated' : 
                      user.status === 'Active' ? 'Active' : 
-                     user.status === 'In Review' ? '⏳ In Review' : user.status}
+                     user.status === 'In Review' ? '⏳ In Review' : user.status || 'Unknown'}
                   </span>
                 </td>
                 <td className="user-actions">
                   <div style={{ position: 'relative', display: 'inline-block' }}>
-                    {/* 3-dot menu button */}
                     <button
                       onClick={() => toggleMenu(user.id)}
-                      disabled={!finalIsAdmin}
                       style={{
                         background: 'none',
                         border: 'none',
-                        cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
+                        cursor: 'pointer',
                         padding: '0.5rem',
                         borderRadius: '0.375rem',
-                        opacity: finalIsAdmin ? 1 : 0.5,
                         fontSize: '1.2rem',
                         color: '#6b7280',
                         display: 'flex',
@@ -560,7 +497,7 @@ function UsersRoles() {
                         width: '2rem',
                         height: '2rem'
                       }}
-                      title={!finalIsAdmin ? 'Only administrators can perform actions' : 'User actions'}
+                      title="User actions"
                     >
                       <div style={{ 
                         display: 'flex', 
@@ -568,28 +505,12 @@ function UsersRoles() {
                         gap: '2px',
                         alignItems: 'center'
                       }}>
-                        <div style={{ 
-                          width: '4px', 
-                          height: '4px', 
-                          backgroundColor: '#6b7280', 
-                          borderRadius: '50%' 
-                        }}></div>
-                        <div style={{ 
-                          width: '4px', 
-                          height: '4px', 
-                          backgroundColor: '#6b7280', 
-                          borderRadius: '50%' 
-                        }}></div>
-                        <div style={{ 
-                          width: '4px', 
-                          height: '4px', 
-                          backgroundColor: '#6b7280', 
-                          borderRadius: '50%' 
-                        }}></div>
+                        <div style={{ width: '4px', height: '4px', backgroundColor: '#6b7280', borderRadius: '50%' }}></div>
+                        <div style={{ width: '4px', height: '4px', backgroundColor: '#6b7280', borderRadius: '50%' }}></div>
+                        <div style={{ width: '4px', height: '4px', backgroundColor: '#6b7280', borderRadius: '50%' }}></div>
                       </div>
                     </button>
 
-                    {/* Dropdown menu */}
                     {openMenuId === user.id && (
                       <div style={{
                         position: 'absolute',
@@ -606,24 +527,26 @@ function UsersRoles() {
                       }}>
                         <button
                           onClick={() => handleMenuAction(user.id, 'edit')}
+                          disabled={!finalIsAdmin}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             border: 'none',
                             background: 'white',
                             textAlign: 'left',
-                            cursor: 'pointer',
+                            cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
                             fontSize: '0.875rem',
-                            color: '#374151',
+                            color: finalIsAdmin ? '#374151' : '#9ca3af',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
-                            borderBottom: '1px solid #f3f4f6'
+                            borderBottom: '1px solid #f3f4f6',
+                            opacity: finalIsAdmin ? 1 : 0.6
                           }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
+                          onMouseEnter={(e) => finalIsAdmin && (e.target.style.backgroundColor = '#f9fafb')}
                           onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
                         >
-                          <FiEdit3 size={16} color="#374151" />
+                          <FiEdit3 size={16} color={finalIsAdmin ? "#374151" : "#9ca3af"} />
                           Edit Profile
                         </button>
                         <button
@@ -650,31 +573,40 @@ function UsersRoles() {
                         </button>
                         <button
                           onClick={() => handleMenuAction(user.id, 'delete')}
+                          disabled={!finalIsAdmin}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             border: 'none',
-                            background: '#fef2f2',
+                            background: finalIsAdmin ? '#fef2f2' : '#f9fafb',
                             textAlign: 'left',
-                            cursor: 'pointer',
+                            cursor: finalIsAdmin ? 'pointer' : 'not-allowed',
                             fontSize: '0.875rem',
-                            color: '#dc2626',
+                            color: finalIsAdmin ? '#dc2626' : '#9ca3af',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.75rem'
+                            gap: '0.75rem',
+                            opacity: finalIsAdmin ? 1 : 0.6
                           }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#fee2e2'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                          onMouseEnter={(e) => finalIsAdmin && (e.target.style.backgroundColor = '#fee2e2')}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = finalIsAdmin ? '#fef2f2' : '#f9fafb'}
                         >
-                          <FiTrash2 size={16} color="#dc2626" />
+                          <FiTrash2 size={16} color={finalIsAdmin ? "#dc2626" : "#9ca3af"} />
                           Delete Profile
-                  </button>
+                        </button>
                       </div>
                     )}
                   </div>
                 </td>
               </tr>
             ))}
+            {filteredUsers.length === 0 && (
+              <tr>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                  {searchTerm ? `No users found matching "${searchTerm}"` : 'No users available'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -689,7 +621,6 @@ function UsersRoles() {
           setUsers={setUsers}
         />
       )}
-
     </div>
   );
 }
@@ -700,7 +631,6 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
   const [userPermissions, setUserPermissions] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Function to get access color for styling
   const getAccessColor = (access) => {
     const colors = {
       'Data Cluster': '#8B5CF6',
@@ -719,7 +649,6 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
     return colors[access] || '#6B7280';
   };
 
-  // Function to get role-based access for a user
   const getRoleBasedAccess = (role) => {
     const rolePermissions = DEFAULT_PERMISSIONS[role] || {};
     const moduleToDisplayName = {
@@ -739,67 +668,6 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
     return Object.keys(rolePermissions)
       .filter(module => rolePermissions[module])
       .map(module => moduleToDisplayName[module] || module);
-  };
-
-  useEffect(() => {
-    if (user) {
-      // Initialize permissions based on user's actual access
-      let permissions = {};
-      
-      // Create a mapping from display names to module keys
-      const displayNameToModuleKey = {
-        'Dashboard': MODULES.DASHBOARD,
-        'Data Center': MODULES.DATA_CENTER,
-        'Data Cluster': MODULES.DATA_CENTER,
-        'Projects': MODULES.PROJECTS,
-        'Digital Media Management': MODULES.DIGITAL_MEDIA,
-        'Team Communication': MODULES.TEAM_COMMUNICATION,
-        'Marketing': MODULES.MARKETING,
-        'HR Management': MODULES.HR_MANAGEMENT,
-        'Finance Management': MODULES.FINANCE_MANAGEMENT,
-        'SEO Management': MODULES.SEO_MANAGEMENT,
-        'Internal Policies': MODULES.INTERNAL_POLICIES,
-        'Settings & Configuration': MODULES.SETTINGS_CONFIG
-      };      if (user.customAccess && user.customAccess.length > 0) {
-        user.customAccess.forEach(access => {
-          const moduleKey = displayNameToModuleKey[access] || access;
-          permissions[moduleKey] = true;
-        });
-      } else if (user.access && user.access.length > 0) {
-        // Use user.access array and map display names to module keys
-        user.access.forEach(access => {
-          const moduleKey = displayNameToModuleKey[access] || access;
-          permissions[moduleKey] = true;
-        });
-      } else {
-        // Fallback to backend permissions
-        permissions = getUserPermissions(user.id);
-      }      
-      setUserPermissions(permissions);
-      console.log("User permissions loaded:", permissions);
-      console.log("Display name to module key mapping:", displayNameToModuleKey);      console.log("User access array:", user.access);
-      console.log("User access array mapped to permissions:", Object.keys(permissions));      console.log("User custom access:", user.customAccess);
-      const isCurrentUserAdmin = currentUser?.role === 'Admin';
-      setIsAdmin(isCurrentUserAdmin);
-      console.log('Current user role:', currentUser?.role);
-      console.log('Is admin:', isCurrentUserAdmin);
-    }
-  }, [user, getUserPermissions, currentUser]);
-
-  if (!user) return null;
-
-  // Mock additional user data - in real app this would come from API
-  const userDetails = {
-    ...user,
-    currentProjects: 5,
-    totalProjects: 21,
-    joinDate: '10 - 04 - 2024',
-    phone: '+91 9098989281',
-    location: 'Coffee Estate Homestay, Mullayanagiri Road, Kaimara, Chikmagalur, Karnataka - 577101, India',
-    languages: ['English', 'Hindi'],
-    maritalStatus: 'Single',
-    employmentId: '0020192',
-    responseTime: '24m'
   };
 
   const getModuleDisplayName = (module) => {
@@ -822,74 +690,113 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
   const handlePermissionChange = async (module, value) => {
     if (!isAdmin) return;
     
-    // Update local state immediately for live UI updates
-    const updatedPermissions = {
-      ...userPermissions,
-      [module]: value
-    };
-    setUserPermissions(updatedPermissions);    
+    const originalPermissions = { ...userPermissions };
+    
+    // Optimistic update
+    setUserPermissions(prev => ({ ...prev, [module]: value }));
+    
     try {
       const result = await updateUserPermissions(user.id, { [module]: value });
       
-      if (result.success) {
-        // Update local state immediately for UI responsiveness
-        const updatedPermissions = {
-          ...userPermissions,
-          [module]: value
-        };
-        setUserPermissions(updatedPermissions);
-        toast.success(`Permission ${value ? 'granted' : 'revoked'} for ${getModuleDisplayName(module)}`);
-        
-        // Refresh the permissions to ensure UI is in sync with backend
-        const refreshedPermissions = getUserPermissions(user.id);
-        setUserPermissions(refreshedPermissions);
-        // Update the main users list immediately for live UI updates
-        setUsers(prevUsers => {
-          return prevUsers.map(u => {
-            if (u.id === user.id) {
-              const updatedUser = { ...u };
-              if (!updatedUser.customAccess) {
-                updatedUser.customAccess = [];
-              }
-              
-              const moduleDisplayName = getModuleDisplayName(module);
-              if (value) {
-                // Add permission if not already present
-                if (!updatedUser.customAccess.includes(moduleDisplayName)) {
-                  updatedUser.customAccess.push(moduleDisplayName);
-                }
-              } else {
-                // Remove permission
-                updatedUser.customAccess = updatedUser.customAccess.filter(
-                  access => access !== moduleDisplayName
-                );
-              }
-              return updatedUser;
-            }
-            return u;
-          });
-        });
-        
-        // Notify parent component to refresh users list
-        if (onPermissionUpdate) {
-          onPermissionUpdate();
-        }
-      } else {
-        console.error('Failed to update permissions:', result.error);
+      if (!result.success) {
+        setUserPermissions(originalPermissions);
         toast.error(`Failed to update permissions: ${result.error}`);
-        
-        // Revert the checkbox state on error
-        const currentPermissions = getUserPermissions(user.id);
-        setUserPermissions(currentPermissions);
+        return;
       }
+      
+      toast.success(`Permission ${value ? 'granted' : 'revoked'} for ${getModuleDisplayName(module)}`);
+      
+      // Update parent users list
+      setUsers(prevUsers => 
+        prevUsers.map(u => {
+          if (u.id === user.id) {
+            const updatedUser = { ...u };
+            const moduleDisplayName = getModuleDisplayName(module);
+            
+            if (!updatedUser.customAccess) {
+              updatedUser.customAccess = [];
+            }
+            
+            if (value && !updatedUser.customAccess.includes(moduleDisplayName)) {
+              updatedUser.customAccess.push(moduleDisplayName);
+            } else if (!value) {
+              updatedUser.customAccess = updatedUser.customAccess.filter(
+                access => access !== moduleDisplayName
+              );
+            }
+            return updatedUser;
+          }
+          return u;
+        })
+      );
+      
+      if (onPermissionUpdate) {
+        onPermissionUpdate();
+      }
+      
     } catch (error) {
+      setUserPermissions(originalPermissions);
       console.error('Error updating permissions:', error);
       toast.error('Failed to update permissions: ' + error.message);
-      
-      // Revert the checkbox state on error
-      const currentPermissions = getUserPermissions(user.id);
-      setUserPermissions(currentPermissions);
     }
+  };
+
+  useEffect(() => {
+    if (user) {
+      let permissions = {};
+      
+      const displayNameToModuleKey = {
+        'Dashboard': MODULES.DASHBOARD,
+        'Data Center': MODULES.DATA_CENTER,
+        'Data Cluster': MODULES.DATA_CENTER,
+        'Projects': MODULES.PROJECTS,
+        'Digital Media Management': MODULES.DIGITAL_MEDIA,
+        'Team Communication': MODULES.TEAM_COMMUNICATION,
+        'Marketing': MODULES.MARKETING,
+        'HR Management': MODULES.HR_MANAGEMENT,
+        'Finance Management': MODULES.FINANCE_MANAGEMENT,
+        'SEO Management': MODULES.SEO_MANAGEMENT,
+        'Internal Policies': MODULES.INTERNAL_POLICIES,
+        'Settings & Configuration': MODULES.SETTINGS_CONFIG
+      };
+
+      if (user.customAccess && user.customAccess.length > 0) {
+        user.customAccess.forEach(access => {
+          const moduleKey = displayNameToModuleKey[access] || access;
+          permissions[moduleKey] = true;
+        });
+      } else if (user.access && user.access.length > 0) {
+        user.access.forEach(access => {
+          const moduleKey = displayNameToModuleKey[access] || access;
+          permissions[moduleKey] = true;
+        });
+      } else {
+        permissions = getUserPermissions(user.id) || {};
+      }
+      
+      setUserPermissions(permissions);
+      
+      const isCurrentUserAdmin = currentUser?.role === 'Admin';
+      setIsAdmin(isCurrentUserAdmin);
+      console.log('Current user role:', currentUser?.role);
+      console.log('Is admin:', isCurrentUserAdmin);
+    }
+  }, [user, getUserPermissions, currentUser]);
+
+  if (!user) return null;
+
+  // Mock additional user data - in real app this would come from API
+  const userDetails = {
+    ...user,
+    currentProjects: 5,
+    totalProjects: 21,
+    joinDate: '10 - 04 - 2024',
+    phone: '+91 9098989281',
+    location: 'Coffee Estate Homestay, Mullayanagiri Road, Kaimara, Chikmagalur, Karnataka - 577101, India',
+    languages: ['English', 'Hindi'],
+    maritalStatus: 'Single',
+    employmentId: '0020192',
+    responseTime: '24m'
   };
 
   return (
@@ -1023,7 +930,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
 
           {/* Permissions Section */}
           <div className="permissions-section">
-            <h4>Permission {isAdmin && <span style={{fontSize: '12px', color: '#6B7280', fontWeight: 'normal'}}>(Click to modify)</span>}</h4>
+            <h4>Permissions {isAdmin && <span style={{fontSize: '12px', color: '#6B7280', fontWeight: 'normal'}}>(Click to modify)</span>}</h4>
             <div className="permissions-grid-two-column">
               <div className="permission-column">
                 {Object.entries(MODULES).slice(0, Math.ceil(Object.entries(MODULES).length / 2)).map(([key, module]) => (
