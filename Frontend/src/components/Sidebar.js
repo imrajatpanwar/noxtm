@@ -226,7 +226,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <FiTrendingUp className="sidebar-icon" />
                     <span>Leads Flow</span>
                   </div>
-                )}
+                }
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
                     onClick={() => onSectionChange('client-leads')}
@@ -234,7 +234,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <FiUsers className="sidebar-icon" />
                     <span>Client Leads</span>
                   </div>
-                )}
+                }
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
                     onClick={() => onSectionChange('campaign-metrics')}
@@ -242,7 +242,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <FiBarChart2 className="sidebar-icon" />
                     <span>Campaign Metrics</span>
                   </div>
-                )}
+                
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
                     onClick={() => onSectionChange('conversion-tracking')}
@@ -250,12 +250,12 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <FiTarget className="sidebar-icon" />
                     <span>Conversion Tracking</span>
                   </div>
-                )}
+                
               </div>
             )}
           </div>
         </div>
-      )}
+      
       
       {/* Projects Section */}
         <div className="sidebar-section">
@@ -267,7 +267,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               <FiFolder className="sidebar-icon" />
               <span>Client / Projects</span>
             </div>
-          )}
+          
             <div 
               className={`sidebar-item ${activeSection === 'project-delivered' ? 'active' : ''}`}
               onClick={() => onSectionChange('project-delivered')}
@@ -275,9 +275,9 @@ function Sidebar({ activeSection, onSectionChange }) {
               <FiPackage className="sidebar-icon" />
               <span>Project Delivered</span>
             </div>
-          )}
+          
         </div>
-      )}
+      
 
       {/* Team Communication Section */}
       <div className="sidebar-section">
@@ -629,33 +629,33 @@ function Sidebar({ activeSection, onSectionChange }) {
                   >
                     <span>Website Analytics</span>
                   </div>
-                )}
+              
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
                     onClick={() => onSectionChange('seo-insights')}
                   >
                     <span>SEO Insights</span>
                   </div>
-                )}
+                
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
                     onClick={() => onSectionChange('web-settings')}
                   >
                     <span>Web Settings</span>
                   </div>
-                )}
+                
                   <div 
                     className={`sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
                     onClick={() => onSectionChange('blogs')}
                   >
                     <span>Website Blogs</span>
                   </div>
-                )}
+                
               </div>
             )}
           </div>
         </div>
-      )}
+      
 
       {/* Internal Policies Section */}
       <div className="sidebar-section">
