@@ -134,13 +134,13 @@ export const RoleProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       
       if (token) {
-        // Update on backend
-        await api.put(`/users/${userId}/permissions`, { permissions });
+        // Update on backend - send permissions directly
+        await api.put(`/users/${userId}/permissions`, permissions);
       }
       
       // Update local state
       const updatedUsers = users.map(user => {
-        if (user.id === userId) {
+        if ((user._id || user.id) === userId) {
           return { ...user, permissions: { ...user.permissions, ...permissions } };
         }
         return user;
@@ -162,7 +162,7 @@ export const RoleProvider = ({ children }) => {
 
   // Get user permissions
   const getUserPermissions = (userId) => {
-    const user = users.find(u => u.id === userId);
+    const user = users.find(u => (u._id || u.id) === userId);
     return user ? user.permissions : {};
   };
 

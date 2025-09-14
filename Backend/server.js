@@ -494,63 +494,49 @@ app.get('/api/roles', authenticateToken, async (req, res) => {
 app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { permissions } = req.body;
-
-    console.log('Received permission update request:', { userId, permissions });
+    const body = req.body;
+    console.log('Permission update request:', { userId, body });
 
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
-      });
+      return res.status(503).json({ success: false, message: 'Database connection unavailable. Please try again later.' });
     }
 
-    // Find user and update permissions
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      console.log('User not found:', userId);
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Merge new permissions with existing ones
-    user.permissions = { ...user.permissions, ...permissions };
-    
-    // Sync access array with permissions
-    const accessArray = [];
-    if (user.permissions.dashboard) accessArray.push('Dashboard');
-    if (user.permissions.dataCenter) accessArray.push('Data Center');
-    if (user.permissions.projects) accessArray.push('Projects');
-    if (user.permissions.teamCommunication) accessArray.push('Team Communication');
-    if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
-    if (user.permissions.marketing) accessArray.push('Marketing');
-    if (user.permissions.hrManagement) accessArray.push('HR Management');
-    if (user.permissions.financeManagement) accessArray.push('Finance Management');
-    if (user.permissions.seoManagement) accessArray.push('SEO Management');
-    if (user.permissions.internalPolicies) accessArray.push('Internal Policies');
-    if (user.permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
-    
-    user.access = accessArray;
-    user.updatedAt = new Date();
-    
-    console.log('Saving user with permissions:', user.permissions);
-    console.log('Saving user with access:', user.access);
-    
-    await user.save();
-    
-    console.log('User saved successfully');
+    // Accept both { permissions: { ... } } and { key: value }
+    let newPermissions = {};
+    if (body.permissions && typeof body.permissions === 'object') {
+      newPermissions = body.permissions;
+    } else {
+      newPermissions = body;
+    }
+    if (Object.keys(newPermissions).length === 0) {
+      return res.status(400).json({ success: false, message: 'No permissions provided' });
+    }
 
-    res.json({
-      message: 'User permissions updated successfully',
-      user: {
-        _id: user._id,
-        permissions: user.permissions,
-        access: user.access
+    // Only update valid permission keys
+    const validKeys = [
+      'dashboard', 'dataCenter', 'projects', 'teamCommunication', 'digitalMediaManagement',
+      'marketing', 'hrManagement', 'financeManagement', 'seoManagement', 'internalPolicies', 'settingsConfiguration'
+    ];
+    Object.keys(newPermissions).forEach(key => {
+      if (validKeys.includes(key)) {
+        user.permissions[key] = newPermissions[key];
       }
     });
+
+    user.updatedAt = new Date();
+    await user.save();
+    console.log('Updated permissions:', user.permissions);
+
+    res.json({ success: true, message: 'User permissions updated successfully', user: { _id: user._id, permissions: user.permissions } });
   } catch (error) {
     console.error('Error updating user permissions:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: 'Invalid permissions data provided' });
-    }
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 });
 

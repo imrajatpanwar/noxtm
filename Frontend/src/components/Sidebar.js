@@ -13,6 +13,7 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
+  const [leadMetricsExpanded, setLeadMetricsExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,6 +43,8 @@ function Sidebar({ activeSection, onSectionChange }) {
         return hasPermission(MODULES.INTERNAL_POLICIES);
       case 'Settings & Configuration':
         return hasPermission(MODULES.SETTINGS_CONFIG);
+      case 'Profile Settings':
+        return true; // Profile settings should be accessible to all users
       default:
         return true; // Allow access to individual items if section is accessible
     }
@@ -79,6 +82,10 @@ function Sidebar({ activeSection, onSectionChange }) {
     setLeadManagementExpanded(!leadManagementExpanded);
   };
 
+  const toggleLeadMetrics = () => {
+    setLeadMetricsExpanded(!leadMetricsExpanded);
+  };
+
   const toggleSocialMedia = () => {
     setSocialMediaExpanded(!socialMediaExpanded);
   };
@@ -95,6 +102,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     // Lead Management
     { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
     { name: 'Client Leads', section: 'client-leads', category: 'Lead Management' },
+    { name: 'Lead Metrics', section: 'lead-metrics', category: 'Lead Management' },
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
     
@@ -114,10 +122,10 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Message', section: 'message', category: 'Team Communication' },
     { name: 'E-mail', section: 'team-email', category: 'Team Communication' },
     { name: 'Meeting', section: 'meeting', category: 'Team Communication' },
+    { name: 'Services', section: 'services', category: 'Team Communication' },
     
     // Marketing
     { name: 'Case Studies', section: 'case-studies', category: 'Marketing' },
-    { name: 'Services', section: 'services', category: 'Marketing' },
     { name: 'Email Marketing', section: 'email-marketing', category: 'Marketing' },
     { name: 'Campaign Setup', section: 'campaign-setup', category: 'Marketing' },
     { name: 'Create Email Template', section: 'email-template', category: 'Marketing' },
@@ -157,16 +165,19 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
-    { name: 'Profile Settings', section: 'profile-settings', category: 'Settings & Configuration' },
+    
+    // Profile Settings (Separate Section)
+    { name: 'Profile Settings', section: 'profile-settings', category: 'Profile Settings' },
   ];
 
   // Filter items based on search query and permissions
-  const filteredItems = searchQuery.trim() === "" 
-    ? [] 
-    : allSidebarItems.filter(item => {
-        return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               item.category.toLowerCase().includes(searchQuery.toLowerCase());
-      });
+  const filteredItems = searchQuery.trim() === "" ? [] : allSidebarItems.filter(item => {
+    if (!hasPermissionForSection(item.category)) {
+      return false;
+    }
+    return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           item.category.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -218,8 +229,8 @@ function Sidebar({ activeSection, onSectionChange }) {
         </div>
       )}
 
-      {/* Show regular menu only when not searching */}
-      {searchQuery.trim() === '' && (
+      {/* Always show regular menu, hide it when search has results */}
+      {(!searchQuery.trim() || !filteredItems.length) && (
         <>
           {/* Dashboard Section */}
           {hasPermissionForSection('Dashboard') && (
@@ -268,18 +279,36 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <FiUsers className="sidebar-icon" />
                       <span>Client Leads</span>
                     </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Lead Metrics as separate section */}
+              <div className="sidebar-item-container">
+                <div 
+                  className={`sidebar-item ${activeSection === 'lead-metrics' ? 'active' : ''}`}
+                  onClick={toggleLeadMetrics}
+                >
+                  <FiBarChart2 className="sidebar-icon" />
+                  <span>Lead Metrics</span>
+                  {leadMetricsExpanded ? 
+                    <FiChevronDown className="sidebar-chevron" /> : 
+                    <FiChevronRight className="sidebar-chevron" />
+                  }
+                </div>
+                
+                {leadMetricsExpanded && (
+                  <div className="sidebar-submenu">
                     <div 
                       className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
                       onClick={() => onSectionChange('campaign-metrics')}
                     >
-                      <FiBarChart2 className="sidebar-icon" />
                       <span>Campaign Metrics</span>
                     </div>
                     <div 
                       className={`sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
                       onClick={() => onSectionChange('conversion-tracking')}
                     >
-                      <FiTarget className="sidebar-icon" />
                       <span>Conversion Tracking</span>
                     </div>
                   </div>
@@ -333,6 +362,13 @@ function Sidebar({ activeSection, onSectionChange }) {
               >
                 <FiVideo className="sidebar-icon" />
                 <span>Meeting</span>
+              </div>
+              <div 
+                className={`sidebar-item ${activeSection === 'services' ? 'active' : ''}`}
+                onClick={() => onSectionChange('services')}
+              >
+                <FiSettings className="sidebar-icon" />
+                <span>Services</span>
               </div>
             </div>
           )}
@@ -469,13 +505,6 @@ function Sidebar({ activeSection, onSectionChange }) {
               >
                 <FiFileText className="sidebar-icon" />
                 <span>Case Studies</span>
-              </div>
-              <div 
-                className={`sidebar-item ${activeSection === 'services' ? 'active' : ''}`}
-                onClick={() => onSectionChange('services')}
-              >
-                <FiSettings className="sidebar-icon" />
-                <span>Services</span>
               </div>
             </div>
           )}
@@ -769,17 +798,23 @@ function Sidebar({ activeSection, onSectionChange }) {
                     >
                       <span>Credentials</span>
                     </div>
-                    <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'profile-settings' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('profile-settings')}
-                    >
-                      <span>Profile Settings</span>
-                    </div>
                   </div>
                 )}
               </div>
             </div>
           )}
+
+          {/* Profile Settings Section */}
+          <div className="sidebar-section">
+            <h4 className="sidebar-section-title">PROFILE</h4>
+            <div 
+              className={`sidebar-item ${activeSection === 'profile-settings' ? 'active' : ''}`}
+              onClick={() => onSectionChange('profile-settings')}
+            >
+              <FiUser className="sidebar-icon" />
+              <span>Profile Settings</span>
+            </div>
+          </div>
         </>
       )}
     </div>
