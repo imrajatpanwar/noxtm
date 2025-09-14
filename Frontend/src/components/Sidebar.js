@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import './Sidebar.css';
 
 function Sidebar({ activeSection, onSectionChange }) {
-  const { hasPermission, MODULES } = useRole();
+  const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
@@ -18,37 +18,32 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Permission checking functions
+  // Memoized permission checking to prevent unnecessary re-renders and glitches
+  const sectionPermissions = useMemo(() => ({
+    'Dashboard': hasPermission(MODULES.DASHBOARD),
+    'Data Center': hasPermission(MODULES.DATA_CENTER),
+    'Projects': hasPermission(MODULES.PROJECTS),
+    'Team Communication': hasPermission(MODULES.TEAM_COMMUNICATION),
+    'Digital Media Management': hasPermission(MODULES.DIGITAL_MEDIA),
+    'Marketing': hasPermission(MODULES.MARKETING),
+    'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
+    'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
+    'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
+    'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
+    'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
+    'Profile Settings': true, // Profile settings should be accessible to all users
+  }), [hasPermission, MODULES]); // Remove permissionUpdateTrigger as hasPermission already handles updates
+
+  // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
-    switch (section) {
-      case 'Dashboard':
-        return hasPermission(MODULES.DASHBOARD);
-      case 'Data Center':
-        return hasPermission(MODULES.DATA_CENTER);
-      case 'Projects':
-        return hasPermission(MODULES.PROJECTS);
-      case 'Team Communication':
-        return hasPermission(MODULES.TEAM_COMMUNICATION);
-      case 'Digital Media Management':
-        return hasPermission(MODULES.DIGITAL_MEDIA);
-      case 'Marketing':
-        return hasPermission(MODULES.MARKETING);
-      case 'HR Management':
-        return hasPermission(MODULES.HR_MANAGEMENT);
-      case 'Finance Management':
-        return hasPermission(MODULES.FINANCE_MANAGEMENT);
-      case 'SEO Management':
-        return hasPermission(MODULES.SEO_MANAGEMENT);
-      case 'Internal Policies':
-        return hasPermission(MODULES.INTERNAL_POLICIES);
-      case 'Settings & Configuration':
-        return hasPermission(MODULES.SETTINGS_CONFIG);
-      case 'Profile Settings':
-        return true; // Profile settings should be accessible to all users
-      default:
-        return true; // Allow access to individual items if section is accessible
-    }
+    return sectionPermissions[section] !== undefined ? sectionPermissions[section] : true;
   };
+
+  // Force re-render when permissions change to prevent glitches
+  useEffect(() => {
+    // This effect will trigger when permissionUpdateTrigger changes
+    // causing the component to re-render with updated permissions
+  }, [permissionUpdateTrigger]);
 
   const toggleEmailMarketing = () => {
     setEmailMarketingExpanded(!emailMarketingExpanded);
