@@ -605,8 +605,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         </div>
       </div>
 
-      {/* SEO Management Section */}
-        <div className="sidebar-section">
+      {/* SEO Management Section */}        <div className="sidebar-section">
           <h4 className="sidebar-section-title">SEO MANAGEMENT</h4>
           
           <div className="sidebar-item-container">
