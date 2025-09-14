@@ -127,9 +127,44 @@ export const RoleProvider = ({ children }) => {
     return userPermissions[module] || false;
   };
 
+
   // Update user permissions (admin function)
+  const updateUserPermissions = async (userId, permissions) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (token) {
+        // Update on backend
+        await api.put(`/users/${userId}/permissions`, { permissions });
+      }
+      
+      // Update local state
+      const updatedUsers = users.map(user => {
+        if (user.id === userId) {
+          return { ...user, permissions: { ...user.permissions, ...permissions } };
+        }
+        return user;
+      });
+      
+      setUsers(updatedUsers);
+      localStorage.setItem('usersData', JSON.stringify(updatedUsers));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user permissions:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message 
+      };
+    }
+  };
+
 
   // Get user permissions
+  const getUserPermissions = (userId) => {
+    const user = users.find(u => u.id === userId);
+    return user ? user.permissions : {};
+  };
 
   // Update user role (admin function)
   const updateUserRole = async (userId, newRole, newStatus = null) => {
@@ -199,7 +234,14 @@ export const RoleProvider = ({ children }) => {
     }
   };
 
+
   // Get all users with their permissions
+  const getAllUsersWithPermissions = () => {
+    return users.map(user => ({
+      ...user,
+      permissions: user.permissions || {}
+    }));
+  };
 
   const value = {
     currentUser,
@@ -207,10 +249,12 @@ export const RoleProvider = ({ children }) => {
     users,
     hasPermission,
     updateUserRole,
+    updateUserPermissions,
+    getUserPermissions,
+    getAllUsersWithPermissions,
     setUsers,
     fetchUsersFromBackend,
-    
-    
+    MODULES
   };
 
   return (
