@@ -19,6 +19,7 @@ function UsersRoles() {
     total: 0,
     active: 0,
     inactive: 0,
+    inReview: 0,
     admins: 0
   });
 
@@ -44,9 +45,10 @@ function UsersRoles() {
     const total = userList.length;
     const active = userList.filter(user => user.status === 'Active').length;
     const inactive = userList.filter(user => user.status === 'Inactive').length;
+    const inReview = userList.filter(user => user.status === 'In Review').length;
     const admins = userList.filter(user => user.role === 'Admin').length;
     
-    setStats({ total, active, inactive, admins });
+    setStats({ total, active, inactive, inReview, admins });
   };
 
   useEffect(() => {
