@@ -218,9 +218,9 @@ app.post('/api/register', async (req, res) => {
 
     // Get default permissions for the role
     const getDefaultPermissions = (userRole) => {
-      const rolePermissions = {
-        'User': {
-        dashboard: false,
+      // Simplified: Only give Dashboard access for all roles
+      return {
+        dashboard: true,
         dataCenter: false,
         projects: false,
         digitalMediaManagement: false,
@@ -230,129 +230,14 @@ app.post('/api/register', async (req, res) => {
         seoManagement: false,
         internalPolicies: false,
         settingsConfiguration: false
-        },
-        'Admin': {
-          dashboard: true,
-          dataCenter: true,
-          projects: true,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: true,
-          financeManagement: true,
-          seoManagement: true,
-          internalPolicies: true,
-          settingsConfiguration: true
-        },
-        'Web Developer': {
-          dashboard: true,
-          dataCenter: false,
-          projects: true,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: true
-        },
-        'Project Manager': {
-          dashboard: true,
-          dataCenter: true,
-          projects: true,
-          digitalMediaManagement: false,
-          marketing: true,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: false
-        },
-        'Data Miner': {
-          dashboard: true,
-          dataCenter: true,
-          projects: false,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: false,
-          internalPolicies: false,
-          settingsConfiguration: false
-        },
-        'Data Analyst': {
-          dashboard: true,
-          dataCenter: true,
-          projects: false,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: false
-        },
-        'Social Media Manager': {
-          dashboard: true,
-          dataCenter: false,
-          projects: false,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: false
-        },
-        'Human Resource': {
-          dashboard: true,
-          dataCenter: false,
-          projects: false,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: true,
-          financeManagement: false,
-          seoManagement: false,
-          internalPolicies: true,
-          settingsConfiguration: false
-        },
-        'Graphic Designer': {
-          dashboard: true,
-          dataCenter: false,
-          projects: true,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: false,
-          internalPolicies: false,
-          settingsConfiguration: false
-        },
-        'SEO Manager': {
-          dashboard: true,
-          dataCenter: true,
-          projects: false,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: false
-        }
       };
-      return rolePermissions[userRole] || rolePermissions['User'];
-    };
+    };    };
 
     // Get default access array based on permissions
     const getDefaultAccess = (permissions) => {
-      const access = [];
-      if (permissions.dataCenter) access.push('Data Cluster');
-      if (permissions.projects) access.push('Projects');
-      if (permissions.financeManagement) access.push('Finance');
-      if (permissions.digitalMediaManagement) access.push('Digital Media');
-      if (permissions.marketing) access.push('Marketing');
-      return access;
-    };
+      // Simplified: Only return Dashboard access
+      return ["Dashboard"];
+    };    };
 
     const defaultPermissions = getDefaultPermissions(userRole);
     const defaultAccess = getDefaultAccess(defaultPermissions);
@@ -664,146 +549,23 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (status) updateData.status = status;
     updateData.updatedAt = new Date();
 
-    // If role is being changed, update permissions based on role
+    // Simplified: Only give Dashboard access when role changes
     if (role) {
-      const getDefaultPermissions = (userRole) => {
-        const rolePermissions = {
-          'User': {
-            dashboard: false,
-            dataCenter: false,
-            projects: false,
-            digitalMediaManagement: false,
-            marketing: false,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: false,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'Admin': {
-            dashboard: true,
-            dataCenter: true,
-            projects: true,
-            digitalMediaManagement: true,
-            marketing: true,
-            hrManagement: true,
-            financeManagement: true,
-            seoManagement: true,
-            internalPolicies: true,
-            settingsConfiguration: true
-          },
-          'Web Developer': {
-            dashboard: true,
-            dataCenter: false,
-            projects: true,
-            digitalMediaManagement: false,
-            marketing: false,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: true,
-            internalPolicies: false,
-            settingsConfiguration: true
-          },
-          'Project Manager': {
-            dashboard: true,
-            dataCenter: true,
-            projects: true,
-            digitalMediaManagement: false,
-            marketing: true,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: true,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'Data Miner': {
-            dashboard: true,
-            dataCenter: true,
-            projects: false,
-            digitalMediaManagement: false,
-            marketing: false,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: false,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'Data Analyst': {
-            dashboard: true,
-            dataCenter: true,
-            projects: false,
-            digitalMediaManagement: false,
-            marketing: false,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: true,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'Social Media Manager': {
-            dashboard: true,
-            dataCenter: false,
-            projects: false,
-            digitalMediaManagement: true,
-            marketing: true,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: true,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'Human Resource': {
-            dashboard: true,
-            dataCenter: false,
-            projects: false,
-            digitalMediaManagement: false,
-            marketing: false,
-            hrManagement: true,
-            financeManagement: false,
-            seoManagement: false,
-            internalPolicies: true,
-            settingsConfiguration: false
-          },
-          'Graphic Designer': {
-            dashboard: true,
-            dataCenter: false,
-            projects: true,
-            digitalMediaManagement: true,
-            marketing: true,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: false,
-            internalPolicies: false,
-            settingsConfiguration: false
-          },
-          'SEO Manager': {
-            dashboard: true,
-            dataCenter: true,
-            projects: false,
-            digitalMediaManagement: true,
-            marketing: true,
-            hrManagement: false,
-            financeManagement: false,
-            seoManagement: true,
-            internalPolicies: false,
-            settingsConfiguration: false
-          }
-        };
-        return rolePermissions[userRole] || rolePermissions['User'];
+      const defaultPermissions = {
+        dashboard: true,
+        dataCenter: false,
+        projects: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
       };
-
-      const defaultPermissions = getDefaultPermissions(role);
       updateData.permissions = defaultPermissions;
-
-      // Update access array based on permissions
-      const accessArray = [];
-      if (defaultPermissions.dataCenter) accessArray.push('Data Cluster');
-      if (defaultPermissions.projects) accessArray.push('Projects');
-      if (defaultPermissions.financeManagement) accessArray.push('Finance');
-      if (defaultPermissions.digitalMediaManagement) accessArray.push('Digital Media');
-      if (defaultPermissions.marketing) accessArray.push('Marketing');
-      updateData.access = accessArray;
-    }
+      updateData.access = ["Dashboard"];
+    }    }
 
     const user = await User.findByIdAndUpdate(
       id, 
