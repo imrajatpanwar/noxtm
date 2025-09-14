@@ -3,7 +3,7 @@ import { CiSearch } from 'react-icons/ci';
 import { FiEdit3, FiEye, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
-import { useRole, MODULES, DEFAULT_PERMISSIONS } from '../contexts/RoleContext';
+import { useRole, MODULES } from '../contexts/RoleContext';
 import './UsersRoles.css';
 
 function UsersRoles() {
@@ -244,6 +244,7 @@ function UsersRoles() {
     return allAccess;
   };
 
+  // eslint-disable-next-line no-unused-vars
   const getAccessColor = (access) => {
     const colors = {
       'Data Cluster': '#8B5CF6',
@@ -631,6 +632,7 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
   const [userPermissions, setUserPermissions] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // eslint-disable-next-line no-unused-vars
   const getAccessColor = (access) => {
     const colors = {
       'Data Cluster': '#8B5CF6',
@@ -649,26 +651,6 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
     return colors[access] || '#6B7280';
   };
 
-  const getRoleBasedAccess = (role) => {
-    const rolePermissions = DEFAULT_PERMISSIONS[role] || {};
-    const moduleToDisplayName = {
-      [MODULES.DASHBOARD]: 'Dashboard',
-      [MODULES.DATA_CENTER]: 'Data Center',
-      [MODULES.PROJECTS]: 'Projects',
-      [MODULES.DIGITAL_MEDIA]: 'Digital Media Management',
-      [MODULES.TEAM_COMMUNICATION]: 'Team Communication',
-      [MODULES.MARKETING]: 'Marketing',
-      [MODULES.HR_MANAGEMENT]: 'HR Management',
-      [MODULES.FINANCE_MANAGEMENT]: 'Finance Management',
-      [MODULES.SEO_MANAGEMENT]: 'SEO Management',
-      [MODULES.INTERNAL_POLICIES]: 'Internal Policies',
-      [MODULES.SETTINGS_CONFIG]: 'Settings & Configuration'
-    };
-    
-    return Object.keys(rolePermissions)
-      .filter(module => rolePermissions[module])
-      .map(module => moduleToDisplayName[module] || module);
-  };
 
   const getModuleDisplayName = (module) => {
     const displayNames = {
@@ -900,33 +882,6 @@ function UserDetailsSidePanel({ user, onClose, isVisible, onPermissionUpdate, se
             </div>
           </div>
 
-          {/* Role-Based Access Section */}
-          <div className="role-access-section" style={{ marginBottom: '20px' }}>
-            <h4>Role-Based Access</h4>
-            <div className="role-access-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {getRoleBasedAccess(userDetails.role).map((access, index) => (
-                <span 
-                  key={`${user.id}-${access}-${index}`}
-                  className="access-tag"
-                  style={{ 
-                    backgroundColor: getAccessColor(access),
-                    color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: '500'
-                  }}
-                >
-                  {access}
-                </span>
-              ))}
-              {getRoleBasedAccess(userDetails.role).length === 0 && (
-                <span style={{ fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
-                  No role-based access defined
-                </span>
-              )}
-            </div>
-          </div>
 
           {/* Permissions Section */}
           <div className="permissions-section">
