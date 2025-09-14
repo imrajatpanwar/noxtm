@@ -186,6 +186,20 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
+// Valid permission keys
+const validPermissionKeys = [
+  'dashboard', 'dataCenter', 'projects', 'teamCommunication', 'digitalMediaManagement',
+  'marketing', 'hrManagement', 'financeManagement', 'seoManagement', 'internalPolicies', 'settingsConfiguration'
+];
+
+function normalizePermissions(permissions) {
+  const normalized = {};
+  validPermissionKeys.forEach(key => {
+    normalized[key] = permissions && permissions[key] === true;
+  });
+  return normalized;
+}
+
 // Routes
 
 // Health check endpoint
@@ -441,6 +455,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
     
     // Ensure access array is synced with permissions for all users
     const usersWithSyncedAccess = users.map(user => {
+      user.permissions = normalizePermissions(user.permissions);
       const accessArray = [];
       if (user.permissions.dashboard) accessArray.push('Dashboard');
       if (user.permissions.dataCenter) accessArray.push('Data Center');
@@ -453,13 +468,11 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       if (user.permissions.seoManagement) accessArray.push('SEO Management');
       if (user.permissions.internalPolicies) accessArray.push('Internal Policies');
       if (user.permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
-      
       // Only update if access array is different
       if (JSON.stringify(user.access) !== JSON.stringify(accessArray)) {
         user.access = accessArray;
         user.save(); // Save in background, don't wait
       }
-      
       return user;
     });
     
@@ -519,18 +532,17 @@ app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async
     }
 
     // Only update valid permission keys
-    const validKeys = [
-      'dashboard', 'dataCenter', 'projects', 'teamCommunication', 'digitalMediaManagement',
-      'marketing', 'hrManagement', 'financeManagement', 'seoManagement', 'internalPolicies', 'settingsConfiguration'
-    ];
-    Object.keys(newPermissions).forEach(key => {
-      if (validKeys.includes(key)) {
-        user.permissions[key] = newPermissions[key];
+    validPermissionKeys.forEach(key => {
+      if (newPermissions.hasOwnProperty(key)) {
+        user.permissions[key] = newPermissions[key] === true;
+      } else if (typeof user.permissions[key] === 'undefined') {
+        user.permissions[key] = false;
       }
     });
 
     user.updatedAt = new Date();
     await user.save();
+    user.permissions = normalizePermissions(user.permissions);
     console.log('Updated permissions:', user.permissions);
 
     res.json({ success: true, message: 'User permissions updated successfully', user: { _id: user._id, permissions: user.permissions } });
