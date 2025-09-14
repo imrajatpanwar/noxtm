@@ -27,7 +27,7 @@ export const MODULES = {
 };
 
 // Simplified: No default role permissions - all permissions are manual
-export const DEFAULT_PERMISSIONS = {};
+
 export const RoleProvider = ({ children }) => {
   const [userPermissions, setUserPermissions] = useState({});
   const [users, setUsers] = useState([]);
@@ -46,7 +46,7 @@ export const RoleProvider = ({ children }) => {
       // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => {
         // Get default permissions for the user's role
-        const roleDefaultPermissions = DEFAULT_PERMISSIONS[user.role] || {};
+        const roleDefaultPermissions = [user.role] || {};
         
         // Merge backend permissions with role defaults
         // Backend permissions override role defaults
@@ -90,7 +90,7 @@ export const RoleProvider = ({ children }) => {
       
       // Get user's role permissions
       if (userData.role) {
-        const permissions = DEFAULT_PERMISSIONS[userData.role] || {};
+        const permissions = [userData.role] || {};
         setUserPermissions(permissions);
       }
       
@@ -209,8 +209,8 @@ export const RoleProvider = ({ children }) => {
     updateUserRole,
     setUsers,
     fetchUsersFromBackend,
-    MODULES,
-    DEFAULT_PERMISSIONS
+    
+    
   };
 
   return (
