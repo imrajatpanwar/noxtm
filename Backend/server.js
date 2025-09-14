@@ -200,6 +200,23 @@ function normalizePermissions(permissions) {
   return normalized;
 }
 
+// Helper to sync access array with permissions
+function syncAccessFromPermissions(permissions) {
+  const accessArray = [];
+  if (permissions.dashboard) accessArray.push('Dashboard');
+  if (permissions.dataCenter) accessArray.push('Data Center');
+  if (permissions.projects) accessArray.push('Projects');
+  if (permissions.teamCommunication) accessArray.push('Team Communication');
+  if (permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
+  if (permissions.marketing) accessArray.push('Marketing');
+  if (permissions.hrManagement) accessArray.push('HR Management');
+  if (permissions.financeManagement) accessArray.push('Finance Management');
+  if (permissions.seoManagement) accessArray.push('SEO Management');
+  if (permissions.internalPolicies) accessArray.push('Internal Policies');
+  if (permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
+  return accessArray;
+}
+
 // Routes
 
 // Health check endpoint
@@ -353,7 +370,9 @@ app.post('/api/login', async (req, res) => {
       expiresIn: '24h'
     });
 
-    console.log('Login successful for user:', user.email);
+    // Always normalize permissions and access before sending
+    const normalizedPermissions = normalizePermissions(user.permissions);
+    const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
 
     res.json({
       message: 'Login successful',
@@ -363,8 +382,8 @@ app.post('/api/login', async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        access: user.access,
-        permissions: user.permissions
+        access: normalizedAccess,
+        permissions: normalizedPermissions
       }
     });
   } catch (error) {
@@ -380,13 +399,33 @@ app.post('/api/login', async (req, res) => {
 // Get user profile (protected route)
 app.get('/api/profile', authenticateToken, async (req, res) => {
   try {
+    if (!mongoConnected) {
+      return res.status(503).json({ 
+        message: 'Database connection unavailable. Please try again later.' 
+      });
+    }
+
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+
+    // Always normalize permissions and access before sending
+    const normalizedPermissions = normalizePermissions(user.permissions);
+    const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      access: normalizedAccess,
+      permissions: normalizedPermissions,
+      status: user.status,
+      createdAt: user.createdAt
+    });
   } catch (error) {
-    console.error('Profile error:', error);
+    console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -426,13 +465,17 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Always normalize permissions and access before sending
+    const normalizedPermissions = normalizePermissions(user.permissions);
+    const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
+
     res.json({
       id: user._id,
       username: user.username,
       email: user.email,
       role: user.role,
-      access: user.access,
-      permissions: user.permissions,
+      access: normalizedAccess,
+      permissions: normalizedPermissions,
       status: user.status,
       createdAt: user.createdAt
     });
@@ -556,8 +599,10 @@ app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async
 app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, access, status } = req.body;
-    
+    let { role, access, status } = req.body;
+    // Always default status to 'Active' if not provided
+    if (!status) status = 'Active';
+
     console.log('PUT /api/users/:id - Request received:', { id, role, access, status });
 
     if (!mongoConnected) {
@@ -568,16 +613,16 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
 
     const updateData = {};
     if (role) updateData.role = role;
-    if (access) updateData.access = access;
-    if (status) updateData.status = status;
+    updateData.status = status;
     updateData.updatedAt = new Date();
 
-    // Simplified: Only give Dashboard access when role changes
+    // Always sync access from permissions
     if (role) {
       const defaultPermissions = {
         dashboard: true,
         dataCenter: false,
         projects: false,
+        teamCommunication: false,
         digitalMediaManagement: false,
         marketing: false,
         hrManagement: false,
@@ -587,7 +632,9 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
         settingsConfiguration: false
       };
       updateData.permissions = defaultPermissions;
-      updateData.access = ["Dashboard"];
+      updateData.access = syncAccessFromPermissions(defaultPermissions);
+    } else if (access) {
+      updateData.access = Array.isArray(access) ? access : [];
     }
 
     const user = await User.findByIdAndUpdate(
@@ -599,6 +646,10 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Always normalize permissions and access before sending
+    user.permissions = normalizePermissions(user.permissions);
+    user.access = syncAccessFromPermissions(user.permissions);
 
     res.json({
       message: 'User updated successfully',
