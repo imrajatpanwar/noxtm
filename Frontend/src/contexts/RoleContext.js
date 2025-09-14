@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../config/api';
+import { toast } from 'sonner';
 
 const RoleContext = createContext();
 
@@ -32,6 +33,10 @@ export const RoleProvider = ({ children }) => {
   const [userPermissions, setUserPermissions] = useState({});
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [permissionUpdateTrigger, setPermissionUpdateTrigger] = useState(0);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const permissionCheckInterval = useRef(null);
+  const lastPermissionHash = useRef(null);
 
   // Fetch users from backend
   const fetchUsersFromBackend = async () => {
@@ -82,6 +87,64 @@ export const RoleProvider = ({ children }) => {
     }
   };
 
+  // Generate hash of current user permissions for change detection
+  const generatePermissionHash = useCallback((user) => {
+    if (!user) return null;
+    const userPermissions = users.find(u => u.id === user.id)?.permissions || {};
+    return JSON.stringify({ role: user.role, permissions: userPermissions });
+  }, [users]);
+
+  // Check current user permissions from backend
+  const checkCurrentUserPermissions = useCallback(async () => {
+    if (!currentUser || isCheckingPermissions) return;
+    
+    setIsCheckingPermissions(true);
+    try {
+      const response = await api.get('/profile');
+      const updatedUser = response.data;
+      
+      // Update current user data
+      setCurrentUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Fetch updated users list to get latest permissions
+      const usersResponse = await api.get('/users');
+      if (usersResponse.data && usersResponse.data.users) {
+        const transformedUsers = usersResponse.data.users.map(user => ({
+          id: user._id,
+          name: user.username,
+          email: user.email,
+          role: user.role,
+          status: user.status || 'Active',
+          access: user.access || [],
+          permissions: user.permissions || {}
+        }));
+        
+        // Check if current user's permissions changed
+        const newHash = generatePermissionHash(updatedUser);
+        const oldHash = lastPermissionHash.current;
+        
+        if (oldHash && newHash && oldHash !== newHash) {
+          // Permissions changed - notify user and trigger re-render
+          toast.success('Your permissions have been updated!', {
+            description: 'Your access levels have been modified by an administrator.',
+            duration: 5000,
+          });
+          setPermissionUpdateTrigger(prev => prev + 1);
+        }
+        
+        lastPermissionHash.current = newHash;
+        setUsers(transformedUsers);
+        localStorage.setItem('usersData', JSON.stringify(transformedUsers));
+      }
+    } catch (error) {
+      console.error('Error checking user permissions:', error);
+      // Don't show error toast for permission checks to avoid spam
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  }, [currentUser, isCheckingPermissions, generatePermissionHash]);
+
   // Load user data from localStorage or API
   useEffect(() => {
     const loadUserData = async () => {
@@ -100,6 +163,11 @@ export const RoleProvider = ({ children }) => {
       if (backendUsers && backendUsers.length > 0) {
         setUsers(backendUsers);
         localStorage.setItem('usersData', JSON.stringify(backendUsers));
+        
+        // Set initial permission hash
+        if (userData.id) {
+          lastPermissionHash.current = generatePermissionHash(userData);
+        }
       } else {
         // Fall back to local data
         const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
@@ -108,10 +176,27 @@ export const RoleProvider = ({ children }) => {
     };
     
     loadUserData();
-  }, []);
+  }, [generatePermissionHash]);
+
+  // Set up real-time permission checking
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Start permission checking interval (every 30 seconds)
+    permissionCheckInterval.current = setInterval(() => {
+      checkCurrentUserPermissions();
+    }, 30000);
+
+    // Cleanup interval on unmount or user change
+    return () => {
+      if (permissionCheckInterval.current) {
+        clearInterval(permissionCheckInterval.current);
+      }
+    };
+  }, [currentUser, checkCurrentUserPermissions]);
 
   // Check if user has permission for a module
-  const hasPermission = (module) => {
+  const hasPermission = useCallback((module) => {
     if (!currentUser || !currentUser.role) return false;
     
     // Admin has access to everything
@@ -125,7 +210,7 @@ export const RoleProvider = ({ children }) => {
     
     // Check default role permissions
     return userPermissions[module] || false;
-  };
+  }, [currentUser, users, userPermissions]); // Remove permissionUpdateTrigger as it's not directly used
 
 
   // Update user permissions (admin function)
@@ -254,6 +339,8 @@ export const RoleProvider = ({ children }) => {
     getAllUsersWithPermissions,
     setUsers,
     fetchUsersFromBackend,
+    checkCurrentUserPermissions,
+    permissionUpdateTrigger,
     MODULES
   };
 
