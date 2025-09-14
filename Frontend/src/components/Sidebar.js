@@ -129,13 +129,12 @@ function Sidebar({ activeSection, onSectionChange }) {
   ];
 
   // Filter items based on search query and permissions
-  const filteredItems = searchQuery.trim() === '' 
+  const filteredItems = searchQuery.trim() === "" 
     ? [] 
     : allSidebarItems.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            item.category.toLowerCase().includes(searchQuery.toLowerCase());
+        return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+               item.category.toLowerCase().includes(searchQuery.toLowerCase());
       });
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };

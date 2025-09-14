@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRole } from '../contexts/RoleContext';
 import { toast } from 'sonner';
 import api from '../config/api';
@@ -11,7 +11,7 @@ function UsersRoles() {
   const [error, setError] = useState('');
 
   // Fetch users from backend
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await api.get('/users');
       if (response.data && response.data.users) {
@@ -21,7 +21,7 @@ function UsersRoles() {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
     }
-  };
+  }, [setUsers]);
 
   useEffect(() => {
     fetchUsers();

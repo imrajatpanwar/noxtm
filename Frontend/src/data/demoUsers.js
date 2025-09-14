@@ -8,7 +8,7 @@ export const demoUsers = [
     email: 'john.admin@noxtmstudio.com',
     role: 'Admin',
     status: 'Active',
-    access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],
+    access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],  },
   {
     id: '2',
     name: 'Sarah Johnson',
