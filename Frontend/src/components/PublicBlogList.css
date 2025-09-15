@@ -1,0 +1,267 @@
+.public-blog-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.blog-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.blog-header h1 {
+  font-size: 48px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 15px 0;
+}
+
+.blog-header p {
+  font-size: 20px;
+  color: #718096;
+  margin: 0;
+}
+
+.blog-filters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 50px;
+}
+
+.filter-btn {
+  padding: 10px 20px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  color: #4a5568;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #3182ce;
+  color: #3182ce;
+}
+
+.filter-btn.active {
+  background: #3182ce;
+  border-color: #3182ce;
+  color: white;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  font-size: 18px;
+  color: #718096;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.empty-state h3 {
+  font-size: 28px;
+  color: #4a5568;
+  margin: 0 0 15px 0;
+}
+
+.empty-state p {
+  font-size: 18px;
+  color: #718096;
+  margin: 0;
+}
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  margin-bottom: 60px;
+}
+
+.blog-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s, box-shadow 0.3s;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.blog-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.blog-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.blog-card-image {
+  height: 220px;
+  overflow: hidden;
+  background: #f7fafc;
+}
+
+.blog-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.blog-card:hover .blog-card-image img {
+  transform: scale(1.1);
+}
+
+.blog-card-content {
+  padding: 25px;
+}
+
+.blog-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.blog-card-category {
+  background: #3182ce;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.blog-card-date {
+  color: #718096;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.blog-card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 15px 0;
+  line-height: 1.3;
+  transition: color 0.2s;
+}
+
+.blog-card:hover .blog-card-title {
+  color: #3182ce;
+}
+
+.blog-card-description {
+  color: #4a5568;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+.blog-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.blog-card-author {
+  color: #2d3748;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.blog-card-views {
+  color: #718096;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  margin-top: 60px;
+}
+
+.pagination-btn {
+  background: #3182ce;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #2c5282;
+}
+
+.pagination-btn:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 16px;
+  color: #4a5568;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .public-blog-list {
+    padding: 20px 15px;
+  }
+
+  .blog-header h1 {
+    font-size: 36px;
+  }
+
+  .blog-header p {
+    font-size: 18px;
+  }
+
+  .blog-filters {
+    margin-bottom: 40px;
+  }
+
+  .blog-grid {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    margin-bottom: 40px;
+  }
+
+  .blog-card-content {
+    padding: 20px;
+  }
+
+  .blog-card-title {
+    font-size: 20px;
+  }
+
+  .blog-card-description {
+    font-size: 15px;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 15px;
+  }
+}

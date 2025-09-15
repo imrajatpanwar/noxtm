@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -136,6 +138,63 @@ userSchema.pre('save', function(next) {
 
 const User = mongoose.model('User', userSchema);
 
+// Blog Category Schema
+const categorySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  slug: { type: String, required: true, unique: true },
+  description: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+categorySchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  if (!this.slug) {
+    this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+  next();
+});
+
+const Category = mongoose.model('Category', categorySchema);
+
+// Blog Schema
+const blogSchema = new mongoose.Schema({
+  title: { type: String, required: true, maxLength: 60 },
+  slug: { type: String, required: true, unique: true },
+  metaDescription: { type: String, required: true, maxLength: 160 },
+  keywords: [{ type: String }], // Array of keywords/tags
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+  content: { type: String, required: true },
+  featuredImage: {
+    filename: String,
+    altText: String,
+    path: String
+  },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { 
+    type: String, 
+    enum: ['draft', 'published', 'archived'], 
+    default: 'draft' 
+  },
+  publishedAt: { type: Date },
+  views: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+blogSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  if (!this.slug) {
+    this.slug = this.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+  if (this.status === 'published' && !this.publishedAt) {
+    this.publishedAt = new Date();
+  }
+  next();
+});
+
+const Blog = mongoose.model('Blog', blogSchema);
+
 // JWT Secret - Use environment variable or generate a secure fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'noxtmstudio-fallback-secret-key-change-in-production';
 
@@ -219,6 +278,38 @@ function syncAccessFromPermissions(permissions) {
 
 // Routes
 
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads', 'blog-images');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'blog-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+// Serve uploaded images statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -227,6 +318,306 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     mongodb: mongoConnected ? 'connected' : 'disconnected'
   });
+});
+
+// ===== BLOG MANAGEMENT API ROUTES =====
+
+// Get all categories
+app.get('/api/categories', async (req, res) => {
+  try {
+    const categories = await Category.find().sort({ name: 1 });
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Create new category
+app.post('/api/categories', authenticateToken, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    const category = new Category({
+      name,
+      description,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    });
+
+    const savedCategory = await category.save();
+    res.status(201).json(savedCategory);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Upload blog image
+app.post('/api/blogs/upload-image', authenticateToken, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    const imageUrl = `/uploads/blog-images/${req.file.filename}`;
+    res.json({
+      message: 'Image uploaded successfully',
+      imageUrl: imageUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Image upload failed', error: error.message });
+  }
+});
+
+// Get all blogs (with pagination and filtering)
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const status = req.query.status;
+    const category = req.query.category;
+    
+    const skip = (page - 1) * limit;
+    
+    // Build filter object
+    const filter = {};
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    if (category && category !== 'all') {
+      filter.category = category;
+    }
+
+    const blogs = await Blog.find(filter)
+      .populate('category', 'name slug')
+      .populate('author', 'username')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Blog.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      blogs,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalBlogs: total,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get single blog by slug
+app.get('/api/blogs/:slug', async (req, res) => {
+  try {
+    const blog = await Blog.findOne({ slug: req.params.slug })
+      .populate('category', 'name slug')
+      .populate('author', 'username');
+    
+    if (!blog) {
+      return res.status(404).json({ message: 'Blog not found' });
+    }
+
+    // Increment views count
+    await Blog.findByIdAndUpdate(blog._id, { $inc: { views: 1 } });
+    
+    res.json(blog);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Create new blog post
+app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async (req, res) => {
+  try {
+    const { title, metaDescription, keywords, category, content, status, altText } = req.body;
+    
+    // Validation
+    if (!title || title.length > 60) {
+      return res.status(400).json({ message: 'Title is required and must be 60 characters or less' });
+    }
+    if (!metaDescription || metaDescription.length > 160) {
+      return res.status(400).json({ message: 'Meta description is required and must be 160 characters or less' });
+    }
+    if (!category) {
+      return res.status(400).json({ message: 'Category is required' });
+    }
+    if (!content) {
+      return res.status(400).json({ message: 'Content is required' });
+    }
+
+    // Generate slug from title
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    
+    // Check if slug already exists
+    const existingBlog = await Blog.findOne({ slug });
+    if (existingBlog) {
+      return res.status(400).json({ message: 'A blog with this title already exists' });
+    }
+
+    // Parse keywords
+    const keywordArray = keywords ? keywords.split(',').map(k => k.trim()) : [];
+    
+    // Handle featured image
+    let featuredImage = {};
+    if (req.file) {
+      featuredImage = {
+        filename: req.file.filename,
+        altText: altText || title,
+        path: `/uploads/blog-images/${req.file.filename}`
+      };
+    }
+
+    const blog = new Blog({
+      title,
+      slug,
+      metaDescription,
+      keywords: keywordArray,
+      category,
+      content,
+      featuredImage,
+      author: req.user.userId,
+      status: status || 'draft'
+    });
+
+    const savedBlog = await blog.save();
+    const populatedBlog = await Blog.findById(savedBlog._id)
+      .populate('category', 'name slug')
+      .populate('author', 'username');
+    
+    res.status(201).json(populatedBlog);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update blog post
+app.put('/api/blogs/:id', authenticateToken, upload.single('featuredImage'), async (req, res) => {
+  try {
+    const { title, metaDescription, keywords, category, content, status, altText } = req.body;
+    
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: 'Blog not found' });
+    }
+
+    // Update fields
+    if (title) {
+      if (title.length > 60) {
+        return res.status(400).json({ message: 'Title must be 60 characters or less' });
+      }
+      blog.title = title;
+      blog.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    
+    if (metaDescription) {
+      if (metaDescription.length > 160) {
+        return res.status(400).json({ message: 'Meta description must be 160 characters or less' });
+      }
+      blog.metaDescription = metaDescription;
+    }
+    
+    if (keywords) {
+      blog.keywords = keywords.split(',').map(k => k.trim());
+    }
+    
+    if (category) blog.category = category;
+    if (content) blog.content = content;
+    if (status) blog.status = status;
+
+    // Handle featured image update
+    if (req.file) {
+      blog.featuredImage = {
+        filename: req.file.filename,
+        altText: altText || blog.title,
+        path: `/uploads/blog-images/${req.file.filename}`
+      };
+    } else if (altText && blog.featuredImage.filename) {
+      blog.featuredImage.altText = altText;
+    }
+
+    const updatedBlog = await blog.save();
+    const populatedBlog = await Blog.findById(updatedBlog._id)
+      .populate('category', 'name slug')
+      .populate('author', 'username');
+    
+    res.json(populatedBlog);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete blog post
+app.delete('/api/blogs/:id', authenticateToken, async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: 'Blog not found' });
+    }
+
+    // Delete associated image file if exists
+    if (blog.featuredImage && blog.featuredImage.filename) {
+      const imagePath = path.join(__dirname, 'uploads', 'blog-images', blog.featuredImage.filename);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    await Blog.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Blog deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get blog analytics/statistics
+app.get('/api/blogs/analytics/stats', authenticateToken, async (req, res) => {
+  try {
+    const totalBlogs = await Blog.countDocuments();
+    const publishedBlogs = await Blog.countDocuments({ status: 'published' });
+    const draftBlogs = await Blog.countDocuments({ status: 'draft' });
+    const totalViews = await Blog.aggregate([
+      { $group: { _id: null, totalViews: { $sum: '$views' } } }
+    ]);
+
+    const popularBlogs = await Blog.find({ status: 'published' })
+      .populate('category', 'name')
+      .sort({ views: -1 })
+      .limit(5)
+      .select('title slug views');
+
+    const recentBlogs = await Blog.find()
+      .populate('category', 'name')
+      .populate('author', 'username')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('title slug status createdAt');
+
+    res.json({
+      stats: {
+        totalBlogs,
+        publishedBlogs,
+        draftBlogs,
+        totalViews: totalViews[0]?.totalViews || 0
+      },
+      popularBlogs,
+      recentBlogs
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // Register

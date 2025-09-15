@@ -10,6 +10,8 @@ import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
 import Footer from './components/Footer';
+import PublicBlogList from './components/PublicBlogList';
+import BlogPost from './components/BlogPost';
 
 // API configuration is now handled in config/api.js
 
@@ -244,6 +246,8 @@ function App() {
               path="/access-restricted" 
               element={<AccessRestricted />} 
             />
+            <Route path="/blog" element={<PublicBlogList />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
           </Routes>
           <ConditionalFooter />
         </div>
