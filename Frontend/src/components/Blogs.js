@@ -1,32 +1,67 @@
-import React from 'react';
+import React, { useState } from 'react';
+import BlogList from './BlogList';
+import BlogEditor from './BlogEditor';
+import CategoryManager from './CategoryManager';
+import './Blogs.css';
 
 function Blogs() {
+  const [currentView, setCurrentView] = useState('list');
+  const [editingBlogId, setEditingBlogId] = useState(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+
+  const handleCreateNew = () => {
+    setEditingBlogId(null);
+    setCurrentView('editor');
+  };
+
+  const handleEdit = (blogId) => {
+    setEditingBlogId(blogId);
+    setCurrentView('editor');
+  };
+
+  const handleSave = (savedBlog) => {
+    console.log('Blog saved:', savedBlog);
+    setCurrentView('list');
+    setEditingBlogId(null);
+  };
+
+  const handleCancel = () => {
+    setCurrentView('list');
+    setEditingBlogId(null);
+  };
+
+  const handleShowCategories = () => {
+    setShowCategoryManager(true);
+  };
+
+  const handleCloseCategoriesManager = () => {
+    setShowCategoryManager(false);
+  };
+
   return (
-    <div className="dashboard-card">
-      <h2>Blog Management</h2>
-      <p>Create, edit, and manage blog posts and content publication.</p>
+    <div className="blogs-container">
+      {currentView === 'list' && (
+        <div>
+          <div className="blogs-actions">
+            <button className="btn-secondary" onClick={handleShowCategories}>
+              Manage Categories
+            </button>
+          </div>
+          <BlogList onEdit={handleEdit} onCreateNew={handleCreateNew} />
+        </div>
+      )}
       
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <h3>All Posts</h3>
-          <p>View and manage all published and draft blog posts.</p>
-        </div>
-        
-        <div className="dashboard-card">
-          <h3>Create New Post</h3>
-          <p>Write and publish new blog articles with rich text editor.</p>
-        </div>
-        
-        <div className="dashboard-card">
-          <h3>Categories & Tags</h3>
-          <p>Organize content with categories, tags, and content classification.</p>
-        </div>
-        
-        <div className="dashboard-card">
-          <h3>Blog Analytics</h3>
-          <p>Track post performance, views, engagement, and reader analytics.</p>
-        </div>
-      </div>
+      {currentView === 'editor' && (
+        <BlogEditor 
+          blogId={editingBlogId} 
+          onSave={handleSave} 
+          onCancel={handleCancel} 
+        />
+      )}
+
+      {showCategoryManager && (
+        <CategoryManager onClose={handleCloseCategoriesManager} />
+      )}
     </div>
   );
 }

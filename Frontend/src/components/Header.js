@@ -21,6 +21,9 @@ function Header() {
           <a href="#portfolio" className="nav-item btn-style">
             Portfolio
           </a>
+          <Link to="/blog" className="nav-item btn-style">
+            Blog
+          </Link>
           <button className="get-started-btn">
             Get Started
           </button>
