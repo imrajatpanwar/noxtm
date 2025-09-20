@@ -66,9 +66,9 @@ function Signup({ onSignup }) {
             <img src={poweredByNoxtm} alt="Powered by Noxtm" />
           </div>
           <div className="welcome-content">
-            <h1 className="welcome-title">Join Noxtm Studio</h1>
+            <h1 className="welcome-title">Join Noxtm</h1>
             <p className="welcome-description">
-              Start your journey with Noxtm Studio and discover how we create 
+              Start your journey with Noxtm and discover how we create 
               experiences that connect, inspire, and convert.
             </p>
           </div>
@@ -199,7 +199,7 @@ function Signup({ onSignup }) {
             <div className="terms-section">
               <p>
                 By clicking "Create Account" above, you acknowledge that you 
-                have read and understood, and agree to Noxtm Studio's{' '}
+                have read and understood, and agree to Noxtm's{' '}
                 <a href="/terms" className="terms-link">Terms & Conditions</a> and{' '}
                 <a href="/privacy" className="terms-link">Privacy Policy</a>.
               </p>

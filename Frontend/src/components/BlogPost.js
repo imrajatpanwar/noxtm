@@ -16,7 +16,7 @@ function BlogPost() {
       setBlog(response.data);
       
       // Update document title and meta description for SEO
-      document.title = `${response.data.title} - Noxtm Studio`;
+      document.title = `${response.data.title} - Noxtm`;
       
       // Update meta description
       const metaDescription = document.querySelector('meta[name="description"]');

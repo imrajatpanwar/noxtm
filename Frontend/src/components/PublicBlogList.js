@@ -49,10 +49,10 @@ function PublicBlogList() {
 
   useEffect(() => {
     // Set SEO meta tags for the blog listing page
-    document.title = 'Blog - Noxtm Studio';
+    document.title = 'Blog - Noxtm';
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Discover insights, tips, and latest updates from Noxtm Studio. Read our blog posts on digital marketing, web development, and business growth.');
+      metaDescription.setAttribute('content', 'Discover insights, tips, and latest updates from Noxtm. Read our blog posts on digital marketing, web development, and business growth.');
     }
   }, []);
 
