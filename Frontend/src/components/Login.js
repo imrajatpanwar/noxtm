@@ -53,9 +53,9 @@ function Login({ onLogin }) {
             <img src={poweredByNoxtm} alt="Powered by Noxtm" />
           </div>
           <div className="welcome-content">
-            <h1 className="welcome-title">Discover Noxtm Studio</h1>
+            <h1 className="welcome-title">Discover Noxtm</h1>
             <p className="welcome-description">
-              At Noxtm Studio, we don't just market, we create experiences 
+              At Noxtm, we don't just market, we create experiences 
               that connect, inspire, and convert.
             </p>
           </div>
@@ -149,7 +149,7 @@ function Login({ onLogin }) {
             <div className="terms-section">
               <p>
                 By clicking "Continue with email" above, you acknowledge that you 
-                have read and understood, and agree to Noxtm Studio's{' '}
+                have read and understood, and agree to Noxtm's{' '}
                 <a href="/terms" className="terms-link">Terms & Conditions</a> and{' '}
                 <a href="/privacy" className="terms-link">Privacy Policy</a>.
               </p>
