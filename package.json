@@ -1,5 +1,5 @@
 {
-  "name": "react-mongo-app",
+  "name": "Noxtm",
   "version": "1.0.0",
   "description": "React app with MongoDB backend for Contabo deployment",
   "main": "Backend/server.js",
