@@ -6,7 +6,7 @@
 echo "🚀 Starting production deployment with separate services..."
 
 # Set the project directory
-PROJECT_DIR="/var/www/noxtmstudio"
+PROJECT_DIR="/root/noxtm"
 echo "📁 Project directory: $PROJECT_DIR"
 cd $PROJECT_DIR
 
