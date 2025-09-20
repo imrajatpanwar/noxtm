@@ -95,12 +95,12 @@ NODE_ENV=production pm2 start ecosystem.config.js --env production
 sleep 3
 
 # Check if backend started successfully
-pm2 status | grep "noxtmstudio-backend.*online" > /dev/null
+pm2 status | grep "noxtm-backend.*online" > /dev/null
 if [ $? -eq 0 ]; then
     echo "✅ Backend service started successfully on port 5000"
 else
     echo "❌ Error: Backend service failed to start"
-    pm2 logs noxtmstudio-backend --lines 20
+    pm2 logs noxtm-backend --lines 20
     exit 1
 fi
 cd ..
@@ -114,12 +114,12 @@ NODE_ENV=production pm2 start ecosystem.config.js --env production
 sleep 3
 
 # Check if frontend started successfully
-pm2 status | grep "noxtmstudio-frontend.*online" > /dev/null
+pm2 status | grep "noxtm-frontend.*online" > /dev/null
 if [ $? -eq 0 ]; then
     echo "✅ Frontend service started successfully on port 3000"
 else
     echo "❌ Error: Frontend service failed to start"
-    pm2 logs noxtmstudio-frontend --lines 20
+    pm2 logs noxtm-frontend --lines 20
     exit 1
 fi
 cd ..
@@ -138,18 +138,18 @@ pm2 status
 
 echo ""
 echo "📋 Recent backend logs:"
-pm2 logs noxtmstudio-backend --lines 5
+pm2 logs noxtm-backend --lines 5
 
 echo ""
 echo "📋 Recent frontend logs:"
-pm2 logs noxtmstudio-frontend --lines 5
+pm2 logs noxtm-frontend --lines 5
 
 echo ""
 echo "✅ Deployment completed successfully!"
 echo ""
 echo "🎯 Services running:"
-echo "   - Backend API: http://localhost:5000 (noxtmstudio-backend)"
-echo "   - Frontend: http://localhost:3000 (noxtmstudio-frontend)"
+echo "   - Backend API: http://localhost:5000 (noxtm-backend)"
+echo "   - Frontend: http://localhost:3000 (noxtm-frontend)"
 echo ""
 echo "📝 Make sure your Nginx is configured to:"
 echo "   - Proxy noxtmstudio.com to port 3000 (frontend)"
