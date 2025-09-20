@@ -1,6 +1,5 @@
 .home {
   text-align: left;
-  padding: 6rem 0;
   background-color: #F5F5F5;
   min-height: 80vh;
   display: flex;
@@ -8,7 +7,7 @@
 }
 
 .container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -136,6 +135,133 @@
   font-weight: 500;
   color: #6b7280;
   cursor: pointer;
+}
+
+/* Masterpiece Form Section */
+.masterpiece-form {
+  position: relative;
+  margin-top: 4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 500px;
+  padding: 8rem 2rem 6rem 2rem;
+}
+
+.masterpiece-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  z-index: 10;
+  position: relative;
+  max-width: 800px;
+  width: 100%;
+}
+
+.masterpiece-form h1 {
+  font-family: 'Switzer', sans-serif;
+  font-size: 4.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
+  color: #111827;
+  text-align: center;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(229, 231, 235, 0.3);
+  border-radius: 60px;
+  padding: 8px;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  min-width: 450px;
+  backdrop-filter: blur(20px);
+}
+
+.email-input {
+  font-family: 'Switzer', sans-serif;
+  font-size: 1rem;
+  padding: 20px 28px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #374151;
+  flex: 1;
+  border-radius: 60px;
+  font-weight: 400;
+}
+
+.email-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.email-input:focus {
+  outline: none;
+}
+
+.get-free-btn {
+  font-family: 'Switzer', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 20px 32px;
+  border-radius: 60px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  letter-spacing: -0.01em;
+}
+
+.get-free-btn:hover {
+  background-color: #1a1a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Responsive Design for Masterpiece Section */
+@media (max-width: 768px) {
+  .masterpiece-form {
+    padding: 4rem 1rem 3rem 1rem;
+    min-height: 400px;
+  }
+  
+  .masterpiece-form h1 {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+  
+  .form-container {
+    flex-direction: column;
+    gap: 12px;
+    min-width: 300px;
+    padding: 16px;
+    border-radius: 24px;
+  }
+  
+  .email-input {
+    width: 100%;
+    text-align: center;
+    padding: 16px 20px;
+    border-radius: 20px;
+  }
+  
+  .get-free-btn {
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: 20px;
+  }
 }
 
 /* Trusted Companies Section */

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import './home.css';
 import api from '../config/api';
-import { ReactComponent as GrowthIcon } from './image/growth.svg';
 import { ReactComponent as CreativeFuelLogo } from './image/creativefuel.svg';
 import { ReactComponent as EfdStudioLogo } from './image/efd_studio.svg';
 import { ReactComponent as MaxternLogo } from './image/maxtern.svg';
@@ -11,6 +10,7 @@ import { ReactComponent as DesignIcon } from './image/design.svg';
 import { ReactComponent as WebDevIcon } from './image/webdev.svg';
 import { ReactComponent as MediaBuyingIcon } from './image/media_buying.svg';
 import { ReactComponent as JobPlacementIcon } from './image/job_placement.svg';
+import WhiteOverlaySvg from './image/White_Overlay.svg';
 // Blog images (fallback)
 import blogImage1 from './image/Blog1.jpg';
 import blogImage2 from './image/Blog2.jpg';
@@ -134,19 +134,27 @@ function Home({ user }) {
     <div className="home">
       <div className="container">
         <div className="hero-section">
-          <div className="tagline">
-            <GrowthIcon className="growth-icon" /> A NEW WAY OF MARKETING
+          <div 
+            className="masterpiece-form"
+            style={{
+              backgroundImage: `url(${WhiteOverlaySvg})`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center center',
+              backgroundSize: '100%'
+            }}
+          >
+            <div className="masterpiece-content">
+              <h1>Management of Your Masterpiece</h1>
+              <div className="form-container">
+                <input 
+                  type="email" 
+                  placeholder="you@company.com" 
+                  className="email-input"
+                />
+                <button className="get-free-btn">Get It Free</button>
+              </div>
+            </div>
           </div>
-          <h1>Master of Marketing<br />& Management</h1>
-          <p className="hero-description">
-            We help brands tell their story, connect with people, and grow with purpose. Merging creativity 
-            and strategy, We build meaningful growth for businesses and their audiences.
-          </p>
-          
-           <div className="cta-buttons">
-             <button className="btn btn-primary btn-small" style={{backgroundColor: '#000000', color: '#ffffff'}}>Work with us</button>
-             <span className="quote-text">Get a Quote ?</span>
-           </div>
 
           <div className="trusted-companies">
             <h3 className="trusted-title">Trusted by the world leaders</h3>

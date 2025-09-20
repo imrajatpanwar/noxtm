@@ -8,24 +8,24 @@ function Header() {
       <div className="header-container">
         <div className="logo">
           <Link to="/" className="logo-link">
-            <h1>NOXTM STUDIO</h1>
+            <h1>NOXTM</h1>
           </Link>
         </div>
         <nav className="header-nav">
-          <a href="mailto:hello@noxtmstudio.com" className="nav-item">
-            hello@noxtmstudio.com
+          <a href="mailto:mail@noxtm.com" className="nav-item">
+            mail@noxtm.com
           </a>
-          <a href="#services" className="nav-item btn-style">
-            Services
+          <a href="#products" className="nav-item btn-style">
+            Products
           </a>
-          <a href="#portfolio" className="nav-item btn-style">
-            Portfolio
+          <a href="#security" className="nav-item btn-style">
+            Security
           </a>
-          <Link to="/blog" className="nav-item btn-style">
-            Blog
+          <Link to="/documentation" className="nav-item btn-style">
+            Documentation
           </Link>
-          <button className="get-started-btn">
-            Get Started
+          <button className="login-btn">
+            Login
           </button>
         </nav>
       </div>
