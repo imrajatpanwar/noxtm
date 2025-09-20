@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'noxtmstudio-backend',
+    name: 'noxtm-backend',
     script: 'server.js',
     instances: 1,
     autorestart: true,
