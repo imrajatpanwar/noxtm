@@ -25,7 +25,7 @@ function Footer() {
           <div className="footer-section">
             <h4>Contact</h4>
             <ul>
-              <li>hello@noxtmstudio.com</li>
+              <li>hello@noxtm.com</li>
               <li>+1 (555) 123-4567</li>
               <li>123 Studio Street</li>
               <li>Creative City, CC 12345</li>

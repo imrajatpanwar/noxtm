@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Production Deployment Script for noxtmstudio with Separate Frontend and Backend
+# Production Deployment Script for noxtm with Separate Frontend and Backend
 # Frontend runs on port 3000, Backend runs on port 5000
 
 echo "🚀 Starting production deployment with separate services..."
@@ -152,7 +152,7 @@ echo "   - Backend API: http://localhost:5000 (noxtm-backend)"
 echo "   - Frontend: http://localhost:3000 (noxtm-frontend)"
 echo ""
 echo "📝 Make sure your Nginx is configured to:"
-echo "   - Proxy noxtmstudio.com to port 3000 (frontend)"
-echo "   - Proxy noxtmstudio.com/api/* to port 5000 (backend)"
+echo "   - Proxy noxtm.com to port 3000 (frontend)"
+echo "   - Proxy noxtm.com/api/* to port 5000 (backend)"
 echo ""
 echo "🎉 Both frontend and backend are now running as separate services!"

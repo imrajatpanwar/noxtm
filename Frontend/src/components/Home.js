@@ -10,7 +10,6 @@ import { ReactComponent as DesignIcon } from './image/design.svg';
 import { ReactComponent as WebDevIcon } from './image/webdev.svg';
 import { ReactComponent as MediaBuyingIcon } from './image/media_buying.svg';
 import { ReactComponent as JobPlacementIcon } from './image/job_placement.svg';
-import WhiteOverlaySvg from './image/White_Overlay.svg';
 // Blog images (fallback)
 import blogImage1 from './image/Blog1.jpg';
 import blogImage2 from './image/Blog2.jpg';
@@ -84,7 +83,7 @@ function Home({ user }) {
         return blog.featuredImage.path;
       }
       // Otherwise, construct the API URL (remove /api from the end for static files)
-      return `https://noxtmstudio.com${blog.featuredImage.path}`;
+      return `https://noxtm.com${blog.featuredImage.path}`;
     }
     // Fallback to default images
     const fallbackImages = [blogImage1, blogImage2, blogImage3];
@@ -135,23 +134,27 @@ function Home({ user }) {
       <div className="container">
         <div className="hero-section">
           <div 
-            className="masterpiece-form"
+            className="masterpiece-form masterpiece-bg"
             style={{
-              backgroundImage: `url(${WhiteOverlaySvg})`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center center',
-              backgroundSize: '100%'
+              backgroundColor: '#ffffff',
+              borderRadius: '20px'
             }}
           >
             <div className="masterpiece-content">
               <h1>Management of Your Masterpiece</h1>
-              <div className="form-container">
-                <input 
-                  type="email" 
-                  placeholder="you@company.com" 
-                  className="email-input"
-                />
-                <button className="get-free-btn">Get It Free</button>
+                <p className="masterpiece-subtitle">Manage your projects, clients, and team with real-time insights and complete control always at your fingertips.</p>
+              <div className="question-container">
+                <textarea 
+                  className="question-text"
+                  placeholder="eg: I want total control over all my companies, track their performance, and manage everything from one place, can this dashboard really help me do that?"
+                  rows="3"
+                ></textarea>
+                <div className="cta-section">
+                  <span className="cta-text">Ask your question to find the dashboard that's right for you.</span>
+                  <div className="cta-arrow-container">
+                    <LinkArrow className="cta-arrow" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -172,7 +175,20 @@ function Home({ user }) {
                 <div className="logo-item">
                   <OperaLogo className="company-logo" />
                 </div>
-                {/* Duplicate logos for seamless loop */}
+                {/* First duplicate set for seamless loop */}
+                <div className="logo-item">
+                  <CreativeFuelLogo className="company-logo" />
+                </div>
+                <div className="logo-item">
+                  <EfdStudioLogo className="company-logo" />
+                </div>
+                <div className="logo-item">
+                  <MaxternLogo className="company-logo" />
+                </div>
+                <div className="logo-item">
+                  <OperaLogo className="company-logo" />
+                </div>
+                {/* Second duplicate set for extra smooth loop */}
                 <div className="logo-item">
                   <CreativeFuelLogo className="company-logo" />
                 </div>
