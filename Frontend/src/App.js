@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './config/api';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from 'sonner';
 import { RoleProvider } from './contexts/RoleContext';
 import Header from './components/Header';

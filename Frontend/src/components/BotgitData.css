@@ -1,0 +1,29 @@
+.botgit-data-container {
+  padding: 20px;
+}
+
+.botgit-data-container h2 {
+  margin-bottom: 20px;
+}
+
+.botgit-data-container table {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.botgit-data-container th {
+  background-color: #f8f9fa;
+}
+
+.botgit-data-container td {
+  vertical-align: middle;
+}
+
+.botgit-data-container a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.botgit-data-container a:hover {
+  text-decoration: underline;
+}

@@ -42,6 +42,8 @@ import WebsiteAnalytics from './WebsiteAnalytics';
 import ProfileSettings from './ProfileSettings';
 import SeoInsights from './SeoInsights';
 import NotificationCenter from './NotificationCenter';
+import BotgitData from './BotgitData';
+import BotgitSettings from './BotgitSettings';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -157,6 +159,10 @@ function Dashboard({ user, onLogout }) {
         return <SeoInsights />;
       case 'profile-settings':
         return <ProfileSettings user={user} onLogout={onLogout} />;
+      case 'botgit-data':
+        return <BotgitData />;
+      case 'botgit-settings':
+        return <BotgitSettings />;
       default:
         return (
           <div className="dashboard-card">

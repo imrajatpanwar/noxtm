@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Create axios instance with proper configuration
-const PRODUCTION_BACKEND_URL = 'https://noxtmstudio.com/api/';
+const PRODUCTION_BACKEND_URL = 'https://noxtm.com/api/';
 
 const api = axios.create({
   baseURL: PRODUCTION_BACKEND_URL,
