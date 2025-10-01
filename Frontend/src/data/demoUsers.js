@@ -5,14 +5,14 @@ export const demoUsers = [
   {
     id: '1',
     name: 'John Smith',
-    email: 'john.admin@noxtmstudio.com',
+    email: 'john.admin@noxtm.com',
     role: 'Admin',
     status: 'Active',
     access: ['Data Cluster', 'Projects', 'Finance', 'Digital Media', 'Marketing'],  },
   {
     id: '2',
     name: 'Sarah Johnson',
-    email: 'sarah.pm@noxtmstudio.com',
+    email: 'sarah.pm@noxtm.com',
     role: 'Project Manager',
     status: 'Active',
     access: ['Projects', 'Marketing'],
@@ -20,14 +20,14 @@ export const demoUsers = [
   {
     id: '3',
     name: 'Mike Chen',
-    email: 'mike.data@noxtmstudio.com',
+    email: 'mike.data@noxtm.com',
     role: 'Data Analyst',
     status: 'Active',
     access: ['Data Cluster'],
   {
     id: '4',
     name: 'Emily Rodriguez',
-    email: 'emily.social@noxtmstudio.com',
+    email: 'emily.social@noxtm.com',
     role: 'Social Media Manager',
     status: 'Active',
     access: ['Digital Media', 'Marketing'],
@@ -35,14 +35,14 @@ export const demoUsers = [
   {
     id: '5',
     name: 'David Wilson',
-    email: 'david.hr@noxtmstudio.com',
+    email: 'david.hr@noxtm.com',
     role: 'Human Resource',
     status: 'Active',
     access: ['Human Resources'],
   {
     id: '6',
     name: 'Lisa Parker',
-    email: 'lisa.design@noxtmstudio.com',
+    email: 'lisa.design@noxtm.com',
     role: 'Graphic Designer',
     status: 'Active',
     access: ['Projects', 'Digital Media'],
@@ -50,21 +50,21 @@ export const demoUsers = [
   {
     id: '7',
     name: 'Alex Thompson',
-    email: 'alex.dev@noxtmstudio.com',
+    email: 'alex.dev@noxtm.com',
     role: 'Web Developer',
     status: 'Active',
     access: ['Projects'],
   {
     id: '8',
     name: 'Rachel Kim',
-    email: 'rachel.seo@noxtmstudio.com',
+    email: 'rachel.seo@noxtm.com',
     role: 'SEO Manager',
     status: 'Active',
     access: ['Digital Media', 'Marketing'],
   {
     id: '9',
     name: 'Tom Anderson',
-    email: 'tom.miner@noxtmstudio.com',
+    email: 'tom.miner@noxtm.com',
     role: 'Data Miner',
     status: 'Inactive',
     access: ['Data Cluster'],
@@ -87,7 +87,7 @@ export const initializeDemoData = () => {
     localStorage.setItem('user', JSON.stringify({
       id: '1',
       username: 'John Smith',
-      email: 'john.admin@noxtmstudio.com',
+      email: 'john.admin@noxtm.com',
       role: 'Admin'
     }));
     console.log('Demo current user set');

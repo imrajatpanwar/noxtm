@@ -24,8 +24,8 @@ app.use((req, res, next) => {
 // Middleware
 app.use(cors({
   origin: [
-    'http://noxtmstudio.com',
-    'https://noxtmstudio.com',
+    'http://noxtm.com',
+    'https://noxtm.com',
     'http://localhost:3000', // Keep for local development if needed
     'http://localhost:3001'
   ],
@@ -47,7 +47,7 @@ let mongoConnected = false;
 
 const connectWithTimeout = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtmstudio';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
     console.log('Attempting to connect to MongoDB...');
     
     await mongoose.connect(mongoUri, {
@@ -196,7 +196,7 @@ blogSchema.pre('save', function(next) {
 const Blog = mongoose.model('Blog', blogSchema);
 
 // JWT Secret - Use environment variable or generate a secure fallback
-const JWT_SECRET = process.env.JWT_SECRET || 'noxtmstudio-fallback-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production';
 
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️  WARNING: Using fallback JWT secret. Set JWT_SECRET in environment variables for production!');
@@ -309,6 +309,22 @@ const upload = multer({
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Base API endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Noxtm API Server',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth/*',
+      users: '/api/users/*',
+      blogs: '/api/blogs/*',
+      categories: '/api/categories'
+    },
+    documentation: 'https://noxtm.com/api/docs'
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -1124,8 +1140,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Noxtm Studio Backend Server Started`);
   console.log('='.repeat(50));
   console.log(`🌐 Server running on port: ${PORT}`);
-  console.log(`📡 API endpoints: http://noxtmstudio.com/api`);
-  console.log(`🔍 Health check: http://noxtmstudio.com/api/health`);
+  console.log(`📡 API endpoints: http://noxtm.com/api`);
+  console.log(`🔍 Health check: http://noxtm.com/api/health`);
   console.log(`🌐 MongoDB status: ${mongoConnected ? '✅ Connected' : '❌ Disconnected'}`);
   console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Set' : '⚠️  Using fallback'}`);
   console.log(`🏗️  Environment: ${process.env.NODE_ENV || 'development'}`);

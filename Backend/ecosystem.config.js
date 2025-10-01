@@ -18,8 +18,8 @@ module.exports = {
     env_production: {
       NODE_ENV: 'production',
       PORT: 5000,
-      MONGODB_URI: 'mongodb+srv://noxtmstudio:qWWniMmKtOxnJcm9@cluster0.4jneyth.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
-      JWT_SECRET: 'noxtmstudio-super-secure-jwt-secret-key-2024-production-very-long-and-random',
+      MONGODB_URI: 'mongodb+srv://noxtm:qWWniMmKtOxnJcm9@cluster0.4jneyth.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
+      JWT_SECRET: 'noxtm-super-secure-jwt-secret-key-2024-production-very-long-and-random',
       BCRYPT_ROUNDS: 12
     }
   }]
