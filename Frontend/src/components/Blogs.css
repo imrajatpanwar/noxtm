@@ -1,7 +1,8 @@
 .blogs-container {
   width: 100%;
   min-height: 100vh;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+  padding: 40px 0;
 }
 
 .blogs-actions {
@@ -12,18 +13,20 @@
 }
 
 .btn-secondary {
-  background: #edf2f7;
-  color: #4a5568;
-  border: 2px solid #e2e8f0;
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 2px solid #a5b4fc;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(55, 48, 163, 0.08);
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e0;
+  background: #a5b4fc;
+  border-color: #818cf8;
+  box-shadow: 0 4px 16px rgba(55, 48, 163, 0.15);
 }

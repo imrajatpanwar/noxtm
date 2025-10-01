@@ -107,17 +107,18 @@
 }
 
 .blog-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-  border: 1px solid #e2e8f0;
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: linear-gradient(120deg, #f0f5ff 0%, #e0e7ff 100%);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(55, 48, 163, 0.10);
+  border: 2px solid #a5b4fc;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   overflow: hidden;
 }
 
 .blog-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(55, 48, 163, 0.18);
+  border-color: #818cf8;
 }
 
 .blog-card-header {

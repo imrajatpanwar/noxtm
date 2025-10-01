@@ -4,10 +4,14 @@
   min-height: 80vh;
   display: flex;
   align-items: center;
+  /* Optimize for smooth scrolling */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -146,22 +150,78 @@
   align-items: center;
   min-height: 500px;
   padding: 8rem 2rem 6rem 2rem;
+  /* Optimize for performance */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Create a pseudo-element for the background that can glitch independently */
+.masterpiece-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('./image/map.svg');
+  background-size: 140%;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  border-radius: 20px;
+  z-index: 1;
+  animation: mapPan 30s ease-in-out infinite alternate;
+  will-change: background-position;
+  opacity: 0.4;
+  /* Add GPU acceleration for better performance */
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Ensure content appears above the glitched background */
+.masterpiece-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Remove glitch from the main container */
+.masterpiece-bg {
+  /* keep static styles but no animation */
+  background-color: #ffffff;
+  border-radius: 20px;
+}
+
+@keyframes mapPan {
+  from {
+    background-position: center bottom;
+  }
+  to {
+    background-position: center top;
+  }
 }
 
 .masterpiece-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3rem;
   z-index: 10;
   position: relative;
   max-width: 800px;
   width: 100%;
 }
 
+.masterpiece-subtitle {
+  font-family: 'Switzer', sans-serif;
+  font-size: 16px;
+  color: #b0b3b9;
+  text-align: center;
+  margin-top: 10px;
+}
+
 .masterpiece-form h1 {
   font-family: 'Switzer', sans-serif;
-  font-size: 4.5rem;
+  font-size: 3.5rem;
   font-weight: 600;
   line-height: 1.1;
   margin: 0;
@@ -184,6 +244,81 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   min-width: 450px;
   backdrop-filter: blur(20px);
+}
+
+.question-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 90%;
+  margin-top: 1.5rem;
+  max-width: 950px;
+  border-radius: 15px;
+  overflow: hidden;
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 8px;
+}
+
+.question-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  color: #111827;
+  line-height: 1.6;
+  padding: 0.75rem 2rem;
+  min-height: 110px;
+  background-color: white;
+  border: none;
+  border-bottom: 1px solid #F3F4F6;
+  width: 100%;
+  outline: none;
+  resize: none;
+}
+
+.question-text::placeholder {
+  color: #9CA3AF;
+  opacity: 1;
+}
+
+.cta-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0rem 0rem 0rem 1rem;
+  background-color: #F9FAFB;
+  cursor: pointer;
+  border: 1px solid #E5E7EB;
+}
+
+.cta-section:hover {
+  background-color: #F3F4F6;
+}
+
+.cta-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: #111827;
+  font-weight: 400;
+}
+
+.cta-arrow-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  background-color: #000;
+  border-radius: 25%;
+}
+
+.cta-arrow {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.cta-section:hover .cta-arrow-container {
+  transform: scale(1.05);
 }
 
 .email-input {
@@ -250,6 +385,20 @@
     border-radius: 24px;
   }
   
+  .question-container {
+    width: 95%;
+    max-width: 100%;
+  }
+  
+  .question-text {
+    font-size: 1rem;
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .cta-section {
+    padding: 0.75rem 1.5rem;
+  }
+  
   .email-input {
     width: 100%;
     text-align: center;
@@ -287,14 +436,23 @@
   position: relative;
   mask: linear-gradient(90deg, transparent, white 20%, white 80%, transparent);
   -webkit-mask: linear-gradient(90deg, transparent, white 20%, white 80%, transparent);
+  /* Optimize for performance */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .logos-scroll {
   display: flex;
   align-items: center;
   gap: 4rem;
-  animation: scroll-logos 20s linear infinite;
+  animation: scroll-logos 30s linear infinite;
   width: fit-content;
+  will-change: transform;
+  /* Add GPU acceleration for smoother animation */
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .logos-scroll:hover {
@@ -307,6 +465,10 @@
   justify-content: center;
   flex-shrink: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
+  /* Add GPU acceleration for better performance */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .logo-item:hover {
@@ -328,10 +490,10 @@
 /* Keyframes for smooth scrolling */
 @keyframes scroll-logos {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(calc(-33.333% - 1.33rem), 0, 0);
   }
 }
 
@@ -404,6 +566,7 @@
 }
 
 .blog-journal-grid {
+  opacity: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;

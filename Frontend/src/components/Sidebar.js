@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiDatabase, FiSliders } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import './Sidebar.css';
 
@@ -798,6 +798,25 @@ function Sidebar({ activeSection, onSectionChange }) {
               </div>
             </div>
           )}
+
+          {/* Botgit Section */}
+          <div className="sidebar-section">
+            <h4 className="sidebar-section-title">BOTGIT</h4>
+            <div 
+              className={`sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
+              onClick={() => onSectionChange('botgit-data')}
+            >
+              <FiDatabase className="sidebar-icon" />
+              <span>Scraped Data</span>
+            </div>
+            <div 
+              className={`sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
+              onClick={() => onSectionChange('botgit-settings')}
+            >
+              <FiSliders className="sidebar-icon" />
+              <span>Botgit Settings</span>
+            </div>
+          </div>
 
           {/* Profile Settings Section */}
           <div className="sidebar-section">
