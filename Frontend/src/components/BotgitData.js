@@ -15,11 +15,20 @@ const BotgitData = () => {
       try {
         const res = await fetch('/api/scraped-data');
         if (!res.ok) {
-          throw new Error(`Failed to fetch scraped data (${res.status})`);
+          const errorText = await res.text();
+          console.error('API Error Response:', errorText);
+          throw new Error(`Failed to fetch scraped data (Status: ${res.status}). Server response: ${errorText.substring(0, 100)}...`);
         }
-        const json = await res.json();
-        setData(json.data || []);
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text);
+          setData(json.data || []);
+        } catch (parseError) {
+          console.error('API Response:', text);
+          throw new Error(`Failed to parse JSON response. Received: ${text.substring(0, 100)}...`);
+        }
       } catch (err) {
+        console.error('BotgitData Error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
