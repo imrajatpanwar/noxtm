@@ -195,6 +195,21 @@ blogSchema.pre('save', function(next) {
 
 const Blog = mongoose.model('Blog', blogSchema);
 
+// Scraped Data Schema (Botgit integration)
+const scrapedDataSchema = new mongoose.Schema({
+  name: { type: String, trim: true },
+  location: { type: String, trim: true },
+  profileUrl: { type: String, required: true, unique: true, index: true },
+  email: { type: String, trim: true },
+  phone: { type: String, trim: true },
+  role: { type: String, trim: true },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+scrapedDataSchema.index({ profileUrl: 1 }, { unique: true });
+
+const ScrapedData = mongoose.model('ScrapedData', scrapedDataSchema);
+
 // JWT Secret - Use environment variable or generate a secure fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production';
 
@@ -632,6 +647,92 @@ app.get('/api/blogs/analytics/stats', authenticateToken, async (req, res) => {
       recentBlogs
     });
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ===== SCRAPED DATA (BOTGIT) API ROUTES =====
+
+// Create or upsert scraped profile
+app.post('/api/scraped-data', async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const payload = req.body;
+
+    // Support single object or array batch
+    const records = Array.isArray(payload) ? payload : [payload];
+
+    if (!records.length) {
+      return res.status(400).json({ message: 'No data provided' });
+    }
+
+    const results = { inserted: 0, duplicates: 0, errors: 0, details: [] };
+
+    for (const rec of records) {
+      const { profileUrl, name, location, email, phone, role, timestamp } = rec || {};
+      if (!profileUrl || typeof profileUrl !== 'string') {
+        results.errors++;
+        results.details.push({ profileUrl, status: 'error', reason: 'profileUrl required' });
+        continue;
+      }
+      try {
+        // Upsert based on profileUrl but do not overwrite existing non-empty fields with empty ones
+        const existing = await ScrapedData.findOne({ profileUrl });
+        if (existing) {
+          results.duplicates++;
+          results.details.push({ profileUrl, status: 'duplicate' });
+          continue;
+        }
+        const doc = new ScrapedData({
+          profileUrl: profileUrl.trim(),
+          name: name || '',
+          location: location || '',
+          email: email || '',
+          phone: phone || '',
+          role: role || '',
+          timestamp: timestamp ? new Date(timestamp) : new Date()
+        });
+        await doc.save();
+        results.inserted++;
+        results.details.push({ profileUrl, status: 'inserted' });
+      } catch (err) {
+        if (err.code === 11000) {
+          results.duplicates++;
+          results.details.push({ profileUrl, status: 'duplicate' });
+        } else {
+          results.errors++;
+          results.details.push({ profileUrl, status: 'error', reason: err.message });
+        }
+      }
+    }
+
+    res.status(201).json({ message: 'Processed scraped data', ...results });
+  } catch (error) {
+    console.error('Scraped data POST error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all scraped data (basic pagination optional)
+app.get('/api/scraped-data', async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const skip = (page - 1) * limit;
+    const total = await ScrapedData.countDocuments();
+    const data = await ScrapedData.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json({
+      data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (error) {
+    console.error('Scraped data GET error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

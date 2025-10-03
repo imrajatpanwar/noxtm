@@ -287,3 +287,63 @@ MIT License - feel free to use this project for your own applications.
 # Automated Deployment Setup Complete
 # Testing Automated Deployment - Tue Sep  9 19:00:29 IST 2025
 # GitHub Actions Test - Tue Sep  9 19:06:56 IST 2025
+
+## Botgit Scraped Data Integration
+
+The Botgit Chrome extension now sends scraped LinkedIn profile data directly to the Noxtm backend instead of Google Sheets.
+
+### Data Model
+Stored in MongoDB collection `scrappeddatas` via Mongoose model `ScrapedData`:
+```
+{
+   name: String,
+   location: String,
+   profileUrl: String (unique, required),
+   email: String,
+   phone: String,
+   role: String,
+   timestamp: Date (original scrape time),
+   createdAt: Date,
+   updatedAt: Date
+}
+```
+
+### API Endpoints
+
+POST /api/scraped-data
+Send a single object or an array. Duplicate `profileUrl` values are skipped.
+Response example:
+```
+{
+   "message": "Processed scraped data",
+   "inserted": 12,
+   "duplicates": 3,
+   "errors": 0,
+   "details": [ { "profileUrl": "https://...", "status": "inserted" } ]
+}
+```
+
+GET /api/scraped-data?page=1&limit=100
+Returns paginated data:
+```
+{
+   "data": [ ...records ],
+   "pagination": { "page": 1, "limit": 100, "total": 1234, "totalPages": 13 }
+}
+```
+
+### Frontend
+Component `BotgitData` fetches `/api/scraped-data` and renders a dynamic table with refresh, loading, error, and empty states.
+
+### Chrome Extension Changes
+`content.js` posts directly to `https://noxtm.com/api/scraped-data`. For local development change `BACKEND_API_URL` constant to `http://localhost:5000/api/scraped-data`.
+
+### Error Handling
+* 503 when database unavailable
+* 400 for empty or malformed payload
+* Duplicate profile URLs counted separately (not errors)
+* 500 for server errors with message
+
+### Migration Notes
+All Google Apps Script / Google Sheets logic was removed from the extension (`background.js`, `content.js`). No additional environment variables required.
+
