@@ -26,6 +26,7 @@ app.use(cors({
   origin: [
     'http://noxtm.com',
     'https://noxtm.com',
+    'chrome-extension://*', // Allow Chrome extension requests
     'http://localhost:3000', // Keep for local development if needed
     'http://localhost:3001'
   ],
