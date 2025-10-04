@@ -39,9 +39,8 @@ import WebSettings from './WebSettings';
 import Blogs from './Blogs';
 import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
-import ProfileSettings from './ProfileSettings';
 import SeoInsights from './SeoInsights';
-import NotificationCenter from './NotificationCenter';
+import WorkspaceSettings from './WorkspaceSettings';
 import BotgitData from './BotgitData';
 import BotgitSettings from './BotgitSettings';
 import './Dashboard.css';
@@ -157,8 +156,8 @@ function Dashboard({ user, onLogout }) {
         return <WebsiteAnalytics />;
       case 'seo-insights':
         return <SeoInsights />;
-      case 'profile-settings':
-        return <ProfileSettings user={user} onLogout={onLogout} />;
+      case 'workspace-settings':
+        return <WorkspaceSettings user={user} onLogout={onLogout} />;
       case 'botgit-data':
         return <BotgitData />;
       case 'botgit-settings':
@@ -193,16 +192,6 @@ function Dashboard({ user, onLogout }) {
       
       {/* Main Content */}
       <div className="dashboard-main">
-        {/* Dashboard Header with Notifications */}
-        <div className="dashboard-header">
-          <div className="dashboard-title">
-            <h1>Dashboard</h1>
-          </div>
-          <div className="dashboard-header-actions">
-            <NotificationCenter />
-          </div>
-        </div>
-        
         <div className="dashboard-content">
           {renderContent()}
         </div>

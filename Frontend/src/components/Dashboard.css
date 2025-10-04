@@ -12,31 +12,6 @@
   background-color: #F5F5F5;
 }
 
-/* Dashboard Header */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px 0 32px;
-  background-color: #F5F5F5;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 0;
-}
-
-.dashboard-title h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #111827;
-  font-family: 'Switzer', sans-serif;
-}
-
-.dashboard-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
 .dashboard-content {
   padding: 32px;
   max-width: 1200px;
@@ -174,14 +149,6 @@
 }
 
 @media (max-width: 480px) {
-  .dashboard-header {
-    padding: 12px;
-  }
-  
-  .dashboard-title h1 {
-    font-size: 18px;
-  }
-  
   .dashboard-content {
     padding: 16px;
   }

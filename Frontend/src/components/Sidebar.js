@@ -31,7 +31,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
     'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
     'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
-    'Profile Settings': true, // Profile settings should be accessible to all users
+    'Workspace Settings': true, // Workspace settings should be accessible to all users
   }), [hasPermission, MODULES]); // Remove permissionUpdateTrigger as hasPermission already handles updates
 
   // Permission checking function using memoized values
@@ -161,8 +161,8 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
     
-    // Profile Settings (Separate Section)
-    { name: 'Profile Settings', section: 'profile-settings', category: 'Profile Settings' },
+    // Workspace Settings (Separate Section)
+    { name: 'Workspace Settings', section: 'workspace-settings', category: 'Workspace Settings' },
   ];
 
   // Filter items based on search query and permissions
@@ -818,15 +818,15 @@ function Sidebar({ activeSection, onSectionChange }) {
             </div>
           </div>
 
-          {/* Profile Settings Section */}
+          {/* Workspace Settings Section */}
           <div className="sidebar-section">
-            <h4 className="sidebar-section-title">PROFILE</h4>
+            <h4 className="sidebar-section-title">WORKSPACE</h4>
             <div 
-              className={`sidebar-item ${activeSection === 'profile-settings' ? 'active' : ''}`}
-              onClick={() => onSectionChange('profile-settings')}
+              className={`sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
+              onClick={() => onSectionChange('workspace-settings')}
             >
-              <FiUser className="sidebar-icon" />
-              <span>Profile Settings</span>
+              <FiSettings className="sidebar-icon" />
+              <span>Workspace Settings</span>
             </div>
           </div>
         </>
