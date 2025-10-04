@@ -117,3 +117,13 @@
     padding: 10px 20px;
   }
 }
+
+/* User info styles */
+.user-info {
+  color: #374151 !important;
+  font-weight: 600 !important;
+  padding: 8px 16px;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
