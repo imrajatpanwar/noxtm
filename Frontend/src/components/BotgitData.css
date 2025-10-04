@@ -1,29 +1,277 @@
-.botgit-data-container {
-  padding: 20px;
+.header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 0 16px;
 }
 
-.botgit-data-container h2 {
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  min-width: 140px;
+}
+
+.botgit-data-container {
+  background: #fff;
+  padding: 14px 15px 15px 20px;
+  border-radius: 8px;
+}
+
+.data-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 20px;
 }
 
-.botgit-data-container table {
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.botgit-data-container th {
+.info-section {
+  display: flex;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 36px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #000;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.filter-btn, .export-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn {
+  background: #000;
+  color: #fff;
+}
+
+.date-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.total-count {
+  font-size: 17px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.custom-checkbox:checked {
+  background-color: #000;
+  border-color: #000;
+}
+
+.selected-row {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+tr:hover .custom-checkbox:not(:checked) {
+  border-color: #000;
+}
+
+th {
+  background: #f8f9fa;
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+}
+
+td {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-top: 1px solid #e0e0e0;
+}
+
+tr:hover {
   background-color: #f8f9fa;
 }
 
-.botgit-data-container td {
-  vertical-align: middle;
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.botgit-data-container a {
-  color: #007bff;
-  text-decoration: none;
+/* Icons styling */
+svg {
+  width: 18px;
+  height: 18px;
 }
 
-.botgit-data-container a:hover {
-  text-decoration: underline;
+/* Date range picker styling */
+.date-selector {
+  position: relative;
+}
+
+.date-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.date-display:hover {
+  border-color: #000;
+}
+
+.calendar-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  z-index: 1000;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: scale(0.65);
+  transform-origin: top right;
+}
+
+.date-range {
+  font-size: 14px;
+}
+
+/* Custom styling for the calendar */
+.rdrCalendarWrapper {
+  font-size: 17px;
+  background-color: white;
+  border-radius: 8px;
+}
+
+.rdrDateDisplayWrapper {
+  background-color: #f8f9fa;
+}
+
+.rdrDateDisplay {
+  margin: 0.8em;
+}
+
+.rdrDateDisplayItem {
+  border-radius: 4px;
+  background-color: white;
+}
+
+.rdrDateDisplayItem input {
+  color: #000;
+}
+
+.rdrMonthAndYearWrapper {
+  padding-top: 0.8em;
+}
+
+.rdrMonth {
+  padding: 0 0.8em 0.8em;
+}
+
+.rdrDay {
+  color: #333;
+}
+
+.rdrDayNumber {
+  font-weight: 400;
+}
+
+.rdrSelected, 
+.rdrInRange, 
+.rdrStartEdge, 
+.rdrEndEdge {
+  color: #fff !important;
+  background: #000 !important;
+}
+
+.rdrDayStartPreview, 
+.rdrDayInPreview, 
+.rdrDayEndPreview {
+  border-color: #000 !important;
+}
+
+.rdrDayStartPreview:after, 
+.rdrDayInPreview:after, 
+.rdrDayEndPreview:after {
+  border-color: rgba(0, 0, 0, 0.09) !important;
 }
