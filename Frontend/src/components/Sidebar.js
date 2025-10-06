@@ -18,21 +18,137 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Get current user from localStorage
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUser(userData);
+  }, []);
+
+  // Check if current user has SOLOHQ role
+  const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
+
   // Memoized permission checking to prevent unnecessary re-renders and glitches
-  const sectionPermissions = useMemo(() => ({
-    'Dashboard': hasPermission(MODULES.DASHBOARD),
-    'Data Center': hasPermission(MODULES.DATA_CENTER),
-    'Projects': hasPermission(MODULES.PROJECTS),
-    'Team Communication': hasPermission(MODULES.TEAM_COMMUNICATION),
-    'Digital Media Management': hasPermission(MODULES.DIGITAL_MEDIA),
-    'Marketing': hasPermission(MODULES.MARKETING),
-    'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
-    'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
-    'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
-    'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
-    'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
-    'Workspace Settings': true, // Workspace settings should be accessible to all users
-  }), [hasPermission, MODULES]); // Remove permissionUpdateTrigger as hasPermission already handles updates
+  const sectionPermissions = useMemo(() => {
+    // For Admin users, grant access to all sections (super-admin)
+    if (currentUser?.role === 'Admin') {
+      return {
+        'Dashboard': true,
+        'Data Center': true,
+        'Projects': true,
+        'Team Communication': true,
+        'Digital Media Management': true,
+        'Marketing': true,
+        'HR Management': true,
+        'Finance Management': true,
+        'SEO Management': true,
+        'Internal Policies': true,
+        'Settings & Configuration': true,
+        'Workspace Settings': true,
+        'Botgit': true,
+        'Profile': true
+      };
+    }
+    
+    // For Business Admin users, grant access to all sections except Settings & Configuration
+    if (currentUser?.role === 'Business Admin') {
+      return {
+        'Dashboard': true,
+        'Data Center': true,
+        'Projects': true,
+        'Team Communication': true,
+        'Digital Media Management': true,
+        'Marketing': true,
+        'HR Management': true,
+        'Finance Management': true,
+        'SEO Management': true,
+        'Internal Policies': true,
+        'Settings & Configuration': false,
+        'Workspace Settings': true,
+        'Botgit': true,
+        'Profile': true
+      };
+    }
+    
+    // For Freelancer users, grant access to most sections except HR/Internal Policies/Settings
+    if (currentUser?.role === 'Freelancer') {
+      return {
+        'Dashboard': true,
+        'Data Center': true,
+        'Projects': true,
+        'Team Communication': true,
+        'Digital Media Management': true,
+        'Marketing': true,
+        'HR Management': false,
+        'Finance Management': true,
+        'SEO Management': true,
+        'Internal Policies': false,
+        'Settings & Configuration': false,
+        'Workspace Settings': true,
+        'Botgit': true,
+        'Profile': true
+      };
+    }
+    
+    // For SOLOHQ users, override permissions with specific allowed sections
+    if (isSOLOHQUser) {
+      return {
+        'Dashboard': false,
+        'Data Center': false,
+        'Projects': true,
+        'Team Communication': true,
+        'Digital Media Management': false,
+        'Marketing': false,
+        'HR Management': false,
+        'Finance Management': true,
+        'SEO Management': false,
+        'Internal Policies': false,
+        'Settings & Configuration': false,
+        'Workspace Settings': false,
+        'Botgit': true,
+        'Profile': true
+      };
+    }
+    
+    // For Team Member users, use backend permissions (controlled by Business Admin)
+    if (currentUser?.role === 'Team Member') {
+      return {
+        'Dashboard': hasPermission(MODULES.DASHBOARD),
+        'Data Center': hasPermission(MODULES.DATA_CENTER),
+        'Projects': hasPermission(MODULES.PROJECTS),
+        'Team Communication': hasPermission(MODULES.TEAM_COMMUNICATION),
+        'Digital Media Management': hasPermission(MODULES.DIGITAL_MEDIA),
+        'Marketing': hasPermission(MODULES.MARKETING),
+        'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
+        'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
+        'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
+        'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
+        'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
+        'Workspace Settings': false, // Team Members don't get workspace settings
+        'Botgit': hasPermission(MODULES.PROJECTS), // Botgit tied to projects permission
+        'Profile': true // Profile is available to all users
+      };
+    }
+    
+    // For other specific role users, use existing permission system
+    return {
+      'Dashboard': hasPermission(MODULES.DASHBOARD),
+      'Data Center': hasPermission(MODULES.DATA_CENTER),
+      'Projects': hasPermission(MODULES.PROJECTS),
+      'Team Communication': hasPermission(MODULES.TEAM_COMMUNICATION),
+      'Digital Media Management': hasPermission(MODULES.DIGITAL_MEDIA),
+      'Marketing': hasPermission(MODULES.MARKETING),
+      'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
+      'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
+      'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
+      'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
+      'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
+      'Workspace Settings': true, // Workspace settings should be accessible to specific roles
+      'Botgit': true, // Botgit is available to specific roles
+      'Profile': true // Profile is available to all users
+    };
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role]); // Add currentUser?.role to dependencies
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -160,6 +276,13 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
+    
+    // Botgit
+    { name: 'Scraped Data', section: 'botgit-data', category: 'Botgit' },
+    { name: 'Botgit Settings', section: 'botgit-settings', category: 'Botgit' },
+    
+    // Profile
+    { name: 'Profile Settings', section: 'profile-settings', category: 'Profile' },
     
     // Workspace Settings (Separate Section)
     { name: 'Workspace Settings', section: 'workspace-settings', category: 'Workspace Settings' },
@@ -337,13 +460,17 @@ function Sidebar({ activeSection, onSectionChange }) {
           {hasPermissionForSection('Team Communication') && (
             <div className="sidebar-section">
               <h4 className="sidebar-section-title">TEAM COMMUNICATION</h4>
-              <div 
-                className={`sidebar-item ${activeSection === 'message' ? 'active' : ''}`}
-                onClick={() => onSectionChange('message')}
-              >
-                <FiMessageCircle className="sidebar-icon" />
-                <span>Message</span>
-              </div>
+              {!isSOLOHQUser && (
+                <>
+                  <div 
+                    className={`sidebar-item ${activeSection === 'message' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('message')}
+                  >
+                    <FiMessageCircle className="sidebar-icon" />
+                    <span>Message</span>
+                  </div>
+                </>
+              )}
               <div 
                 className={`sidebar-item ${activeSection === 'team-email' ? 'active' : ''}`}
                 onClick={() => onSectionChange('team-email')}
@@ -351,20 +478,24 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <FiMail className="sidebar-icon" />
                 <span>E-mail</span>
               </div>
-              <div 
-                className={`sidebar-item ${activeSection === 'meeting' ? 'active' : ''}`}
-                onClick={() => onSectionChange('meeting')}
-              >
-                <FiVideo className="sidebar-icon" />
-                <span>Meeting</span>
-              </div>
-              <div 
-                className={`sidebar-item ${activeSection === 'services' ? 'active' : ''}`}
-                onClick={() => onSectionChange('services')}
-              >
-                <FiSettings className="sidebar-icon" />
-                <span>Services</span>
-              </div>
+              {!isSOLOHQUser && (
+                <>
+                  <div 
+                    className={`sidebar-item ${activeSection === 'meeting' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('meeting')}
+                  >
+                    <FiVideo className="sidebar-icon" />
+                    <span>Meeting</span>
+                  </div>
+                  <div 
+                    className={`sidebar-item ${activeSection === 'services' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('services')}
+                  >
+                    <FiSettings className="sidebar-icon" />
+                    <span>Services</span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -622,48 +753,69 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="sidebar-section-title">FINANCE MANAGEMENT</h4>
               
-              <div className="sidebar-item-container">
-                <div 
-                  className={`sidebar-item ${activeSection === 'finance-management' ? 'active' : ''}`}
-                  onClick={toggleFinanceManagement}
-                >
-                  <FiDollarSign className="sidebar-icon" />
-                  <span>Finance Management</span>
-                  {financeManagementExpanded ? 
-                    <FiChevronDown className="sidebar-chevron" /> : 
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-                
-                {financeManagementExpanded && (
-                  <div className="sidebar-submenu">
-                    <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('billing-payments')}
-                    >
-                      <span>Billing & Payments</span>
-                    </div>
-                    <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'invoice-generation' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('invoice-generation')}
-                    >
-                      <span>Invoice Generation</span>
-                    </div>
-                    <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('payment-records')}
-                    >
-                      <span>Payment Records</span>
-                    </div>
-                    <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'expense-management' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('expense-management')}
-                    >
-                      <span>Expense Management</span>
-                    </div>
+              {isSOLOHQUser ? (
+                // SOLOHQ users see only specific items directly (no expandable menu)
+                <>
+                  <div 
+                    className={`sidebar-item ${activeSection === 'billing-payments' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('billing-payments')}
+                  >
+                    <FiDollarSign className="sidebar-icon" />
+                    <span>Billing & Payments</span>
                   </div>
-                )}
-              </div>
+                  <div 
+                    className={`sidebar-item ${activeSection === 'invoice-generation' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('invoice-generation')}
+                  >
+                    <FiFileText className="sidebar-icon" />
+                    <span>Invoice Generation</span>
+                  </div>
+                </>
+              ) : (
+                // Other users see the full expandable menu
+                <div className="sidebar-item-container">
+                  <div 
+                    className={`sidebar-item ${activeSection === 'finance-management' ? 'active' : ''}`}
+                    onClick={toggleFinanceManagement}
+                  >
+                    <FiDollarSign className="sidebar-icon" />
+                    <span>Finance Management</span>
+                    {financeManagementExpanded ? 
+                      <FiChevronDown className="sidebar-chevron" /> : 
+                      <FiChevronRight className="sidebar-chevron" />
+                    }
+                  </div>
+                  
+                  {financeManagementExpanded && (
+                    <div className="sidebar-submenu">
+                      <div 
+                        className={`sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('billing-payments')}
+                      >
+                        <span>Billing & Payments</span>
+                      </div>
+                      <div 
+                        className={`sidebar-item sidebar-subitem ${activeSection === 'invoice-generation' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('invoice-generation')}
+                      >
+                        <span>Invoice Generation</span>
+                      </div>
+                      <div 
+                        className={`sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('payment-records')}
+                      >
+                        <span>Payment Records</span>
+                      </div>
+                      <div 
+                        className={`sidebar-item sidebar-subitem ${activeSection === 'expense-management' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('expense-management')}
+                      >
+                        <span>Expense Management</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -800,35 +952,53 @@ function Sidebar({ activeSection, onSectionChange }) {
           )}
 
           {/* Botgit Section */}
-          <div className="sidebar-section">
-            <h4 className="sidebar-section-title">BOTGIT</h4>
-            <div 
-              className={`sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
-              onClick={() => onSectionChange('botgit-data')}
-            >
-              <FiDatabase className="sidebar-icon" />
-              <span>Scraped Data</span>
+          {hasPermissionForSection('Botgit') && (
+            <div className="sidebar-section">
+              <h4 className="sidebar-section-title">BOTGIT</h4>
+              <div 
+                className={`sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
+                onClick={() => onSectionChange('botgit-data')}
+              >
+                <FiDatabase className="sidebar-icon" />
+                <span>Scraped Data</span>
+              </div>
+              <div 
+                className={`sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('botgit-settings')}
+              >
+                <FiSliders className="sidebar-icon" />
+                <span>Botgit Settings</span>
+              </div>
             </div>
-            <div 
-              className={`sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
-              onClick={() => onSectionChange('botgit-settings')}
-            >
-              <FiSliders className="sidebar-icon" />
-              <span>Botgit Settings</span>
-            </div>
-          </div>
+          )}
 
-          {/* Workspace Settings Section */}
-          <div className="sidebar-section">
-            <h4 className="sidebar-section-title">WORKSPACE</h4>
-            <div 
-              className={`sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
-              onClick={() => onSectionChange('workspace-settings')}
-            >
-              <FiSettings className="sidebar-icon" />
-              <span>Workspace Settings</span>
+          {/* Profile Section */}
+          {hasPermissionForSection('Profile') && (
+            <div className="sidebar-section">
+              <h4 className="sidebar-section-title">PROFILE</h4>
+              <div 
+                className={`sidebar-item ${activeSection === 'profile-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('profile-settings')}
+              >
+                <FiUser className="sidebar-icon" />
+                <span>Profile Settings</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Workspace Settings Section - Hidden for SOLOHQ */}
+          {hasPermissionForSection('Workspace Settings') && (
+            <div className="sidebar-section">
+              <h4 className="sidebar-section-title">WORKSPACE</h4>
+              <div 
+                className={`sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('workspace-settings')}
+              >
+                <FiSettings className="sidebar-icon" />
+                <span>Workspace Settings</span>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

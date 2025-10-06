@@ -6,7 +6,7 @@ function Services() {
       <h1>Services</h1>
       <div className="dashboard-card">
         <h3>Our Service Offerings</h3>
-        <p>Comprehensive overview of all services provided by NOXTM Studio.</p>
+        <p>Comprehensive overview of all services provided by Noxtm.</p>
         <p>Manage service packages, pricing, and client requirements.</p>
         <ul>
           <li>Service catalog management</li>

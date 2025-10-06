@@ -43,6 +43,7 @@ import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
 import BotgitData from './BotgitData';
 import BotgitSettings from './BotgitSettings';
+import ProfileSettings from './ProfileSettings';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -162,6 +163,8 @@ function Dashboard({ user, onLogout }) {
         return <BotgitData />;
       case 'botgit-settings':
         return <BotgitSettings />;
+      case 'profile-settings':
+        return <ProfileSettings user={user} />;
       default:
         return (
           <div className="dashboard-card">

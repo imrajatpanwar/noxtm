@@ -8,7 +8,7 @@ function Footer() {
       <div className="footer-container">
         <div className="footer-content">
           <div className="footer-section">
-            <h3>NOXTM STUDIO</h3>
+            <h3>Noxtm</h3>
             <p>Creating digital experiences that inspire and engage.</p>
           </div>
           
@@ -32,30 +32,28 @@ function Footer() {
             </ul>
           </div>
           
-          <div className="footer-section combined-section">
-            <div className="follow-account-row">
-              <div className="follow-section">
-                <h4>Follow Us</h4>
-                <div className="social-links">
-                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link">LinkedIn</a>
-                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-link">Twitter</a>
-                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link">Instagram</a>
-                </div>
-              </div>
-              
-              <div className="account-section">
-                <h4>Account</h4>
-                <ul>
-                  <li><Link to="/login" className="footer-link">Login</Link></li>
-                  <li><Link to="/signup" className="footer-link">Sign Up</Link></li>
-                </ul>
-              </div>
-            </div>
+          <div className="footer-section">
+            <h4>Legal</h4>
+            <ul>
+              <li><Link to="/terms" className="footer-link">Terms & Conditions</Link></li>
+              <li><Link to="/privacy" className="footer-link">Privacy Policy</Link></li>
+              <li><Link to="/cancellation-refunds" className="footer-link">Cancellation & Refunds</Link></li>
+              <li><Link to="/shipping" className="footer-link">Shipping</Link></li>
+              <li><Link to="/contact" className="footer-link">Contact Us</Link></li>
+            </ul>
+          </div>
+          
+          <div className="footer-section">
+            <h4>Account</h4>
+            <ul>
+              <li><Link to="/login" className="footer-link">Login</Link></li>
+              <li><Link to="/signup" className="footer-link">Sign Up</Link></li>
+            </ul>
           </div>
         </div>
         
         <div className="footer-bottom">
-          <p>&copy; 2024 NOXTM STUDIO. All rights reserved. | Version v00.04</p>
+          <p>&copy; 2024 Noxtm. All rights reserved. | Version v00.04</p>
         </div>
       </div>
     </footer>
