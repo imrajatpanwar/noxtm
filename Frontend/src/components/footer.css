@@ -156,3 +156,7 @@
     font-size: 14px;
   }
 }
+
+@media (min-width: 1100px){
+  .footer-content { grid-template-columns: repeat(5, 1fr); }
+}

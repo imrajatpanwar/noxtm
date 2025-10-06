@@ -26,7 +26,7 @@ function AccessRestricted() {
         <div className="content-section">
           <div className="content-header">
             <p className="association-text">In association with Noxtm</p>
-            <h1 className="brand-title">NOXTM STUDIO®</h1>
+            <h1 className="brand-title">Noxtm</h1>
           </div>
           
           <div className="restricted-message">

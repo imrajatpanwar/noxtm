@@ -89,10 +89,13 @@ const userSchema = new mongoose.Schema({
   role: { 
     type: String, 
     required: true, 
-    default: 'User',
+    default: 'Team Member',
     enum: [
-      'User',
       'Admin',
+      'Business Admin',
+      'Freelancer',
+      'Team Member',
+      'SOLOHQ',
       'Project Manager', 
       'Data Miner',
       'Data Analyst',
@@ -102,6 +105,13 @@ const userSchema = new mongoose.Schema({
       'Web Developer',
       'SEO Manager'
     ]
+  },
+  businessName: { type: String }, // For Business Owners
+  businessEmail: { type: String }, // For Business Owners  
+  userType: { 
+    type: String,
+    enum: ['Business Owner', 'Team Member'],
+    default: 'Team Member'
   },
   // Custom permissions that override role defaults
   permissions: {
@@ -738,10 +748,44 @@ app.get('/api/scraped-data', async (req, res) => {
   }
 });
 
+// Check domain endpoint for team member validation
+app.post('/api/check-domain', async (req, res) => {
+  try {
+    const { domain } = req.body;
+    
+    if (!domain) {
+      return res.status(400).json({ message: 'Domain is required' });
+    }
+
+    // Check if any business owner exists with this domain
+    const businessOwner = await User.findOne({ 
+      userType: 'Business Owner',
+      $or: [
+        { businessEmail: { $regex: '@' + domain + '$', $options: 'i' } },
+        { email: { $regex: '@' + domain + '$', $options: 'i' } }
+      ]
+    });
+
+    if (businessOwner) {
+      res.status(200).json({ 
+        message: 'Domain found',
+        businessName: businessOwner.businessName 
+      });
+    } else {
+      res.status(404).json({ 
+        message: 'Domain not found. Please contact your administrator.' 
+      });
+    }
+  } catch (error) {
+    console.error('Domain check error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, businessName, businessEmail, userType } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -753,13 +797,89 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Validate role if provided, otherwise default to 'User'
-    const validRoles = ['User', 'Admin', 'Project Manager', 'Data Miner', 'Data Analyst', 'Social Media Manager', 'Human Resource', 'Graphic Designer', 'Web Developer', 'SEO Manager'];
-    const userRole = role && validRoles.includes(role) ? role : 'User';
+    // Validate role if provided, otherwise default to 'Team Member'
+    const validRoles = ['Admin', 'Business Admin', 'Freelancer', 'Team Member', 'SOLOHQ', 'Project Manager', 'Data Miner', 'Data Analyst', 'Social Media Manager', 'Human Resource', 'Graphic Designer', 'Web Developer', 'SEO Manager'];
+    const userRole = role && validRoles.includes(role) ? role : 'Team Member';
 
     // Get default permissions for the role
     const getDefaultPermissions = (userRole) => {
-      // Simplified: Only give Dashboard access for all roles
+      if (userRole === 'Admin') {
+        // Admin gets full access to everything including company dashboard
+        return {
+          dashboard: true,
+          dataCenter: true,
+          projects: true,
+          teamCommunication: true,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: true,
+          financeManagement: true,
+          seoManagement: true,
+          internalPolicies: true,
+          settingsConfiguration: true
+        };
+      } else if (userRole === 'Business Admin') {
+        // Business Admin gets full access
+        return {
+          dashboard: true,
+          dataCenter: true,
+          projects: true,
+          teamCommunication: true,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: true,
+          financeManagement: true,
+          seoManagement: true,
+          internalPolicies: true,
+          settingsConfiguration: true
+        };
+      } else if (userRole === 'Freelancer') {
+        // Freelancer gets limited access similar to Business Admin but no HR/Internal Policies
+        return {
+          dashboard: true,
+          dataCenter: true,
+          projects: true,
+          teamCommunication: true,
+          digitalMediaManagement: true,
+          marketing: true,
+          hrManagement: false,
+          financeManagement: true,
+          seoManagement: true,
+          internalPolicies: false,
+          settingsConfiguration: false
+        };
+      } else if (userRole === 'Team Member') {
+        // Team Member gets NO access by default - Business Admin must grant permissions
+        return {
+          dashboard: false,
+          dataCenter: false,
+          projects: false,
+          teamCommunication: false,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: false,
+          seoManagement: false,
+          internalPolicies: false,
+          settingsConfiguration: false
+        };
+      } else if (userRole === 'SOLOHQ') {
+        // SOLOHQ gets specific limited access
+        return {
+          dashboard: false,
+          dataCenter: false,
+          projects: true,
+          teamCommunication: true,
+          digitalMediaManagement: false,
+          marketing: false,
+          hrManagement: false,
+          financeManagement: true,
+          seoManagement: false,
+          internalPolicies: false,
+          settingsConfiguration: false
+        };
+      }
+      // For other specific roles, give basic dashboard access
       return {
         dashboard: true,
         dataCenter: false,
@@ -801,6 +921,9 @@ app.post('/api/register', async (req, res) => {
       email,
       password: hashedPassword,
       role: userRole,
+      businessName: businessName || undefined,
+      businessEmail: businessEmail || undefined,
+      userType: userType || 'Team Member',
       access: defaultAccess,
       status: 'Active',
       permissions: defaultPermissions

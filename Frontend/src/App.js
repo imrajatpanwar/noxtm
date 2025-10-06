@@ -8,17 +8,23 @@ import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
+import CancellationRefunds from './components/CancellationRefunds';
+import TermsConditions from './components/TermsConditions';
+import Shipping from './components/Shipping';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import ContactUs from './components/ContactUs';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted'];
+  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing'];
   
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
@@ -145,9 +151,17 @@ function App() {
     }
   };
 
-  const signup = async (username, email, password) => {
+  const signup = async (username, email, password, role, additionalData) => {
     try {
-      const response = await api.post('/register', { username, email, password });
+      const signupData = { 
+        username, 
+        email, 
+        password, 
+        role,
+        ...additionalData 
+      };
+      
+      const response = await api.post('/register', signupData);
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
@@ -176,8 +190,10 @@ function App() {
       return true;
     }
     
-    // Only 'User' role should be restricted, all other roles (Admin, Web Developer, etc.) should have access
-    const isRestricted = user.role === 'User';
+    // Team Member role should be restricted until Business Admin grants permissions
+    // Admin, Business Admin, Freelancer, SOLOHQ and other specific roles should have access
+    const restrictedRoles = ['Team Member'];
+    const isRestricted = restrictedRoles.includes(user.role);
     console.log(`User role: ${user.role}, Is restricted: ${isRestricted}`);
     return isRestricted;
   };
@@ -227,6 +243,7 @@ function App() {
               path="/signup" 
               element={user ? <Navigate to="/dashboard" /> : <Signup onSignup={signup} />} 
             />
+            <Route path="/pricing" element={<Pricing />} />
             <Route 
               path="/dashboard" 
               element={
@@ -250,6 +267,11 @@ function App() {
             />
             <Route path="/blog" element={<PublicBlogList />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/cancellation-refunds" element={<CancellationRefunds />} />
+            <Route path="/terms" element={<TermsConditions />} />
+            <Route path="/shipping" element={<Shipping />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/contact" element={<ContactUs />} />
           </Routes>
           <ConditionalFooter />
         </div>
