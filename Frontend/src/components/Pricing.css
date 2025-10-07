@@ -220,17 +220,18 @@
 
 /* Pricing Table */
 .pricing-table {
-  background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.table-header {
-  display: grid;
-  grid-template-columns: 300px 1fr 1fr 1fr;
-  background: transparent;
-  border-bottom: none;
+.price-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
 }
 
 .feature-column {
@@ -244,7 +245,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0px;
 }
 
 .plan-column:last-child {
@@ -255,7 +256,7 @@
   width: 100%;
   font-size: 24px;
   font-weight: 500;
-  margin-bottom: 12px;
+  margin-bottom: 0px;
   color: #000000;
 }
 
@@ -268,7 +269,7 @@
 }
 
 .plan-btn {
-  padding: 14px 32px;
+  padding: 10px 33px;
   border-radius: 100px;
   font-weight: 500;
   cursor: pointer;
@@ -278,39 +279,28 @@
   font-size: 16px;
   width: 100%;
   max-width: 220px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .btn-outline {
   background: #000000;
   color: #ffffff;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: all 0.3s ease;
 }
 
 .btn-outline:hover {
-  background: #1a1a1a;
-}
-
-.btn-primary {
-  background: #000000;
-  color: #ffffff;
-}
-
-.btn-primary:hover {
-  background: #1a1a1a;
-}
-
-.btn-enterprise {
-  background: #000000;
-  color: #ffffff;
-}
-
-.btn-enterprise:hover {
-  background: #1a1a1a;
+  background: #333;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* Table Body */
 .table-body {
-  background: white;
+  background: transparent;
 }
 
 .feature-row {
@@ -343,14 +333,29 @@
 }
 
 .feature-check {
-  color: #10b981;
-  font-size: 18px;
-  font-weight: bold;
+  color: #000000;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-check svg {
+  width: 24px;
+  height: 24px;
 }
 
 .feature-cross {
-  color: #ef4444;
-  font-size: 18px;
+  color: #6B7280;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-cross svg {
+  width: 24px;
+  height: 24px;
 }
 
 .feature-text {
@@ -578,43 +583,7 @@ input:checked + .slider:before {
   font-size: 1.2rem;
 }
 
-/* Plan Button */
-.plan-button {
-  width: 100%;
-  padding: 16px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
-.plan-button.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.plan-button.primary:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-}
-
-.plan-button.secondary {
-  background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
-}
-
-.plan-button.secondary:hover {
-  background: #667eea;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-}
 
 /* Footer Section */
 .pricing-footer {
@@ -648,13 +617,13 @@ input:checked + .slider:before {
 }
 
 .faq-item:hover {
-  background: #e9ecef;
-  transform: translateY(-2px);
-}
-
-.faq-item h4 {
-  font-size: 1.2rem;
-  font-weight: 600;
+    background: #000;
+    color: #fff;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   color: #1a1a1a;
   margin-bottom: 12px;
 }
@@ -686,25 +655,7 @@ input:checked + .slider:before {
   opacity: 0.9;
 }
 
-.contact-button {
-  background: white;
-  color: #667eea;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
-.contact-button:hover {
-  background: #f8f9fa;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {

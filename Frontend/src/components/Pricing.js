@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoMdCheckmark } from "react-icons/io";
+import { MdClose } from "react-icons/md";
 import './Pricing.css';
 
 const Pricing = () => {
@@ -129,13 +130,13 @@ const Pricing = () => {
       name: 'Noxtm Dashboard',
       price: billingType === 'Annual' ? '$799' : '$999',
       buttonText: 'Upgrade Now',
-      buttonClass: 'btn-primary'
+      buttonClass: 'btn-outline'
     },
     {
       name: 'Enterprise',
       price: '-',
       buttonText: 'Contact Sales',
-      buttonClass: 'btn-enterprise'
+      buttonClass: 'btn-outline'
     }
   ];
 
@@ -153,7 +154,7 @@ const Pricing = () => {
     if (value === true) {
       return <span className="feature-check"><IoMdCheckmark /></span>;
     } else if (value === false) {
-      return <span className="feature-cross">✗</span>;
+      return <span className="feature-cross"><MdClose /></span>;
     } else {
       return <span className="feature-text">{value}</span>;
     }
@@ -188,7 +189,7 @@ const Pricing = () => {
       </div>
       
       <div className="pricing-table">
-        <div className="table-header">
+        <div className="price-section-header">
           <div className="feature-column"></div>
           {plans.map((plan, index) => (
             <div key={index} className="plan-column">

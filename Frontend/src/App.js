@@ -18,6 +18,7 @@ import CancellationRefunds from './components/CancellationRefunds';
 import TermsConditions from './components/TermsConditions';
 import Shipping from './components/Shipping';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import BotgitPrivacyPolicy from './components/BotgitPrivacyPolicy';
 import ContactUs from './components/ContactUs';
 
 // API configuration is now handled in config/api.js
@@ -271,6 +272,7 @@ function App() {
             <Route path="/terms" element={<TermsConditions />} />
             <Route path="/shipping" element={<Shipping />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/botgit-privacy" element={<BotgitPrivacyPolicy />} />
             <Route path="/contact" element={<ContactUs />} />
           </Routes>
           <ConditionalFooter />
