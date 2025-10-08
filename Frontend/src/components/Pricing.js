@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoMdCheckmark } from "react-icons/io";
 import { MdClose } from "react-icons/md";
+import { useRole } from '../contexts/RoleContext';
+import { toast } from 'sonner';
 import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
   const [billingType, setBillingType] = useState('Monthly');
+  const { currentUser, upgradeToSoloHQ } = useRole();
 
   const features = [
     {
@@ -128,7 +131,7 @@ const Pricing = () => {
     },
     {
       name: 'Noxtm Dashboard',
-      price: billingType === 'Annual' ? '$799' : '$999',
+      price: billingType === 'Annual' ? '₹10,399' : '₹12,999',
       buttonText: 'Upgrade Now',
       buttonClass: 'btn-outline'
     },
@@ -140,13 +143,27 @@ const Pricing = () => {
     }
   ];
 
-  const handlePlanSelect = (plan) => {
+  const handlePlanSelect = async (plan) => {
     if (plan.name === 'Solo HQ Dashboard') {
-      navigate('/signup');
+      if (!currentUser) {
+        navigate('/signup');
+      } else if (currentUser.role === 'User') {
+        // Upgrade existing user to SOLOHQ
+        const success = await upgradeToSoloHQ();
+        if (success) {
+          navigate('/dashboard');
+        }
+      } else {
+        toast.error('You already have a different plan active.');
+      }
     } else if (plan.name === 'Enterprise') {
       window.location.href = 'mailto:sales@noxtm.com';
     } else {
-      navigate('/signup');
+      if (!currentUser) {
+        navigate('/signup');
+      } else {
+        toast.error('Please contact sales to upgrade your plan.');
+      }
     }
   };
 
