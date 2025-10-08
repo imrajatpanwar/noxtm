@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import Overview from './Overview';
 import LeadsFlow from './LeadsFlow';
 import ClientLeads from './ClientLeads';
+import EmailSetup from './EmailSetup';
 import CampaignMetrics from './CampaignMetrics';
 import ConversionTracking from './ConversionTracking';
 import OurProjects from './OurProjects';
@@ -94,6 +95,8 @@ function Dashboard({ user, onLogout }) {
         return <Services />;
       case 'email-marketing':
         return <EmailMarketing />;
+      case 'email-setup':
+        return <EmailSetup />;
       case 'campaign-setup':
         return <CampaignSetup />;
       case 'email-template':

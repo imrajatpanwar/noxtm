@@ -6,6 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const emailRoutes = require('./routes/email');
 require('dotenv').config();
 
 const app = express();
@@ -38,6 +39,9 @@ app.use(cors({
 // Body parsing middleware with size limits
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Email routes
+app.use('/api/email', emailRoutes);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
@@ -894,6 +898,44 @@ app.post('/api/register', async (req, res) => {
         settingsConfiguration: false
       };
     };
+
+    // Add upgrade to SOLOHQ endpoint
+    app.post('/api/users/upgrade-role', authenticateToken, async (req, res) => {
+      try {
+        const userId = req.user.id;
+        const { newRole } = req.body;
+        
+        // Validate the new role is SOLOHQ
+        if (newRole !== 'SOLOHQ') {
+          return res.status(400).json({ message: 'Invalid role upgrade request' });
+        }
+        
+        // Update user's role and permissions
+        const user = await User.findById(userId);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        user.role = 'SOLOHQ';
+        user.permissions = getDefaultPermissions('SOLOHQ');
+        await user.save();
+        
+        res.json({ 
+          success: true, 
+          message: 'Successfully upgraded to SOLOHQ',
+          user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            permissions: user.permissions
+          }
+        });
+      } catch (error) {
+        console.error('Role upgrade error:', error);
+        res.status(500).json({ message: 'Server error during role upgrade' });
+      }
+    });
 
     // Get default access array based on permissions
     const getDefaultAccess = (permissions) => {

@@ -588,6 +588,12 @@ function Sidebar({ activeSection, onSectionChange }) {
                 {emailMarketingExpanded && (
                   <div className="sidebar-submenu">
                     <div 
+                      className={`sidebar-item sidebar-subitem ${activeSection === 'email-setup' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('email-setup')}
+                    >
+                      <span>Email Setup</span>
+                    </div>
+                    <div 
                       className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-setup' ? 'active' : ''}`}
                       onClick={() => onSectionChange('campaign-setup')}
                     >
