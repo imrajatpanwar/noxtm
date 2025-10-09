@@ -97,7 +97,6 @@ const userSchema = new mongoose.Schema({
     enum: [
       'Admin',
       'Business Admin',
-      'Freelancer',
       'Team Member',
       'SOLOHQ',
       'Project Manager', 
@@ -114,8 +113,22 @@ const userSchema = new mongoose.Schema({
   businessEmail: { type: String }, // For Business Owners  
   userType: { 
     type: String,
-  enum: ['Business Owner', 'Team Member', 'Freelancer'],
+    enum: ['Business Owner', 'Team Member', 'Freelancer'],
     default: 'Team Member'
+  },
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['None', 'SOLOHQ'],
+      default: 'None'
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'pending'],
+      default: 'inactive'
+    },
+    startDate: { type: Date },
+    endDate: { type: Date }
   },
   // Custom permissions that override role defaults
   permissions: {
@@ -245,9 +258,66 @@ const authenticateToken = (req, res, next) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid token' });
     }
+
     req.user = user;
     next();
   });
+};
+
+// Middleware to check SOLOHQ subscription status
+const checkSOLOHQSubscription = async (req, res, next) => {
+  // Skip check for non-SOLOHQ endpoints
+  if (!req.path.startsWith('/api/solohq/')) {
+    return next();
+  }
+
+  try {
+    const user = await User.findById(req.user.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If user is not SOLOHQ or has no active subscription, redirect to pricing
+    if (user.role === 'SOLOHQ' && 
+        (!user.subscription || 
+         user.subscription.plan !== 'SOLOHQ' || 
+         user.subscription.status !== 'active')) {
+      return res.status(302).json({ 
+        redirect: '/pricing'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Subscription check error:', error);
+    res.status(500).json({ message: 'Server error during subscription check' });
+  }
+};
+
+// Middleware to check for active plan
+const checkActivePlan = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has any active subscription plan
+    if (!user.subscription || 
+        user.subscription.status !== 'active' || 
+        user.subscription.plan === 'None') {
+      return res.status(302).json({ 
+        redirect: '/pricing'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Plan check error:', error);
+    res.status(500).json({ message: 'Server error during plan check' });
+  }
 };
 
 // Middleware to require admin access
@@ -837,21 +907,6 @@ app.post('/api/register', async (req, res) => {
           internalPolicies: true,
           settingsConfiguration: true
         };
-      } else if (userRole === 'Freelancer') {
-        // Freelancer gets limited access similar to Business Admin but no HR/Internal Policies
-        return {
-          dashboard: true,
-          dataCenter: true,
-          projects: true,
-          teamCommunication: true,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: false,
-          financeManagement: true,
-          seoManagement: true,
-          internalPolicies: false,
-          settingsConfiguration: false
-        };
       } else if (userRole === 'Team Member') {
         // Team Member gets NO access by default - Business Admin must grant permissions
         return {
@@ -899,43 +954,7 @@ app.post('/api/register', async (req, res) => {
       };
     };
 
-    // Add upgrade to SOLOHQ endpoint
-    app.post('/api/users/upgrade-role', authenticateToken, async (req, res) => {
-      try {
-        const userId = req.user.id;
-        const { newRole } = req.body;
-        
-        // Validate the new role is SOLOHQ
-        if (newRole !== 'SOLOHQ') {
-          return res.status(400).json({ message: 'Invalid role upgrade request' });
-        }
-        
-        // Update user's role and permissions
-        const user = await User.findById(userId);
-        if (!user) {
-          return res.status(404).json({ message: 'User not found' });
-        }
-        
-        user.role = 'SOLOHQ';
-        user.permissions = getDefaultPermissions('SOLOHQ');
-        await user.save();
-        
-        res.json({ 
-          success: true, 
-          message: 'Successfully upgraded to SOLOHQ',
-          user: {
-            id: user._id,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            permissions: user.permissions
-          }
-        });
-      } catch (error) {
-        console.error('Role upgrade error:', error);
-        res.status(500).json({ message: 'Server error during role upgrade' });
-      }
-    });
+    // Continue with registration...
 
     // Get default access array based on permissions
     const getDefaultAccess = (permissions) => {
@@ -991,6 +1010,77 @@ app.post('/api/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+// Handle SOLOHQ subscription
+app.post('/api/subscribe/solohq', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Set up subscription details
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+    
+    user.subscription = {
+      plan: 'SOLOHQ',
+      status: 'active',
+      startDate,
+      endDate
+    };
+    
+    // Update user role to SOLOHQ
+    user.role = 'SOLOHQ';
+    user.permissions = getDefaultPermissions('SOLOHQ');
+    await user.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Successfully subscribed to SOLOHQ plan',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Subscription error:', error);
+    res.status(500).json({ message: 'Server error during subscription' });
+  }
+});
+
+// Check subscription status
+app.get('/api/subscription/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Admins bypass subscription checks and are treated as active
+    if (user.role && user.role.toLowerCase() === 'admin') {
+      return res.json({
+        subscription: { plan: 'Admin', status: 'active' },
+        role: user.role
+      });
+    }
+
+    res.json({
+      subscription: user.subscription || { plan: 'None', status: 'inactive' },
+      role: user.role
+    });
+  } catch (error) {
+    console.error('Subscription status check error:', error);
+    res.status(500).json({ message: 'Server error checking subscription status' });
   }
 });
 
@@ -1107,6 +1197,15 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 // Dashboard data (protected route)
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
+    const user = await User.findById(req.user.userId);
+    
+    // Check if user has an active subscription plan
+    if (!user.subscription || user.subscription.status !== 'active' || user.subscription.plan === 'None') {
+      return res.status(302).json({ 
+        redirect: '/pricing'
+      });
+    }
+
     // This is where you would add dashboard-specific data
     // For now, just return some mock data
     res.json({
@@ -1168,29 +1267,24 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       });
     }
 
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    // Add role filter if specified
+    const roleFilter = req.query.role ? { role: req.query.role } : {};
     
-    // Ensure access array is synced with permissions for all users
+    const users = await User.find(roleFilter)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean(); // Use lean() for better performance
+    
+    // Process users in a single pass
     const usersWithSyncedAccess = users.map(user => {
-      user.permissions = normalizePermissions(user.permissions);
-      const accessArray = [];
-      if (user.permissions.dashboard) accessArray.push('Dashboard');
-      if (user.permissions.dataCenter) accessArray.push('Data Center');
-      if (user.permissions.projects) accessArray.push('Projects');
-      if (user.permissions.teamCommunication) accessArray.push('Team Communication');
-      if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
-      if (user.permissions.marketing) accessArray.push('Marketing');
-      if (user.permissions.hrManagement) accessArray.push('HR Management');
-      if (user.permissions.financeManagement) accessArray.push('Finance Management');
-      if (user.permissions.seoManagement) accessArray.push('SEO Management');
-      if (user.permissions.internalPolicies) accessArray.push('Internal Policies');
-      if (user.permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
-      // Only update if access array is different
-      if (JSON.stringify(user.access) !== JSON.stringify(accessArray)) {
-        user.access = accessArray;
-        user.save(); // Save in background, don't wait
-      }
-      return user;
+      const normalizedPermissions = normalizePermissions(user.permissions);
+      const accessArray = syncAccessFromPermissions(normalizedPermissions);
+      
+      return {
+        ...user,
+        permissions: normalizedPermissions,
+        access: accessArray
+      };
     });
     
     res.json({
