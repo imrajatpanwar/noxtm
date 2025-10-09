@@ -114,7 +114,7 @@ const userSchema = new mongoose.Schema({
   businessEmail: { type: String }, // For Business Owners  
   userType: { 
     type: String,
-    enum: ['Business Owner', 'Team Member'],
+  enum: ['Business Owner', 'Team Member', 'Freelancer'],
     default: 'Team Member'
   },
   // Custom permissions that override role defaults
