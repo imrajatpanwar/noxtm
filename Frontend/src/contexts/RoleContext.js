@@ -46,8 +46,6 @@ export const RoleProvider = ({ children }) => {
       
       const response = await api.get('/users');
       
-      console.log('Fetched users from backend:', response.data.users);
-      
       // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => {
         // Get default permissions for the user's role
@@ -78,8 +76,6 @@ export const RoleProvider = ({ children }) => {
         };
       });
       
-      console.log('Transformed users:', transformedUsers);
-      
       return transformedUsers;
     } catch (error) {
       console.error('Error fetching users from backend:', error);
@@ -100,42 +96,34 @@ export const RoleProvider = ({ children }) => {
     
     setIsCheckingPermissions(true);
     try {
+      // Only fetch profile and check for permission changes
       const response = await api.get('/profile');
       const updatedUser = response.data;
       
-      // Update current user data
-      setCurrentUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      // Check if permissions actually changed before updating
+      const newHash = generatePermissionHash(updatedUser);
+      const oldHash = lastPermissionHash.current;
       
-      // Fetch updated users list to get latest permissions
-      const usersResponse = await api.get('/users');
-      if (usersResponse.data && usersResponse.data.users) {
-        const transformedUsers = usersResponse.data.users.map(user => ({
-          id: user._id,
-          name: user.username,
-          email: user.email,
-          role: user.role,
-          status: user.role === 'User' ? 'In Review' : (user.status || 'Active'),
-          access: user.access || [],
-          permissions: user.permissions || {}
-        }));
+      if (oldHash && newHash && oldHash !== newHash) {
+        // Permissions changed - notify user and trigger re-render
+        toast.success('Your permissions have been updated!', {
+          description: 'Your access levels have been modified by an administrator.',
+          duration: 5000,
+        });
+        setPermissionUpdateTrigger(prev => prev + 1);
         
-        // Check if current user's permissions changed
-        const newHash = generatePermissionHash(updatedUser);
-        const oldHash = lastPermissionHash.current;
+        // Only update state if permissions changed
+        setCurrentUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        if (oldHash && newHash && oldHash !== newHash) {
-          // Permissions changed - notify user and trigger re-render
-          toast.success('Your permissions have been updated!', {
-            description: 'Your access levels have been modified by an administrator.',
-            duration: 5000,
-          });
-          setPermissionUpdateTrigger(prev => prev + 1);
+        // Fetch updated users list
+        const backendUsers = await fetchUsersFromBackend();
+        if (backendUsers) {
+          setUsers(backendUsers);
+          localStorage.setItem('usersData', JSON.stringify(backendUsers));
         }
         
         lastPermissionHash.current = newHash;
-        setUsers(transformedUsers);
-        localStorage.setItem('usersData', JSON.stringify(transformedUsers));
       }
     } catch (error) {
       console.error('Error checking user permissions:', error);
@@ -146,10 +134,15 @@ export const RoleProvider = ({ children }) => {
   }, [currentUser, isCheckingPermissions, generatePermissionHash]);
 
   // Load user data from localStorage or API
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- We intentionally omit generatePermissionHash to prevent unnecessary re-renders
   useEffect(() => {
     const loadUserData = async () => {
+      // Load from localStorage first
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
+      
       setCurrentUser(userData);
+      setUsers(storedUsers); // Set stored users immediately
       
       // Get user's role permissions
       if (userData.role) {
@@ -157,26 +150,46 @@ export const RoleProvider = ({ children }) => {
         setUserPermissions(permissions);
       }
       
-      // Try to fetch from backend first
-      const backendUsers = await fetchUsersFromBackend();
-      
-      if (backendUsers && backendUsers.length > 0) {
-        setUsers(backendUsers);
-        localStorage.setItem('usersData', JSON.stringify(backendUsers));
+      // Then fetch latest data from backend
+      try {
+        const backendUsers = await fetchUsersFromBackend();
         
-        // Set initial permission hash
-        if (userData.id) {
-          lastPermissionHash.current = generatePermissionHash(userData);
+        if (backendUsers && backendUsers.length > 0) {
+          setUsers(backendUsers);
+          localStorage.setItem('usersData', JSON.stringify(backendUsers));
+          
+          // Set initial permission hash
+          if (userData.id) {
+            lastPermissionHash.current = generatePermissionHash(userData);
+          }
         }
-      } else {
-        // Fall back to local data
-        const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
-        setUsers(storedUsers);
+      } catch (error) {
+        console.error('Error fetching initial user data:', error);
       }
     };
     
     loadUserData();
-  }, [generatePermissionHash]);
+    // Only run this effect once on mount, intentionally omitting generatePermissionHash to prevent unnecessary re-renders
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Function to upgrade user to SOLOHQ role
+  const upgradeToSoloHQ = useCallback(async () => {
+    try {
+      const response = await api.post('/users/upgrade-role', { newRole: 'SOLOHQ' });
+      if (response.data.success) {
+        // Update current user with new role
+        const updatedUser = { ...currentUser, role: 'SOLOHQ' };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        toast.success('Successfully upgraded to Solo HQ Dashboard!');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error upgrading role:', error);
+      toast.error('Failed to upgrade role. Please try again.');
+      return false;
+    }
+  }, [currentUser]);
 
   // Set up real-time permission checking
   useEffect(() => {
@@ -201,6 +214,9 @@ export const RoleProvider = ({ children }) => {
     
     // Admin has access to everything
     if (currentUser.role === 'Admin') return true;
+    
+    // User role has no access to any module
+    if (currentUser.role === 'User') return false;
     
     // Check specific user permissions (overrides)
     const userSpecificPermissions = users.find(u => u.id === currentUser.id)?.permissions;
@@ -341,6 +357,7 @@ export const RoleProvider = ({ children }) => {
     fetchUsersFromBackend,
     checkCurrentUserPermissions,
     permissionUpdateTrigger,
+    upgradeToSoloHQ,
     MODULES
   };
 
