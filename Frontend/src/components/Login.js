@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import './Login.css';
 import poweredByNoxtm from './image/powered_by_noxtm.svg';
 
@@ -26,21 +25,16 @@ function Login({ onLogin }) {
     setLoading(true);
 
     const result = await onLogin(formData.email, formData.password);
-    
+
     if (result.success) {
-      toast.success('Login successful! Welcome back!');
-      setTimeout(() => {
-        // Check if user has restricted access (simple role check)
-        if (result.user.role === 'User') {
-          navigate('/access-restricted');
-        } else {
-          navigate('/dashboard');
-        }
-      }, 1000);
-    } else {
-      toast.error(result.message || 'Login failed. Please try again.');
+      // Check if user has restricted access (simple role check)
+      if (result.user.role === 'User') {
+        navigate('/access-restricted');
+      } else {
+        navigate('/dashboard');
+      }
     }
-    
+
     setLoading(false);
   };
 
