@@ -23,8 +23,8 @@ function initializeRoutes(dependencies) {
 
   // ===== WEBMAIL API ENDPOINTS =====
 
-  // Test IMAP connection
-  router.post('/connect', authenticateToken, async (req, res) => {
+  // Test IMAP connection (no auth required - email credentials are the auth)
+  router.post('/connect', async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -50,7 +50,7 @@ function initializeRoutes(dependencies) {
   });
 
   // Get list of mailboxes/folders
-  router.post('/folders', authenticateToken, async (req, res) => {
+  router.post('/folders', async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -81,7 +81,7 @@ function initializeRoutes(dependencies) {
   });
 
   // Get emails from inbox
-  router.post('/inbox', authenticateToken, async (req, res) => {
+  router.post('/inbox', async (req, res) => {
     const { username, password, folder = 'INBOX', limit = 50 } = req.body;
 
     if (!username || !password) {
@@ -165,7 +165,7 @@ function initializeRoutes(dependencies) {
   });
 
   // Get single email by UID
-  router.post('/email/:uid', authenticateToken, async (req, res) => {
+  router.post('/email/:uid', async (req, res) => {
     const { username, password, folder = 'INBOX' } = req.body;
     const { uid } = req.params;
 
@@ -231,7 +231,7 @@ function initializeRoutes(dependencies) {
   });
 
   // Send email via SMTP
-  router.post('/send', authenticateToken, async (req, res) => {
+  router.post('/send', async (req, res) => {
     const { username, password, to, subject, text, html } = req.body;
 
     if (!username || !password) {
@@ -281,7 +281,7 @@ function initializeRoutes(dependencies) {
   });
 
   // Delete email
-  router.post('/delete/:uid', authenticateToken, async (req, res) => {
+  router.post('/delete/:uid', async (req, res) => {
     const { username, password, folder = 'INBOX' } = req.body;
     const { uid } = req.params;
 
