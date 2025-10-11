@@ -20,9 +20,24 @@ function TeamEmail() {
     if (saved) {
       const creds = JSON.parse(saved);
       setCredentials(creds);
-      handleLogin(creds);
+      // Try to auto-login silently without showing errors
+      autoLogin(creds);
     }
   }, []);
+
+  const autoLogin = async (creds) => {
+    try {
+      const response = await api.post('/webmail/connect', creds);
+      if (response.data.success) {
+        setIsLoggedIn(true);
+        fetchEmails(creds);
+      }
+    } catch (err) {
+      // Silent fail - clear saved credentials and let user login manually
+      localStorage.removeItem('webmail_credentials');
+      console.log('Auto-login failed, credentials cleared');
+    }
+  };
 
   const handleLogin = async (creds = credentials) => {
     setLoading(true);
@@ -36,7 +51,8 @@ function TeamEmail() {
         fetchEmails(creds);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      const errorMsg = err.response?.data?.message || 'Login failed. Please check your username and password.';
+      setError(errorMsg.replace('Invalid credentials or connection error', 'Invalid email credentials. Please verify your username and password.'));
     } finally {
       setLoading(false);
     }
