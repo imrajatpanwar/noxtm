@@ -32,10 +32,20 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Only clear auth for main dashboard endpoints, not webmail
+      const isWebmailEndpoint = error.config?.url?.includes('/webmail/');
+
+      if (!isWebmailEndpoint) {
+        // Token expired or invalid: clear local auth state but do NOT forcibly navigate
+        // Let UI components decide how to handle auth failures (avoid unexpected redirects)
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Attach a flag so callers can detect auth failures and redirect if they want
+        error.isAuthError = true;
+      }
     }
+
     return Promise.reject(error);
   }
 );
