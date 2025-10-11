@@ -371,69 +371,95 @@ function initializeRoutes(dependencies) {
   router.get('/dns-check', authenticateToken, async (req, res) => {
     try {
       const domain = 'noxtm.com';
-      const checks = {};
-  
+      const result = {};
+
       // Check MX record
       try {
         const { stdout: mxOut } = await execPromise(`nslookup -type=mx ${domain} 8.8.8.8`);
-        checks.mx = {
-          status: mxOut.includes('mail.noxtm.com') ? 'pass' : 'fail',
-          details: mxOut
+        const hasMailNoxtm = mxOut.includes('mail.noxtm.com');
+        result.mx = {
+          valid: hasMailNoxtm,
+          current: hasMailNoxtm ? 'mail.noxtm.com' : 'Not configured',
+          expected: 'mail.noxtm.com'
         };
       } catch (e) {
-        checks.mx = { status: 'error', error: e.message };
+        result.mx = { valid: false, current: 'Not configured', expected: 'mail.noxtm.com' };
       }
-  
+
       // Check SPF record
       try {
         const { stdout: spfOut } = await execPromise(`nslookup -type=txt ${domain} 8.8.8.8`);
-        checks.spf = {
-          status: spfOut.includes('v=spf1') ? 'pass' : 'fail',
-          details: spfOut
+        const hasSpf = spfOut.includes('v=spf1') && spfOut.includes('185.137.122.61');
+        const spfMatch = spfOut.match(/v=spf1[^"]+/);
+        result.spf = {
+          valid: hasSpf,
+          current: spfMatch ? spfMatch[0] : 'Not configured',
+          expected: 'v=spf1 ip4:185.137.122.61 ~all'
         };
       } catch (e) {
-        checks.spf = { status: 'error', error: e.message };
+        result.spf = { valid: false, current: 'Not configured', expected: 'v=spf1 ip4:185.137.122.61 ~all' };
       }
-  
-      // Check DKIM record
+
+      // Check DKIM record (selector: mail)
       try {
         const { stdout: dkimOut } = await execPromise(`nslookup -type=txt mail._domainkey.${domain} 8.8.8.8`);
-        checks.dkim = {
-          status: dkimOut.includes('v=DKIM1') ? 'pass' : 'fail',
-          details: dkimOut
+        const hasDkim = dkimOut.includes('v=DKIM1');
+
+        // Get expected DKIM key from server
+        let expectedDkim = '';
+        try {
+          const { stdout: dkimKey } = await execOnMailServer('cat /etc/opendkim/keys/noxtm.com/mail.txt 2>/dev/null || echo ""');
+          if (dkimKey) {
+            // Extract just the p= value
+            const pMatch = dkimKey.match(/p=([A-Za-z0-9+/=]+)/g);
+            expectedDkim = pMatch ? pMatch.join('') : dkimKey.trim();
+          }
+        } catch (e) {
+          expectedDkim = 'DKIM key not found on server';
+        }
+
+        result.dkim = {
+          valid: hasDkim,
+          current: hasDkim ? 'Configured (DKIM signature found)' : 'Not configured',
+          expected: expectedDkim || 'v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY_HERE'
         };
       } catch (e) {
-        checks.dkim = { status: 'error', error: e.message };
+        result.dkim = { valid: false, current: 'Not configured', expected: 'Add DKIM TXT record' };
       }
-  
+
       // Check DMARC record
       try {
         const { stdout: dmarcOut } = await execPromise(`nslookup -type=txt _dmarc.${domain} 8.8.8.8`);
-        checks.dmarc = {
-          status: dmarcOut.includes('v=DMARC1') ? 'pass' : 'fail',
-          details: dmarcOut
+        const hasDmarc = dmarcOut.includes('v=DMARC1');
+        const dmarcMatch = dmarcOut.match(/v=DMARC1[^"]+/);
+        result.dmarc = {
+          valid: hasDmarc,
+          current: dmarcMatch ? dmarcMatch[0] : 'Not configured',
+          expected: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@noxtm.com'
         };
       } catch (e) {
-        checks.dmarc = { status: 'error', error: e.message };
+        result.dmarc = { valid: false, current: 'Not configured', expected: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@noxtm.com' };
       }
-  
+
       // Check PTR record
       try {
         const { stdout: ptrOut } = await execPromise('nslookup 185.137.122.61');
-        checks.ptr = {
-          status: ptrOut.includes('mail.noxtm.com') ? 'pass' : 'fail',
-          details: ptrOut
+        const hasPtr = ptrOut.includes('mail.noxtm.com');
+        result.ptr = {
+          valid: hasPtr,
+          current: hasPtr ? 'mail.noxtm.com' : 'Not configured',
+          expected: 'mail.noxtm.com'
         };
       } catch (e) {
-        checks.ptr = { status: 'error', error: e.message };
+        result.ptr = { valid: false, current: 'Not configured', expected: 'mail.noxtm.com' };
       }
-  
-      const allPass = Object.values(checks).every(check => check.status === 'pass');
-  
+
+      const allValid = Object.values(result).every(check => check.valid === true);
+
       res.json({
         success: true,
-        overallStatus: allPass ? 'pass' : 'partial',
-        checks
+        allValid,
+        ...result
       });
     } catch (error) {
       console.error('DNS check error:', error);
