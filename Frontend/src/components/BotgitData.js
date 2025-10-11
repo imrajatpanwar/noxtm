@@ -3,6 +3,7 @@ import { Container, Alert, Spinner } from 'react-bootstrap';
 import { BiSearch, BiExport } from 'react-icons/bi';
 import { FiFilter } from 'react-icons/fi';
 import { BsCalendar4 } from 'react-icons/bs';
+import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
@@ -17,6 +18,8 @@ const BotgitData = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
   const [dateRange, setDateRange] = useState([
     {
       startDate: new Date(),
@@ -49,21 +52,17 @@ const BotgitData = () => {
     if (isDateFilterActive) {
       filtered = filtered.filter(entry => {
         if (!entry.timestamp) return false;
-        
         const entryDate = new Date(entry.timestamp);
         const startDate = new Date(dateRange[0].startDate);
         const endDate = new Date(dateRange[0].endDate);
-        
-        // Set start date to beginning of day
         startDate.setHours(0, 0, 0, 0);
-        // Set end date to end of day
         endDate.setHours(23, 59, 59, 999);
-        
         return entryDate >= startDate && entryDate <= endDate;
       });
     }
-    
+
     setFilteredData(filtered);
+    setCurrentPage(1); // Reset to first page on filter change
   }, [data, searchTerm, dateRange, isDateFilterActive]);
 
   // Update filtered data when data, search term, or date range changes
@@ -141,6 +140,13 @@ const BotgitData = () => {
     fetchData();
   }, []);
 
+  // Pagination logic
+  const totalCount = filteredData.length;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const startIdx = (currentPage - 1) * pageSize;
+  const endIdx = Math.min(startIdx + pageSize, totalCount);
+  const paginatedData = filteredData.slice(startIdx, endIdx);
+
   return (
     <div className="botgit-data-page">
       <div className="header-flex">
@@ -166,11 +172,30 @@ const BotgitData = () => {
       <Container className="botgit-data-container">
         <div className="data-controls">
           <div className="info-section">
-            <div className="total-count">
-              Total: {selectedRows.length > 0 
-                ? `${new Intl.NumberFormat('en-IN').format(selectedRows.length)}/${new Intl.NumberFormat('en-IN').format(filteredData.length)}`
-                : new Intl.NumberFormat('en-IN').format(filteredData.length)
-              }
+            <div className="total-count" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '16px', color: '#222', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {totalCount > 0
+                  ? `${startIdx + 1}-${endIdx} of ${new Intl.NumberFormat('en-IN').format(totalCount)}`
+                  : '0'}
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  style={{ background: 'none', border: 'none', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '18px', color: '#333', padding: 0 }}
+                  aria-label="Previous page"
+                >
+                  <GrFormPrevious />
+                </button>
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  style={{ background: 'none', border: 'none', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '18px', color: '#333', padding: 0 }}
+                  aria-label="Next page"
+                >
+                  <GrFormNext />
+                </button>
+              </span>
               {(isDateFilterActive || searchTerm.trim()) && (
                 <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
                   (filtered from {new Intl.NumberFormat('en-IN').format(data.length)} total)
@@ -238,6 +263,13 @@ const BotgitData = () => {
           </div>
         </div>
 
+        {/* Page info below arrows */}
+        {totalCount > 0 && (
+          <div style={{ margin: '8px 0 0 0', textAlign: 'left', fontSize: '14px', color: '#555' }}>
+            Page {currentPage} of {totalPages}
+          </div>
+        )}
+
         {error && <Alert variant="danger">{error}</Alert>}
         {loading && (
           <div className="text-center my-4">
@@ -256,7 +288,7 @@ const BotgitData = () => {
         {!loading && !error && filteredData.length === 0 && data.length > 0 && isDateFilterActive && searchTerm.trim() && (
           <Alert variant="info">No results found for "{searchTerm}" in the selected date range.</Alert>
         )}
-        {!loading && !error && filteredData.length > 0 && (
+        {!loading && !error && paginatedData.length > 0 && (
           <div className="table-container">
             <table>
               <thead>
@@ -264,7 +296,7 @@ const BotgitData = () => {
                   <th>
                     <input 
                       type="checkbox" 
-                      checked={filteredData.length > 0 && selectedRows.length === filteredData.length}
+                      checked={paginatedData.length > 0 && paginatedData.every(entry => selectedRows.includes(entry._id || entry.profileUrl))}
                       onChange={handleSelectAll}
                       className="custom-checkbox"
                     />
@@ -278,7 +310,7 @@ const BotgitData = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((entry) => (
+                {paginatedData.map((entry) => (
                   <tr 
                     key={entry._id || entry.profileUrl}
                     className={selectedRows.includes(entry._id || entry.profileUrl) ? 'selected-row' : ''}

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import api from './config/api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from 'sonner';
+import { initializeExtension } from './utils/extensionManager';
 import { RoleProvider } from './contexts/RoleContext';
 import Header from './components/Header';
 import Home from './components/Home';
@@ -15,6 +16,7 @@ import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
 import CancellationRefunds from './components/CancellationRefunds';
+import SubscriptionGuard from './components/SubscriptionGuard';
 import TermsConditions from './components/TermsConditions';
 import Shipping from './components/Shipping';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -38,6 +40,12 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Initialize Botgit extension connection
+  useEffect(() => {
+    // Initialize extension message handling
+    initializeExtension();
+  }, []);
 
   useEffect(() => {
     // Check if user is logged in on app start
@@ -191,10 +199,8 @@ function App() {
       return true;
     }
     
-    // Team Member role should be restricted until Business Admin grants permissions
-    // Admin, Business Admin, Freelancer, SOLOHQ and other specific roles should have access
-    const restrictedRoles = ['Team Member'];
-    const isRestricted = restrictedRoles.includes(user.role);
+    // Only restrict basic User role, allow SOLOHQ and other roles
+    const isRestricted = user.role === 'User';
     console.log(`User role: ${user.role}, Is restricted: ${isRestricted}`);
     return isRestricted;
   };
@@ -242,7 +248,7 @@ function App() {
             />
             <Route 
               path="/signup" 
-              element={user ? <Navigate to="/dashboard" /> : <Signup onSignup={signup} />} 
+              element={<Signup onSignup={signup} />} 
             />
             <Route path="/pricing" element={<Pricing />} />
             <Route 
@@ -253,8 +259,10 @@ function App() {
                     // User role - redirect to AccessRestricted
                     <AccessRestricted />
                   ) : (
-                    // Admin, Web Developer, Project Manager, etc. - allow dashboard access
-                    <Dashboard user={user} onLogout={logout} />
+                    // Add SubscriptionGuard to protect dashboard
+                    <SubscriptionGuard>
+                      <Dashboard user={user} onLogout={logout} />
+                    </SubscriptionGuard>
                   )
                 ) : (
                   // No user logged in - redirect to login

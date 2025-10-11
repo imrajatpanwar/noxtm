@@ -87,35 +87,10 @@ db.once('open', () => {
 
 // User Schema
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
+  fullName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { 
-    type: String, 
-    required: true, 
-    default: 'Team Member',
-    enum: [
-      'Admin',
-      'Business Admin',
-      'Team Member',
-      'SOLOHQ',
-      'Project Manager', 
-      'Data Miner',
-      'Data Analyst',
-      'Social Media Manager',
-      'Human Resource',
-      'Graphic Designer',
-      'Web Developer',
-      'SEO Manager'
-    ]
-  },
-  businessName: { type: String }, // For Business Owners
-  businessEmail: { type: String }, // For Business Owners  
-  userType: { 
-    type: String,
-    enum: ['Business Owner', 'Team Member', 'Freelancer'],
-    default: 'Team Member'
-  },
+  role: { type: String, required: true, default: 'User' },
   subscription: {
     plan: {
       type: String,
@@ -807,14 +782,11 @@ app.get('/api/scraped-data', async (req, res) => {
     if (!mongoConnected) {
       return res.status(503).json({ message: 'Database unavailable' });
     }
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
-    const skip = (page - 1) * limit;
     const total = await ScrapedData.countDocuments();
-    const data = await ScrapedData.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const data = await ScrapedData.find().sort({ createdAt: -1 }).lean();
     res.json({
       data,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      total
     });
   } catch (error) {
     console.error('Scraped data GET error:', error);

@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
+import { sendExtensionMessage } from '../utils/extensionHelpers';
+import { checkExtensionConnection } from '../utils/extensionManager';
+import { useRole } from '../contexts/RoleContext';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import LeadsFlow from './LeadsFlow';
@@ -48,26 +52,134 @@ import ProfileSettings from './ProfileSettings';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
+  const navigate = useNavigate();
+  const { currentUser } = useRole();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
+  
+  const isAdmin = currentUser?.role === 'Admin';
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const fetchDashboardData = useCallback(async () => {
+    // Make sure we have the user data and role before proceeding
+    if (!currentUser) {
+      setError('User data not available');
+      setLoading(false);
+      return;
+    }
 
-  const fetchDashboardData = async () => {
     try {
+      // If user is admin, bypass extension check and use direct API call
+      if (isAdmin) {
+        try {
+          const response = await api.get('/dashboard');
+          setDashboardData(response.data);
+          setLoading(false);
+          return;
+        } catch (adminError) {
+          console.warn('Admin API call failed:', adminError);
+          // For admin users, show error but don't redirect
+          setError('Failed to load dashboard data. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // For non-admin users, proceed with normal flow
+      const extensionConnected = await checkExtensionConnection();
+      let extensionAttempted = false;
+      
+      // Try to get data from extension if available
+      if (extensionConnected) {
+        extensionAttempted = true;
+        try {
+          // Using our helper that handles lastError properly
+          const extensionData = await sendExtensionMessage({ 
+            type: 'getDashboardData' 
+          }).catch(err => {
+            console.warn('Extension data fetch failed:', err.message);
+            return null;
+          });
+          
+          // If we got data from extension, use it
+          if (extensionData && !extensionData.error) {
+            setDashboardData(extensionData);
+            setLoading(false);
+            return;
+          }
+          // Otherwise fall through to API call
+        } catch (extError) {
+          console.warn('Extension error caught:', extError);
+          // Fall through to regular API call
+        }
+      }
+      
+      // If extension didn't work, use default data instead of requiring subscription
+      if (extensionAttempted) {
+        // Provide demo dashboard data instead of requiring subscription
+        const demoData = {
+          message: 'Demo dashboard data',
+          data: {
+            totalUsers: 5,
+            recentActivity: [
+              { id: 1, action: 'Extension demo data loaded', timestamp: new Date() },
+              { id: 2, action: 'Welcome to Botgit Extension', timestamp: new Date() }
+            ]
+          }
+        };
+        setDashboardData(demoData);
+        setLoading(false);
+        return;
+      }
+      
+      // Only fall through to API call if extension was never attempted
+      // Standard API fallback when extension is not available at all
       const response = await api.get('/dashboard');
       setDashboardData(response.data);
     } catch (error) {
-      setError('Failed to load dashboard data');
+      // More detailed error message to help with debugging
+      let errorMsg = 'Failed to load dashboard data';
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('API Error Status:', error.response.status);
+        console.error('API Error Data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          errorMsg += ': Authentication failed. Please log in again.';
+          onLogout(); // Logout the user on authentication failure
+        } else if (!isAdmin && (error.response.status === 302 || 
+                  (error.response.data && error.response.data.redirect === '/pricing'))) {
+          // Only redirect non-admin users to pricing page
+          navigate('/pricing');
+          return; // Exit early since we're redirecting
+        } else if (error.response.status >= 500) {
+          errorMsg += ': Server error. Please try again later.';
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('API Error: No response received');
+        errorMsg += ': No response from server. Please check your connection.';
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('API Error Setup:', error.message);
+        errorMsg += `: ${error.message}`;
+      }
+      
+      setError(errorMsg);
       console.error('Dashboard error:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, isAdmin, navigate, onLogout]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchDashboardData();
+    }
+  }, [currentUser, fetchDashboardData]);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);

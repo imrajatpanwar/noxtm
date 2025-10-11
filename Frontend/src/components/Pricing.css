@@ -226,8 +226,8 @@
 
 .price-section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 104px;
   margin-bottom: 16px;
   background: white;
   padding: 16px 20px;
@@ -235,12 +235,12 @@
 }
 
 .feature-column {
-  padding: 20px;
-  border-right: 1px solid #e5e7eb;
+  padding: 82px;
+  /* border-right: 1px solid #e5e7eb; */
 }
 
 .plan-column {
-  padding: 32px 24px;
+  padding: 15px 26px;
   text-align: left;
   display: flex;
   flex-direction: column;
