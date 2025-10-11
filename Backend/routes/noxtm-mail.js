@@ -2,10 +2,31 @@ const express = require('express');
 const router = express.Router();
 const { exec } = require('child_process');
 const util = require('util');
+const os = require('os');
 const execPromise = util.promisify(exec);
 
 // Import from parent context (will be passed as middleware)
 let EmailLog, authenticateToken, requireAdmin;
+
+// Helper function to execute command (local or SSH)
+const mailServerIP = '185.137.122.61';
+const isMailServer = () => {
+  const interfaces = os.networkInterfaces();
+  for (const iface of Object.values(interfaces)) {
+    for (const addr of iface) {
+      if (addr.address === mailServerIP) return true;
+    }
+  }
+  return false;
+};
+
+const execOnMailServer = async (command) => {
+  if (isMailServer()) {
+    return await execPromise(command);
+  } else {
+    return await execPromise(`ssh root@${mailServerIP} "${command.replace(/"/g, '\\"')}"`);
+  }
+};
 
 // Initialize route with dependencies
 function initializeRoutes(dependencies) {
@@ -24,21 +45,21 @@ function initializeRoutes(dependencies) {
       let queueSize = 0;
 
       try {
-        const { stdout: postfixOut } = await execPromise('ssh root@185.137.122.61 "systemctl is-active postfix"');
+        const { stdout: postfixOut } = await execOnMailServer('systemctl is-active postfix');
         postfixStatus = postfixOut.trim() === 'active' ? 'running' : 'stopped';
       } catch (e) {
         postfixStatus = 'stopped';
       }
 
       try {
-        const { stdout: opendkimOut } = await execPromise('ssh root@185.137.122.61 "ps aux | grep opendkim | grep -v grep | wc -l"');
+        const { stdout: opendkimOut } = await execOnMailServer('ps aux | grep opendkim | grep -v grep | wc -l');
         opendkimStatus = parseInt(opendkimOut.trim()) > 0 ? 'running' : 'stopped';
       } catch (e) {
         opendkimStatus = 'stopped';
       }
 
       try {
-        const { stdout: queueOut } = await execPromise('ssh root@185.137.122.61 "mailq | tail -1 | awk \'{print $4}\'"');
+        const { stdout: queueOut } = await execOnMailServer('mailq | tail -1 | awk \'{print $4}\'');
         queueSize = parseInt(queueOut.trim()) || 0;
       } catch (e) {
         queueSize = 0;
@@ -137,7 +158,7 @@ function initializeRoutes(dependencies) {
   // Get mail queue
   router.get('/queue', authenticateToken, async (req, res) => {
     try {
-      const { stdout } = await execPromise('ssh root@185.137.122.61 "mailq"');
+      const { stdout } = await execOnMailServer('mailq');
 
       res.json({
         success: true,
@@ -170,9 +191,9 @@ function initializeRoutes(dependencies) {
       const testBody = body || 'This is a test email sent from Noxtm Mail dashboard.';
       const from = process.env.EMAIL_FROM || 'noreply@noxtm.com';
   
-      // Send email via SSH to mail server
-      const emailCmd = `ssh root@185.137.122.61 "echo '${testBody}' | mail -r '${from}' -s '${testSubject}' '${to}'"`;
-      await execPromise(emailCmd);
+      // Send email via mail server
+      const emailCmd = `echo '${testBody}' | mail -r '${from}' -s '${testSubject}' '${to}'`;
+      await execOnMailServer(emailCmd);
   
       // Log the email
       const emailLog = new EmailLog({
@@ -230,9 +251,9 @@ function initializeRoutes(dependencies) {
       const from = process.env.EMAIL_FROM || 'noreply@noxtm.com';
       const emailBody = htmlBody || body || '';
   
-      // Send email via SSH to mail server
-      const emailCmd = `ssh root@185.137.122.61 "echo '${emailBody.replace(/'/g, "'\\''")}' | mail -r '${from}' -s '${subject.replace(/'/g, "'\\''")}' '${to}'"`;
-      await execPromise(emailCmd);
+      // Send email via mail server
+      const emailCmd = `echo '${emailBody.replace(/'/g, "'\\''")}' | mail -r '${from}' -s '${subject.replace(/'/g, "'\\''")}' '${to}'`;
+      await execOnMailServer(emailCmd);
   
       // Log the email
       const emailLog = new EmailLog({
@@ -427,7 +448,7 @@ function initializeRoutes(dependencies) {
   // Flush mail queue (admin only)
   router.post('/queue/flush', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      await execPromise('ssh root@185.137.122.61 "postqueue -f"');
+      await execOnMailServer('postqueue -f');
   
       res.json({
         success: true,
@@ -446,7 +467,7 @@ function initializeRoutes(dependencies) {
   // Restart mail services (admin only)
   router.post('/restart', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      await execPromise('ssh root@185.137.122.61 "systemctl restart postfix && systemctl restart opendkim"');
+      await execOnMailServer('systemctl restart postfix && systemctl restart opendkim');
 
       res.json({
         success: true,
