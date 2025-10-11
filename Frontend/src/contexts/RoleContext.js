@@ -105,11 +105,7 @@ export const RoleProvider = ({ children }) => {
       const oldHash = lastPermissionHash.current;
       
       if (oldHash && newHash && oldHash !== newHash) {
-        // Permissions changed - notify user and trigger re-render
-        toast.success('Your permissions have been updated!', {
-          description: 'Your access levels have been modified by an administrator.',
-          duration: 5000,
-        });
+        // Permissions changed - trigger re-render without notification
         setPermissionUpdateTrigger(prev => prev + 1);
         
         // Only update state if permissions changed
