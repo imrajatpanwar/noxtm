@@ -248,7 +248,7 @@ function App() {
             />
             <Route
               path="/signup"
-              element={user ? <Navigate to="/dashboard" /> : <Signup onSignup={signup} />}
+              element={<Signup onSignup={signup} />}
             />
             <Route path="/pricing" element={<Pricing />} />
             <Route 
