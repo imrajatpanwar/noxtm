@@ -106,10 +106,10 @@ function Signup({ onSignup }) {
             {/* Terms and Privacy */}
             <div className="terms-section">
               <p>
-                By clicking "Create Account" above, you acknowledge that you 
+                By clicking "Create Account" above, you acknowledge that you
                 have read and understood, and agree to Noxtm's{' '}
-                <a href="/terms" className="terms-link">Terms & Conditions</a> and{' '}
-                <a href="/privacy" className="terms-link">Privacy Policy</a>.
+                <Link to="/terms" className="terms-link">Terms & Conditions</Link> and{' '}
+                <Link to="/privacy" className="terms-link">Privacy Policy</Link>.
               </p>
             </div>
           </div>
@@ -225,10 +225,10 @@ function Signup({ onSignup }) {
               {/* Terms and Privacy */}
               <div className="terms-section">
                 <p>
-                  By clicking "Create Account" above, you acknowledge that you 
+                  By clicking "Create Account" above, you acknowledge that you
                   have read and understood, and agree to Noxtm's{' '}
-                  <a href="/terms" className="terms-link">Terms & Conditions</a> and{' '}
-                  <a href="/privacy" className="terms-link">Privacy Policy</a>.
+                  <Link to="/terms" className="terms-link">Terms & Conditions</Link> and{' '}
+                  <Link to="/privacy" className="terms-link">Privacy Policy</Link>.
                 </p>
               </div>
               <button type="submit" className="continue-btn" disabled={loading}>
