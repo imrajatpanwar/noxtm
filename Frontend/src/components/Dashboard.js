@@ -49,6 +49,10 @@ import WorkspaceSettings from './WorkspaceSettings';
 import BotgitData from './BotgitData';
 import BotgitSettings from './BotgitSettings';
 import ProfileSettings from './ProfileSettings';
+import NoxtmMailStatus from './NoxtmMailStatus';
+import EmailLogs from './EmailLogs';
+import EmailComposer from './EmailComposer';
+import DnsConfiguration from './DnsConfiguration';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -221,6 +225,15 @@ function Dashboard({ user, onLogout }) {
         return <ReferralClient />;
       case 'credentials':
         return <Credentials />;
+      // Noxtm Mail
+      case 'noxtm-mail-status':
+        return <NoxtmMailStatus />;
+      case 'noxtm-mail-logs':
+        return <EmailLogs />;
+      case 'noxtm-mail-composer':
+        return <EmailComposer />;
+      case 'noxtm-mail-dns':
+        return <DnsConfiguration />;
       // Team Communication
       case 'message':
         return <Message />;

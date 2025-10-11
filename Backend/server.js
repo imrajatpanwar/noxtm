@@ -229,6 +229,37 @@ const emailVerificationSchema = new mongoose.Schema({
 
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 
+// Email Log Schema (for Noxtm Mail dashboard)
+const emailLogSchema = new mongoose.Schema({
+  from: { type: String, required: true },
+  to: { type: String, required: true },
+  subject: { type: String, required: true },
+  body: String,
+  htmlBody: String,
+  status: {
+    type: String,
+    enum: ['queued', 'sent', 'failed', 'bounced'],
+    default: 'queued',
+    index: true
+  },
+  messageId: String,
+  error: String,
+  deliveryInfo: {
+    relay: String,
+    delay: String,
+    dsnStatus: String
+  },
+  sentAt: { type: Date, default: Date.now, index: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Add indexes for common queries
+emailLogSchema.index({ status: 1, sentAt: -1 });
+emailLogSchema.index({ to: 1 });
+emailLogSchema.index({ from: 1 });
+
+const EmailLog = mongoose.model('EmailLog', emailLogSchema);
+
 // JWT Secret - Use environment variable or generate a secure fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production';
 
@@ -881,6 +912,17 @@ app.post('/api/send-verification-code', async (req, res) => {
     });
     await verification.save();
 
+    // Check if email configuration is set
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS ||
+        process.env.EMAIL_PASS === 'YOUR_SENDGRID_API_KEY_HERE' ||
+        process.env.EMAIL_PASS === 'your-app-specific-password-here') {
+      console.error('Email configuration missing or incomplete');
+      return res.status(500).json({
+        message: 'Email service not configured. Please contact administrator.',
+        error: 'SMTP_CONFIG_MISSING'
+      });
+    }
+
     // Configure nodemailer
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
@@ -889,8 +931,23 @@ app.post('/api/send-verification-code', async (req, res) => {
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      }
+      },
+      debug: true, // Enable debug output
+      logger: true // Log information to console
     });
+
+    // Verify transporter configuration
+    try {
+      await transporter.verify();
+      console.log('✅ SMTP connection verified successfully');
+    } catch (verifyError) {
+      console.error('❌ SMTP verification failed:', verifyError.message);
+      return res.status(500).json({
+        message: 'Email service configuration error. Please contact administrator.',
+        error: 'SMTP_CONNECTION_FAILED',
+        details: verifyError.message
+      });
+    }
 
     // Send email
     const mailOptions = {
@@ -913,16 +970,36 @@ app.post('/api/send-verification-code', async (req, res) => {
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Email sent successfully:', info.messageId);
 
-    res.status(200).json({
-      success: true,
-      message: 'Verification code sent to your email',
-      email: email
-    });
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent to your email',
+        email: email
+      });
+    } catch (mailError) {
+      console.error('❌ Failed to send email:', mailError);
+      throw mailError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error('Send verification code error:', error);
-    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+
+    // Provide more specific error messages
+    let errorMessage = 'Failed to send verification code. Please try again.';
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Email authentication failed. Please contact administrator.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Cannot connect to email server. Please try again later.';
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = 'Email service timeout. Please try again.';
+    }
+
+    res.status(500).json({
+      message: errorMessage,
+      error: error.code || 'UNKNOWN_ERROR'
+    });
   }
 });
 
@@ -1607,6 +1684,16 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// ===== NOXTM MAIL ROUTES =====
+// Initialize Noxtm Mail routes with dependencies
+const noxtmMailRoutes = require('./routes/noxtm-mail');
+const noxtmMail = noxtmMailRoutes.initializeRoutes({
+  EmailLog,
+  authenticateToken,
+  requireAdmin
+});
+app.use('/api/noxtm-mail', noxtmMail);
 
 // API-only backend - no frontend serving
 // Frontend is served on a different port

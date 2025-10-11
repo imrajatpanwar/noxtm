@@ -223,7 +223,13 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Analytics & Reporting', section: 'email-analytics', category: 'Marketing' },
     { name: 'WhatsApp Marketing', section: 'whatsapp-marketing', category: 'Marketing' },
     { name: 'Referral Client', section: 'referral-client', category: 'Marketing' },
-    
+
+    // Noxtm Mail
+    { name: 'Mail Server Status', section: 'noxtm-mail-status', category: 'Marketing' },
+    { name: 'Email Logs', section: 'noxtm-mail-logs', category: 'Marketing' },
+    { name: 'Send Email', section: 'noxtm-mail-composer', category: 'Marketing' },
+    { name: 'DNS Configuration', section: 'noxtm-mail-dns', category: 'Marketing' },
+
     // HR Management
     { name: 'HR Management', section: 'hr-management-sub', category: 'HR Management' },
     { name: 'HR Overview', section: 'hr-overview', category: 'HR Management' },
@@ -617,6 +623,41 @@ function Sidebar({ activeSection, onSectionChange }) {
               >
                 <FiFileText className="sidebar-icon" />
                 <span>Case Studies</span>
+              </div>
+            </div>
+          )}
+
+          {/* Noxtm Mail Section */}
+          {hasPermissionForSection('Marketing') && (
+            <div className="sidebar-section">
+              <h4 className="sidebar-section-title">NOXTM MAIL</h4>
+              <div
+                className={`sidebar-item ${activeSection === 'noxtm-mail-status' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-status')}
+              >
+                <FiMail className="sidebar-icon" />
+                <span>Mail Server Status</span>
+              </div>
+              <div
+                className={`sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-logs')}
+              >
+                <FiFileText className="sidebar-icon" />
+                <span>Email Logs</span>
+              </div>
+              <div
+                className={`sidebar-item ${activeSection === 'noxtm-mail-composer' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-composer')}
+              >
+                <FiMail className="sidebar-icon" />
+                <span>Send Email</span>
+              </div>
+              <div
+                className={`sidebar-item ${activeSection === 'noxtm-mail-dns' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-dns')}
+              >
+                <FiGlobe className="sidebar-icon" />
+                <span>DNS Configuration</span>
               </div>
             </div>
           )}
