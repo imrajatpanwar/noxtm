@@ -227,7 +227,7 @@ function DnsConfiguration() {
             </div>
             <div className="record-row">
               <span className="record-label">Name:</span>
-              <span className="record-value">default._domainkey</span>
+              <span className="record-value">mail._domainkey</span>
             </div>
             <div className="record-row">
               <span className="record-label">Value:</span>
