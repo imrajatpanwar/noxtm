@@ -71,26 +71,6 @@ function Sidebar({ activeSection, onSectionChange }) {
       };
     }
     
-    // For Freelancer users, grant access to most sections except HR/Internal Policies/Settings
-    if (currentUser?.role === 'Freelancer') {
-      return {
-        'Dashboard': true,
-        'Data Center': true,
-        'Projects': true,
-        'Team Communication': true,
-        'Digital Media Management': true,
-        'Marketing': true,
-        'HR Management': false,
-        'Finance Management': true,
-        'SEO Management': true,
-        'Internal Policies': false,
-        'Settings & Configuration': false,
-        'Workspace Settings': true,
-        'Botgit': true,
-        'Profile': true
-      };
-    }
-    
     // For SOLOHQ users, override permissions with specific allowed sections
     if (isSOLOHQUser) {
       return {

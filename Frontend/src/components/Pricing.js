@@ -9,6 +9,7 @@ import './Pricing.css';
 const Pricing = () => {
   const navigate = useNavigate();
   const [billingType, setBillingType] = useState('Monthly');
+  // eslint-disable-next-line no-unused-vars
   const { currentUser, upgradeToSoloHQ } = useRole();
 
   const features = [
@@ -144,17 +145,56 @@ const Pricing = () => {
   ];
 
   const handlePlanSelect = async (plan) => {
+    if (!currentUser) {
+      navigate('/signup');
+      return;
+    }
+
+    // If user is admin, redirect directly to dashboard
+    if (currentUser.role === 'Admin') {
+      navigate('/dashboard');
+      return;
+    }
+
     if (plan.name === 'Solo HQ Dashboard') {
-      if (!currentUser) {
-        navigate('/signup');
-      } else if (currentUser.role === 'User') {
-        // Upgrade existing user to SOLOHQ
-        const success = await upgradeToSoloHQ();
-        if (success) {
-          navigate('/dashboard');
+      try {
+        // Call the backend to set up subscription
+        const response = await fetch('/api/subscribe/solohq', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        // Check if response is ok and is JSON
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Subscription failed');
+          } else {
+            throw new Error('Server error. Please try again later.');
+          }
         }
-      } else {
-        toast.error('You already have a different plan active.');
+
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Invalid response from server');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update local user data
+          localStorage.setItem('user', JSON.stringify(data.user));
+          toast.success('Successfully subscribed to SOLOHQ plan!');
+          navigate('/dashboard');
+        } else {
+          toast.error(data.message || 'Failed to subscribe to SOLOHQ plan');
+        }
+      } catch (error) {
+        console.error('Subscription error:', error);
+        toast.error(error.message || 'Failed to process subscription. Please try again.');
       }
     } else if (plan.name === 'Enterprise') {
       window.location.href = 'mailto:sales@noxtm.com';

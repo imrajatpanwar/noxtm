@@ -7,6 +7,14 @@ import explorerImage from './image/explorer.svg';
 function AccessRestricted() {
   const navigate = useNavigate();
 
+  // Automatically redirect to pricing page after a short delay
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      navigate('/pricing');
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
+
   const handleReturnHome = () => {
     navigate('/');
   };
@@ -31,10 +39,10 @@ function AccessRestricted() {
           
           <div className="restricted-message">
             <p className="main-message">
-              You are not part of our Internal Team.
+              Access to Dashboard Features Requires an Upgrade
             </p>
             <p className="sub-message">
-              This section is reserved only for authorized team members. if you believe this is a mistake, please contact your administrator or support team.
+              You are being redirected to our pricing page where you can upgrade your account to access all dashboard features. If you believe this is a mistake, please contact support.
             </p>
           </div>
 
