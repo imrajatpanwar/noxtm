@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../config/api';
 import './Signup.css';
 
 function Signup({ onSignup }) {
+  const [step, setStep] = useState(1); // 1 = form, 2 = verification
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  const [verificationCode, setVerificationCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -41,23 +44,49 @@ function Signup({ onSignup }) {
       return;
     }
 
-    // Prepare signup data
-    const signupData = {
-      fullName: formData.fullName,
-      email: formData.email,
-      password: formData.password,
-      role: 'User'
-    };
+    try {
+      // Send verification code
+      const response = await api.post('/send-verification-code', {
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: 'User'
+      });
 
-  const result = await onSignup(signupData.fullName, signupData.email, signupData.password, signupData.role, signupData);
+      if (response.data.success) {
+        setMessage('Verification code sent to ' + formData.email);
+        setStep(2); // Move to verification step
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Failed to send verification code');
+    }
 
-    if (result.success) {
-      setMessage('Account created successfully!');
-      setTimeout(() => {
-        navigate('/pricing');
-      }, 1000);
-    } else {
-      setMessage(result.message);
+    setLoading(false);
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await api.post('/verify-code', {
+        email: formData.email,
+        code: verificationCode
+      });
+
+      if (response.data.success) {
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        setMessage('Account created successfully!');
+        setTimeout(() => {
+          navigate('/pricing');
+        }, 1000);
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Invalid verification code');
     }
 
     setLoading(false);
@@ -90,12 +119,14 @@ function Signup({ onSignup }) {
         <div className="signup-right-side">
           <div className="signup-form">
             {message && (
-              <div className={`alert ${message.includes('successfully') ? 'alert-success' : 'alert-error'}`}>
+              <div className={`alert ${message.includes('successfully') || message.includes('sent to') ? 'alert-success' : 'alert-error'}`}>
                 {message}
               </div>
             )}
-            <form onSubmit={handleSubmit} className="email-signup-form">
-              <div className="form-row">
+
+            {step === 1 ? (
+              <form onSubmit={handleSubmit} className="email-signup-form">
+                <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="fullName" className="form-label">Full Name</label>
                   <input
@@ -201,9 +232,43 @@ function Signup({ onSignup }) {
                 </p>
               </div>
               <button type="submit" className="continue-btn" disabled={loading}>
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? 'Sending Code...' : 'Send Verification Code'}
               </button>
             </form>
+            ) : (
+              <form onSubmit={handleVerifyCode} className="email-signup-form">
+                <div className="verification-info">
+                  <h3>Verify Your Email</h3>
+                  <p>We've sent a verification code to <strong>{formData.email}</strong></p>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="verificationCode" className="form-label">Enter Verification Code</label>
+                  <input
+                    type="text"
+                    id="verificationCode"
+                    name="verificationCode"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    placeholder="Enter 6-digit code..."
+                    className="form-input"
+                    maxLength="6"
+                    required
+                  />
+                </div>
+                <button type="submit" className="continue-btn" disabled={loading}>
+                  {loading ? 'Verifying...' : 'Verify & Create Account'}
+                </button>
+                <button
+                  type="button"
+                  className="back-btn"
+                  onClick={() => setStep(1)}
+                  disabled={loading}
+                >
+                  Back to Sign Up
+                </button>
+              </form>
+            )}
+
             <div className="create-account-section">
               <p className="create-account-text">
                 Already have an account? <Link to="/login" className="create-account-link">Log in</Link>

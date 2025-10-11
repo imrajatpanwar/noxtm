@@ -440,8 +440,61 @@
   .continue-btn:hover:not(:disabled) {
     transform: none;
   }
-  
+
   .user-type-option {
     transition: none;
   }
+}
+
+/* Verification Step Styles */
+.verification-info {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.verification-info h3 {
+  font-family: 'Switzer', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 12px 0;
+}
+
+.verification-info p {
+  font-family: 'Switzer', sans-serif;
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.verification-info strong {
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Back Button */
+.back-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: 'Switzer', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 12px;
+}
+
+.back-btn:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.back-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
