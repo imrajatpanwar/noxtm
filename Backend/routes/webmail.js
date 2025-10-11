@@ -40,7 +40,7 @@ function initializeRoutes(dependencies) {
       });
 
       imap.once('error', (err) => {
-        res.status(401).json({ success: false, message: 'Invalid credentials or connection error', error: err.message });
+        res.status(403).json({ success: false, message: 'Invalid email credentials or connection error', error: err.message });
       });
 
       imap.connect();
