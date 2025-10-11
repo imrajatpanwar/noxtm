@@ -913,41 +913,33 @@ app.post('/api/send-verification-code', async (req, res) => {
     await verification.save();
 
     // Check if email configuration is set
-    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS ||
-        process.env.EMAIL_PASS === 'YOUR_SENDGRID_API_KEY_HERE' ||
-        process.env.EMAIL_PASS === 'your-app-specific-password-here') {
-      console.error('Email configuration missing or incomplete');
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_FROM) {
+      console.error('Email configuration missing');
       return res.status(500).json({
         message: 'Email service not configured. Please contact administrator.',
         error: 'SMTP_CONFIG_MISSING'
       });
     }
 
-    // Configure nodemailer
-    const transporter = nodemailer.createTransport({
+    // Configure nodemailer for local Postfix (no auth needed)
+    const transportConfig = {
       host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT),
+      port: parseInt(process.env.EMAIL_PORT) || 25,
       secure: false,
-      auth: {
+      tls: {
+        rejectUnauthorized: false
+      }
+    };
+
+    // Only add auth if credentials are provided
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      transportConfig.auth = {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      },
-      debug: true, // Enable debug output
-      logger: true // Log information to console
-    });
-
-    // Verify transporter configuration
-    try {
-      await transporter.verify();
-      console.log('✅ SMTP connection verified successfully');
-    } catch (verifyError) {
-      console.error('❌ SMTP verification failed:', verifyError.message);
-      return res.status(500).json({
-        message: 'Email service configuration error. Please contact administrator.',
-        error: 'SMTP_CONNECTION_FAILED',
-        details: verifyError.message
-      });
+      };
     }
+
+    const transporter = nodemailer.createTransport(transportConfig);
 
     // Send email
     const mailOptions = {
