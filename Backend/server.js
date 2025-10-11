@@ -6,6 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 const emailRoutes = require('./routes/email');
 require('dotenv').config();
 
@@ -212,6 +213,21 @@ const scrapedDataSchema = new mongoose.Schema({
 scrapedDataSchema.index({ profileUrl: 1 }, { unique: true });
 
 const ScrapedData = mongoose.model('ScrapedData', scrapedDataSchema);
+
+// Email Verification Schema
+const emailVerificationSchema = new mongoose.Schema({
+  email: { type: String, required: true, index: true },
+  code: { type: String, required: true },
+  userData: {
+    fullName: String,
+    email: String,
+    password: String,
+    role: String
+  },
+  createdAt: { type: Date, default: Date.now, expires: 600 } // Auto-delete after 10 minutes
+});
+
+const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 
 // JWT Secret - Use environment variable or generate a secure fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production';
@@ -825,6 +841,161 @@ app.post('/api/check-domain', async (req, res) => {
   } catch (error) {
     console.error('Domain check error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send verification code
+app.post('/api/send-verification-code', async (req, res) => {
+  try {
+    const { fullName, email, password, role } = req.body;
+
+    // Validate input
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    // Generate 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash password before storing
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Store verification data
+    await EmailVerification.findOneAndDelete({ email: email.trim().toLowerCase() }); // Remove any existing verification
+    const verification = new EmailVerification({
+      email: email.trim().toLowerCase(),
+      code: verificationCode,
+      userData: {
+        fullName,
+        email: email.trim().toLowerCase(),
+        password: hashedPassword,
+        role: role || 'User'
+      }
+    });
+    await verification.save();
+
+    // Configure nodemailer
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT),
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Send email
+    const mailOptions = {
+      from: `"Noxtm" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Verify Your Email - Noxtm',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Welcome to Noxtm!</h2>
+          <p>Hi ${fullName},</p>
+          <p>Thank you for signing up. Please use the verification code below to complete your registration:</p>
+          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${verificationCode}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification code sent to your email',
+      email: email
+    });
+  } catch (error) {
+    console.error('Send verification code error:', error);
+    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+  }
+});
+
+// Verify code and complete registration
+app.post('/api/verify-code', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: 'Email and code are required' });
+    }
+
+    // Find verification record
+    const verification = await EmailVerification.findOne({
+      email: email.trim().toLowerCase(),
+      code: code.trim()
+    });
+
+    if (!verification) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Create user with stored data
+    const { fullName, password, role } = verification.userData;
+
+    const user = new User({
+      username: fullName,
+      fullName: fullName,
+      email: email.trim().toLowerCase(),
+      password: password, // Already hashed
+      role: role || 'User',
+      status: 'Active',
+      permissions: {
+        dashboard: true,
+        dataCenter: false,
+        projects: false,
+        teamCommunication: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
+      }
+    });
+
+    await user.save();
+
+    // Delete verification record
+    await EmailVerification.findByIdAndDelete(verification._id);
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, {
+      expiresIn: '24h'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully',
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        access: user.access,
+        permissions: user.permissions
+      }
+    });
+  } catch (error) {
+    console.error('Verify code error:', error);
+    res.status(500).json({ message: 'Verification failed. Please try again.' });
   }
 });
 
