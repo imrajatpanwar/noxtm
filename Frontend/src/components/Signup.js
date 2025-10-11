@@ -80,10 +80,11 @@ function Signup({ onSignup }) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
-        setMessage('Account created successfully!');
+        setMessage('Account created successfully! Redirecting...');
         setTimeout(() => {
-          navigate('/pricing');
-        }, 1000);
+          // Use window.location for full page reload with new user state
+          window.location.href = '/pricing';
+        }, 1500);
       }
     } catch (error) {
       setMessage(error.response?.data?.message || 'Invalid verification code');
