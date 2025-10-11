@@ -18,26 +18,29 @@ function TeamEmail() {
   useEffect(() => {
     const saved = localStorage.getItem('webmail_credentials');
     if (saved) {
-      const creds = JSON.parse(saved);
-      setCredentials(creds);
-      // Try to auto-login silently without showing errors
-      autoLogin(creds);
-    }
-  }, []);
-
-  const autoLogin = async (creds) => {
-    try {
-      const response = await api.post('/webmail/connect', creds);
-      if (response.data.success) {
-        setIsLoggedIn(true);
-        fetchEmails(creds);
+      try {
+        const creds = JSON.parse(saved);
+        // Try to auto-login silently without showing errors
+        api.post('/webmail/connect', creds)
+          .then(response => {
+            if (response.data.success) {
+              setCredentials(creds);
+              setIsLoggedIn(true);
+              fetchEmails(creds);
+            }
+          })
+          .catch(err => {
+            // Silent fail - clear saved credentials
+            localStorage.removeItem('webmail_credentials');
+            console.log('Auto-login failed, credentials cleared');
+          });
+      } catch (err) {
+        // Invalid JSON or other error
+        localStorage.removeItem('webmail_credentials');
       }
-    } catch (err) {
-      // Silent fail - clear saved credentials and let user login manually
-      localStorage.removeItem('webmail_credentials');
-      console.log('Auto-login failed, credentials cleared');
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (creds = credentials) => {
     setLoading(true);
@@ -51,8 +54,14 @@ function TeamEmail() {
         fetchEmails(creds);
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Login failed. Please check your username and password.';
-      setError(errorMsg.replace('Invalid credentials or connection error', 'Invalid email credentials. Please verify your username and password.'));
+      if (err.response?.status === 401) {
+        setError('Session expired. Please refresh the page and login to the dashboard again.');
+      } else if (err.response?.status === 403) {
+        setError('Invalid email credentials. Please verify your username and password.');
+      } else {
+        const errorMsg = err.response?.data?.message || 'Login failed. Please check your username and password.';
+        setError(errorMsg.replace('Invalid credentials or connection error', 'Invalid email credentials. Please verify your username and password.'));
+      }
     } finally {
       setLoading(false);
     }
