@@ -196,14 +196,51 @@ const Pricing = () => {
         console.error('Subscription error:', error);
         toast.error(error.message || 'Failed to process subscription. Please try again.');
       }
+    } else if (plan.name === 'Noxtm Dashboard') {
+      try {
+        // Call the backend to set up Noxtm subscription
+        const response = await fetch('/api/subscribe/noxtm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            billingType: billingType // Send 'Monthly' or 'Annual'
+          })
+        });
+
+        // Check if response is ok and is JSON
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Subscription failed');
+          } else {
+            throw new Error('Server error. Please try again later.');
+          }
+        }
+
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Invalid response from server');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Update local user data
+          localStorage.setItem('user', JSON.stringify(data.user));
+          toast.success('Successfully subscribed to Noxtm plan!');
+          navigate('/dashboard');
+        } else {
+          toast.error(data.message || 'Failed to subscribe to Noxtm plan');
+        }
+      } catch (error) {
+        console.error('Noxtm subscription error:', error);
+        toast.error(error.message || 'Failed to process subscription. Please try again.');
+      }
     } else if (plan.name === 'Enterprise') {
       window.location.href = 'mailto:sales@noxtm.com';
-    } else {
-      if (!currentUser) {
-        navigate('/signup');
-      } else {
-        toast.error('Please contact sales to upgrade your plan.');
-      }
     }
   };
 

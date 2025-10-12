@@ -1321,7 +1321,7 @@ app.post('/api/subscribe/solohq', authenticateToken, async (req, res) => {
       message: 'Successfully subscribed to SoloHQ plan',
       user: {
         id: user._id,
-        username: user.username,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
         permissions: user.permissions,
@@ -1330,6 +1330,59 @@ app.post('/api/subscribe/solohq', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Subscription error:', error);
+    res.status(500).json({ message: 'Server error during subscription' });
+  }
+});
+
+// Handle Noxtm subscription
+app.post('/api/subscribe/noxtm', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { billingType } = req.body; // 'Monthly' or 'Annual'
+
+    // Set up subscription details
+    const startDate = new Date();
+    const endDate = new Date();
+
+    // Set end date based on billing type
+    if (billingType === 'Annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1); // 1 year subscription
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+    }
+
+    user.subscription = {
+      plan: 'Noxtm',
+      status: 'active',
+      startDate,
+      endDate
+    };
+
+    // Update permissions based on Noxtm plan (role stays unchanged)
+    user.permissions = getDefaultPermissions('Noxtm');
+    user.access = syncAccessFromPermissions(user.permissions);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Successfully subscribed to Noxtm plan',
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Noxtm subscription error:', error);
     res.status(500).json({ message: 'Server error during subscription' });
   }
 });
