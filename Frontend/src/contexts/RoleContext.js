@@ -168,23 +168,13 @@ export const RoleProvider = ({ children }) => {
     // Only run this effect once on mount, intentionally omitting generatePermissionHash to prevent unnecessary re-renders
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Function to upgrade user to SOLOHQ role
-  const upgradeToSoloHQ = useCallback(async () => {
-    try {
-      const response = await api.post('/users/upgrade-role', { newRole: 'SOLOHQ' });
-      if (response.data.success) {
-        // Update current user with new role
-        const updatedUser = { ...currentUser, role: 'SOLOHQ' };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        toast.success('Successfully upgraded to Solo HQ Dashboard!');
-        return true;
-      }
-    } catch (error) {
-      console.error('Error upgrading role:', error);
-      toast.error('Failed to upgrade role. Please try again.');
-      return false;
-    }
+  // Function to check if user has active subscription
+  const hasActiveSubscription = useCallback(() => {
+    if (!currentUser) return false;
+    // Admin and Lord always have access
+    if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
+    // Check if subscription is active
+    return currentUser.subscription?.status === 'active' && currentUser.subscription?.plan !== 'None';
   }, [currentUser]);
 
   // Set up real-time permission checking
@@ -207,22 +197,24 @@ export const RoleProvider = ({ children }) => {
   // Check if user has permission for a module
   const hasPermission = useCallback((module) => {
     if (!currentUser || !currentUser.role) return false;
-    
-    // Admin has access to everything
-    if (currentUser.role === 'Admin') return true;
-    
-    // User role has no access to any module
-    if (currentUser.role === 'User') return false;
-    
-    // Check specific user permissions (overrides)
+
+    // Admin and Lord have access to everything
+    if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
+
+    // For regular users, check their subscription-based permissions
     const userSpecificPermissions = users.find(u => u.id === currentUser.id)?.permissions;
     if (userSpecificPermissions && userSpecificPermissions.hasOwnProperty(module)) {
       return userSpecificPermissions[module];
     }
-    
-    // Check default role permissions
-    return userPermissions[module] || false;
-  }, [currentUser, users, userPermissions]); // Remove permissionUpdateTrigger as it's not directly used
+
+    // Check permissions from current user object (subscription-based)
+    if (currentUser.permissions && currentUser.permissions.hasOwnProperty(module)) {
+      return currentUser.permissions[module];
+    }
+
+    // Default: no access
+    return false;
+  }, [currentUser, users]);
 
 
   // Update user permissions (admin function)
@@ -345,6 +337,7 @@ export const RoleProvider = ({ children }) => {
     userPermissions,
     users,
     hasPermission,
+    hasActiveSubscription,
     updateUserRole,
     updateUserPermissions,
     getUserPermissions,
@@ -353,7 +346,6 @@ export const RoleProvider = ({ children }) => {
     fetchUsersFromBackend,
     checkCurrentUserPermissions,
     permissionUpdateTrigger,
-    upgradeToSoloHQ,
     MODULES
   };
 

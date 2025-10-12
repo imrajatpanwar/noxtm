@@ -92,10 +92,12 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, default: 'User' },
+  // Company ID for multi-tenancy (Noxtm users only)
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
   subscription: {
     plan: {
       type: String,
-      enum: ['None', 'SOLOHQ'],
+      enum: ['None', 'SoloHQ', 'Noxtm', 'Enterprise'],
       default: 'None'
     },
     status: {
@@ -141,6 +143,45 @@ userSchema.pre('save', function(next) {
 });
 
 const User = mongoose.model('User', userSchema);
+
+// Company Schema (for Noxtm multi-tenancy)
+const companySchema = new mongoose.Schema({
+  companyName: { type: String, required: true },
+  industry: { type: String },
+  size: { type: String, enum: ['1-10', '11-50', '51-200', '201-500', '500+'] },
+  address: { type: String },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User who created the company
+  members: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    roleInCompany: { type: String, enum: ['Owner', 'Admin', 'Member'], default: 'Member' },
+    invitedAt: { type: Date, default: Date.now },
+    joinedAt: { type: Date }
+  }],
+  invitations: [{
+    email: { type: String, required: true },
+    token: { type: String, required: true, unique: true },
+    roleInCompany: { type: String, enum: ['Admin', 'Member'], default: 'Member' },
+    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }, // 7 days
+    status: { type: String, enum: ['pending', 'accepted', 'expired'], default: 'pending' }
+  }],
+  subscription: {
+    plan: { type: String, enum: ['Noxtm', 'Enterprise'], default: 'Noxtm' },
+    status: { type: String, enum: ['active', 'inactive', 'cancelled'], default: 'active' },
+    startDate: { type: Date, default: Date.now },
+    endDate: { type: Date }
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+companySchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Company = mongoose.model('Company', companySchema);
 
 // Blog Category Schema
 const categorySchema = new mongoose.Schema({
@@ -290,27 +331,27 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Middleware to check SOLOHQ subscription status
+// Middleware to check SoloHQ subscription status
 const checkSOLOHQSubscription = async (req, res, next) => {
-  // Skip check for non-SOLOHQ endpoints
+  // Skip check for non-SoloHQ endpoints
   if (!req.path.startsWith('/api/solohq/')) {
     return next();
   }
 
   try {
     const user = await User.findById(req.user.userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // If user is not SOLOHQ or has no active subscription, redirect to pricing
-    if (user.role === 'SOLOHQ' && 
-        (!user.subscription || 
-         user.subscription.plan !== 'SOLOHQ' || 
-         user.subscription.status !== 'active')) {
-      return res.status(302).json({ 
-        redirect: '/pricing'
+    // Check if user has active SoloHQ subscription
+    if (!user.subscription ||
+        user.subscription.plan !== 'SoloHQ' ||
+        user.subscription.status !== 'active') {
+      return res.status(302).json({
+        redirect: '/pricing',
+        message: 'SoloHQ subscription required'
       });
     }
 
@@ -400,6 +441,72 @@ function syncAccessFromPermissions(permissions) {
   if (permissions.internalPolicies) accessArray.push('Internal Policies');
   if (permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
   return accessArray;
+}
+
+// Get default permissions based on subscription plan or role
+function getDefaultPermissions(planOrRole) {
+  // Admin and Lord get full access to everything
+  if (planOrRole === 'Admin' || planOrRole === 'Lord') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: true,
+      internalPolicies: true,
+      settingsConfiguration: true
+    };
+  }
+  // SoloHQ subscription plan: Only BOTGIT (projects), PROJECTS, and PROFILE access
+  else if (planOrRole === 'SoloHQ') {
+    return {
+      dashboard: false,
+      dataCenter: false,
+      projects: true,
+      teamCommunication: false,
+      digitalMediaManagement: false,
+      marketing: false,
+      hrManagement: false,
+      financeManagement: false,
+      seoManagement: false,
+      internalPolicies: false,
+      settingsConfiguration: false
+    };
+  }
+  // Noxtm subscription plan: All modules EXCEPT Noxtm Mail, Workspace Settings, and Settings & Configuration
+  else if (planOrRole === 'Noxtm') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: true,
+      internalPolicies: true,
+      settingsConfiguration: false
+    };
+  }
+  // Default User role: Only basic dashboard access
+  return {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: false,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  };
 }
 
 // Routes
@@ -845,39 +952,23 @@ app.get('/api/scraped-data', async (req, res) => {
   }
 });
 
-// Check domain endpoint for team member validation
-app.post('/api/check-domain', async (req, res) => {
-  try {
-    const { domain } = req.body;
-    
-    if (!domain) {
-      return res.status(400).json({ message: 'Domain is required' });
-    }
-
-    // Check if any business owner exists with this domain
-    const businessOwner = await User.findOne({ 
-      userType: 'Business Owner',
-      $or: [
-        { businessEmail: { $regex: '@' + domain + '$', $options: 'i' } },
-        { email: { $regex: '@' + domain + '$', $options: 'i' } }
-      ]
-    });
-
-    if (businessOwner) {
-      res.status(200).json({ 
-        message: 'Domain found',
-        businessName: businessOwner.businessName 
-      });
-    } else {
-      res.status(404).json({ 
-        message: 'Domain not found. Please contact your administrator.' 
-      });
-    }
-  } catch (error) {
-    console.error('Domain check error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// DEPRECATED: Check domain endpoint - no longer used (businessName/businessEmail/userType fields removed)
+// app.post('/api/check-domain', async (req, res) => {
+//   try {
+//     const { domain } = req.body;
+//
+//     if (!domain) {
+//       return res.status(400).json({ message: 'Domain is required' });
+//     }
+//
+//     res.status(404).json({
+//       message: 'Domain validation no longer supported. Please use subscription plans.'
+//     });
+//   } catch (error) {
+//     console.error('Domain check error:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
 
 // Send verification code
 app.post('/api/send-verification-code', async (req, res) => {
@@ -1021,26 +1112,20 @@ app.post('/api/verify-code', async (req, res) => {
     // Create user with stored data
     const { fullName, password, role } = verification.userData;
 
+    // Get default permissions for the role
+    const userRole = role || 'User';
+    const defaultPermissions = getDefaultPermissions(userRole);
+    const defaultAccess = syncAccessFromPermissions(defaultPermissions);
+
     const user = new User({
       username: fullName,
       fullName: fullName,
       email: email.trim().toLowerCase(),
       password: password, // Already hashed
-      role: role || 'User',
+      role: userRole,
       status: 'Active',
-      permissions: {
-        dashboard: true,
-        dataCenter: false,
-        projects: false,
-        teamCommunication: false,
-        digitalMediaManagement: false,
-        marketing: false,
-        hrManagement: false,
-        financeManagement: false,
-        seoManagement: false,
-        internalPolicies: false,
-        settingsConfiguration: false
-      }
+      permissions: defaultPermissions,
+      access: defaultAccess
     });
 
     await user.save();
@@ -1068,14 +1153,24 @@ app.post('/api/verify-code', async (req, res) => {
     });
   } catch (error) {
     console.error('Verify code error:', error);
-    res.status(500).json({ message: 'Verification failed. Please try again.' });
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    res.status(500).json({
+      message: 'Verification failed. Please try again.',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, role, businessName, businessEmail, userType } = req.body;
+    const { username, email, password, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -1087,120 +1182,20 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Validate role if provided, otherwise default to 'Team Member'
-    const validRoles = ['Admin', 'Business Admin', 'Freelancer', 'Team Member', 'SOLOHQ', 'Project Manager', 'Data Miner', 'Data Analyst', 'Social Media Manager', 'Human Resource', 'Graphic Designer', 'Web Developer', 'SEO Manager'];
-    const userRole = role && validRoles.includes(role) ? role : 'Team Member';
+    // Validate role if provided, otherwise default to 'User'
+    const validRoles = ['User', 'Admin', 'Lord'];
+    const userRole = role && validRoles.includes(role) ? role : 'User';
 
-    // Get default permissions for the role
-    const getDefaultPermissions = (userRole) => {
-      if (userRole === 'Admin') {
-        // Admin gets full access to everything including company dashboard
-        return {
-          dashboard: true,
-          dataCenter: true,
-          projects: true,
-          teamCommunication: true,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: true,
-          financeManagement: true,
-          seoManagement: true,
-          internalPolicies: true,
-          settingsConfiguration: true
-        };
-      } else if (userRole === 'Business Admin') {
-        // Business Admin gets full access
-        return {
-          dashboard: true,
-          dataCenter: true,
-          projects: true,
-          teamCommunication: true,
-          digitalMediaManagement: true,
-          marketing: true,
-          hrManagement: true,
-          financeManagement: true,
-          seoManagement: true,
-          internalPolicies: true,
-          settingsConfiguration: true
-        };
-      } else if (userRole === 'Team Member') {
-        // Team Member gets NO access by default - Business Admin must grant permissions
-        return {
-          dashboard: false,
-          dataCenter: false,
-          projects: false,
-          teamCommunication: false,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: false,
-          seoManagement: false,
-          internalPolicies: false,
-          settingsConfiguration: false
-        };
-      } else if (userRole === 'SOLOHQ') {
-        // SOLOHQ gets specific limited access
-        return {
-          dashboard: false,
-          dataCenter: false,
-          projects: true,
-          teamCommunication: true,
-          digitalMediaManagement: false,
-          marketing: false,
-          hrManagement: false,
-          financeManagement: true,
-          seoManagement: false,
-          internalPolicies: false,
-          settingsConfiguration: false
-        };
-      }
-      // For other specific roles, give basic dashboard access
-      return {
-        dashboard: true,
-        dataCenter: false,
-        projects: false,
-        teamCommunication: false,
-        digitalMediaManagement: false,
-        marketing: false,
-        hrManagement: false,
-        financeManagement: false,
-        seoManagement: false,
-        internalPolicies: false,
-        settingsConfiguration: false
-      };
-    };
-
-    // Continue with registration...
-
-    // Get default access array based on permissions
-    const getDefaultAccess = (permissions) => {
-      const accessArray = [];
-      if (permissions.dashboard) accessArray.push('Dashboard');
-      if (permissions.dataCenter) accessArray.push('Data Center');
-      if (permissions.projects) accessArray.push('Projects');
-      if (permissions.teamCommunication) accessArray.push('Team Communication');
-      if (permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
-      if (permissions.marketing) accessArray.push('Marketing');
-      if (permissions.hrManagement) accessArray.push('HR Management');
-      if (permissions.financeManagement) accessArray.push('Finance Management');
-      if (permissions.seoManagement) accessArray.push('SEO Management');
-      if (permissions.internalPolicies) accessArray.push('Internal Policies');
-      if (permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
-      return accessArray;
-    };
-
+    // Get default permissions and access for the role using global helper functions
     const defaultPermissions = getDefaultPermissions(userRole);
-    const defaultAccess = getDefaultAccess(defaultPermissions);
+    const defaultAccess = syncAccessFromPermissions(defaultPermissions);
 
-    // Create new user with specified role
+    // Create new user
     const user = new User({
       username,
       email,
       password: hashedPassword,
       role: userRole,
-      businessName: businessName || undefined,
-      businessEmail: businessEmail || undefined,
-      userType: userType || 'Team Member',
       access: defaultAccess,
       status: 'Active',
       permissions: defaultPermissions
@@ -1228,36 +1223,36 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-// Handle SOLOHQ subscription
+// Handle SoloHQ subscription
 app.post('/api/subscribe/solohq', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Set up subscription details
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
-    
+
     user.subscription = {
-      plan: 'SOLOHQ',
+      plan: 'SoloHQ',
       status: 'active',
       startDate,
       endDate
     };
-    
-    // Update user role to SOLOHQ
-    user.role = 'SOLOHQ';
-    user.permissions = getDefaultPermissions('SOLOHQ');
+
+    // Update permissions based on SoloHQ plan (role stays unchanged)
+    user.permissions = getDefaultPermissions('SoloHQ');
+    user.access = syncAccessFromPermissions(user.permissions);
     await user.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'Successfully subscribed to SOLOHQ plan',
+
+    res.json({
+      success: true,
+      message: 'Successfully subscribed to SoloHQ plan',
       user: {
         id: user._id,
         username: user.username,
