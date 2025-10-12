@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../config/api';
 import './Signup.css';
@@ -16,6 +16,8 @@ function Signup({ onSignup }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [touchedConfirm, setTouchedConfirm] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState(true);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,13 +26,40 @@ function Signup({ onSignup }) {
     });
   };
 
+  // Trim leading/trailing whitespace for password fields on blur to avoid accidental mismatch
+  const handleBlurTrim = (e) => {
+    const { name, value } = e.target;
+    if (name === 'password' || name === 'confirmPassword') {
+      const trimmed = (value || '').trim();
+      if (trimmed !== value) {
+        setFormData((prev) => ({ ...prev, [name]: trimmed }));
+      }
+    }
+  };
+
+  // Live check for password match so UI feedback is immediate
+  useEffect(() => {
+    // Compare trimmed values to avoid false mismatches due to accidental spaces
+    setPasswordsMatch((formData.password || '').trim() === (formData.confirmPassword || '').trim());
+  }, [formData.password, formData.confirmPassword]);
+
+  // Clear a stale 'Passwords do not match' message when the user fixes the mismatch
+  useEffect(() => {
+    if (passwordsMatch && message === 'Passwords do not match') {
+      setMessage('');
+    }
+  }, [passwordsMatch, message]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setTouchedConfirm(true);
 
     // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
+    // Compare trimmed current formData directly to avoid timing issues and
+    // ignore leading/trailing whitespace that users may accidentally type.
+    if ((formData.password || '').trim() !== (formData.confirmPassword || '').trim()) {
       setMessage('Passwords do not match');
       setLoading(false);
       return;
@@ -103,15 +132,7 @@ function Signup({ onSignup }) {
               Start your journey with Noxtm and discover how we create 
               experiences that connect, inspire, and convert.
             </p>
-            {/* Terms and Privacy */}
-            <div className="terms-section">
-              <p>
-                By clicking "Create Account" above, you acknowledge that you
-                have read and understood, and agree to Noxtm's{' '}
-                <Link to="/terms" className="terms-link">Terms & Conditions</Link> and{' '}
-                <Link to="/privacy" className="terms-link">Privacy Policy</Link>.
-              </p>
-            </div>
+            {/* Left-side terms removed - terms remain on the form (right side) */}
           </div>
         </div>
 
@@ -164,6 +185,7 @@ function Signup({ onSignup }) {
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
+                      onBlur={handleBlurTrim}
                       placeholder="••••••••••••••••••••••••"
                       className="form-input password-input"
                       required
@@ -191,12 +213,13 @@ function Signup({ onSignup }) {
                 <div className="form-group">
                   <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
                   <div className="password-input-container">
-                    <input
+            <input
                       type={showConfirmPassword ? "text" : "password"}
                       id="confirmPassword"
                       name="confirmPassword"
                       value={formData.confirmPassword}
-                      onChange={handleChange}
+              onChange={handleChange}
+                      onBlur={(e) => { setTouchedConfirm(true); handleBlurTrim(e); }}
                       placeholder="••••••••••••••••••••••••"
                       className="form-input password-input"
                       required
@@ -222,6 +245,13 @@ function Signup({ onSignup }) {
                   </div>
                 </div>
               </div>
+              {/* Inline password match hint */}
+              {touchedConfirm && !passwordsMatch && (
+                <div className="field-error" style={{ color: '#ef4444', marginBottom: '0.5rem' }}>
+                  Passwords do not match
+                </div>
+              )}
+
               {/* Terms and Privacy */}
               <div className="terms-section">
                 <p>
