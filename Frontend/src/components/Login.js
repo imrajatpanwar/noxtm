@@ -27,10 +27,18 @@ function Login({ onLogin }) {
     const result = await onLogin(formData.email, formData.password);
 
     if (result.success) {
-      // Check if user has restricted access (simple role check)
-      if (result.user.role === 'User') {
-        navigate('/access-restricted');
-      } else {
+      // Admins and Lords get direct dashboard access
+      if (result.user.role === 'Admin' || result.user.role === 'Lord') {
+        navigate('/dashboard');
+      }
+      // Users without active subscription go to pricing
+      else if (!result.user.subscription ||
+               result.user.subscription.status !== 'active' ||
+               result.user.subscription.plan === 'None') {
+        navigate('/pricing');
+      }
+      // Users with active subscription go to dashboard
+      else {
         navigate('/dashboard');
       }
     }
