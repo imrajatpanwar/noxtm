@@ -224,8 +224,12 @@ const emailVerificationSchema = new mongoose.Schema({
     password: String,
     role: String
   },
-  createdAt: { type: Date, default: Date.now, expires: 600 } // Auto-delete after 10 minutes
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 10 * 60 * 1000), index: true }
 });
+
+// Create TTL index to automatically delete expired documents
+emailVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 
