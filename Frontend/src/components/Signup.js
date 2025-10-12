@@ -97,11 +97,15 @@ function Signup({ onSignup }) {
     setLoading(true);
     setMessage('');
 
+    console.log('Verifying code:', { email: formData.email, code: verificationCode });
+
     try {
       const response = await api.post('/verify-code', {
         email: formData.email,
         code: verificationCode
       });
+
+      console.log('Verification response:', response.data);
 
       if (response.data.success) {
         // Store token and user data
@@ -115,7 +119,19 @@ function Signup({ onSignup }) {
         }, 1500);
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Invalid verification code');
+      console.error('Verification error:', error);
+      console.error('Error response:', error.response?.data);
+
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          'Verification failed. Please try again.';
+
+      setMessage(errorMessage);
+
+      // Log additional details if available
+      if (error.response?.data?.details) {
+        console.error('Error details:', error.response.data.details);
+      }
     }
 
     setLoading(false);
