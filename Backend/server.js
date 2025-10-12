@@ -645,7 +645,7 @@ app.get('/api/blogs', async (req, res) => {
 
     const blogs = await Blog.find(filter)
       .populate('category', 'name slug')
-      .populate('author', 'username')
+      .populate('author', 'fullName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -673,7 +673,7 @@ app.get('/api/blogs/:slug', async (req, res) => {
   try {
     const blog = await Blog.findOne({ slug: req.params.slug })
       .populate('category', 'name slug')
-      .populate('author', 'username');
+      .populate('author', 'fullName');
     
     if (!blog) {
       return res.status(404).json({ message: 'Blog not found' });
@@ -744,7 +744,7 @@ app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async 
     const savedBlog = await blog.save();
     const populatedBlog = await Blog.findById(savedBlog._id)
       .populate('category', 'name slug')
-      .populate('author', 'username');
+      .populate('author', 'fullName');
     
     res.status(201).json(populatedBlog);
   } catch (error) {
@@ -800,7 +800,7 @@ app.put('/api/blogs/:id', authenticateToken, upload.single('featuredImage'), asy
     const updatedBlog = await blog.save();
     const populatedBlog = await Blog.findById(updatedBlog._id)
       .populate('category', 'name slug')
-      .populate('author', 'username');
+      .populate('author', 'fullName');
     
     res.json(populatedBlog);
   } catch (error) {
@@ -849,7 +849,7 @@ app.get('/api/blogs/analytics/stats', authenticateToken, async (req, res) => {
 
     const recentBlogs = await Blog.find()
       .populate('category', 'name')
-      .populate('author', 'username')
+      .populate('author', 'fullName')
       .sort({ createdAt: -1 })
       .limit(5)
       .select('title slug status createdAt');
@@ -1124,11 +1124,17 @@ app.post('/api/send-verification-code', async (req, res) => {
 // Verify code and complete registration
 app.post('/api/verify-code', async (req, res) => {
   try {
+    console.log('=== VERIFY CODE REQUEST ===');
+    console.log('Request body:', req.body);
+
     const { email, code } = req.body;
 
     if (!email || !code) {
+      console.log('Missing email or code');
       return res.status(400).json({ message: 'Email and code are required' });
     }
+
+    console.log('Searching for verification record:', { email: email.trim().toLowerCase(), code: code.trim() });
 
     // Find verification record
     const verification = await EmailVerification.findOne({
@@ -1136,12 +1142,37 @@ app.post('/api/verify-code', async (req, res) => {
       code: code.trim()
     });
 
+    console.log('Verification record found:', verification ? 'YES' : 'NO');
+    if (verification) {
+      console.log('Verification details:', {
+        email: verification.email,
+        code: verification.code,
+        createdAt: verification.createdAt,
+        expiresAt: verification.expiresAt,
+        isExpired: new Date() > verification.expiresAt
+      });
+    }
+
     if (!verification) {
+      console.log('No verification record found - checking all records...');
+      const allVerifications = await EmailVerification.find().limit(5);
+      console.log('Recent verification records:', allVerifications.map(v => ({
+        email: v.email,
+        code: v.code,
+        expiresAt: v.expiresAt
+      })));
       return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Check if expired
+    if (new Date() > verification.expiresAt) {
+      console.log('Verification code has expired');
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
     }
 
     // Create user with stored data
     const { fullName, password, role } = verification.userData;
+    console.log('Creating user with data:', { fullName, email, role });
 
     // Get default permissions for the role
     const userRole = role || 'User';
@@ -1149,7 +1180,6 @@ app.post('/api/verify-code', async (req, res) => {
     const defaultAccess = syncAccessFromPermissions(defaultPermissions);
 
     const user = new User({
-      username: fullName,
       fullName: fullName,
       email: email.trim().toLowerCase(),
       password: password, // Already hashed
@@ -1159,23 +1189,27 @@ app.post('/api/verify-code', async (req, res) => {
       access: defaultAccess
     });
 
+    console.log('Saving user...');
     await user.save();
+    console.log('User saved successfully:', user._id);
 
     // Delete verification record
     await EmailVerification.findByIdAndDelete(verification._id);
+    console.log('Verification record deleted');
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
+    console.log('=== VERIFICATION SUCCESS ===');
     res.status(201).json({
       success: true,
       message: 'Account created successfully',
       token,
       user: {
         id: user._id,
-        username: user.username,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
         access: user.access,
@@ -1183,6 +1217,7 @@ app.post('/api/verify-code', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('=== VERIFY CODE ERROR ===');
     console.error('Verify code error:', error);
     console.error('Error details:', {
       name: error.name,
@@ -1201,10 +1236,10 @@ app.post('/api/verify-code', async (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { fullName, email, password, role } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -1223,7 +1258,7 @@ app.post('/api/register', async (req, res) => {
 
     // Create new user
     const user = new User({
-      username,
+      fullName,
       email,
       password: hashedPassword,
       role: userRole,
@@ -1235,14 +1270,14 @@ app.post('/api/register', async (req, res) => {
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET);
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email }, JWT_SECRET);
 
     res.status(201).json({
       message: 'User created successfully',
       token,
       user: {
         id: user._id,
-        username: user.username,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
         access: user.access,
@@ -1372,7 +1407,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
@@ -1385,7 +1420,7 @@ app.post('/api/login', async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: user.username,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
         access: normalizedAccess,
@@ -1422,7 +1457,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
     res.json({
       id: user._id,
-      username: user.username,
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
       access: normalizedAccess,
@@ -1486,7 +1521,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
     res.json({
       id: user._id,
-      username: user.username,
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
       access: normalizedAccess,
