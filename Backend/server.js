@@ -1213,7 +1213,8 @@ app.post('/api/verify-code', async (req, res) => {
         email: user.email,
         role: user.role,
         access: user.access,
-        permissions: user.permissions
+        permissions: user.permissions,
+        subscription: user.subscription || { plan: 'None', status: 'inactive' }
       }
     });
   } catch (error) {
@@ -1477,7 +1478,8 @@ app.post('/api/login', async (req, res) => {
         email: user.email,
         role: user.role,
         access: normalizedAccess,
-        permissions: normalizedPermissions
+        permissions: normalizedPermissions,
+        subscription: user.subscription || { plan: 'None', status: 'inactive' }
       }
     });
   } catch (error) {

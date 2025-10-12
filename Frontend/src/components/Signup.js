@@ -112,10 +112,21 @@ function Signup({ onSignup }) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
+        const user = response.data.user;
+
+        // Check if user has active subscription
+        const hasActiveSubscription = user.subscription &&
+                                     user.subscription.status === 'active' &&
+                                     user.subscription.plan !== 'None';
+
         setMessage('Account created successfully! Redirecting...');
         setTimeout(() => {
-          // Use window.location for full page reload with new user state
-          window.location.href = '/pricing';
+          // Redirect based on subscription status
+          if (hasActiveSubscription) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/pricing';
+          }
         }, 1500);
       }
     } catch (error) {
