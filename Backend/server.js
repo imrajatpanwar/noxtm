@@ -897,13 +897,44 @@ app.post('/api/scraped-data', async (req, res) => {
         continue;
       }
       try {
-        // Upsert based on profileUrl but do not overwrite existing non-empty fields with empty ones
+        // Check if profile already exists
         const existing = await ScrapedData.findOne({ profileUrl });
         if (existing) {
-          results.duplicates++;
-          results.details.push({ profileUrl, status: 'duplicate' });
+          // Update existing record ONLY with NEW non-empty data
+          let updated = false;
+          if (name && name.trim() && !existing.name) {
+            existing.name = name.trim();
+            updated = true;
+          }
+          if (email && email.trim() && !existing.email) {
+            existing.email = email.trim();
+            updated = true;
+          }
+          if (phone && phone.trim() && !existing.phone) {
+            existing.phone = phone.trim();
+            updated = true;
+          }
+          if (role && role.trim() && !existing.role) {
+            existing.role = role.trim();
+            updated = true;
+          }
+          if (location && location.trim() && !existing.location) {
+            existing.location = location.trim();
+            updated = true;
+          }
+
+          if (updated) {
+            await existing.save();
+            results.inserted++; // Count as inserted since we updated it
+            results.details.push({ profileUrl, status: 'updated' });
+          } else {
+            results.duplicates++;
+            results.details.push({ profileUrl, status: 'duplicate' });
+          }
           continue;
         }
+
+        // Create new record
         const doc = new ScrapedData({
           profileUrl: profileUrl.trim(),
           name: name || '',
