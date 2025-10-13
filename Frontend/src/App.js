@@ -13,6 +13,7 @@ import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
 import CompanySetup from './components/CompanySetup';
+import JoinCompany from './components/JoinCompany';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
@@ -28,7 +29,7 @@ import ContactUs from './components/ContactUs';
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing', '/company-setup'];
+  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company'];
 
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
@@ -290,6 +291,10 @@ function App() {
                   <Navigate to="/login" />
                 )
               }
+            />
+            <Route
+              path="/join-company"
+              element={<JoinCompany onSignup={signup} />}
             />
             <Route
               path="/dashboard"
