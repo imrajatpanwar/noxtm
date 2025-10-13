@@ -130,7 +130,67 @@ function initializeRoutes(dependencies) {
     }
   });
 
-  // Accept invitation
+  // Verify invitation token (public endpoint for signup page)
+  router.get('/invitations/verify/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      if (!token) {
+        return res.status(400).json({ message: 'Invitation token is required' });
+      }
+
+      // Find company with this invitation token
+      const company = await Company.findOne({
+        'invitations.token': token,
+        'invitations.status': 'pending'
+      });
+
+      if (!company) {
+        return res.status(404).json({
+          message: 'Invalid or expired invitation',
+          valid: false
+        });
+      }
+
+      // Find the specific invitation
+      const invitation = company.invitations.find(
+        inv => inv.token === token && inv.status === 'pending'
+      );
+
+      if (!invitation) {
+        return res.status(404).json({
+          message: 'Invitation not found',
+          valid: false
+        });
+      }
+
+      // Check if invitation has expired
+      if (new Date() > invitation.expiresAt) {
+        return res.status(400).json({
+          message: 'Invitation has expired',
+          valid: false
+        });
+      }
+
+      res.json({
+        valid: true,
+        company: {
+          companyName: company.companyName,
+          industry: company.industry
+        },
+        invitation: {
+          email: invitation.email,
+          roleInCompany: invitation.roleInCompany,
+          expiresAt: invitation.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Verify invitation error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Accept invitation (for existing users)
   router.post('/invitations/accept', authenticateToken, async (req, res) => {
     try {
       const { token } = req.body;
@@ -219,6 +279,98 @@ function initializeRoutes(dependencies) {
       });
     } catch (error) {
       console.error('Accept invitation error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Accept invitation during signup (public endpoint with user creation)
+  router.post('/invitations/signup-accept', async (req, res) => {
+    try {
+      const { token, userId } = req.body;
+
+      if (!token || !userId) {
+        return res.status(400).json({ message: 'Token and userId are required' });
+      }
+
+      // Find company with this invitation token
+      const company = await Company.findOne({
+        'invitations.token': token,
+        'invitations.status': 'pending'
+      });
+
+      if (!company) {
+        return res.status(404).json({
+          message: 'Invalid or expired invitation'
+        });
+      }
+
+      // Find the specific invitation
+      const invitation = company.invitations.find(
+        inv => inv.token === token && inv.status === 'pending'
+      );
+
+      if (!invitation) {
+        return res.status(404).json({
+          message: 'Invitation not found'
+        });
+      }
+
+      // Check if invitation has expired
+      if (new Date() > invitation.expiresAt) {
+        invitation.status = 'expired';
+        await company.save();
+        return res.status(400).json({
+          message: 'Invitation has expired'
+        });
+      }
+
+      // Get user
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if user's email matches invitation email
+      if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+        return res.status(403).json({
+          message: 'This invitation was sent to a different email address'
+        });
+      }
+
+      // Check if user already has a company
+      if (user.companyId) {
+        return res.status(400).json({
+          message: 'You are already a member of another company'
+        });
+      }
+
+      // Add user to company members
+      company.members.push({
+        user: userId,
+        roleInCompany: invitation.roleInCompany,
+        joinedAt: new Date()
+      });
+
+      // Mark invitation as accepted
+      invitation.status = 'accepted';
+
+      await company.save();
+
+      // Update user with company ID
+      user.companyId = company._id;
+      await user.save();
+
+      res.json({
+        success: true,
+        message: 'Successfully joined company',
+        company: {
+          id: company._id,
+          companyName: company.companyName,
+          roleInCompany: invitation.roleInCompany
+        }
+      });
+    } catch (error) {
+      console.error('Signup accept invitation error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
