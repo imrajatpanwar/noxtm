@@ -329,9 +329,15 @@
   border: 1px solid #e5e7eb;
 }
 
-.invitation-item div {
+.invitation-info {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.invitation-actions {
+  display: flex;
+  align-items: center;
 }
 
 .invitation-item strong {
@@ -346,6 +352,12 @@
   font-family: 'Switzer', sans-serif;
 }
 
+.expired-text {
+  color: #dc2626 !important;
+  font-weight: 600;
+  font-size: 11px !important;
+}
+
 .invitation-status {
   padding: 4px 12px;
   background: #fef3c7;
@@ -354,6 +366,29 @@
   font-size: 12px;
   font-weight: 500;
   font-family: 'Switzer', sans-serif;
+}
+
+.btn-resend {
+  padding: 6px 16px;
+  border: 1px solid #3b82f6;
+  background: #3b82f6;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 12px;
+  font-family: 'Switzer', sans-serif;
+  transition: all 0.2s;
+}
+
+.btn-resend:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-resend:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Main Chat Area */
