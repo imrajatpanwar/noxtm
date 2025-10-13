@@ -20,14 +20,39 @@ function Sidebar({ activeSection, onSectionChange }) {
 
   // Get current user from localStorage
   const [currentUser, setCurrentUser] = useState(null);
-  
+  const [subscription, setSubscription] = useState(null);
+
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(userData);
+
+    // Fetch subscription status
+    const fetchSubscription = async () => {
+      try {
+        const response = await fetch('/api/subscription/status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        const data = await response.json();
+        if (data.subscription) {
+          setSubscription(data.subscription);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      }
+    };
+
+    if (userData && localStorage.getItem('token')) {
+      fetchSubscription();
+    }
   }, []);
 
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
+
+  // Check if NOXTM MAIL should be hidden (for active Noxtm subscription users)
+  const shouldHideNoxtmMail = subscription?.plan === 'Noxtm' && subscription?.status === 'active';
 
   // Memoized permission checking to prevent unnecessary re-renders and glitches
   const sectionPermissions = useMemo(() => {
@@ -277,6 +302,10 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Filter items based on search query and permissions
   const filteredItems = searchQuery.trim() === "" ? [] : allSidebarItems.filter(item => {
     if (!hasPermissionForSection(item.category)) {
+      return false;
+    }
+    // Hide NOXTM MAIL items for active Noxtm subscribers
+    if (shouldHideNoxtmMail && ['Mail Server Status', 'Email Logs', 'Send Email', 'DNS Configuration'].includes(item.name)) {
       return false;
     }
     return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -627,8 +656,8 @@ function Sidebar({ activeSection, onSectionChange }) {
             </div>
           )}
 
-          {/* Noxtm Mail Section */}
-          {hasPermissionForSection('Marketing') && (
+          {/* Noxtm Mail Section - Hidden for active Noxtm subscribers */}
+          {hasPermissionForSection('Marketing') && !shouldHideNoxtmMail && (
             <div className="sidebar-section">
               <h4 className="sidebar-section-title">NOXTM MAIL</h4>
               <div
