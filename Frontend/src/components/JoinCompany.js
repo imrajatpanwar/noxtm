@@ -106,7 +106,7 @@ function JoinCompany({ onSignup }) {
         },
         body: JSON.stringify({
           token: token,
-          userId: signupResult.user._id
+          userId: signupResult.user.id
         })
       });
 
