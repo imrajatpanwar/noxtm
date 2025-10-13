@@ -57,6 +57,8 @@ const CompanySetup = () => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
         storedUser.companyId = data.companyId;
         localStorage.setItem('user', JSON.stringify(storedUser));
+        // Dispatch event to notify App.js of user update
+        window.dispatchEvent(new Event('userUpdated'));
 
         toast.success('Company setup completed successfully!');
         navigate('/dashboard');

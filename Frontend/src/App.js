@@ -48,6 +48,24 @@ function App() {
     initializeExtension();
   }, []);
 
+  // Listen for storage changes (when other components update localStorage)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+      }
+    };
+
+    // Listen for custom storage event
+    window.addEventListener('userUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('userUpdated', handleStorageChange);
+    };
+  }, []);
+
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token');

@@ -187,6 +187,8 @@ const Pricing = () => {
         if (data.success) {
           // Update local user data
           localStorage.setItem('user', JSON.stringify(data.user));
+          // Dispatch event to notify App.js of user update
+          window.dispatchEvent(new Event('userUpdated'));
           toast.success('Successfully subscribed to SOLOHQ plan!');
           navigate('/dashboard');
         } else {
@@ -230,6 +232,8 @@ const Pricing = () => {
         if (data.success) {
           // Update local user data
           localStorage.setItem('user', JSON.stringify(data.user));
+          // Dispatch event to notify App.js of user update
+          window.dispatchEvent(new Event('userUpdated'));
           toast.success('Successfully subscribed to Noxtm plan!');
           // Redirect to company setup for Noxtm users
           navigate('/company-setup');
