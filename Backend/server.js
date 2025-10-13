@@ -1657,39 +1657,6 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// Get user profile (protected route)
-app.get('/api/profile', authenticateToken, async (req, res) => {
-  try {
-    if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
-      });
-    }
-
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Always normalize permissions and access before sending
-    const normalizedPermissions = normalizePermissions(user.permissions);
-    const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
-
-    res.json({
-      id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      access: normalizedAccess,
-      permissions: normalizedPermissions,
-      status: user.status,
-      createdAt: user.createdAt
-    });
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 
 // Get all users (protected route)
 app.get('/api/users', authenticateToken, async (req, res) => {
