@@ -243,6 +243,33 @@ function Messaging() {
     }
   };
 
+  const resendInvitation = async (email) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/messaging/invitations/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        toast.success('Invitation resent successfully');
+        loadInvitations();
+      } else {
+        toast.error(data.message || 'Failed to resend invitation');
+      }
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      toast.error('Failed to resend invitation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -404,15 +431,31 @@ function Messaging() {
                 {invitations.length === 0 ? (
                   <p className="empty-state-small">No pending invitations</p>
                 ) : (
-                  invitations.map((inv, index) => (
-                    <div key={index} className="invitation-item">
-                      <div>
-                        <strong>{inv.email}</strong>
-                        <small>Sent {formatTime(inv.invitedAt)}</small>
+                  invitations.map((inv, index) => {
+                    const isExpired = new Date() > new Date(inv.expiresAt);
+                    return (
+                      <div key={index} className="invitation-item">
+                        <div className="invitation-info">
+                          <strong>{inv.email}</strong>
+                          <small>Sent {formatTime(inv.invitedAt)}</small>
+                          {isExpired && <small className="expired-text">Expired</small>}
+                        </div>
+                        <div className="invitation-actions">
+                          {isExpired ? (
+                            <button
+                              className="btn-resend"
+                              onClick={() => resendInvitation(inv.email)}
+                              disabled={loading}
+                            >
+                              Resend
+                            </button>
+                          ) : (
+                            <span className="invitation-status">Pending</span>
+                          )}
+                        </div>
                       </div>
-                      <span className="invitation-status">Pending</span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
