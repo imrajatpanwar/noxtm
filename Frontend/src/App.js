@@ -180,14 +180,14 @@ function App() {
     }
   };
 
-  const signup = async (username, email, password, role, additionalData) => {
+  const signup = async (fullName, email, password, role, additionalData) => {
     try {
-      const signupData = { 
-        username, 
-        email, 
-        password, 
+      const signupData = {
+        fullName,
+        email,
+        password,
         role,
-        ...additionalData 
+        ...additionalData
       };
       
       const response = await api.post('/register', signupData);
