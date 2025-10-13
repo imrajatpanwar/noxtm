@@ -44,14 +44,23 @@ function initializeRoutes(dependencies) {
       }
 
       // Check if invitation already exists
-      const existingInvitation = company.invitations.find(
+      const existingInvitationIndex = company.invitations.findIndex(
         inv => inv.email.toLowerCase() === email.toLowerCase() && inv.status === 'pending'
       );
 
-      if (existingInvitation) {
-        return res.status(400).json({
-          message: 'An invitation has already been sent to this email'
-        });
+      // If invitation exists, remove it so we can create a new one (for resending)
+      if (existingInvitationIndex !== -1) {
+        const existingInvitation = company.invitations[existingInvitationIndex];
+
+        // If not expired, don't allow resending
+        if (new Date() < existingInvitation.expiresAt) {
+          return res.status(400).json({
+            message: 'An active invitation has already been sent to this email'
+          });
+        }
+
+        // Remove the old expired invitation
+        company.invitations.splice(existingInvitationIndex, 1);
       }
 
       // Generate unique invitation token
@@ -387,13 +396,14 @@ function initializeRoutes(dependencies) {
         return res.status(404).json({ message: 'Company not found' });
       }
 
-      // Filter pending invitations only
+      // Filter pending invitations (including expired ones so user can resend)
       const pendingInvitations = company.invitations
-        .filter(inv => inv.status === 'pending' && new Date() < inv.expiresAt)
+        .filter(inv => inv.status === 'pending')
         .map(inv => ({
           email: inv.email,
           roleInCompany: inv.roleInCompany,
           invitedBy: inv.invitedBy,
+          invitedAt: inv.createdAt,
           createdAt: inv.createdAt,
           expiresAt: inv.expiresAt
         }));
