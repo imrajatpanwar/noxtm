@@ -22,7 +22,7 @@ import EmailAnalytics from './EmailAnalytics';
 import WhatsAppMarketing from './WhatsAppMarketing';
 import ReferralClient from './ReferralClient';
 import Credentials from './Credentials';
-import Message from './Message';
+import Messaging from './Messaging';
 import TeamEmail from './TeamEmail';
 import Meeting from './Meeting';
 import HrOverview from './HrOverview';
@@ -236,7 +236,7 @@ function Dashboard({ user, onLogout }) {
         return <DnsConfiguration />;
       // Team Communication
       case 'message':
-        return <Message />;
+        return <Messaging />;
       case 'team-email':
         return <TeamEmail />;
       case 'meeting':

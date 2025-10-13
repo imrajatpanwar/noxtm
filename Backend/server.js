@@ -305,6 +305,67 @@ emailLogSchema.index({ from: 1 });
 
 const EmailLog = mongoose.model('EmailLog', emailLogSchema);
 
+// Conversation Schema (for messaging system)
+const conversationSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+  name: { type: String }, // For group chats
+  type: { type: String, enum: ['direct', 'group'], required: true },
+  participants: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    joinedAt: { type: Date, default: Date.now },
+    lastReadAt: { type: Date, default: Date.now }
+  }],
+  lastMessage: {
+    content: String,
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    timestamp: Date
+  },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Indexes for performance
+conversationSchema.index({ companyId: 1, type: 1 });
+conversationSchema.index({ 'participants.user': 1 });
+conversationSchema.index({ updatedAt: -1 });
+
+conversationSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Conversation = mongoose.model('Conversation', conversationSchema);
+
+// Message Schema (for messaging system)
+const messageSchema = new mongoose.Schema({
+  conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true },
+  type: { type: String, enum: ['text', 'file', 'image'], default: 'text' },
+  fileUrl: { type: String }, // For file/image messages
+  fileName: { type: String },
+  readBy: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    readAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Indexes for performance
+messageSchema.index({ conversationId: 1, createdAt: -1 });
+messageSchema.index({ companyId: 1, createdAt: -1 });
+messageSchema.index({ sender: 1 });
+
+messageSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Message = mongoose.model('Message', messageSchema);
+
 // JWT Secret - Use environment variable or generate a secure fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production';
 
@@ -391,8 +452,8 @@ const checkActivePlan = async (req, res, next) => {
 const requireAdmin = async (req, res, next) => {
   try {
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
@@ -400,15 +461,42 @@ const requireAdmin = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     if (user.role !== 'Admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    
+
     next();
   } catch (error) {
     console.error('Admin check error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Middleware to ensure company isolation (for messaging system)
+const requireCompanyAccess = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has a companyId
+    if (!user.companyId) {
+      return res.status(403).json({
+        message: 'No company associated with this user. Please complete company setup.'
+      });
+    }
+
+    // Attach companyId to request for use in route handlers
+    req.companyId = user.companyId;
+    req.userId = user._id;
+
+    next();
+  } catch (error) {
+    console.error('Company access check error:', error);
+    res.status(500).json({ message: 'Server error during company access check' });
   }
 };
 
@@ -1882,6 +1970,19 @@ const webmail = webmailRoutes.initializeRoutes({
   authenticateToken
 });
 app.use('/api/webmail', webmail);
+
+// ===== MESSAGING ROUTES =====
+// Initialize Messaging routes with dependencies
+const messagingRoutes = require('./routes/messaging');
+const messaging = messagingRoutes.initializeRoutes({
+  User,
+  Company,
+  Conversation,
+  Message,
+  authenticateToken,
+  requireCompanyAccess
+});
+app.use('/api/messaging', messaging);
 
 // API-only backend - no frontend serving
 // Frontend is served on a different port
