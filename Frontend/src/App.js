@@ -193,16 +193,27 @@ function App() {
   };
 
   // Helper function to check if user has restricted access
+  // Now based on subscription status instead of role
   const isUserRestricted = (user) => {
-    if (!user || !user.role) {
-      console.log('No user or role found, restricting access');
+    if (!user) {
+      console.log('No user found, restricting access');
       return true;
     }
-    
-    // Only restrict basic User role, allow SOLOHQ and other roles
-    const isRestricted = user.role === 'User';
-    console.log(`User role: ${user.role}, Is restricted: ${isRestricted}`);
-    return isRestricted;
+
+    // Admin always has access
+    if (user.role === 'Admin' || user.role === 'Lord') {
+      return false;
+    }
+
+    // Check if user has active subscription
+    const hasActiveSubscription = user.subscription &&
+                                   user.subscription.status === 'active' &&
+                                   user.subscription.plan !== 'None';
+
+    console.log(`User: ${user.email}, Subscription: ${user.subscription?.plan}, Status: ${user.subscription?.status}, Has Access: ${hasActiveSubscription}`);
+
+    // Restrict access if no active subscription
+    return !hasActiveSubscription;
   };
 
 
@@ -251,24 +262,22 @@ function App() {
               element={<Signup onSignup={signup} />}
             />
             <Route path="/pricing" element={<Pricing />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 user ? (
                   isUserRestricted(user) ? (
-                    // User role - redirect to AccessRestricted
+                    // No active subscription - redirect to pricing via AccessRestricted
                     <AccessRestricted />
                   ) : (
-                    // Add SubscriptionGuard to protect dashboard
-                    <SubscriptionGuard>
-                      <Dashboard user={user} onLogout={logout} />
-                    </SubscriptionGuard>
+                    // Has active subscription - allow access
+                    <Dashboard user={user} onLogout={logout} />
                   )
                 ) : (
                   // No user logged in - redirect to login
                   <Navigate to="/login" />
                 )
-              } 
+              }
             />
             <Route 
               path="/access-restricted" 

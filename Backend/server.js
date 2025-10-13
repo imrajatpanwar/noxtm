@@ -1518,6 +1518,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       access: normalizedAccess,
       permissions: normalizedPermissions,
       status: user.status,
+      subscription: user.subscription || { plan: 'None', status: 'inactive' },
       createdAt: user.createdAt
     });
   } catch (error) {
