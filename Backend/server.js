@@ -1393,7 +1393,7 @@ app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -1412,6 +1412,106 @@ app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Subscription status check error:', error);
     res.status(500).json({ message: 'Server error checking subscription status' });
+  }
+});
+
+// Setup company details (for Noxtm subscribers)
+app.post('/api/company/setup', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has Noxtm subscription
+    if (!user.subscription || user.subscription.plan !== 'Noxtm') {
+      return res.status(403).json({
+        message: 'Noxtm subscription required to create a company'
+      });
+    }
+
+    const {
+      companyName,
+      companyEmail,
+      companyPhone,
+      companyAddress,
+      companyCity,
+      companyState,
+      companyCountry,
+      companyZipCode,
+      companyWebsite,
+      industryType,
+      companySize,
+      gstin
+    } = req.body;
+
+    // Validate required fields
+    if (!companyName || !companyEmail || !industryType) {
+      return res.status(400).json({
+        message: 'Company name, email, and industry type are required'
+      });
+    }
+
+    // Check if user already has a company
+    if (user.companyId) {
+      const existingCompany = await Company.findById(user.companyId);
+      if (existingCompany) {
+        return res.status(400).json({
+          message: 'Company already exists for this user',
+          companyId: existingCompany._id
+        });
+      }
+    }
+
+    // Build company address object
+    const address = [
+      companyAddress,
+      companyCity,
+      companyState,
+      companyZipCode,
+      companyCountry
+    ].filter(Boolean).join(', ');
+
+    // Create new company
+    const company = new Company({
+      companyName,
+      industry: industryType,
+      size: companySize,
+      address,
+      owner: userId,
+      members: [{
+        user: userId,
+        roleInCompany: 'Owner',
+        joinedAt: new Date()
+      }],
+      subscription: {
+        plan: user.subscription.plan,
+        status: user.subscription.status,
+        startDate: user.subscription.startDate,
+        endDate: user.subscription.endDate
+      }
+    });
+
+    await company.save();
+
+    // Update user with company ID
+    user.companyId = company._id;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Company setup completed successfully',
+      companyId: company._id,
+      companyName: company.companyName
+    });
+  } catch (error) {
+    console.error('Company setup error:', error);
+    res.status(500).json({
+      message: 'Server error during company setup',
+      error: error.message
+    });
   }
 });
 

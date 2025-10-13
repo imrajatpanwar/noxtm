@@ -231,7 +231,8 @@ const Pricing = () => {
           // Update local user data
           localStorage.setItem('user', JSON.stringify(data.user));
           toast.success('Successfully subscribed to Noxtm plan!');
-          navigate('/dashboard');
+          // Redirect to company setup for Noxtm users
+          navigate('/company-setup');
         } else {
           toast.error(data.message || 'Failed to subscribe to Noxtm plan');
         }

@@ -12,6 +12,7 @@ import Signup from './components/Signup';
 import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
+import CompanySetup from './components/CompanySetup';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
@@ -27,12 +28,12 @@ import ContactUs from './components/ContactUs';
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing'];
-  
+  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing', '/company-setup'];
+
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
   }
-  
+
   return <Footer />;
 }
 
@@ -263,6 +264,16 @@ function App() {
             />
             <Route path="/pricing" element={<Pricing />} />
             <Route
+              path="/company-setup"
+              element={
+                user ? (
+                  <CompanySetup />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
               path="/dashboard"
               element={
                 user ? (
@@ -279,9 +290,9 @@ function App() {
                 )
               }
             />
-            <Route 
-              path="/access-restricted" 
-              element={<AccessRestricted />} 
+            <Route
+              path="/access-restricted"
+              element={<AccessRestricted />}
             />
             <Route path="/blog" element={<PublicBlogList />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
