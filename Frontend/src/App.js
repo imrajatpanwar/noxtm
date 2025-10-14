@@ -213,7 +213,7 @@ function App() {
   };
 
   // Helper function to check if user has restricted access
-  // Now based on subscription status instead of role
+  // Now based on subscription status OR company membership
   const isUserRestricted = (user) => {
     if (!user) {
       console.log('No user found, restricting access');
@@ -225,6 +225,12 @@ function App() {
       return false;
     }
 
+    // Check if user is a company member (invited employee)
+    if (user.companyId) {
+      console.log(`User: ${user.email}, Company Member: true, Has Access: true`);
+      return false; // Allow access for company members
+    }
+
     // Check if user has active subscription
     const hasActiveSubscription = user.subscription &&
                                    user.subscription.status === 'active' &&
@@ -232,7 +238,7 @@ function App() {
 
     console.log(`User: ${user.email}, Subscription: ${user.subscription?.plan}, Status: ${user.subscription?.status}, Has Access: ${hasActiveSubscription}`);
 
-    // Restrict access if no active subscription
+    // Restrict access if no active subscription and not a company member
     return !hasActiveSubscription;
   };
 
