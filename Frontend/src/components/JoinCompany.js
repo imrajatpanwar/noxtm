@@ -134,11 +134,11 @@ function JoinCompany({ onSignup }) {
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
 
-        // Trigger the storage event to update App.js state
-        window.dispatchEvent(new Event('userUpdated'));
-
-        // Redirect to dashboard - user is now part of a company
-        setTimeout(() => navigate('/dashboard'), 1500);
+        // Use hard redirect to ensure clean page reload with updated user state
+        // This prevents any timing issues with React Router
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       } else {
         toast.error(acceptData.message || 'Failed to join company');
         setSubmitting(false);
