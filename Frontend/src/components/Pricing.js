@@ -12,6 +12,23 @@ const Pricing = () => {
   // eslint-disable-next-line no-unused-vars
   const { currentUser, upgradeToSoloHQ } = useRole();
 
+  // Check if user is a company member and redirect to dashboard automatically
+  React.useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        // If user has a companyId, they're a company member and should access dashboard
+        if (userData.companyId) {
+          navigate('/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  }, [navigate]);
+
   const features = [
     {
       name: 'Client Leads',
