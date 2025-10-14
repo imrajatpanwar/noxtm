@@ -7,8 +7,23 @@ import explorerImage from './image/explorer.svg';
 function AccessRestricted() {
   const navigate = useNavigate();
 
-  // Automatically redirect to pricing page after a short delay
+  // Check if user is a company member and redirect to dashboard
   React.useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        // If user has a companyId, they're a company member and should access dashboard
+        if (userData.companyId) {
+          navigate('/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    // Otherwise, redirect to pricing page after a short delay
     const timer = setTimeout(() => {
       navigate('/pricing');
     }, 2000);
