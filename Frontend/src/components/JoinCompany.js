@@ -83,20 +83,32 @@ function JoinCompany({ onSignup }) {
     setSubmitting(true);
 
     try {
-      // First, create the user account
-      const signupResult = await onSignup(
-        formData.fullName,
-        formData.email,
-        formData.password,
-        'Employee', // Default role for invited users
-        {}
-      );
+      // Create user account directly via API call instead of using onSignup
+      // This bypasses the email verification flow used in regular signup
+      const signupResponse = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          role: 'Employee' // Default role for invited users
+        })
+      });
 
-      if (!signupResult.success) {
-        toast.error(signupResult.message || 'Failed to create account');
+      const signupData = await signupResponse.json();
+
+      if (!signupResponse.ok || !signupData.success) {
+        toast.error(signupData.message || 'Failed to create account');
         setSubmitting(false);
         return;
       }
+
+      // Store the token and user data
+      localStorage.setItem('token', signupData.token);
+      localStorage.setItem('user', JSON.stringify(signupData.user));
 
       // Then, accept the invitation with the new user ID
       const acceptResponse = await fetch('/api/messaging/invitations/signup-accept', {
@@ -106,7 +118,7 @@ function JoinCompany({ onSignup }) {
         },
         body: JSON.stringify({
           token: token,
-          userId: signupResult.user.id
+          userId: signupData.user.id
         })
       });
 
@@ -117,14 +129,15 @@ function JoinCompany({ onSignup }) {
 
         // Update user in localStorage with company info
         const updatedUser = {
-          ...signupResult.user,
+          ...signupData.user,
           companyId: acceptData.company.id
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
 
-        // Trigger the storage event
+        // Trigger the storage event to update App.js state
         window.dispatchEvent(new Event('userUpdated'));
 
+        // Redirect to dashboard - user is now part of a company
         setTimeout(() => navigate('/dashboard'), 1500);
       } else {
         toast.error(acceptData.message || 'Failed to join company');

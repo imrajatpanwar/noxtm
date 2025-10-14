@@ -1362,6 +1362,7 @@ app.post('/api/register', async (req, res) => {
     const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email }, JWT_SECRET);
 
     res.status(201).json({
+      success: true,
       message: 'User created successfully',
       token,
       user: {
@@ -1370,7 +1371,8 @@ app.post('/api/register', async (req, res) => {
         email: user.email,
         role: user.role,
         access: user.access,
-        permissions: user.permissions
+        permissions: user.permissions,
+        subscription: user.subscription || { plan: 'None', status: 'inactive' }
       }
     });
   } catch (error) {
