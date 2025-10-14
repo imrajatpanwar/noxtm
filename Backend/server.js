@@ -1669,7 +1669,8 @@ app.post('/api/login', async (req, res) => {
         role: user.role,
         access: normalizedAccess,
         permissions: normalizedPermissions,
-        subscription: user.subscription || { plan: 'None', status: 'inactive' }
+        subscription: user.subscription || { plan: 'None', status: 'inactive' },
+        companyId: user.companyId // Include companyId for invited users
       }
     });
   } catch (error) {
@@ -1709,6 +1710,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       permissions: normalizedPermissions,
       status: user.status,
       subscription: user.subscription || { plan: 'None', status: 'inactive' },
+      companyId: user.companyId, // Include companyId for invited users
       createdAt: user.createdAt
     });
   } catch (error) {
