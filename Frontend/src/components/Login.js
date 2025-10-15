@@ -27,14 +27,24 @@ function Login({ onLogin }) {
     const result = await onLogin(formData.email, formData.password);
 
     if (result.success) {
-      // Admins and Lords get direct dashboard access
+      // Admin users always go directly to dashboard (bypass subscription checks)
       if (result.user.role === 'Admin' || result.user.role === 'Lord') {
         navigate('/dashboard');
+        setLoading(false);
+        return;
       }
-      // Users without active subscription go to pricing
-      else if (!result.user.subscription ||
-               result.user.subscription.status !== 'active' ||
-               result.user.subscription.plan === 'None') {
+
+      // Company members (invited users) go directly to dashboard
+      if (result.user.companyId) {
+        navigate('/dashboard');
+        setLoading(false);
+        return;
+      }
+
+      // Regular users without active subscription go to pricing
+      if (!result.user.subscription ||
+          result.user.subscription.status !== 'active' ||
+          result.user.subscription.plan === 'None') {
         navigate('/pricing');
       }
       // Users with active subscription go to dashboard
