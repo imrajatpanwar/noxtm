@@ -18,14 +18,14 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get current user from localStorage
-  const [currentUser, setCurrentUser] = useState(null);
+  // Get current user from RoleContext (always up-to-date)
+  const { currentUser: contextCurrentUser } = useRole();
   const [subscription, setSubscription] = useState(null);
 
-  useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUser(userData);
+  // Use context's currentUser as the source of truth
+  const currentUser = contextCurrentUser;
 
+  useEffect(() => {
     // Fetch subscription status
     const fetchSubscription = async () => {
       try {
@@ -43,10 +43,10 @@ function Sidebar({ activeSection, onSectionChange }) {
       }
     };
 
-    if (userData && localStorage.getItem('token')) {
+    if (currentUser && localStorage.getItem('token')) {
       fetchSubscription();
     }
-  }, []);
+  }, [currentUser]);
 
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
@@ -153,7 +153,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Botgit': true, // Botgit is available to specific roles
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role]); // Add currentUser?.role to dependencies
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, currentUser?.permissions]); // Add currentUser dependencies
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
