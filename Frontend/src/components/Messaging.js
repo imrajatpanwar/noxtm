@@ -78,9 +78,13 @@ function Messaging() {
       });
     });
 
-    loadConversations();
-    loadUsers();
-    loadInvitations();
+    const initializeData = async () => {
+      await loadConversations();
+      loadUsers();
+      loadInvitations();
+    };
+
+    initializeData();
 
     return () => {
       if (socketRef.current) {
@@ -97,18 +101,8 @@ function Messaging() {
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation._id);
-      // Join Socket.IO room for this conversation
-      if (socketRef.current) {
-        socketRef.current.emit('join-conversation', selectedConversation._id);
-      }
+      // No need to join room manually - we auto-join all conversations
     }
-
-    // Cleanup: leave room when conversation changes
-    return () => {
-      if (selectedConversation && socketRef.current) {
-        socketRef.current.emit('leave-conversation', selectedConversation._id);
-      }
-    };
   }, [selectedConversation]);
 
   useEffect(() => {
@@ -138,6 +132,14 @@ function Messaging() {
       const data = await response.json();
       if (response.ok) {
         setConversations(data.conversations || []);
+
+        // Auto-join all conversation rooms for real-time updates
+        if (socketRef.current && data.conversations) {
+          data.conversations.forEach(conv => {
+            socketRef.current.emit('join-conversation', conv._id);
+            console.log('🔗 Auto-joined conversation:', conv._id);
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -196,6 +198,9 @@ function Messaging() {
     e.preventDefault();
     if (!messageInput.trim() || !selectedConversation) return;
 
+    const messageContent = messageInput.trim();
+    setMessageInput(''); // Clear input immediately for better UX
+
     try {
       const response = await fetch(`/api/messaging/conversations/${selectedConversation._id}/messages`, {
         method: 'POST',
@@ -204,22 +209,22 @@ function Messaging() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          content: messageInput,
+          content: messageContent,
           type: 'text'
         })
       });
 
       const data = await response.json();
-      if (response.ok) {
-        setMessages([...messages, data.data]); // Changed from data.message to data.data
-        setMessageInput('');
-        loadConversations(); // Refresh to update last message
-      } else {
+      if (!response.ok) {
         toast.error(data.message || 'Failed to send message');
+        setMessageInput(messageContent); // Restore message on error
       }
+      // Don't manually update messages here - Socket.IO will handle it
+      // This prevents duplicate messages and ensures all users see the same update
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+      setMessageInput(messageContent); // Restore message on error
     }
   };
 
@@ -242,6 +247,13 @@ function Messaging() {
       if (response.ok) {
         setSelectedConversation(data.conversation);
         setActiveTab('conversations');
+
+        // Join the new conversation room immediately
+        if (socketRef.current && data.conversation) {
+          socketRef.current.emit('join-conversation', data.conversation._id);
+          console.log('🔗 Joined new conversation:', data.conversation._id);
+        }
+
         loadConversations();
         toast.success('Conversation started');
       } else {
@@ -280,6 +292,13 @@ function Messaging() {
       if (response.ok) {
         setSelectedConversation(data.conversation);
         setActiveTab('conversations');
+
+        // Join the new conversation room immediately
+        if (socketRef.current && data.conversation) {
+          socketRef.current.emit('join-conversation', data.conversation._id);
+          console.log('🔗 Joined new group conversation:', data.conversation._id);
+        }
+
         loadConversations();
         setShowNewGroupModal(false);
         setGroupName('');
