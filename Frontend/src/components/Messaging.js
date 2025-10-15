@@ -18,8 +18,10 @@ function Messaging() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [, setTimestampTrigger] = useState(0); // Force re-render for timestamps
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
+  const selectedConversationRef = useRef(null);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -36,11 +38,44 @@ function Messaging() {
 
     socketRef.current.on('new-message', (data) => {
       console.log('📩 New message received:', data);
-      if (data.conversationId === selectedConversation?._id) {
-        setMessages(prev => [...prev, data.message]);
-      }
-      // Reload conversations to update last message
-      loadConversations();
+
+      // Update messages if it's for the currently selected conversation
+      setMessages(prev => {
+        // Check if this message is for the currently selected conversation using ref
+        if (selectedConversationRef.current?._id === data.conversationId) {
+          // Check if message already exists to avoid duplicates
+          const messageExists = prev.some(msg => msg._id === data.message._id);
+          if (!messageExists) {
+            return [...prev, data.message];
+          }
+        }
+        return prev;
+      });
+
+      // Update conversations list in real-time
+      setConversations(prevConversations => {
+        const updatedConversations = prevConversations.map(conv => {
+          if (conv._id === data.conversationId) {
+            return {
+              ...conv,
+              lastMessage: {
+                content: data.message.content,
+                timestamp: data.message.createdAt,
+                sender: data.message.sender
+              }
+            };
+          }
+          return conv;
+        });
+
+        // If conversation doesn't exist in list, reload conversations
+        const conversationExists = prevConversations.some(conv => conv._id === data.conversationId);
+        if (!conversationExists) {
+          loadConversations();
+        }
+
+        return updatedConversations;
+      });
     });
 
     loadConversations();
@@ -53,6 +88,11 @@ function Messaging() {
       }
     };
   }, []);
+
+  // Update ref when selectedConversation changes
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -74,6 +114,15 @@ function Messaging() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Update timestamps every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimestampTrigger(prev => prev + 1);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -312,6 +361,8 @@ function Messaging() {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now - date;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
@@ -321,6 +372,10 @@ function Messaging() {
       return `${days}d ago`;
     } else if (hours > 0) {
       return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else if (seconds > 0) {
+      return `${seconds}s ago`;
     } else {
       return 'Just now';
     }
