@@ -124,7 +124,7 @@ function Messaging() {
 
       const data = await response.json();
       if (response.ok) {
-        setMessages([...messages, data.message]);
+        setMessages([...messages, data.data]); // Changed from data.message to data.data
         setMessageInput('');
         loadConversations(); // Refresh to update last message
       } else {
@@ -147,7 +147,7 @@ function Messaging() {
         },
         body: JSON.stringify({
           type: 'direct',
-          participants: [userId]
+          participantIds: [userId] // Changed from 'participants' to 'participantIds'
         })
       });
 
@@ -185,7 +185,7 @@ function Messaging() {
         body: JSON.stringify({
           type: 'group',
           name: groupName,
-          participants: selectedUsers
+          participantIds: selectedUsers // Changed from 'participants' to 'participantIds'
         })
       });
 
@@ -294,9 +294,11 @@ function Messaging() {
     }
     // For direct messages, show the other person's name
     const otherParticipant = conversation.participants?.find(
-      p => p.user?._id !== currentUser?._id
+      p => p.user?._id !== currentUser?.id && p.user?._id !== currentUser?._id && p.id !== currentUser?.id
     );
-    return otherParticipant?.user?.username || 'Unknown User';
+    // Try multiple field names for compatibility
+    return otherParticipant?.user?.fullName || otherParticipant?.user?.username ||
+           otherParticipant?.fullName || otherParticipant?.username || 'Unknown User';
   };
 
   const filteredUsers = users.filter(user =>

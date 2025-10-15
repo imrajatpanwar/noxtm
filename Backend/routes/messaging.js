@@ -580,21 +580,25 @@ function initializeRoutes(dependencies) {
         return res.status(404).json({ message: 'Company not found' });
       }
 
-      const members = company.members
-        .filter(m => m.user)
+      const users = company.members
+        .filter(m => m.user && m.user.status === 'Active')
         .map(m => ({
-          id: m.user._id,
+          _id: m.user._id,
+          id: m.user._id, // Keep for backward compatibility
           fullName: m.user.fullName,
+          username: m.user.fullName, // Add username field (same as fullName)
           email: m.user.email,
           role: m.user.role,
           roleInCompany: m.roleInCompany,
+          department: m.roleInCompany, // Use roleInCompany as department for search
           joinedAt: m.joinedAt,
           status: m.user.status
         }));
 
       res.json({
-        members,
-        total: members.length
+        users, // Changed from 'members' to 'users'
+        members: users, // Keep for backward compatibility
+        total: users.length
       });
     } catch (error) {
       console.error('Get company members error:', error);
@@ -637,12 +641,21 @@ function initializeRoutes(dependencies) {
         const lastReadAt = currentParticipant ? currentParticipant.lastReadAt : new Date(0);
 
         return {
-          id: conv._id,
+          _id: conv._id,
+          id: conv._id, // Keep for backward compatibility
           type: conv.type,
           name: displayName,
           participants: conv.participants.map(p => ({
+            _id: p.user._id,
             id: p.user._id,
+            user: {
+              _id: p.user._id,
+              fullName: p.user.fullName,
+              username: p.user.fullName,
+              email: p.user.email
+            },
             fullName: p.user.fullName,
+            username: p.user.fullName,
             email: p.user.email
           })),
           lastMessage: conv.lastMessage,
