@@ -127,10 +127,13 @@ function JoinCompany({ onSignup }) {
       if (acceptResponse.ok && acceptData.success) {
         toast.success(`Successfully joined ${invitationData.company.companyName}!`);
 
-        // Update user in localStorage with company info
+        // Update user in localStorage with complete company info and permissions
         const updatedUser = {
           ...signupData.user,
-          companyId: acceptData.company.id
+          companyId: acceptData.company.id,
+          subscription: acceptData.user.subscription,
+          permissions: acceptData.user.permissions,
+          access: acceptData.user.access
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
 

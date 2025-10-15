@@ -9,6 +9,7 @@ import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import ForgotPassword from './components/ForgotPassword';
 import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
@@ -29,7 +30,7 @@ import ContactUs from './components/ContactUs';
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company'];
+  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company'];
 
   if (hideFooterRoutes.includes(location.pathname)) {
     return null;
@@ -279,13 +280,17 @@ function App() {
           <Header user={user} onLogout={logout} />
           <Routes>
             <Route path="/" element={<Home user={user} />} />
-            <Route 
-              path="/login" 
-              element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />} 
+            <Route
+              path="/login"
+              element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />}
             />
             <Route
               path="/signup"
               element={<Signup onSignup={signup} />}
+            />
+            <Route
+              path="/forgot-password"
+              element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
             />
             <Route path="/pricing" element={<Pricing />} />
             <Route

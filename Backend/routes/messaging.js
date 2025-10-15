@@ -273,8 +273,47 @@ function initializeRoutes(dependencies) {
 
       await company.save();
 
-      // Update user with company ID
+      // Update user with company ID and inherit company's subscription/permissions
       user.companyId = company._id;
+
+      // Set user's subscription to match company's subscription
+      user.subscription = {
+        plan: company.subscription.plan,
+        status: company.subscription.status,
+        startDate: company.subscription.startDate,
+        endDate: company.subscription.endDate
+      };
+
+      // Give user full Noxtm permissions (matching company plan)
+      user.permissions = {
+        dashboard: true,
+        dataCenter: true,
+        projects: true,
+        teamCommunication: true,
+        digitalMediaManagement: true,
+        marketing: true,
+        hrManagement: true,
+        financeManagement: true,
+        seoManagement: true,
+        internalPolicies: true,
+        settingsConfiguration: false // Only owner can change settings
+      };
+
+      // Update access array from permissions
+      const accessArray = [];
+      if (user.permissions.dashboard) accessArray.push('Dashboard');
+      if (user.permissions.dataCenter) accessArray.push('Data Center');
+      if (user.permissions.projects) accessArray.push('Projects');
+      if (user.permissions.teamCommunication) accessArray.push('Team Communication');
+      if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
+      if (user.permissions.marketing) accessArray.push('Marketing');
+      if (user.permissions.hrManagement) accessArray.push('HR Management');
+      if (user.permissions.financeManagement) accessArray.push('Finance Management');
+      if (user.permissions.seoManagement) accessArray.push('SEO Management');
+      if (user.permissions.internalPolicies) accessArray.push('Internal Policies');
+      if (user.permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
+      user.access = accessArray;
+
       await user.save();
 
       res.json({
@@ -284,6 +323,12 @@ function initializeRoutes(dependencies) {
           id: company._id,
           companyName: company.companyName,
           roleInCompany: invitation.roleInCompany
+        },
+        user: {
+          id: user._id,
+          permissions: user.permissions,
+          subscription: user.subscription,
+          companyId: user.companyId
         }
       });
     } catch (error) {
@@ -365,8 +410,48 @@ function initializeRoutes(dependencies) {
 
       await company.save();
 
-      // Update user with company ID
+      // Update user with company ID and inherit company's subscription/permissions
       user.companyId = company._id;
+
+      // Set user's subscription to match company's subscription
+      user.subscription = {
+        plan: company.subscription.plan,
+        status: company.subscription.status,
+        startDate: company.subscription.startDate,
+        endDate: company.subscription.endDate
+      };
+
+      // Give user full Noxtm permissions (matching company plan)
+      // Company members should have same access as company owner
+      user.permissions = {
+        dashboard: true,
+        dataCenter: true,
+        projects: true,
+        teamCommunication: true,
+        digitalMediaManagement: true,
+        marketing: true,
+        hrManagement: true,
+        financeManagement: true,
+        seoManagement: true,
+        internalPolicies: true,
+        settingsConfiguration: false // Only owner can change settings
+      };
+
+      // Update access array from permissions
+      const accessArray = [];
+      if (user.permissions.dashboard) accessArray.push('Dashboard');
+      if (user.permissions.dataCenter) accessArray.push('Data Center');
+      if (user.permissions.projects) accessArray.push('Projects');
+      if (user.permissions.teamCommunication) accessArray.push('Team Communication');
+      if (user.permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
+      if (user.permissions.marketing) accessArray.push('Marketing');
+      if (user.permissions.hrManagement) accessArray.push('HR Management');
+      if (user.permissions.financeManagement) accessArray.push('Finance Management');
+      if (user.permissions.seoManagement) accessArray.push('SEO Management');
+      if (user.permissions.internalPolicies) accessArray.push('Internal Policies');
+      if (user.permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
+      user.access = accessArray;
+
       await user.save();
 
       res.json({
@@ -376,6 +461,12 @@ function initializeRoutes(dependencies) {
           id: company._id,
           companyName: company.companyName,
           roleInCompany: invitation.roleInCompany
+        },
+        user: {
+          id: user._id,
+          permissions: user.permissions,
+          subscription: user.subscription,
+          companyId: user.companyId
         }
       });
     } catch (error) {
