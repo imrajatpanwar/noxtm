@@ -274,6 +274,19 @@ emailVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 
+// Password Reset Schema
+const passwordResetSchema = new mongoose.Schema({
+  email: { type: String, required: true, index: true },
+  code: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 10 * 60 * 1000), index: true }
+});
+
+// Create TTL index to automatically delete expired documents
+passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
+
 // Email Log Schema (for Noxtm Mail dashboard)
 const emailLogSchema = new mongoose.Schema({
   from: { type: String, required: true },
@@ -1318,6 +1331,182 @@ app.post('/api/verify-code', async (req, res) => {
       message: 'Verification failed. Please try again.',
       error: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// ===== FORGOT PASSWORD ROUTES =====
+
+// Send password reset code
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset code has been sent.'
+      });
+    }
+
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store reset code
+    await PasswordReset.findOneAndDelete({ email: email.trim().toLowerCase() }); // Remove any existing reset
+    const passwordReset = new PasswordReset({
+      email: email.trim().toLowerCase(),
+      code: resetCode
+    });
+    await passwordReset.save();
+
+    // Check if email configuration is set
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_FROM) {
+      console.error('Email configuration missing');
+      return res.status(500).json({
+        message: 'Email service not configured. Please contact administrator.',
+        error: 'SMTP_CONFIG_MISSING'
+      });
+    }
+
+    // Configure nodemailer
+    const transportConfig = {
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT) || 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    };
+
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      transportConfig.auth = {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig);
+
+    // Send email
+    const mailOptions = {
+      from: `"Noxtm" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Password Reset Code - Noxtm',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hi ${user.fullName},</p>
+          <p>You requested to reset your password. Please use the verification code below:</p>
+          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${resetCode}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
+        </div>
+      `
+    };
+
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent:', info.messageId);
+
+      res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset code has been sent.',
+        email: email
+      });
+    } catch (mailError) {
+      console.error('❌ Failed to send email:', mailError);
+      throw mailError;
+    }
+  } catch (error) {
+    console.error('Forgot password error:', error);
+
+    let errorMessage = 'Failed to send password reset code. Please try again.';
+    if (error.code === 'EAUTH') {
+      errorMessage = 'Email authentication failed. Please contact administrator.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Cannot connect to email server. Please try again later.';
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = 'Email service timeout. Please try again.';
+    }
+
+    res.status(500).json({
+      message: errorMessage,
+      error: error.code || 'UNKNOWN_ERROR'
+    });
+  }
+});
+
+// Verify reset code and update password
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    // Validate input
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ message: 'Email, code, and new password are required' });
+    }
+
+    // Validate password strength (minimum 6 characters)
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    // Find reset record
+    const resetRecord = await PasswordReset.findOne({
+      email: email.trim().toLowerCase(),
+      code: code.trim()
+    });
+
+    if (!resetRecord) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    // Check if expired
+    if (new Date() > resetRecord.expiresAt) {
+      await PasswordReset.findByIdAndDelete(resetRecord._id);
+      return res.status(400).json({ message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Hash new password
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update user password
+    user.password = hashedPassword;
+    user.updatedAt = Date.now();
+    await user.save();
+
+    // Delete reset record
+    await PasswordReset.findByIdAndDelete(resetRecord._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password has been reset successfully. You can now login with your new password.'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      message: 'Failed to reset password. Please try again.',
+      error: error.message
     });
   }
 });
