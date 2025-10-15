@@ -5,7 +5,30 @@ const nodemailer = require('nodemailer');
 // Initialize routes with dependencies from server.js
 function initializeRoutes(dependencies) {
   const router = express.Router();
-  const { User, Company, Conversation, Message, authenticateToken, requireCompanyAccess } = dependencies;
+  const { User, Company, Conversation, Message, authenticateToken, requireCompanyAccess, io } = dependencies;
+
+  // Socket.IO connection handling
+  if (io) {
+    io.on('connection', (socket) => {
+      console.log('💬 User connected to messaging:', socket.id);
+
+      // Join conversation room
+      socket.on('join-conversation', (conversationId) => {
+        socket.join(`conversation:${conversationId}`);
+        console.log(`User ${socket.id} joined conversation: ${conversationId}`);
+      });
+
+      // Leave conversation room
+      socket.on('leave-conversation', (conversationId) => {
+        socket.leave(`conversation:${conversationId}`);
+        console.log(`User ${socket.id} left conversation: ${conversationId}`);
+      });
+
+      socket.on('disconnect', () => {
+        console.log('User disconnected from messaging:', socket.id);
+      });
+    });
+  }
 
   // ===== COMPANY INVITATIONS =====
 
@@ -901,6 +924,26 @@ function initializeRoutes(dependencies) {
 
       // Populate sender for response
       await message.populate('sender', 'fullName email');
+
+      // Emit real-time message to all participants in the conversation
+      if (io) {
+        io.to(`conversation:${conversationId}`).emit('new-message', {
+          conversationId,
+          message: {
+            _id: message._id,
+            content: message.content,
+            type: message.type,
+            sender: {
+              _id: message.sender._id,
+              fullName: message.sender.fullName,
+              username: message.sender.fullName,
+              email: message.sender.email
+            },
+            createdAt: message.createdAt,
+            readBy: message.readBy
+          }
+        });
+      }
 
       res.status(201).json({
         success: true,
