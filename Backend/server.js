@@ -8,9 +8,25 @@ const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const emailRoutes = require('./routes/email');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'http://noxtm.com',
+      'https://noxtm.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
@@ -2173,7 +2189,8 @@ const messaging = messagingRoutes.initializeRoutes({
   Conversation,
   Message,
   authenticateToken,
-  requireCompanyAccess
+  requireCompanyAccess,
+  io // Pass Socket.IO instance for real-time messaging
 });
 app.use('/api/messaging', messaging);
 
@@ -2211,7 +2228,7 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('='.repeat(50));
   console.log(`🚀 Noxtm Studio Backend Server Started`);
   console.log('='.repeat(50));
@@ -2221,5 +2238,6 @@ app.listen(PORT, () => {
   console.log(`🌐 MongoDB status: ${mongoConnected ? '✅ Connected' : '❌ Disconnected'}`);
   console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Set' : '⚠️  Using fallback'}`);
   console.log(`🏗️  Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`💬 Socket.IO: ✅ Enabled for real-time messaging`);
   console.log('='.repeat(50));
 });

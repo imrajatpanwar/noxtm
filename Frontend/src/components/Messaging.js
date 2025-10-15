@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { io } from 'socket.io-client';
 import './Messaging.css';
 
 function Messaging() {
@@ -18,19 +19,56 @@ function Messaging() {
   const [groupName, setGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const messagesEndRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(userData);
+
+    // Initialize Socket.IO connection
+    socketRef.current = io('http://noxtm.com:5000', {
+      transports: ['websocket', 'polling']
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('✅ Connected to Socket.IO');
+    });
+
+    socketRef.current.on('new-message', (data) => {
+      console.log('📩 New message received:', data);
+      if (data.conversationId === selectedConversation?._id) {
+        setMessages(prev => [...prev, data.message]);
+      }
+      // Reload conversations to update last message
+      loadConversations();
+    });
+
     loadConversations();
     loadUsers();
     loadInvitations();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation._id);
+      // Join Socket.IO room for this conversation
+      if (socketRef.current) {
+        socketRef.current.emit('join-conversation', selectedConversation._id);
+      }
     }
+
+    // Cleanup: leave room when conversation changes
+    return () => {
+      if (selectedConversation && socketRef.current) {
+        socketRef.current.emit('leave-conversation', selectedConversation._id);
+      }
+    };
   }, [selectedConversation]);
 
   useEffect(() => {
@@ -494,7 +532,7 @@ function Messaging() {
                 messages.map((msg) => (
                   <div
                     key={msg._id}
-                    className={`message ${msg.sender?._id === currentUser?._id ? 'sent' : 'received'}`}
+                    className={`message ${msg.sender?._id === currentUser?.id || msg.sender?._id === currentUser?._id ? 'sent' : 'received'}`}
                   >
                     <div className="message-avatar">
                       {msg.sender?.username?.charAt(0).toUpperCase()}
