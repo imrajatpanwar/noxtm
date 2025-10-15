@@ -114,33 +114,36 @@ function App() {
   const login = async (email, password) => {
     try {
       console.log('Attempting login for:', email);
-      
+
       // Validate input before sending
       if (!email || !password) {
-        return { 
-          success: false, 
-          message: 'Please enter both email and password.' 
+        return {
+          success: false,
+          message: 'Please enter both email and password.'
         };
       }
-      
-      const response = await api.post('/login', { 
-        email: email.trim(), 
-        password: password 
+
+      const response = await api.post('/login', {
+        email: email.trim(),
+        password: password
       });
-      
+
       const { token, user } = response.data;
-      
+
       if (!token || !user) {
-        return { 
-          success: false, 
-          message: 'Invalid response from server. Please try again.' 
+        return {
+          success: false,
+          message: 'Invalid response from server. Please try again.'
         };
       }
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
-      
+
+      // Trigger userUpdated event so RoleContext picks up the new user immediately
+      window.dispatchEvent(new Event('userUpdated'));
+
       return { success: true, user };
     } catch (error) {
       console.error('Login error details:', {

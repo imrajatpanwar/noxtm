@@ -136,24 +136,24 @@ export const RoleProvider = ({ children }) => {
       // Load from localStorage first
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const storedUsers = JSON.parse(localStorage.getItem('usersData') || '[]');
-      
+
       setCurrentUser(userData);
       setUsers(storedUsers); // Set stored users immediately
-      
+
       // Get user's role permissions
       if (userData.role) {
         const permissions = [userData.role] || {};
         setUserPermissions(permissions);
       }
-      
+
       // Then fetch latest data from backend
       try {
         const backendUsers = await fetchUsersFromBackend();
-        
+
         if (backendUsers && backendUsers.length > 0) {
           setUsers(backendUsers);
           localStorage.setItem('usersData', JSON.stringify(backendUsers));
-          
+
           // Set initial permission hash
           if (userData.id) {
             lastPermissionHash.current = generatePermissionHash(userData);
@@ -163,8 +163,19 @@ export const RoleProvider = ({ children }) => {
         console.error('Error fetching initial user data:', error);
       }
     };
-    
+
     loadUserData();
+
+    // Listen for userUpdated events (triggered after login)
+    const handleUserUpdated = () => {
+      loadUserData();
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdated);
+
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdated);
+    };
     // Only run this effect once on mount, intentionally omitting generatePermissionHash to prevent unnecessary re-renders
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
