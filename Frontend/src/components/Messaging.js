@@ -507,27 +507,34 @@ function Messaging() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              {filteredUsers.map(user => (
-                <div key={user._id} className="user-item">
-                  <div className="user-avatar">
-                    {user.username?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="user-info">
-                    <span className="user-name">{user.username}</span>
-                    <small className="user-email">{user.email}</small>
-                    {user.department && (
-                      <small className="user-department">{user.department}</small>
-                    )}
-                  </div>
-                  <button
-                    className="btn-start-chat"
-                    onClick={() => startDirectConversation(user._id)}
-                    disabled={loading}
-                  >
-                    Chat
-                  </button>
+              {filteredUsers.length === 0 ? (
+                <div className="empty-state">
+                  <p>No users found</p>
+                  <small>{searchQuery ? 'Try a different search' : 'No team members available'}</small>
                 </div>
-              ))}
+              ) : (
+                filteredUsers.map(user => (
+                  <div key={user._id} className="user-item">
+                    <div className="user-avatar">
+                      {user.username?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="user-info">
+                      <span className="user-name">{user.username}</span>
+                      <small className="user-email">{user.email}</small>
+                      {user.department && (
+                        <small className="user-department">{user.department}</small>
+                      )}
+                    </div>
+                    <button
+                      className="btn-start-chat"
+                      onClick={() => startDirectConversation(user._id)}
+                      disabled={loading}
+                    >
+                      Chat
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
