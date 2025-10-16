@@ -46,7 +46,10 @@ function Messaging() {
           // Check if message already exists to avoid duplicates
           const messageExists = prev.some(msg => msg._id === data.message._id);
           if (!messageExists) {
+            console.log('➕ Adding message to display:', data.message.content);
             return [...prev, data.message];
+          } else {
+            console.log('⏭️ Message already exists, skipping');
           }
         }
         return prev;
@@ -71,6 +74,7 @@ function Messaging() {
         // If conversation doesn't exist in list, reload conversations
         const conversationExists = prevConversations.some(conv => conv._id === data.conversationId);
         if (!conversationExists) {
+          console.log('🔄 Conversation not in list, reloading...');
           loadConversations();
         }
 
@@ -78,13 +82,12 @@ function Messaging() {
       });
     });
 
-    const initializeData = async () => {
+    // Wait a moment for Socket.IO to connect, then load data
+    setTimeout(async () => {
       await loadConversations();
       loadUsers();
       loadInvitations();
-    };
-
-    initializeData();
+    }, 500);
 
     return () => {
       if (socketRef.current) {
