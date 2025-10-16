@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
 import './Messaging.css';
 
 function Messaging() {
@@ -8,7 +10,6 @@ function Messaging() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,12 +83,20 @@ function Messaging() {
       });
     });
 
-    // Wait a moment for Socket.IO to connect, then load data
-    setTimeout(async () => {
+    // Load data immediately and join rooms as soon as Socket.IO connects
+    const initializeData = async () => {
       await loadConversations();
       loadUsers();
       loadInvitations();
-    }, 500);
+    };
+
+    // If already connected, load immediately
+    if (socketRef.current.connected) {
+      initializeData();
+    } else {
+      // Otherwise wait for connection
+      socketRef.current.once('connect', initializeData);
+    }
 
     return () => {
       if (socketRef.current) {
@@ -197,12 +206,8 @@ function Messaging() {
     }
   };
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!messageInput.trim() || !selectedConversation) return;
-
-    const messageContent = messageInput.trim();
-    setMessageInput(''); // Clear input immediately for better UX
+  const sendMessage = async (messageContent) => {
+    if (!messageContent || !selectedConversation) return;
 
     try {
       const response = await fetch(`/api/messaging/conversations/${selectedConversation._id}/messages`, {
@@ -220,14 +225,12 @@ function Messaging() {
       const data = await response.json();
       if (!response.ok) {
         toast.error(data.message || 'Failed to send message');
-        setMessageInput(messageContent); // Restore message on error
       }
       // Don't manually update messages here - Socket.IO will handle it
       // This prevents duplicate messages and ensures all users see the same update
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
-      setMessageInput(messageContent); // Restore message on error
     }
   };
 
@@ -599,46 +602,16 @@ function Messaging() {
               </div>
             </div>
 
-            <div className="messages-container">
-              {messages.length === 0 ? (
-                <div className="empty-state-center">
-                  <p>No messages yet</p>
-                  <small>Start the conversation!</small>
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <div
-                    key={msg._id}
-                    className={`message ${msg.sender?._id === currentUser?.id || msg.sender?._id === currentUser?._id ? 'sent' : 'received'}`}
-                  >
-                    <div className="message-avatar">
-                      {msg.sender?.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="message-content">
-                      <div className="message-header">
-                        <span className="message-sender">{msg.sender?.username}</span>
-                        <span className="message-time">{formatTime(msg.createdAt)}</span>
-                      </div>
-                      <p className="message-text">{msg.content}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+            <MessageList
+              messages={messages}
+              currentUserId={currentUser?.id || currentUser?._id}
+              messagesEndRef={messagesEndRef}
+            />
 
-            <form onSubmit={sendMessage} className="message-input-container">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                className="message-input"
-              />
-              <button type="submit" className="btn-send" disabled={!messageInput.trim()}>
-                Send
-              </button>
-            </form>
+            <MessageInput
+              onSendMessage={sendMessage}
+              disabled={false}
+            />
           </>
         ) : (
           <div className="empty-state-center">
