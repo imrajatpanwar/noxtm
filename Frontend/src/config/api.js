@@ -1,10 +1,12 @@
 import axios from 'axios';
 
 // Create axios instance with proper configuration
-const PRODUCTION_BACKEND_URL = 'http://noxtm.com:5000/api/';
+// Use environment-based URL configuration
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_URL = isDevelopment ? 'http://localhost:5000/api' : 'http://noxtm.com/api';
 
 const api = axios.create({
-  baseURL: PRODUCTION_BACKEND_URL,
+  baseURL: BACKEND_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
