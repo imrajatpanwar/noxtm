@@ -589,52 +589,66 @@ function initializeRoutes(dependencies) {
   });
 
   // Get all company members
-  router.get('/users', authenticateToken, requireCompanyAccess, async (req, res) => {
+  router.get('/users', authenticateToken, async (req, res) => {
+    console.log('🔍 GET /api/messaging/users called');
     try {
-      const companyId = req.companyId;
+      const user = await User.findById(req.user.userId);
+      console.log('👤 User found:', user?.email);
 
-      const company = await Company.findById(companyId)
-        .populate({
-          path: 'members.user',
-          select: 'fullName email role status'
-        });
-
-      if (!company) {
-        return res.status(404).json({ message: 'Company not found' });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
       }
 
-      // Debug: Log all members before filtering
-      console.log('📊 Total company members:', company.members.length);
-      console.log('📊 Members with user data:', company.members.filter(m => m.user).length);
+      // Check if user has a company
+      if (!user.companyId) {
+        console.log('⚠️ User has no company, returning empty users list');
+        return res.json({
+          users: [],
+          members: [],
+          total: 0,
+          message: 'No company associated. Please complete company setup to see team members.'
+        });
+      }
 
-      const users = company.members
-        .filter(m => {
-          // More lenient filter - include all users with data, regardless of status
-          if (!m.user) return false;
+      const companyId = user.companyId;
 
-          // Accept 'Active', 'active', or undefined status
-          const status = m.user.status?.toLowerCase();
-          return !status || status === 'active' || status === '';
-        })
-        .map(m => ({
-          _id: m.user._id,
-          id: m.user._id, // Keep for backward compatibility
-          fullName: m.user.fullName,
-          username: m.user.fullName, // Add username field (same as fullName)
-          email: m.user.email,
-          role: m.user.role,
-          roleInCompany: m.roleInCompany,
-          department: m.roleInCompany, // Use roleInCompany as department for search
-          joinedAt: m.joinedAt,
-          status: m.user.status || 'Active'
-        }));
+      // METHOD 1: Get all users with the same companyId directly from Users collection
+      // This shows ALL users with the same company, not just those in company.members array
+      const companyUsers = await User.find({
+        companyId: companyId,
+        _id: { $ne: user._id } // Exclude current user from the list
+      }).select('fullName email role status');
 
-      console.log('✅ Users after filtering:', users.length);
-      console.log('👥 Users:', users.map(u => u.fullName).join(', '));
+      console.log('📊 Total users with companyId:', companyUsers.length);
+
+      // METHOD 2: Also get company members for roleInCompany info
+      const company = await Company.findById(companyId);
+      const memberRoles = {};
+      if (company && company.members) {
+        company.members.forEach(m => {
+          memberRoles[m.user.toString()] = m.roleInCompany || 'Member';
+        });
+      }
+
+      // Map users with all necessary fields
+      const users = companyUsers.map(u => ({
+        _id: u._id,
+        id: u._id,
+        fullName: u.fullName,
+        username: u.fullName,
+        email: u.email,
+        role: u.role,
+        roleInCompany: memberRoles[u._id.toString()] || 'Member',
+        department: memberRoles[u._id.toString()] || 'Member',
+        status: u.status || 'Active'
+      }));
+
+      console.log('✅ Users found:', users.length);
+      console.log('👥 Users:', users.map(u => `${u.fullName} (${u.email})`).join(', '));
 
       res.json({
-        users, // Changed from 'members' to 'users'
-        members: users, // Keep for backward compatibility
+        users,
+        members: users,
         total: users.length
       });
     } catch (error) {
@@ -646,10 +660,24 @@ function initializeRoutes(dependencies) {
   // ===== CONVERSATIONS =====
 
   // Get all conversations for current user
-  router.get('/conversations', authenticateToken, requireCompanyAccess, async (req, res) => {
+  router.get('/conversations', authenticateToken, async (req, res) => {
     try {
-      const companyId = req.companyId;
-      const userId = req.userId;
+      const user = await User.findById(req.user.userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Return empty if no company
+      if (!user.companyId) {
+        return res.json({
+          conversations: [],
+          total: 0
+        });
+      }
+
+      const companyId = user.companyId;
+      const userId = user._id;
 
       const conversations = await Conversation.find({
         companyId,
@@ -713,10 +741,22 @@ function initializeRoutes(dependencies) {
   });
 
   // Create new conversation (direct or group)
-  router.post('/conversations', authenticateToken, requireCompanyAccess, async (req, res) => {
+  router.post('/conversations', authenticateToken, async (req, res) => {
     try {
-      const companyId = req.companyId;
-      const userId = req.userId;
+      const user = await User.findById(req.user.userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (!user.companyId) {
+        return res.status(403).json({
+          message: 'Please complete company setup to start conversations'
+        });
+      }
+
+      const companyId = user.companyId;
+      const userId = user._id;
       const { type, participantIds, name } = req.body;
 
       // Validate input

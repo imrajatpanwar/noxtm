@@ -1892,8 +1892,8 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/profile', authenticateToken, async (req, res) => {
   try {
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
@@ -1905,6 +1905,18 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
     // Always normalize permissions and access before sending
     const normalizedPermissions = normalizePermissions(user.permissions);
     const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
+
+    // Debug: Check other users with same companyId
+    if (user.companyId) {
+      const companyUsers = await User.find({
+        companyId: user.companyId,
+        _id: { $ne: user._id }
+      }).select('fullName email');
+      console.log(`👥 Users with same companyId (${user.companyId}):`, companyUsers.length);
+      companyUsers.forEach(u => console.log(`  - ${u.fullName} (${u.email})`));
+    } else {
+      console.log('⚠️ User has NO companyId:', user.email);
+    }
 
     res.json({
       id: user._id,

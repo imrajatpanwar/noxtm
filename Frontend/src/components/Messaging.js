@@ -30,7 +30,7 @@ function Messaging() {
 
     // Initialize Socket.IO connection
     socketRef.current = io('http://noxtm.com:5000', {
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket'] // Try polling first to avoid CSP issues
     });
 
     socketRef.current.on('connect', () => {
@@ -81,6 +81,19 @@ function Messaging() {
 
         return updatedConversations;
       });
+        // If the message is NOT for the currently selected conversation, increment unread
+        if (selectedConversationRef.current?._id !== data.conversationId) {
+          try {
+            // use context if available
+            if (typeof window !== 'undefined') {
+              // dispatch a custom event so other parts of the app (like Sidebar) can listen
+              const evt = new CustomEvent('messaging:newMessage', { detail: { conversationId: data.conversationId, message: data.message } });
+              window.dispatchEvent(evt);
+            }
+          } catch (e) {
+            console.warn('Could not dispatch messaging event', e);
+          }
+        }
     });
 
     // Load data immediately and join rooms as soon as Socket.IO connects
@@ -189,6 +202,13 @@ function Messaging() {
       console.error('Error loading users:', error);
     }
   };
+
+  // Ensure users are loaded on mount so the "Users" tab has data
+  useEffect(() => {
+    // Load users immediately regardless of socket connection
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadInvitations = async () => {
     try {
@@ -510,7 +530,13 @@ function Messaging() {
               {filteredUsers.length === 0 ? (
                 <div className="empty-state">
                   <p>No users found</p>
-                  <small>{searchQuery ? 'Try a different search' : 'No team members available'}</small>
+                  <small>
+                    {searchQuery
+                      ? 'Try a different search'
+                      : users.length === 0
+                        ? 'Complete company setup to see team members'
+                        : 'No team members available'}
+                  </small>
                 </div>
               ) : (
                 filteredUsers.map(user => (
