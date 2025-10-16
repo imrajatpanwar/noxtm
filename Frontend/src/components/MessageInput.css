@@ -1,0 +1,148 @@
+/* Message Input Container */
+.message-input-container {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 20px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.message-input-form {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 8px 12px 8px 20px;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper.focused {
+  background: white;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-wrapper:hover {
+  border-color: #cbd5e0;
+}
+
+/* Message Input */
+.message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: #2d3748;
+  padding: 8px 0;
+  font-family: inherit;
+}
+
+.message-input::placeholder {
+  color: #a0aec0;
+}
+
+.message-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Send Button */
+.send-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #e2e8f0;
+  color: #a0aec0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.send-button:hover:not(:disabled) {
+  background: #cbd5e0;
+  transform: scale(1.05);
+}
+
+.send-button.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.send-button.active:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.send-button svg {
+  transition: transform 0.3s ease;
+}
+
+.send-button.active svg {
+  transform: rotate(0deg);
+}
+
+.send-button:hover.active svg {
+  transform: rotate(15deg);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .message-input-container {
+    padding: 12px;
+  }
+
+  .input-wrapper {
+    padding: 6px 8px 6px 16px;
+  }
+
+  .message-input {
+    font-size: 14px;
+    padding: 6px 0;
+  }
+
+  .send-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .send-button svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Focus Animation */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.input-wrapper.focused {
+  animation: pulse 2s ease-in-out;
+}
