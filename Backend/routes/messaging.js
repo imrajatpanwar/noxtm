@@ -603,8 +603,19 @@ function initializeRoutes(dependencies) {
         return res.status(404).json({ message: 'Company not found' });
       }
 
+      // Debug: Log all members before filtering
+      console.log('📊 Total company members:', company.members.length);
+      console.log('📊 Members with user data:', company.members.filter(m => m.user).length);
+
       const users = company.members
-        .filter(m => m.user && m.user.status === 'Active')
+        .filter(m => {
+          // More lenient filter - include all users with data, regardless of status
+          if (!m.user) return false;
+
+          // Accept 'Active', 'active', or undefined status
+          const status = m.user.status?.toLowerCase();
+          return !status || status === 'active' || status === '';
+        })
         .map(m => ({
           _id: m.user._id,
           id: m.user._id, // Keep for backward compatibility
@@ -615,8 +626,11 @@ function initializeRoutes(dependencies) {
           roleInCompany: m.roleInCompany,
           department: m.roleInCompany, // Use roleInCompany as department for search
           joinedAt: m.joinedAt,
-          status: m.user.status
+          status: m.user.status || 'Active'
         }));
+
+      console.log('✅ Users after filtering:', users.length);
+      console.log('👥 Users:', users.map(u => u.fullName).join(', '));
 
       res.json({
         users, // Changed from 'members' to 'users'
