@@ -4,7 +4,17 @@ require('dotenv').config();
 // Import models
 const EmailDomain = require('../models/EmailDomain');
 const EmailTemplate = require('../models/EmailTemplate');
-const User = require('../models/User'); // Assuming you have a User model
+
+// Define User schema (since it's in server.js, not a separate model file)
+const userSchema = new mongoose.Schema({
+  fullName: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['Admin', 'Manager', 'Employee', 'User'], default: 'User' },
+  status: { type: String, enum: ['Active', 'Inactive', 'Pending'], default: 'Pending' }
+}, { timestamps: true });
+
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 async function seedEmailSystem() {
   try {
