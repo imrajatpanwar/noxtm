@@ -205,7 +205,7 @@ function Signup({ onSignup }) {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="password" className="form-label">Password</label>
-                  <div className="password-input-container">
+                  <div className="signup-password-input-container">
                     <input
                       type={showPassword ? "text" : "password"}
                       id="password"
@@ -239,7 +239,7 @@ function Signup({ onSignup }) {
                 </div>
                 <div className="form-group">
                   <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                  <div className="password-input-container">
+                  <div className="signup-password-input-container">
             <input
                       type={showConfirmPassword ? "text" : "password"}
                       id="confirmPassword"

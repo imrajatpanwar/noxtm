@@ -19,7 +19,7 @@ function MessageList({ messages, currentUserId, messagesEndRef }) {
         </div>
       ) : (
         messages.map((msg, index) => {
-          const isSent = msg.sender?._id === currentUserId || msg.sender?._id === currentUserId;
+          const isSent = msg.sender?._id === currentUserId || msg.sender?.id === currentUserId;
           const showAvatar = index === 0 || messages[index - 1]?.sender?._id !== msg.sender?._id;
 
           return (

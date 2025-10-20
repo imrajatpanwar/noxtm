@@ -294,3 +294,25 @@
     padding: 10px 8px;
   }
 }
+
+/* Message badge */
+.sidebar-message-badge {
+  margin-left: auto;
+  background: #f3f4f6;
+  color: #374151;
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #e5e7eb;
+}
+
+.sidebar-item .sidebar-message-badge {
+  background: #ffffff;
+  color: #111827;
+}

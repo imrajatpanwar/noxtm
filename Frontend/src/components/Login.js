@@ -95,7 +95,7 @@ function Login({ onLogin }) {
               </div>
               
               <div className="form-group">
-                <div className="password-input-container">
+                <div className="login-password-input-container">
                   <input
                     type={showPassword ? "text" : "password"}
                     id="password"
@@ -140,15 +140,13 @@ function Login({ onLogin }) {
                     Remember me
                   </label>
                 </div>
-                <div className="forgot-password-container">
-                  <button
-                    type="button"
-                    className="forgot-password-link"
-                    onClick={() => navigate('/forgot-password')}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="forgot-password-link"
+                  onClick={() => navigate('/forgot-password')}
+                >
+                  Forgot password?
+                </button>
               </div>
               
               <button type="submit" className="continue-btn" disabled={loading}>

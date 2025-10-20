@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nUpdate .gitignore and add new features\n\n- Improve .gitignore to properly exclude node_modules and cache directories\n- Add email setup functionality with SMTP configuration\n- Add extension integration guide and utilities\n- Redesign pricing table with INR currency\n- Add subscription guard component\n- Refactor user roles and signup components\n- Add privacy policy pages\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(ssh:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Add email verification for signup with verification code\n\n- Add EmailVerification schema to store verification codes\n- Create /api/send-verification-code endpoint to send 6-digit code via email\n- Create /api/verify-code endpoint to verify code and complete registration\n- Update Signup component with two-step verification flow\n- Add verification code input UI with back button\n- Configure nodemailer for sending emails from noreply@noxtm.com\n- Add .env.example template for email configuration\n- Verification codes expire after 10 minutes for security\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(nslookup:*)",
+      "Bash(pkill:*)",
+      "Bash(node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
