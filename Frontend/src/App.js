@@ -5,6 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from 'sonner';
 import { initializeExtension } from './utils/extensionManager';
 import { RoleProvider } from './contexts/RoleContext';
+import { MessagingProvider } from './contexts/MessagingContext';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -19,7 +20,6 @@ import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
 import CancellationRefunds from './components/CancellationRefunds';
-import SubscriptionGuard from './components/SubscriptionGuard';
 import TermsConditions from './components/TermsConditions';
 import Shipping from './components/Shipping';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -277,8 +277,9 @@ function App() {
 
   return (
     <RoleProvider>
-      <Router>
-        <div className="App">
+      <MessagingProvider>
+        <Router>
+          <div className="App">
           <Toaster position="top-right" richColors />
           <Header user={user} onLogout={logout} />
           <Routes>
@@ -342,7 +343,8 @@ function App() {
           </Routes>
           <ConditionalFooter />
         </div>
-      </Router>
+        </Router>
+      </MessagingProvider>
     </RoleProvider>
   );
 }

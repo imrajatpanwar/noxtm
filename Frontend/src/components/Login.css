@@ -64,6 +64,9 @@
   background: #ffffff;
   padding: 40px 40px 32px;
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .login-title {
@@ -158,10 +161,11 @@
   color: #9ca3af;
 }
 
-.password-input-container {
+.login-password-input-container {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .password-input {

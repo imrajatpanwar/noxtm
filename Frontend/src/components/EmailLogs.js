@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiMail, FiRefreshCw, FiCheckCircle, FiXCircle, FiClock, FiAlertCircle, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import './EmailLogs.css';
@@ -13,14 +13,14 @@ function EmailLogs() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedLog, setSelectedLog] = useState(null);
 
-  const fetchLogs = async (currentPage = page, currentFilter = filter) => {
+  const fetchLogs = useCallback(async (currentPage, currentFilter) => {
     try {
       setRefreshing(true);
       const params = {
-        page: currentPage,
+        page: currentPage || 1,
         limit: 20
       };
-      if (currentFilter !== 'all') {
+      if (currentFilter && currentFilter !== 'all') {
         params.status = currentFilter;
       }
 
@@ -35,11 +35,11 @@ function EmailLogs() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchLogs();
-  }, [page, filter]);
+    fetchLogs(page, filter);
+  }, [page, filter, fetchLogs]);
 
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);

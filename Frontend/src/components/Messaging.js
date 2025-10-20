@@ -3,7 +3,14 @@ import { toast } from 'sonner';
 import { io } from 'socket.io-client';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
+import api from '../config/api';
 import './Messaging.css';
+
+// Helper function to get the Socket.IO server URL
+const getSocketUrl = () => {
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isDevelopment ? 'http://localhost:5000' : `${window.location.protocol}//${window.location.hostname}:5000`;
+};
 
 function Messaging() {
   const [activeTab, setActiveTab] = useState('conversations'); // conversations, users, invitations
@@ -28,9 +35,13 @@ function Messaging() {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(userData);
 
-    // Initialize Socket.IO connection
-    socketRef.current = io('http://noxtm.com:5000', {
-      transports: ['polling', 'websocket'] // Try polling first to avoid CSP issues
+    // Initialize Socket.IO connection using configured URL
+    const socketUrl = getSocketUrl();
+    console.log('🔌 Connecting to Socket.IO at:', socketUrl);
+
+    socketRef.current = io(socketUrl, {
+      transports: ['polling', 'websocket'], // Try polling first to avoid CSP issues
+      withCredentials: true
     });
 
     socketRef.current.on('connect', () => {
@@ -149,22 +160,16 @@ function Messaging() {
 
   const loadConversations = async () => {
     try {
-      const response = await fetch('/api/messaging/conversations', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setConversations(data.conversations || []);
+      const response = await api.get('/messaging/conversations');
+      const data = response.data;
+      setConversations(data.conversations || []);
 
-        // Auto-join all conversation rooms for real-time updates
-        if (socketRef.current && data.conversations) {
-          data.conversations.forEach(conv => {
-            socketRef.current.emit('join-conversation', conv._id);
-            console.log('🔗 Auto-joined conversation:', conv._id);
-          });
-        }
+      // Auto-join all conversation rooms for real-time updates
+      if (socketRef.current && data.conversations) {
+        data.conversations.forEach(conv => {
+          socketRef.current.emit('join-conversation', conv._id);
+          console.log('🔗 Auto-joined conversation:', conv._id);
+        });
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -173,15 +178,9 @@ function Messaging() {
 
   const loadMessages = async (conversationId) => {
     try {
-      const response = await fetch(`/api/messaging/conversations/${conversationId}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessages(data.messages || []);
-      }
+      const response = await api.get(`/messaging/conversations/${conversationId}/messages`);
+      const data = response.data;
+      setMessages(data.messages || []);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
@@ -189,15 +188,14 @@ function Messaging() {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('/api/messaging/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setUsers(data.users || []);
-      }
+      const response = await api.get('/messaging/users');
+      const data = response.data;
+      // Normalize user data to always have username field
+      const normalizedUsers = (data.users || []).map(user => ({
+        ...user,
+        username: user.username || user.fullName || user.email
+      }));
+      setUsers(normalizedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
     }
@@ -212,15 +210,9 @@ function Messaging() {
 
   const loadInvitations = async () => {
     try {
-      const response = await fetch('/api/messaging/invitations', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setInvitations(data.invitations || []);
-      }
+      const response = await api.get('/messaging/invitations');
+      const data = response.data;
+      setInvitations(data.invitations || []);
     } catch (error) {
       console.error('Error loading invitations:', error);
     }
@@ -230,64 +222,41 @@ function Messaging() {
     if (!messageContent || !selectedConversation) return;
 
     try {
-      const response = await fetch(`/api/messaging/conversations/${selectedConversation._id}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          content: messageContent,
-          type: 'text'
-        })
+      await api.post(`/messaging/conversations/${selectedConversation._id}/messages`, {
+        content: messageContent,
+        type: 'text'
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.message || 'Failed to send message');
-      }
       // Don't manually update messages here - Socket.IO will handle it
       // This prevents duplicate messages and ensures all users see the same update
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      toast.error(error.response?.data?.message || 'Failed to send message');
     }
   };
 
   const startDirectConversation = async (userId) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/messaging/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          type: 'direct',
-          participantIds: [userId] // Changed from 'participants' to 'participantIds'
-        })
+      const response = await api.post('/messaging/conversations', {
+        type: 'direct',
+        participantIds: [userId]
       });
+      const data = response.data;
 
-      const data = await response.json();
-      if (response.ok) {
-        setSelectedConversation(data.conversation);
-        setActiveTab('conversations');
+      setSelectedConversation(data.conversation);
+      setActiveTab('conversations');
 
-        // Join the new conversation room immediately
-        if (socketRef.current && data.conversation) {
-          socketRef.current.emit('join-conversation', data.conversation._id);
-          console.log('🔗 Joined new conversation:', data.conversation._id);
-        }
-
-        loadConversations();
-        toast.success('Conversation started');
-      } else {
-        toast.error(data.message || 'Failed to start conversation');
+      // Join the new conversation room immediately
+      if (socketRef.current && data.conversation) {
+        socketRef.current.emit('join-conversation', data.conversation._id);
+        console.log('🔗 Joined new conversation:', data.conversation._id);
       }
+
+      loadConversations();
+      toast.success('Conversation started');
     } catch (error) {
       console.error('Error starting conversation:', error);
-      toast.error('Failed to start conversation');
+      toast.error(error.response?.data?.message || 'Failed to start conversation');
     } finally {
       setLoading(false);
     }
@@ -301,41 +270,30 @@ function Messaging() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/messaging/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          type: 'group',
-          name: groupName,
-          participantIds: selectedUsers // Changed from 'participants' to 'participantIds'
-        })
+      const response = await api.post('/messaging/conversations', {
+        type: 'group',
+        name: groupName,
+        participantIds: selectedUsers
       });
+      const data = response.data;
 
-      const data = await response.json();
-      if (response.ok) {
-        setSelectedConversation(data.conversation);
-        setActiveTab('conversations');
+      setSelectedConversation(data.conversation);
+      setActiveTab('conversations');
 
-        // Join the new conversation room immediately
-        if (socketRef.current && data.conversation) {
-          socketRef.current.emit('join-conversation', data.conversation._id);
-          console.log('🔗 Joined new group conversation:', data.conversation._id);
-        }
-
-        loadConversations();
-        setShowNewGroupModal(false);
-        setGroupName('');
-        setSelectedUsers([]);
-        toast.success('Group chat created');
-      } else {
-        toast.error(data.message || 'Failed to create group');
+      // Join the new conversation room immediately
+      if (socketRef.current && data.conversation) {
+        socketRef.current.emit('join-conversation', data.conversation._id);
+        console.log('🔗 Joined new group conversation:', data.conversation._id);
       }
+
+      loadConversations();
+      setShowNewGroupModal(false);
+      setGroupName('');
+      setSelectedUsers([]);
+      toast.success('Group chat created');
     } catch (error) {
       console.error('Error creating group:', error);
-      toast.error('Failed to create group');
+      toast.error(error.response?.data?.message || 'Failed to create group');
     } finally {
       setLoading(false);
     }
@@ -350,26 +308,13 @@ function Messaging() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/messaging/invitations/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ email: inviteEmail })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('Invitation sent successfully');
-        setInviteEmail('');
-        loadInvitations();
-      } else {
-        toast.error(data.message || 'Failed to send invitation');
-      }
+      await api.post('/messaging/invitations/send', { email: inviteEmail });
+      toast.success('Invitation sent successfully');
+      setInviteEmail('');
+      loadInvitations();
     } catch (error) {
       console.error('Error sending invitation:', error);
-      toast.error('Failed to send invitation');
+      toast.error(error.response?.data?.message || 'Failed to send invitation');
     } finally {
       setLoading(false);
     }
@@ -378,25 +323,12 @@ function Messaging() {
   const resendInvitation = async (email) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/messaging/invitations/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ email })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        toast.success('Invitation resent successfully');
-        loadInvitations();
-      } else {
-        toast.error(data.message || 'Failed to resend invitation');
-      }
+      await api.post('/messaging/invitations/send', { email });
+      toast.success('Invitation resent successfully');
+      loadInvitations();
     } catch (error) {
       console.error('Error resending invitation:', error);
-      toast.error('Failed to resend invitation');
+      toast.error(error.response?.data?.message || 'Failed to resend invitation');
     } finally {
       setLoading(false);
     }
@@ -431,12 +363,23 @@ function Messaging() {
       return conversation.name;
     }
     // For direct messages, show the other person's name
+    // Current user ID can be either 'id' or '_id'
+    const currentUserId = currentUser?.id || currentUser?._id;
+
     const otherParticipant = conversation.participants?.find(
-      p => p.user?._id !== currentUser?.id && p.user?._id !== currentUser?._id && p.id !== currentUser?.id
+      p => {
+        const participantUserId = p.user?._id || p.user?.id || p._id || p.id;
+        return participantUserId && participantUserId !== currentUserId;
+      }
     );
+
     // Try multiple field names for compatibility
-    return otherParticipant?.user?.fullName || otherParticipant?.user?.username ||
-           otherParticipant?.fullName || otherParticipant?.username || 'Unknown User';
+    return otherParticipant?.user?.fullName ||
+           otherParticipant?.user?.username ||
+           otherParticipant?.fullName ||
+           otherParticipant?.username ||
+           otherParticipant?.user?.email ||
+           'Unknown User';
   };
 
   const filteredUsers = users.filter(user =>
@@ -566,51 +509,65 @@ function Messaging() {
 
           {activeTab === 'invitations' && (
             <div className="invitations-panel">
-              <form onSubmit={sendInvitation} className="invite-form">
-                <input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="invite-input"
-                />
-                <button type="submit" className="btn-invite" disabled={loading}>
-                  {loading ? 'Sending...' : 'Send Invite'}
-                </button>
-              </form>
+              {!currentUser?.companyId ? (
+                <div className="empty-state">
+                  <p>Company Setup Required</p>
+                  <small>Please complete your company setup before inviting team members.</small>
+                  <small style={{ marginTop: '10px', display: 'block' }}>
+                    Go to Pricing → Subscribe to Noxtm plan → Complete company setup
+                  </small>
+                </div>
+              ) : (
+                <>
+                  <form onSubmit={sendInvitation} className="invite-form">
+                    <input
+                      type="email"
+                      placeholder="Enter email address"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="invite-input"
+                    />
+                    <button type="submit" className="btn-invite" disabled={loading}>
+                      {loading ? 'Sending...' : 'Send Invite'}
+                    </button>
+                  </form>
+                </>
+              )}
 
-              <div className="invitations-list">
-                <h4>Pending Invitations</h4>
-                {invitations.length === 0 ? (
-                  <p className="empty-state-small">No pending invitations</p>
-                ) : (
-                  invitations.map((inv, index) => {
-                    const isExpired = new Date() > new Date(inv.expiresAt);
-                    return (
-                      <div key={index} className="invitation-item">
-                        <div className="invitation-info">
-                          <strong>{inv.email}</strong>
-                          <small>Sent {formatTime(inv.invitedAt)}</small>
-                          {isExpired && <small className="expired-text">Expired</small>}
+              {currentUser?.companyId && (
+                <div className="invitations-list">
+                  <h4>Pending Invitations</h4>
+                  {invitations.length === 0 ? (
+                    <p className="empty-state-small">No pending invitations</p>
+                  ) : (
+                    invitations.map((inv, index) => {
+                      const isExpired = new Date() > new Date(inv.expiresAt);
+                      return (
+                        <div key={index} className="invitation-item">
+                          <div className="invitation-info">
+                            <strong>{inv.email}</strong>
+                            <small>Sent {formatTime(inv.invitedAt)}</small>
+                            {isExpired && <small className="expired-text">Expired</small>}
+                          </div>
+                          <div className="invitation-actions">
+                            {isExpired ? (
+                              <button
+                                className="btn-resend"
+                                onClick={() => resendInvitation(inv.email)}
+                                disabled={loading}
+                              >
+                                Resend
+                              </button>
+                            ) : (
+                              <span className="invitation-status">Pending</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="invitation-actions">
-                          {isExpired ? (
-                            <button
-                              className="btn-resend"
-                              onClick={() => resendInvitation(inv.email)}
-                              disabled={loading}
-                            >
-                              Resend
-                            </button>
-                          ) : (
-                            <span className="invitation-status">Pending</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

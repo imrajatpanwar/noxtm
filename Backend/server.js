@@ -2206,6 +2206,19 @@ const messaging = messagingRoutes.initializeRoutes({
 });
 app.use('/api/messaging', messaging);
 
+// ===== EMAIL MANAGEMENT ROUTES =====
+const emailAccountsRoutes = require('./routes/email-accounts');
+const emailDomainsRoutes = require('./routes/email-domains');
+const emailTemplatesRoutes = require('./routes/email-templates');
+const emailLogsRoutes = require('./routes/email-logs');
+const auditLogsRoutes = require('./routes/audit-logs');
+
+app.use('/api/email-accounts', emailAccountsRoutes);
+app.use('/api/email-domains', emailDomainsRoutes);
+app.use('/api/email-templates', emailTemplatesRoutes);
+app.use('/api/email-logs', emailLogsRoutes);
+app.use('/api/audit-logs', auditLogsRoutes);
+
 // API-only backend - no frontend serving
 // Frontend is served on a different port
 

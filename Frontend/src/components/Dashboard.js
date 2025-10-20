@@ -49,10 +49,12 @@ import WorkspaceSettings from './WorkspaceSettings';
 import BotgitData from './BotgitData';
 import BotgitSettings from './BotgitSettings';
 import ProfileSettings from './ProfileSettings';
-import NoxtmMailStatus from './NoxtmMailStatus';
-import EmailLogs from './EmailLogs';
-import EmailComposer from './EmailComposer';
-import DnsConfiguration from './DnsConfiguration';
+import NoxtmMailDashboard from './NoxtmMailDashboard';
+import EmailAccounts from './EmailAccounts';
+import EmailDomains from './EmailDomains';
+import EmailTemplates from './EmailTemplates';
+import EmailLogViewer from './EmailLogViewer';
+import AuditLogs from './AuditLogs';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -225,15 +227,19 @@ function Dashboard({ user, onLogout }) {
         return <ReferralClient />;
       case 'credentials':
         return <Credentials />;
-      // Noxtm Mail
-      case 'noxtm-mail-status':
-        return <NoxtmMailStatus />;
+      // Noxtm Mail - Email Management System
+      case 'noxtm-mail-dashboard':
+        return <NoxtmMailDashboard />;
+      case 'noxtm-mail-accounts':
+        return <EmailAccounts />;
+      case 'noxtm-mail-domains':
+        return <EmailDomains />;
+      case 'noxtm-mail-templates':
+        return <EmailTemplates />;
       case 'noxtm-mail-logs':
-        return <EmailLogs />;
-      case 'noxtm-mail-composer':
-        return <EmailComposer />;
-      case 'noxtm-mail-dns':
-        return <DnsConfiguration />;
+        return <EmailLogViewer />;
+      case 'noxtm-mail-audit':
+        return <AuditLogs />;
       // Team Communication
       case 'message':
         return <Messaging />;
