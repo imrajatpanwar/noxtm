@@ -137,6 +137,8 @@ function Messaging() {
 
   const handleUserClick = async (user) => {
     try {
+      console.log('👤 User clicked:', user);
+
       // Check if conversation already exists
       const existingConv = conversations.find(conv =>
         conv.isDirectMessage &&
@@ -144,22 +146,37 @@ function Messaging() {
       );
 
       if (existingConv) {
+        console.log('✅ Found existing conversation:', existingConv._id);
         setSelectedConversation(existingConv);
         return;
       }
+
+      console.log('✨ Creating new direct conversation with:', user.fullName);
 
       // Create new direct message conversation
       const response = await api.post('/messaging/conversations/direct', {
         recipientId: user._id || user.id
       });
 
+      console.log('✅ Conversation created:', response.data);
+
       const newConversation = response.data.conversation;
       setConversations(prev => [newConversation, ...prev]);
       setSelectedConversation(newConversation);
       toast.success(`Started chat with ${user.fullName}`);
     } catch (error) {
-      console.error('Create conversation error:', error);
-      toast.error('Failed to start conversation');
+      console.error('❌ Create conversation error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
+
+      if (error.response?.status === 403) {
+        toast.error('Please complete company setup to start conversations');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to start conversation');
+      }
     }
   };
 
@@ -176,19 +193,38 @@ function Messaging() {
       }
       emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
 
+      console.log('📤 Sending message:', {
+        conversationId: selectedConversation._id,
+        content: content.substring(0, 50)
+      });
+
       const response = await api.post(`/messaging/conversations/${selectedConversation._id}/messages`, {
         content
       });
 
-      const newMessage = response.data.message;
+      console.log('✅ Message sent successfully:', response.data);
+
+      const newMessage = response.data.data || response.data.message;
 
       // Add message to local state
       setMessages(prev => [...prev, newMessage]);
 
-      // Socket.IO will handle broadcasting to other users
+      toast.success('Message sent');
     } catch (error) {
-      console.error('Send message error:', error);
-      toast.error('Failed to send message');
+      console.error('❌ Send message error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
+
+      if (error.response?.status === 404) {
+        toast.error('Conversation not found. Please refresh and try again.');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied to this conversation');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to send message');
+      }
     }
   };
 

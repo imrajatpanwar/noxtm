@@ -15,14 +15,25 @@ function initializeRoutes(dependencies) {
     io.on('connection', (socket) => {
       console.log('💬 User connected to messaging:', socket.id);
 
+      // Send current online users list to the newly connected client
+      socket.emit('online-users-list', {
+        onlineUsers: Array.from(onlineUsers.keys())
+      });
+
       // User comes online
       socket.on('user-online', (userId) => {
         console.log(`👤 User ${userId} is online`);
         onlineUsers.set(userId, socket.id);
-        // Broadcast to all connected clients
+
+        // Broadcast to all connected clients (including sender)
         io.emit('user-status-changed', {
           userId,
           status: 'online'
+        });
+
+        // Also send updated list
+        io.emit('online-users-list', {
+          onlineUsers: Array.from(onlineUsers.keys())
         });
       });
 
@@ -73,6 +84,11 @@ function initializeRoutes(dependencies) {
             io.emit('user-status-changed', {
               userId,
               status: 'offline'
+            });
+
+            // Send updated online users list
+            io.emit('online-users-list', {
+              onlineUsers: Array.from(onlineUsers.keys())
             });
             break;
           }
@@ -759,7 +775,9 @@ function initializeRoutes(dependencies) {
       const formattedConversations = conversations.map(conv => {
         // For direct chats, get the other participant's name
         let displayName = conv.name;
-        if (conv.type === 'direct') {
+        const isDirectMessage = conv.type === 'direct';
+
+        if (isDirectMessage) {
           const otherParticipant = conv.participants.find(
             p => p.user._id.toString() !== userId.toString()
           );
@@ -776,6 +794,7 @@ function initializeRoutes(dependencies) {
           _id: conv._id,
           id: conv._id, // Keep for backward compatibility
           type: conv.type,
+          isDirectMessage, // Add this for frontend compatibility
           name: displayName,
           participants: conv.participants.map(p => ({
             _id: p.user._id,
@@ -803,6 +822,150 @@ function initializeRoutes(dependencies) {
       });
     } catch (error) {
       console.error('Get conversations error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Create or get existing direct message conversation (simplified endpoint for frontend)
+  router.post('/conversations/direct', authenticateToken, async (req, res) => {
+    try {
+      const user = await User.findById(req.user.userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (!user.companyId) {
+        return res.status(403).json({
+          message: 'Please complete company setup to start conversations'
+        });
+      }
+
+      const companyId = user.companyId;
+      const userId = user._id;
+      const { recipientId } = req.body;
+
+      console.log('📝 Creating direct conversation:', { userId, recipientId, companyId });
+
+      // Validate input
+      if (!recipientId) {
+        return res.status(400).json({
+          message: 'Recipient ID is required'
+        });
+      }
+
+      // Verify recipient is in the same company
+      const recipient = await User.findOne({
+        _id: recipientId,
+        companyId
+      });
+
+      if (!recipient) {
+        return res.status(400).json({
+          message: 'Recipient not found or not in your company'
+        });
+      }
+
+      // Check if direct conversation already exists
+      const existingConversation = await Conversation.findOne({
+        companyId,
+        type: 'direct',
+        'participants.user': { $all: [userId, recipientId] }
+      })
+        .populate('participants.user', 'fullName email');
+
+      if (existingConversation) {
+        console.log('✅ Found existing conversation:', existingConversation._id);
+        // Return existing conversation with proper format
+        const isDirectMessage = true;
+        const otherParticipant = existingConversation.participants.find(
+          p => p.user._id.toString() !== userId.toString()
+        );
+
+        return res.json({
+          success: true,
+          message: 'Conversation retrieved',
+          conversation: {
+            _id: existingConversation._id,
+            id: existingConversation._id,
+            type: 'direct',
+            isDirectMessage,
+            name: otherParticipant ? otherParticipant.user.fullName : 'Unknown User',
+            participants: existingConversation.participants.map(p => ({
+              _id: p.user._id,
+              id: p.user._id,
+              user: {
+                _id: p.user._id,
+                fullName: p.user.fullName,
+                username: p.user.fullName,
+                email: p.user.email
+              },
+              fullName: p.user.fullName,
+              username: p.user.fullName,
+              email: p.user.email
+            })),
+            lastMessage: existingConversation.lastMessage,
+            createdAt: existingConversation.createdAt,
+            updatedAt: existingConversation.updatedAt
+          }
+        });
+      }
+
+      // Create new direct conversation
+      console.log('✨ Creating new direct conversation');
+      const conversation = new Conversation({
+        companyId,
+        type: 'direct',
+        name: null, // Direct messages don't have names
+        participants: [userId, recipientId].map(id => ({
+          user: id,
+          joinedAt: new Date(),
+          lastReadAt: new Date()
+        })),
+        createdBy: userId
+      });
+
+      await conversation.save();
+
+      // Populate for response
+      await conversation.populate('participants.user', 'fullName email');
+
+      console.log('✅ Created new conversation:', conversation._id);
+
+      const isDirectMessage = true;
+      const otherParticipant = conversation.participants.find(
+        p => p.user._id.toString() !== userId.toString()
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Conversation created successfully',
+        conversation: {
+          _id: conversation._id,
+          id: conversation._id,
+          type: 'direct',
+          isDirectMessage,
+          name: otherParticipant ? otherParticipant.user.fullName : 'Unknown User',
+          participants: conversation.participants.map(p => ({
+            _id: p.user._id,
+            id: p.user._id,
+            user: {
+              _id: p.user._id,
+              fullName: p.user.fullName,
+              username: p.user.fullName,
+              email: p.user.email
+            },
+            fullName: p.user.fullName,
+            username: p.user.fullName,
+            email: p.user.email
+          })),
+          lastMessage: conversation.lastMessage,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt
+        }
+      });
+    } catch (error) {
+      console.error('❌ Create direct conversation error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
@@ -997,8 +1160,11 @@ function initializeRoutes(dependencies) {
       const userId = req.userId;
       const { content, type = 'text', fileUrl, fileName } = req.body;
 
+      console.log('💬 Send message request:', { conversationId, userId, content: content?.substring(0, 50) });
+
       // Validate input
       if (!content || content.trim() === '') {
+        console.log('❌ Empty message content');
         return res.status(400).json({
           message: 'Message content is required'
         });
@@ -1012,10 +1178,13 @@ function initializeRoutes(dependencies) {
       });
 
       if (!conversation) {
+        console.log('❌ Conversation not found:', { conversationId, companyId, userId });
         return res.status(404).json({
           message: 'Conversation not found or access denied'
         });
       }
+
+      console.log('✅ Conversation found, creating message');
 
       // Create message
       const message = new Message({
@@ -1033,6 +1202,7 @@ function initializeRoutes(dependencies) {
       });
 
       await message.save();
+      console.log('✅ Message saved:', message._id);
 
       // Update conversation's lastMessage
       conversation.lastMessage = {
@@ -1048,7 +1218,7 @@ function initializeRoutes(dependencies) {
 
       // Emit real-time message to all participants in the conversation
       if (io) {
-        io.to(`conversation:${conversationId}`).emit('new-message', {
+        const messageData = {
           conversationId,
           message: {
             _id: message._id,
@@ -1063,7 +1233,11 @@ function initializeRoutes(dependencies) {
             createdAt: message.createdAt,
             readBy: message.readBy
           }
-        });
+        };
+
+        console.log('📡 Broadcasting message to conversation room:', `conversation:${conversationId}`);
+        io.to(`conversation:${conversationId}`).emit('new-message', messageData);
+        console.log('✅ Message broadcasted successfully');
       }
 
       res.status(201).json({
@@ -1072,7 +1246,7 @@ function initializeRoutes(dependencies) {
         data: message
       });
     } catch (error) {
-      console.error('Send message error:', error);
+      console.error('❌ Send message error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });

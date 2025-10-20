@@ -55,6 +55,12 @@ export function MessagingProvider({ children }) {
       console.log('❌ MessagingContext: Disconnected from Socket.IO');
     });
 
+    // Listen for initial online users list
+    newSocket.on('online-users-list', (data) => {
+      console.log('📋 MessagingContext: Received online users list:', data.onlineUsers);
+      setOnlineUsers(data.onlineUsers || []);
+    });
+
     // Listen for user status changes
     newSocket.on('user-status-changed', (data) => {
       console.log('👤 MessagingContext: User status changed:', data);
@@ -63,11 +69,13 @@ export function MessagingProvider({ children }) {
       if (status === 'online') {
         setOnlineUsers(prev => {
           if (!prev.includes(userId)) {
+            console.log('➕ Adding user to online list:', userId);
             return [...prev, userId];
           }
           return prev;
         });
       } else if (status === 'offline') {
+        console.log('➖ Removing user from online list:', userId);
         setOnlineUsers(prev => prev.filter(id => id !== userId));
       }
     });
