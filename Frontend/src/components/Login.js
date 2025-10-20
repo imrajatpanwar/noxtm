@@ -11,6 +11,7 @@ function Login({ onLogin }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,6 +24,7 @@ function Login({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(''); // Clear previous errors
 
     const result = await onLogin(formData.email, formData.password);
 
@@ -51,6 +53,9 @@ function Login({ onLogin }) {
       else {
         navigate('/dashboard');
       }
+    } else {
+      // Show error message
+      setError(result.message || 'Login failed. Please try again.');
     }
 
     setLoading(false);
@@ -77,7 +82,30 @@ function Login({ onLogin }) {
         <div className="login-right-side">
           <div className="login-form">
             <h1 className="login-title">Login into your Account</h1>
-            
+
+            {/* Error Message */}
+            {error && (
+              <div style={{
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                color: '#dc2626',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* Email Login Form */}
             <form onSubmit={handleSubmit} className="email-login-form">
               <div className="form-group">
