@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './MessageInput.css';
 
-function MessageInput({ onSendMessage, disabled }) {
+function MessageInput({ onSendMessage, onTyping, disabled }) {
   const [message, setMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
@@ -13,6 +13,15 @@ function MessageInput({ onSendMessage, disabled }) {
       setMessage('');
       // Keep focus on input after sending
       inputRef.current?.focus();
+    }
+  };
+
+  const handleChange = (e) => {
+    setMessage(e.target.value);
+
+    // Emit typing indicator
+    if (onTyping && e.target.value.trim()) {
+      onTyping();
     }
   };
 
@@ -31,7 +40,7 @@ function MessageInput({ onSendMessage, disabled }) {
             ref={inputRef}
             type="text"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleChange}
             onKeyPress={handleKeyPress}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}

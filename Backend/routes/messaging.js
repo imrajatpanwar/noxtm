@@ -7,10 +7,24 @@ function initializeRoutes(dependencies) {
   const router = express.Router();
   const { User, Company, Conversation, Message, authenticateToken, requireCompanyAccess, io } = dependencies;
 
+  // Store online users (userId -> socketId mapping)
+  const onlineUsers = new Map();
+
   // Socket.IO connection handling
   if (io) {
     io.on('connection', (socket) => {
       console.log('💬 User connected to messaging:', socket.id);
+
+      // User comes online
+      socket.on('user-online', (userId) => {
+        console.log(`👤 User ${userId} is online`);
+        onlineUsers.set(userId, socket.id);
+        // Broadcast to all connected clients
+        io.emit('user-status-changed', {
+          userId,
+          status: 'online'
+        });
+      });
 
       // Join conversation room
       socket.on('join-conversation', (conversationId) => {
@@ -24,8 +38,45 @@ function initializeRoutes(dependencies) {
         console.log(`User ${socket.id} left conversation: ${conversationId}`);
       });
 
+      // Typing indicator - start typing
+      socket.on('typing-start', (data) => {
+        const { conversationId, userId, userName } = data;
+        // Broadcast to conversation room except sender
+        socket.to(`conversation:${conversationId}`).emit('user-typing', {
+          conversationId,
+          userId,
+          userName,
+          isTyping: true
+        });
+      });
+
+      // Typing indicator - stop typing
+      socket.on('typing-stop', (data) => {
+        const { conversationId, userId } = data;
+        // Broadcast to conversation room except sender
+        socket.to(`conversation:${conversationId}`).emit('user-typing', {
+          conversationId,
+          userId,
+          isTyping: false
+        });
+      });
+
       socket.on('disconnect', () => {
         console.log('User disconnected from messaging:', socket.id);
+
+        // Find and remove user from online users
+        for (const [userId, socketId] of onlineUsers.entries()) {
+          if (socketId === socket.id) {
+            onlineUsers.delete(userId);
+            console.log(`👤 User ${userId} went offline`);
+            // Broadcast to all connected clients
+            io.emit('user-status-changed', {
+              userId,
+              status: 'offline'
+            });
+            break;
+          }
+        }
       });
     });
   }
@@ -630,7 +681,7 @@ function initializeRoutes(dependencies) {
         });
       }
 
-      // Map users with all necessary fields
+      // Map users with all necessary fields and online status
       const users = companyUsers.map(u => ({
         _id: u._id,
         id: u._id,
@@ -640,7 +691,8 @@ function initializeRoutes(dependencies) {
         role: u.role,
         roleInCompany: memberRoles[u._id.toString()] || 'Member',
         department: memberRoles[u._id.toString()] || 'Member',
-        status: u.status || 'Active'
+        status: u.status || 'Active',
+        isOnline: onlineUsers.has(u._id.toString())
       }));
 
       console.log('✅ Users found:', users.length);
@@ -649,10 +701,25 @@ function initializeRoutes(dependencies) {
       res.json({
         users,
         members: users,
-        total: users.length
+        total: users.length,
+        onlineUserIds: Array.from(onlineUsers.keys())
       });
     } catch (error) {
       console.error('Get company members error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Get online users
+  router.get('/users/online', authenticateToken, async (req, res) => {
+    try {
+      const onlineUserIds = Array.from(onlineUsers.keys());
+      res.json({
+        onlineUsers: onlineUserIds,
+        total: onlineUserIds.length
+      });
+    } catch (error) {
+      console.error('Get online users error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
