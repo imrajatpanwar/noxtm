@@ -1,75 +1,62 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { toast } from 'sonner';
-import { io } from 'socket.io-client';
+import { MessagingContext } from '../contexts/MessagingContext';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
+import UserList from './UserList';
 import api from '../config/api';
 import './Messaging.css';
 
-// Helper function to get the Socket.IO server URL
-const getSocketUrl = () => {
-  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isDevelopment ? 'http://localhost:5000' : `${window.location.protocol}//${window.location.hostname}:5000`;
-};
-
 function Messaging() {
-  const [activeTab, setActiveTab] = useState('conversations'); // conversations, users, invitations
+  const { socket, onlineUsers, typingUsers, emitTypingStart, emitTypingStop } = useContext(MessagingContext);
+
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [invitations, setInvitations] = useState([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [showNewGroupModal, setShowNewGroupModal] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [, setTimestampTrigger] = useState(0); // Force re-render for timestamps
+  const [typingTimeout, setTypingTimeout] = useState(null);
+
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
   const selectedConversationRef = useRef(null);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(userData);
 
-    // Initialize Socket.IO connection using configured URL
-    const socketUrl = getSocketUrl();
-    console.log('🔌 Connecting to Socket.IO at:', socketUrl);
+    loadUsers();
+    loadConversations();
+  }, []);
 
-    socketRef.current = io(socketUrl, {
-      transports: ['polling', 'websocket'], // Try polling first to avoid CSP issues
-      withCredentials: true
-    });
+  // Update ref when selectedConversation changes
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
-    socketRef.current.on('connect', () => {
-      console.log('✅ Connected to Socket.IO');
-    });
+  // Listen for new messages from Socket.IO
+  useEffect(() => {
+    if (!socket) return;
 
-    socketRef.current.on('new-message', (data) => {
+    const handleNewMessage = (data) => {
       console.log('📩 New message received:', data);
 
       // Update messages if it's for the currently selected conversation
-      setMessages(prev => {
-        // Check if this message is for the currently selected conversation using ref
-        if (selectedConversationRef.current?._id === data.conversationId) {
-          // Check if message already exists to avoid duplicates
+      if (selectedConversationRef.current?._id === data.conversationId) {
+        setMessages(prev => {
           const messageExists = prev.some(msg => msg._id === data.message._id);
           if (!messageExists) {
-            console.log('➕ Adding message to display:', data.message.content);
             return [...prev, data.message];
-          } else {
-            console.log('⏭️ Message already exists, skipping');
           }
-        }
-        return prev;
-      });
+          return prev;
+        });
+      }
 
-      // Update conversations list in real-time
+      // Update conversations list
       setConversations(prevConversations => {
-        const updatedConversations = prevConversations.map(conv => {
+        return prevConversations.map(conv => {
           if (conv._id === data.conversationId) {
             return {
               ...conv,
@@ -82,590 +69,286 @@ function Messaging() {
           }
           return conv;
         });
-
-        // If conversation doesn't exist in list, reload conversations
-        const conversationExists = prevConversations.some(conv => conv._id === data.conversationId);
-        if (!conversationExists) {
-          console.log('🔄 Conversation not in list, reloading...');
-          loadConversations();
-        }
-
-        return updatedConversations;
       });
-        // If the message is NOT for the currently selected conversation, increment unread
-        if (selectedConversationRef.current?._id !== data.conversationId) {
-          try {
-            // use context if available
-            if (typeof window !== 'undefined') {
-              // dispatch a custom event so other parts of the app (like Sidebar) can listen
-              const evt = new CustomEvent('messaging:newMessage', { detail: { conversationId: data.conversationId, message: data.message } });
-              window.dispatchEvent(evt);
-            }
-          } catch (e) {
-            console.warn('Could not dispatch messaging event', e);
-          }
-        }
-    });
-
-    // Load data immediately and join rooms as soon as Socket.IO connects
-    const initializeData = async () => {
-      await loadConversations();
-      loadUsers();
-      loadInvitations();
     };
 
-    // If already connected, load immediately
-    if (socketRef.current.connected) {
-      initializeData();
-    } else {
-      // Otherwise wait for connection
-      socketRef.current.once('connect', initializeData);
-    }
+    socket.on('new-message', handleNewMessage);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      socket.off('new-message', handleNewMessage);
     };
-  }, []);
-
-  // Update ref when selectedConversation changes
-  useEffect(() => {
-    selectedConversationRef.current = selectedConversation;
-  }, [selectedConversation]);
+  }, [socket]);
 
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation._id);
-      // No need to join room manually - we auto-join all conversations
+
+      // Join conversation room
+      if (socket) {
+        socket.emit('join-conversation', selectedConversation._id);
+      }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, socket]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Update timestamps every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimestampTrigger(prev => prev + 1);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/messaging/users');
+      setUsers(response.data.users || []);
+    } catch (error) {
+      console.error('Load users error:', error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadConversations = async () => {
     try {
       const response = await api.get('/messaging/conversations');
-      const data = response.data;
-      setConversations(data.conversations || []);
-
-      // Auto-join all conversation rooms for real-time updates
-      if (socketRef.current && data.conversations) {
-        data.conversations.forEach(conv => {
-          socketRef.current.emit('join-conversation', conv._id);
-          console.log('🔗 Auto-joined conversation:', conv._id);
-        });
-      }
+      setConversations(response.data.conversations || []);
     } catch (error) {
-      console.error('Error loading conversations:', error);
+      console.error('Load conversations error:', error);
     }
   };
 
   const loadMessages = async (conversationId) => {
     try {
+      setMessagesLoading(true);
       const response = await api.get(`/messaging/conversations/${conversationId}/messages`);
-      const data = response.data;
-      setMessages(data.messages || []);
+      setMessages(response.data.messages || []);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error('Load messages error:', error);
+      toast.error('Failed to load messages');
+    } finally {
+      setMessagesLoading(false);
     }
   };
 
-  const loadUsers = async () => {
+  const handleUserClick = async (user) => {
     try {
-      const response = await api.get('/messaging/users');
-      const data = response.data;
-      // Normalize user data to always have username field
-      const normalizedUsers = (data.users || []).map(user => ({
-        ...user,
-        username: user.username || user.fullName || user.email
-      }));
-      setUsers(normalizedUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
+      // Check if conversation already exists
+      const existingConv = conversations.find(conv =>
+        conv.isDirectMessage &&
+        conv.participants.some(p => p._id === user._id || p._id === user.id)
+      );
 
-  // Ensure users are loaded on mount so the "Users" tab has data
-  useEffect(() => {
-    // Load users immediately regardless of socket connection
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadInvitations = async () => {
-    try {
-      const response = await api.get('/messaging/invitations');
-      const data = response.data;
-      setInvitations(data.invitations || []);
-    } catch (error) {
-      console.error('Error loading invitations:', error);
-    }
-  };
-
-  const sendMessage = async (messageContent) => {
-    if (!messageContent || !selectedConversation) return;
-
-    try {
-      await api.post(`/messaging/conversations/${selectedConversation._id}/messages`, {
-        content: messageContent,
-        type: 'text'
-      });
-      // Don't manually update messages here - Socket.IO will handle it
-      // This prevents duplicate messages and ensures all users see the same update
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error(error.response?.data?.message || 'Failed to send message');
-    }
-  };
-
-  const startDirectConversation = async (userId) => {
-    setLoading(true);
-    try {
-      const response = await api.post('/messaging/conversations', {
-        type: 'direct',
-        participantIds: [userId]
-      });
-      const data = response.data;
-
-      setSelectedConversation(data.conversation);
-      setActiveTab('conversations');
-
-      // Join the new conversation room immediately
-      if (socketRef.current && data.conversation) {
-        socketRef.current.emit('join-conversation', data.conversation._id);
-        console.log('🔗 Joined new conversation:', data.conversation._id);
+      if (existingConv) {
+        setSelectedConversation(existingConv);
+        return;
       }
 
-      loadConversations();
-      toast.success('Conversation started');
+      // Create new direct message conversation
+      const response = await api.post('/messaging/conversations/direct', {
+        recipientId: user._id || user.id
+      });
+
+      const newConversation = response.data.conversation;
+      setConversations(prev => [newConversation, ...prev]);
+      setSelectedConversation(newConversation);
+      toast.success(`Started chat with ${user.fullName}`);
     } catch (error) {
-      console.error('Error starting conversation:', error);
-      toast.error(error.response?.data?.message || 'Failed to start conversation');
-    } finally {
-      setLoading(false);
+      console.error('Create conversation error:', error);
+      toast.error('Failed to start conversation');
     }
   };
 
-  const createGroupChat = async () => {
-    if (!groupName.trim() || selectedUsers.length < 2) {
-      toast.error('Please enter a group name and select at least 2 members');
+  const handleSendMessage = async (content) => {
+    if (!selectedConversation) {
+      toast.error('Please select a conversation first');
       return;
     }
 
-    setLoading(true);
     try {
-      const response = await api.post('/messaging/conversations', {
-        type: 'group',
-        name: groupName,
-        participantIds: selectedUsers
+      // Stop typing indicator
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+      emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
+
+      const response = await api.post(`/messaging/conversations/${selectedConversation._id}/messages`, {
+        content
       });
-      const data = response.data;
 
-      setSelectedConversation(data.conversation);
-      setActiveTab('conversations');
+      const newMessage = response.data.message;
 
-      // Join the new conversation room immediately
-      if (socketRef.current && data.conversation) {
-        socketRef.current.emit('join-conversation', data.conversation._id);
-        console.log('🔗 Joined new group conversation:', data.conversation._id);
-      }
+      // Add message to local state
+      setMessages(prev => [...prev, newMessage]);
 
-      loadConversations();
-      setShowNewGroupModal(false);
-      setGroupName('');
-      setSelectedUsers([]);
-      toast.success('Group chat created');
+      // Socket.IO will handle broadcasting to other users
     } catch (error) {
-      console.error('Error creating group:', error);
-      toast.error(error.response?.data?.message || 'Failed to create group');
-    } finally {
-      setLoading(false);
+      console.error('Send message error:', error);
+      toast.error('Failed to send message');
     }
   };
 
-  const sendInvitation = async (e) => {
-    e.preventDefault();
-    if (!inviteEmail.trim()) {
-      toast.error('Please enter an email address');
-      return;
-    }
+  const handleTyping = () => {
+    if (!selectedConversation || !currentUser) return;
 
-    setLoading(true);
-    try {
-      await api.post('/messaging/invitations/send', { email: inviteEmail });
-      toast.success('Invitation sent successfully');
-      setInviteEmail('');
-      loadInvitations();
-    } catch (error) {
-      console.error('Error sending invitation:', error);
-      toast.error(error.response?.data?.message || 'Failed to send invitation');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendInvitation = async (email) => {
-    setLoading(true);
-    try {
-      await api.post('/messaging/invitations/send', { email });
-      toast.success('Invitation resent successfully');
-      loadInvitations();
-    } catch (error) {
-      console.error('Error resending invitation:', error);
-      toast.error(error.response?.data?.message || 'Failed to resend invitation');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days > 7) {
-      return date.toLocaleDateString();
-    } else if (days > 0) {
-      return `${days}d ago`;
-    } else if (hours > 0) {
-      return `${hours}h ago`;
-    } else if (minutes > 0) {
-      return `${minutes}m ago`;
-    } else if (seconds > 0) {
-      return `${seconds}s ago`;
-    } else {
-      return 'Just now';
-    }
-  };
-
-  const getConversationName = (conversation) => {
-    if (conversation.type === 'group') {
-      return conversation.name;
-    }
-    // For direct messages, show the other person's name
-    // Current user ID can be either 'id' or '_id'
-    const currentUserId = currentUser?.id || currentUser?._id;
-
-    const otherParticipant = conversation.participants?.find(
-      p => {
-        const participantUserId = p.user?._id || p.user?.id || p._id || p.id;
-        return participantUserId && participantUserId !== currentUserId;
-      }
+    // Emit typing start
+    emitTypingStart(
+      selectedConversation._id,
+      currentUser.id || currentUser._id,
+      currentUser.fullName || currentUser.email
     );
 
-    // Try multiple field names for compatibility
-    return otherParticipant?.user?.fullName ||
-           otherParticipant?.user?.username ||
-           otherParticipant?.fullName ||
-           otherParticipant?.username ||
-           otherParticipant?.user?.email ||
-           'Unknown User';
+    // Clear existing timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // Set new timeout to stop typing after 2 seconds
+    const timeout = setTimeout(() => {
+      emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
+    }, 2000);
+
+    setTypingTimeout(timeout);
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.department?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getOtherParticipant = (conversation) => {
+    if (!conversation || !currentUser) return null;
+
+    const currentUserId = currentUser.id || currentUser._id;
+    return conversation.participants?.find(
+      p => (p._id || p.id) !== currentUserId
+    );
+  };
+
+  const isUserOnline = (userId) => {
+    return onlineUsers.includes(userId) || onlineUsers.includes(userId?.toString());
+  };
+
+  const currentTypingUser = selectedConversation
+    ? typingUsers[selectedConversation._id]
+    : null;
 
   return (
     <div className="messaging-container">
+      {/* Left Sidebar - User List */}
       <div className="messaging-sidebar">
-        <div className="messaging-sidebar-header">
-          <h2>Messaging</h2>
-          <button
-            className="btn-new-group"
-            onClick={() => setShowNewGroupModal(true)}
-            title="Create Group Chat"
-          >
-            +
-          </button>
-        </div>
-
-        <div className="messaging-tabs">
-          <button
-            className={`tab-btn ${activeTab === 'conversations' ? 'active' : ''}`}
-            onClick={() => setActiveTab('conversations')}
-          >
-            Chats
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-          >
-            Users
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'invitations' ? 'active' : ''}`}
-            onClick={() => setActiveTab('invitations')}
-          >
-            Invite
-          </button>
-        </div>
-
-        <div className="messaging-sidebar-content">
-          {activeTab === 'conversations' && (
-            <div className="conversations-list">
-              {conversations.length === 0 ? (
-                <div className="empty-state">
-                  <p>No conversations yet</p>
-                  <small>Start a chat with your teammates</small>
-                </div>
-              ) : (
-                conversations.map(conv => (
-                  <div
-                    key={conv._id}
-                    className={`conversation-item ${selectedConversation?._id === conv._id ? 'active' : ''}`}
-                    onClick={() => setSelectedConversation(conv)}
-                  >
-                    <div className="conversation-avatar">
-                      {getConversationName(conv).charAt(0).toUpperCase()}
-                    </div>
-                    <div className="conversation-info">
-                      <div className="conversation-header">
-                        <span className="conversation-name">
-                          {getConversationName(conv)}
-                        </span>
-                        <span className="conversation-time">
-                          {conv.lastMessage?.timestamp && formatTime(conv.lastMessage.timestamp)}
-                        </span>
-                      </div>
-                      <p className="conversation-preview">
-                        {conv.lastMessage?.content || 'No messages yet'}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'users' && (
-            <div className="users-list">
-              <div className="search-box">
-                <input
-                  type="text"
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              {filteredUsers.length === 0 ? (
-                <div className="empty-state">
-                  <p>No users found</p>
-                  <small>
-                    {searchQuery
-                      ? 'Try a different search'
-                      : users.length === 0
-                        ? 'Complete company setup to see team members'
-                        : 'No team members available'}
-                  </small>
-                </div>
-              ) : (
-                filteredUsers.map(user => (
-                  <div key={user._id} className="user-item">
-                    <div className="user-avatar">
-                      {user.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="user-info">
-                      <span className="user-name">{user.username}</span>
-                      <small className="user-email">{user.email}</small>
-                      {user.department && (
-                        <small className="user-department">{user.department}</small>
-                      )}
-                    </div>
-                    <button
-                      className="btn-start-chat"
-                      onClick={() => startDirectConversation(user._id)}
-                      disabled={loading}
-                    >
-                      Chat
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'invitations' && (
-            <div className="invitations-panel">
-              {!currentUser?.companyId ? (
-                <div className="empty-state">
-                  <p>Company Setup Required</p>
-                  <small>Please complete your company setup before inviting team members.</small>
-                  <small style={{ marginTop: '10px', display: 'block' }}>
-                    Go to Pricing → Subscribe to Noxtm plan → Complete company setup
-                  </small>
-                </div>
-              ) : (
-                <>
-                  <form onSubmit={sendInvitation} className="invite-form">
-                    <input
-                      type="email"
-                      placeholder="Enter email address"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      className="invite-input"
-                    />
-                    <button type="submit" className="btn-invite" disabled={loading}>
-                      {loading ? 'Sending...' : 'Send Invite'}
-                    </button>
-                  </form>
-                </>
-              )}
-
-              {currentUser?.companyId && (
-                <div className="invitations-list">
-                  <h4>Pending Invitations</h4>
-                  {invitations.length === 0 ? (
-                    <p className="empty-state-small">No pending invitations</p>
-                  ) : (
-                    invitations.map((inv, index) => {
-                      const isExpired = new Date() > new Date(inv.expiresAt);
-                      return (
-                        <div key={index} className="invitation-item">
-                          <div className="invitation-info">
-                            <strong>{inv.email}</strong>
-                            <small>Sent {formatTime(inv.invitedAt)}</small>
-                            {isExpired && <small className="expired-text">Expired</small>}
-                          </div>
-                          <div className="invitation-actions">
-                            {isExpired ? (
-                              <button
-                                className="btn-resend"
-                                onClick={() => resendInvitation(inv.email)}
-                                disabled={loading}
-                              >
-                                Resend
-                              </button>
-                            ) : (
-                              <span className="invitation-status">Pending</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <UserList
+          users={users}
+          onUserClick={handleUserClick}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          loading={loading}
+        />
       </div>
 
+      {/* Right Side - Chat Area */}
       <div className="messaging-main">
         {selectedConversation ? (
           <>
+            {/* Chat Header */}
             <div className="messaging-header">
-              <div className="conversation-header-info">
-                <div className="conversation-avatar-large">
-                  {getConversationName(selectedConversation).charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3>{getConversationName(selectedConversation)}</h3>
-                  <small>
-                    {selectedConversation.type === 'group'
-                      ? `${selectedConversation.participants?.length} members`
-                      : 'Direct Message'}
-                  </small>
-                </div>
+              <div className="chat-header-info">
+                {selectedConversation.isDirectMessage ? (
+                  <>
+                    {(() => {
+                      const otherUser = getOtherParticipant(selectedConversation);
+                      const userId = otherUser?._id || otherUser?.id;
+                      const online = isUserOnline(userId);
+
+                      return (
+                        <>
+                          <div className="chat-avatar-container">
+                            <div className={`chat-avatar ${online ? 'online' : ''}`}>
+                              {otherUser?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                            <div className={`status-dot ${online ? 'online' : 'offline'}`} />
+                          </div>
+                          <div className="chat-header-text">
+                            <h3>{otherUser?.fullName || 'Unknown User'}</h3>
+                            <span className={`user-status ${online ? 'online' : 'offline'}`}>
+                              {online ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <>
+                    <div className="chat-avatar">#</div>
+                    <div className="chat-header-text">
+                      <h3>{selectedConversation.name || 'Group Chat'}</h3>
+                      <span className="group-members">
+                        {selectedConversation.participants?.length || 0} members
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            <MessageList
-              messages={messages}
-              currentUserId={currentUser?.id || currentUser?._id}
-              messagesEndRef={messagesEndRef}
-            />
+            {/* Messages Area */}
+            <div className="messaging-body">
+              {messagesLoading ? (
+                <div className="messages-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading messages...</p>
+                </div>
+              ) : (
+                <MessageList
+                  messages={messages}
+                  currentUserId={currentUser?.id || currentUser?._id}
+                  messagesEndRef={messagesEndRef}
+                  typingUser={currentTypingUser}
+                />
+              )}
+            </div>
 
-            <MessageInput
-              onSendMessage={sendMessage}
-              disabled={false}
-            />
+            {/* Message Input */}
+            <div className="messaging-footer">
+              <MessageInput
+                onSendMessage={handleSendMessage}
+                onTyping={handleTyping}
+                disabled={!selectedConversation}
+              />
+            </div>
           </>
         ) : (
-          <div className="empty-state-center">
+          <div className="messaging-empty-state">
             <div className="empty-state-icon">💬</div>
-            <h3>Select a conversation</h3>
-            <p>Choose a conversation from the sidebar to start messaging</p>
+            <h3>Welcome to Noxtm Messaging</h3>
+            <p>Select a team member from the left to start chatting</p>
+            <div className="empty-state-features">
+              <div className="feature-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Real-time messaging</span>
+              </div>
+              <div className="feature-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>See who's online</span>
+              </div>
+              <div className="feature-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <span>Typing indicators</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {showNewGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowNewGroupModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Create Group Chat</h3>
-              <button className="modal-close" onClick={() => setShowNewGroupModal(false)}>
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              <input
-                type="text"
-                placeholder="Group name"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                className="group-name-input"
-              />
-              <div className="group-members-selection">
-                <h4>Select Members (min 2)</h4>
-                <div className="members-list">
-                  {users.map(user => (
-                    <label key={user._id} className="member-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.includes(user._id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUsers([...selectedUsers, user._id]);
-                          } else {
-                            setSelectedUsers(selectedUsers.filter(id => id !== user._id));
-                          }
-                        }}
-                      />
-                      <span>{user.username}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowNewGroupModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn-create"
-                onClick={createGroupChat}
-                disabled={loading || !groupName.trim() || selectedUsers.length < 2}
-              >
-                {loading ? 'Creating...' : 'Create Group'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
