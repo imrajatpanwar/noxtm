@@ -115,9 +115,12 @@ export function MessagingProvider({ children }) {
 
     // Listen for new messages (for unread count)
     newSocket.on('new-message', (data) => {
-      console.log('📩 MessagingContext: New message received');
-      // You can increment unread count here if needed
-      // We'll handle this in the Messaging component for now
+      console.log('📩 MessagingContext: New message received', data);
+
+      // Dispatch custom event for Sidebar to update badge
+      window.dispatchEvent(new CustomEvent('messaging:newMessage', {
+        detail: data
+      }));
     });
 
     // Cleanup on unmount
