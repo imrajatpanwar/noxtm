@@ -1,8 +1,9 @@
 /* Dashboard Container */
 .dashboard-container {
   display: flex;
-  min-height: 91vh;
+  height: 91vh;
   background-color: #F5F5F5;
+  overflow: hidden;
 }
 
 /* Main Content */
@@ -10,6 +11,8 @@
   flex: 1;
   margin-left: 280px;
   background-color: #F5F5F5;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dashboard-content {
