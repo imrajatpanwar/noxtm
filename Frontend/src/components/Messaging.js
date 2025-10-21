@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { MessagingContext } from '../contexts/MessagingContext';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import UserList from './UserList';
+import ConversationList from './ConversationList';
 import api from '../config/api';
 import './Messaging.css';
 
@@ -13,9 +13,6 @@ function Messaging() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [typingTimeout, setTypingTimeout] = useState(null);
@@ -27,7 +24,6 @@ function Messaging() {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setCurrentUser(userData);
 
-    loadUsers();
     loadConversations();
   }, []);
 
@@ -121,21 +117,6 @@ function Messaging() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/messaging/users');
-      setUsers(response.data.users || []);
-    } catch (error) {
-      console.error('Load users error:', error);
-      if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadConversations = async () => {
     try {
       const response = await api.get('/messaging/conversations');
@@ -158,49 +139,12 @@ function Messaging() {
     }
   };
 
-  const handleUserClick = async (user) => {
-    try {
-      console.log('👤 User clicked:', user);
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
+  };
 
-      // Check if conversation already exists
-      const existingConv = conversations.find(conv =>
-        conv.isDirectMessage &&
-        conv.participants.some(p => p._id === user._id || p._id === user.id)
-      );
-
-      if (existingConv) {
-        console.log('✅ Found existing conversation:', existingConv._id);
-        setSelectedConversation(existingConv);
-        return;
-      }
-
-      console.log('✨ Creating new direct conversation with:', user.fullName);
-
-      // Create new direct message conversation
-      const response = await api.post('/messaging/conversations/direct', {
-        recipientId: user._id || user.id
-      });
-
-      console.log('✅ Conversation created:', response.data);
-
-      const newConversation = response.data.conversation;
-      setConversations(prev => [newConversation, ...prev]);
-      setSelectedConversation(newConversation);
-      toast.success(`Started chat with ${user.fullName}`);
-    } catch (error) {
-      console.error('❌ Create conversation error:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        message: error.response?.data?.message,
-        data: error.response?.data
-      });
-
-      if (error.response?.status === 403) {
-        toast.error('Please complete company setup to start conversations');
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to start conversation');
-      }
-    }
+  const handleCreateGroup = () => {
+    toast.info('Group creation feature coming soon!');
   };
 
   const handleSendMessage = async (content) => {
@@ -327,14 +271,14 @@ function Messaging() {
         </div>
       )}
 
-      {/* Left Sidebar - User List */}
+      {/* Left Sidebar - Conversation List */}
       <div className="messaging-sidebar">
-        <UserList
-          users={users}
-          onUserClick={handleUserClick}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          loading={loading}
+        <ConversationList
+          conversations={conversations}
+          currentUser={currentUser}
+          selectedConversation={selectedConversation}
+          onSelectConversation={handleSelectConversation}
+          onCreateGroup={handleCreateGroup}
         />
       </div>
 
@@ -413,8 +357,8 @@ function Messaging() {
         ) : (
           <div className="messaging-empty-state">
             <div className="empty-state-icon">💬</div>
-            <h3>Welcome to Noxtm Messaging</h3>
-            <p>Select a team member from the left to start chatting</p>
+            <h3>Welcome to NOXTM Messaging</h3>
+            <p>Select a conversation from the left to start chatting</p>
             <div className="empty-state-features">
               <div className="feature-item">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
