@@ -5,6 +5,12 @@ import './UserList.css';
 function UserList({ users, onUserClick, searchQuery, onSearchChange, loading }) {
   const { onlineUsers } = useContext(MessagingContext);
 
+  // Debug: Log online users whenever they change
+  React.useEffect(() => {
+    console.log('👥 UserList: Online users updated:', onlineUsers);
+    console.log('👥 UserList: Total online:', onlineUsers.length);
+  }, [onlineUsers]);
+
   const filteredUsers = users.filter(user =>
     user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -12,7 +18,8 @@ function UserList({ users, onUserClick, searchQuery, onSearchChange, loading }) 
   );
 
   const isUserOnline = (userId) => {
-    return onlineUsers.includes(userId) || onlineUsers.includes(userId.toString());
+    const online = onlineUsers.includes(userId) || onlineUsers.includes(userId?.toString());
+    return online;
   };
 
   const getInitials = (name) => {
