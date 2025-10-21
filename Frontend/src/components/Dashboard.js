@@ -315,8 +315,10 @@ function Dashboard({ user, onLogout }) {
         <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
         <div className="dashboard-main">
           <div className="dashboard-content">
-            <h1>Dashboard</h1>
-            <p>Loading...</p>
+            <div className="dashboard-content-wrapper">
+              <h1>Dashboard</h1>
+              <p>Loading...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -326,11 +328,17 @@ function Dashboard({ user, onLogout }) {
   return (
     <div className="dashboard-container">
       <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
-      
+
       {/* Main Content */}
       <div className="dashboard-main">
         <div className="dashboard-content">
-          {renderContent()}
+          {activeSection === 'message' ? (
+            renderContent()
+          ) : (
+            <div className="dashboard-content-wrapper">
+              {renderContent()}
+            </div>
+          )}
         </div>
       </div>
     </div>

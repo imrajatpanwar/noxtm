@@ -2,9 +2,9 @@
 .dashboard-sidebar {
   width: 280px;
   border-right: 1px solid #e5e7eb;
-  padding: 20px 16px 40px 16px;
+  padding: 20px 16px 0px;
   position: fixed;
-  height: calc(100vh - 60px);
+  height: calc(95vh - 18px);
   overflow-y: auto;
   top: 60px;
   left: 0;
