@@ -149,16 +149,93 @@ tr:hover .custom-checkbox:not(:checked) {
 th {
   background: #f8f9fa;
   text-align: left;
-  padding: 12px 16px;
+  padding: 10px 3px;
   font-weight: 500;
   font-size: 14px;
   color: #333;
 }
 
 td {
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 2px 2px;
+  font-size: 12px;
   border-top: 1px solid #e0e0e0;
+  vertical-align: middle;
+}
+
+/* Checkbox column — center checkbox and set narrow width */
+td.select {
+  width: 48px;
+  min-width: 48px;
+  max-width: 56px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Header cell sizing to align with body columns */
+th.select { width: 48px; min-width: 48px; max-width: 56px; text-align: center; }
+th.name { width: 150px; min-width: 154px; max-width: 150px; }
+th.email { width: 220px; min-width: 160px; max-width: 320px; }
+th.phone { width: 140px; min-width: 120px; max-width: 180px; }
+th.role { width: 50px; min-width: 120px; max-width: 142px; }
+th.location { width: 180px; min-width: 140px; max-width: 260px; }
+th.date { width: 140px; min-width: 120px; max-width: 180px; }
+
+/* Role column sizing — add class="role" to the Role <td> in markup */
+td.role {
+  width: 50px;
+  min-width: 120px;
+  max-width: 142px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Name column sizing — add class="name" to the Name <td> in markup */
+td.name {
+  width: 150px;
+  min-width: 154px;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Location column sizing — add class="location" to the Location <td> in markup */
+td.location {
+  width: 180px;
+  min-width: 140px;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Email, Phone, Date column sizing */
+td.email {
+  width: 220px;
+  min-width: 160px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+td.phone {
+  width: 140px;
+  min-width: 120px;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+td.date {
+  width: 140px;
+  min-width: 120px;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 tr:hover {

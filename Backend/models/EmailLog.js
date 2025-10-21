@@ -159,4 +159,4 @@ emailLogSchema.virtual('sizeMB').get(function() {
   return (this.size / (1024 * 1024)).toFixed(2);
 });
 
-module.exports = mongoose.model('EmailLog', emailLogSchema);
+module.exports = mongoose.models.EmailLog || mongoose.model('EmailLog', emailLogSchema);
