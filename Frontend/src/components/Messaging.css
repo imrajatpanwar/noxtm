@@ -415,6 +415,8 @@
   flex-direction: column;
   background: white;
   position: relative;
+  height: calc(100vh - 80px);
+  overflow: hidden;
 }
 
 .messaging-header {
@@ -422,6 +424,7 @@
   border-bottom: 1px solid #e2e8f0;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .conversation-header-info {
@@ -871,7 +874,27 @@
 .messaging-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: #f8f9fa;
+  padding: 20px;
+  scroll-behavior: smooth;
+}
+
+.messaging-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messaging-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.messaging-body::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+.messaging-body::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 .messaging-empty-state {
