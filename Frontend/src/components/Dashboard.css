@@ -8,16 +8,15 @@
 /* Main Content */
 .dashboard-main {
   flex: 1;
-  margin-left: 280px;
+  margin-left: 0;
   background-color: #F5F5F5;
 }
 
 .dashboard-content {
-  box-sizing: border-box; /* include padding in width calculations */
-  width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
   max-width: 1400px;
-  margin-inline: auto; /* horizontally center */
-  padding: clamp(12px, 2.5vw, 40px); /* fluid, responsive padding */
+  width: 100%;
 }
 
 .dashboard-content h1 {
