@@ -1,7 +1,7 @@
 /* Dashboard Container */
 .dashboard-container {
   display: flex;
-  min-height: 100vh;
+  min-height: 91vh;
   background-color: #F5F5F5;
 }
 
@@ -17,6 +17,10 @@
   margin-inline: auto;
   max-width: 1400px;
   width: 100%;
+}
+
+.dashboard-content-wrapper {
+  padding: clamp(12px, 2.5vw, 40px);
 }
 
 .dashboard-content h1 {
