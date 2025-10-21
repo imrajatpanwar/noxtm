@@ -19,10 +19,8 @@ function ConversationList({
   const { onlineUsers } = useContext(MessagingContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPinned, setShowPinned] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
   const [filteredConversations, setFilteredConversations] = useState([]);
-
-  // Get company name from user data
-  const companyName = currentUser?.company?.name || currentUser?.companyName || 'NOXTM';
 
   useEffect(() => {
     // Filter conversations based on search query
@@ -113,15 +111,49 @@ function ConversationList({
     <div className="conversation-list-container">
       {/* Header */}
       <div className="conversation-list-header">
-        <div className="company-info">
-          <h2 className="company-name">{companyName}</h2>
-          <button className="menu-button" title="Menu">
+        <h2 className="header-title">Team Chats</h2>
+        <div className="menu-wrapper">
+          <button
+            className="menu-button"
+            onClick={() => setShowMenu(!showMenu)}
+            title="Menu"
+          >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <circle cx="10" cy="4" r="1.5" />
               <circle cx="10" cy="10" r="1.5" />
               <circle cx="10" cy="16" r="1.5" />
             </svg>
           </button>
+
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <div className="dropdown-menu">
+              <button
+                className="menu-item"
+                onClick={() => {
+                  setShowMenu(false);
+                  onCreateGroup();
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 3.5a1 1 0 011 1V7h2.5a1 1 0 110 2H9v2.5a1 1 0 11-2 0V9H4.5a1 1 0 110-2H7V4.5a1 1 0 011-1z"/>
+                </svg>
+                <span>Create Group</span>
+              </button>
+              <button className="menu-item">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 11V9h2v2H7zm0-4V4h2v3H7z"/>
+                </svg>
+                <span>Settings</span>
+              </button>
+              <button className="menu-item">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 11V9h2v2H7zm0-4V4h2v3H7z"/>
+                </svg>
+                <span>Help</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -133,7 +165,7 @@ function ConversationList({
           </svg>
           <input
             type="text"
-            placeholder="Search conversations..."
+            placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -153,21 +185,23 @@ function ConversationList({
       <div className="conversations-scroll">
         {/* Pinned Chats Section */}
         {pinnedConversations.length > 0 && (
-          <div className="conversation-section">
+          <div className="conversation-section pinned-section">
             <div
               className="section-header"
               onClick={() => setShowPinned(!showPinned)}
             >
-              <svg
-                className={`chevron-icon ${showPinned ? 'open' : ''}`}
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-              >
-                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span className="section-title">Pinned Chats</span>
+              <div className="section-header-content">
+                <svg
+                  className={`chevron-icon ${showPinned ? 'open' : ''}`}
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                >
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span className="section-title">Pinned Chats</span>
+              </div>
             </div>
             {showPinned && (
               <div className="section-content">
@@ -179,43 +213,20 @@ function ConversationList({
 
         {/* Regular Chats Section */}
         <div className="conversation-section">
-          <div className="section-header">
-            <svg
-              className="chevron-icon open"
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="currentColor"
-            >
-              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <span className="section-title">Chats</span>
-          </div>
           <div className="section-content">
             {unpinnedConversations.length > 0 ? (
               unpinnedConversations.map(renderConversationItem)
             ) : (
-              <div className="empty-conversations">
-                <div className="empty-icon">💬</div>
-                <p>No conversations yet</p>
-                <span>Start a new conversation or create a group</span>
-              </div>
+              !pinnedConversations.length && (
+                <div className="empty-conversations">
+                  <div className="empty-icon">💬</div>
+                  <p>No conversations yet</p>
+                  <span>Start a new conversation or create a group</span>
+                </div>
+              )
             )}
           </div>
         </div>
-      </div>
-
-      {/* Create Group Button */}
-      <div className="conversation-list-footer">
-        <button
-          className="create-group-button"
-          onClick={onCreateGroup}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
-          </svg>
-          <span>Create Group</span>
-        </button>
       </div>
     </div>
   );
