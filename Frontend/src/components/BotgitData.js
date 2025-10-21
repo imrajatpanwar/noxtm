@@ -293,7 +293,7 @@ const BotgitData = () => {
             <table>
               <thead>
                 <tr>
-                  <th>
+                  <th className="select">
                     <input 
                       type="checkbox" 
                       checked={paginatedData.length > 0 && paginatedData.every(entry => selectedRows.includes(entry._id || entry.profileUrl))}
@@ -301,12 +301,12 @@ const BotgitData = () => {
                       className="custom-checkbox"
                     />
                   </th>
-                  <th>Name</th>
-                  <th>E-mail</th>
-                  <th>Phone</th>
-                  <th>Role</th>
-                  <th>Location</th>
-                  <th>Date</th>
+                  <th className="name">Name</th>
+                  <th className="email">E-mail</th>
+                  <th className="phone">Phone</th>
+                  <th className="role">Role</th>
+                  <th className="location">Location</th>
+                  <th className="date">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -315,7 +315,7 @@ const BotgitData = () => {
                     key={entry._id || entry.profileUrl}
                     className={selectedRows.includes(entry._id || entry.profileUrl) ? 'selected-row' : ''}
                   >
-                    <td>
+                    <td className="select">
                       <input 
                         type="checkbox"
                         checked={selectedRows.includes(entry._id || entry.profileUrl)}
@@ -323,12 +323,12 @@ const BotgitData = () => {
                         className="custom-checkbox"
                       />
                     </td>
-                    <td>{entry.name || '-'}</td>
-                    <td>{entry.email || '-'}</td>
-                    <td>{entry.phone || '-'}</td>
-                    <td>{entry.role || '-'}</td>
-                    <td>{entry.location || '-'}</td>
-                    <td>{entry.timestamp ? (() => {
+                    <td className="name">{entry.name || '-'}</td>
+                    <td className="email">{entry.email || '-'}</td>
+                    <td className="phone">{entry.phone || '-'}</td>
+                    <td className="role">{entry.role || '-'}</td>
+                    <td className="location">{entry.location || '-'}</td>
+                    <td className="date">{entry.timestamp ? (() => {
                       const date = new Date(entry.timestamp);
                       const day = date.getDate().toString().padStart(2, '0');
                       const month = date.toLocaleDateString('en-US', { month: 'short' });

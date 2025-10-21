@@ -13,9 +13,11 @@
 }
 
 .dashboard-content {
-  padding: 32px;
-  max-width: 1200px;
-  margin: 0 auto;
+  box-sizing: border-box; /* include padding in width calculations */
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto; /* horizontally center */
+  padding: clamp(12px, 2.5vw, 40px); /* fluid, responsive padding */
 }
 
 .dashboard-content h1 {
@@ -129,7 +131,8 @@
   }
   
   .dashboard-content {
-    padding: 24px 16px;
+    /* keep responsive padding but allow media-specific bounds */
+    padding: clamp(12px, 3.5vw, 32px);
   }
   
   .dashboard-content h1 {
@@ -150,7 +153,7 @@
 
 @media (max-width: 480px) {
   .dashboard-content {
-    padding: 16px;
+    padding: clamp(10px, 5vw, 20px);
   }
   
   .dashboard-content h1 {
