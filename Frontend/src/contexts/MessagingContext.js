@@ -15,7 +15,9 @@ export const MessagingContext = createContext({
 // Helper function to get the Socket.IO server URL
 const getSocketUrl = () => {
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isDevelopment ? 'http://localhost:5000' : `${window.location.protocol}//${window.location.hostname}:5000`;
+  // In production, use relative path (same as API config)
+  // Socket.IO will connect to the same host/port as the frontend
+  return isDevelopment ? 'http://localhost:5000' : window.location.origin;
 };
 
 export function MessagingProvider({ children }) {
