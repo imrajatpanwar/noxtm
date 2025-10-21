@@ -56,7 +56,14 @@ function Sidebar({ activeSection, onSectionChange }) {
     mountedRef.current = true;
     const handleNewMsg = (e) => {
       if (!mountedRef.current) return;
-      setMessageUnreadCount(prev => prev + 1);
+
+      // Only increment badge if user is NOT currently viewing the Message section
+      if (activeSection !== 'message') {
+        console.log('🔔 Incrementing message badge (not on Message page)');
+        setMessageUnreadCount(prev => prev + 1);
+      } else {
+        console.log('👁️ User is on Message page, skipping badge increment');
+      }
     };
 
     window.addEventListener('messaging:newMessage', handleNewMsg);
@@ -65,7 +72,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       mountedRef.current = false;
       window.removeEventListener('messaging:newMessage', handleNewMsg);
     };
-  }, []);
+  }, [activeSection]);
 
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';

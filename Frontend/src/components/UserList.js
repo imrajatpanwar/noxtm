@@ -18,7 +18,9 @@ function UserList({ users, onUserClick, searchQuery, onSearchChange, loading }) 
   );
 
   const isUserOnline = (userId) => {
-    const online = onlineUsers.includes(userId) || onlineUsers.includes(userId?.toString());
+    if (!userId) return false;
+    const userIdStr = userId.toString();
+    const online = onlineUsers.includes(userIdStr);
     return online;
   };
 

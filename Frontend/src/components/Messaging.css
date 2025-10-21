@@ -743,3 +743,182 @@
   background: #cbd5e0;
   border-radius: 10px;
 }
+
+/* Connection Status Banner */
+.connection-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 100;
+  animation: slideDown 0.3s ease-out;
+}
+
+.connection-banner.offline {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
+}
+
+.connection-banner svg {
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Adjust messaging container when banner is shown */
+.messaging-container:has(.connection-banner) {
+  padding-top: 46px;
+}
+
+/* Chat Header Styles */
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-avatar-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.chat-avatar.online {
+  border: 3px solid #48bb78;
+}
+
+.status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.status-dot.online {
+  background: #48bb78;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.offline {
+  background: #a0aec0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.chat-header-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  color: #2d3748;
+  font-weight: 700;
+}
+
+.user-status {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-status.online {
+  color: #48bb78;
+}
+
+.user-status.offline {
+  color: #a0aec0;
+}
+
+/* Message List Styles */
+.messaging-body {
+  flex: 1;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+.messaging-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-state-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.messaging-empty-state h3 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  color: #2d3748;
+  font-weight: 700;
+}
+
+.messaging-empty-state p {
+  margin: 0 0 30px 0;
+  font-size: 16px;
+  color: #718096;
+}
+
+.empty-state-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #4a5568;
+  font-size: 15px;
+}
+
+.feature-item svg {
+  color: #667eea;
+  flex-shrink: 0;
+}

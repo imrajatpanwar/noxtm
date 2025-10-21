@@ -23,6 +23,7 @@ export function MessagingProvider({ children }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState({});
+  const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -32,51 +33,75 @@ export function MessagingProvider({ children }) {
 
     const newSocket = io(socketUrl, {
       transports: ['polling', 'websocket'],
-      withCredentials: true
+      withCredentials: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
     });
 
     socketRef.current = newSocket;
     setSocket(newSocket);
 
-    newSocket.on('connect', () => {
-      console.log('✅ MessagingContext: Connected to Socket.IO');
-
+    const registerUserOnline = () => {
       // Get current user from localStorage
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       if (userData.id || userData._id) {
-        const userId = userData.id || userData._id;
+        const userId = (userData.id || userData._id).toString();
         // Emit user-online event
         newSocket.emit('user-online', userId);
         console.log('👤 MessagingContext: User online event sent:', userId);
+
+        // Store userId in socket for later reference
+        newSocket.userId = userId;
       }
+    };
+
+    newSocket.on('connect', () => {
+      console.log('✅ MessagingContext: Connected to Socket.IO');
+      setIsConnected(true);
+      registerUserOnline();
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('❌ MessagingContext: Disconnected from Socket.IO');
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 MessagingContext: Reconnected after ${attemptNumber} attempts`);
+      setIsConnected(true);
+      registerUserOnline();
+
+      // Dispatch reconnection event for components to rejoin rooms
+      window.dispatchEvent(new CustomEvent('socket:reconnected'));
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('❌ MessagingContext: Disconnected from Socket.IO. Reason:', reason);
+      setIsConnected(false);
+      window.dispatchEvent(new CustomEvent('socket:disconnected', { detail: { reason } }));
     });
 
     // Listen for initial online users list
     newSocket.on('online-users-list', (data) => {
       console.log('📋 MessagingContext: Received online users list:', data.onlineUsers);
-      setOnlineUsers(data.onlineUsers || []);
+      // Convert all IDs to strings for consistent comparison
+      const onlineUserIds = (data.onlineUsers || []).map(id => id.toString());
+      setOnlineUsers(onlineUserIds);
     });
 
     // Listen for user status changes
     newSocket.on('user-status-changed', (data) => {
       console.log('👤 MessagingContext: User status changed:', data);
       const { userId, status } = data;
+      const userIdStr = userId.toString();
 
       if (status === 'online') {
         setOnlineUsers(prev => {
-          if (!prev.includes(userId)) {
-            console.log('➕ Adding user to online list:', userId);
-            return [...prev, userId];
+          if (!prev.includes(userIdStr)) {
+            console.log('➕ Adding user to online list:', userIdStr);
+            return [...prev, userIdStr];
           }
           return prev;
         });
       } else if (status === 'offline') {
-        console.log('➖ Removing user from online list:', userId);
-        setOnlineUsers(prev => prev.filter(id => id !== userId));
+        console.log('➖ Removing user from online list:', userIdStr);
+        setOnlineUsers(prev => prev.filter(id => id !== userIdStr));
       }
     });
 
@@ -117,10 +142,20 @@ export function MessagingProvider({ children }) {
     newSocket.on('new-message', (data) => {
       console.log('📩 MessagingContext: New message received', data);
 
-      // Dispatch custom event for Sidebar to update badge
-      window.dispatchEvent(new CustomEvent('messaging:newMessage', {
-        detail: data
-      }));
+      // Get current user
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const currentUserId = (userData.id || userData._id)?.toString();
+      const messageSenderId = data.message.sender._id?.toString();
+
+      // Only dispatch if message is NOT from current user
+      if (currentUserId && messageSenderId && currentUserId !== messageSenderId) {
+        console.log('📬 Dispatching unread message event for Sidebar badge');
+        window.dispatchEvent(new CustomEvent('messaging:newMessage', {
+          detail: data
+        }));
+      } else {
+        console.log('📭 Skipping badge update (message from current user)');
+      }
     });
 
     // Cleanup on unmount
@@ -171,6 +206,7 @@ export function MessagingProvider({ children }) {
     onlineUsers,
     unreadCount,
     typingUsers,
+    isConnected,
     incrementUnread,
     resetUnread,
     setUserOnline,
