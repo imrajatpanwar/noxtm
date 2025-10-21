@@ -22,12 +22,13 @@ function initializeRoutes(dependencies) {
 
       // User comes online
       socket.on('user-online', (userId) => {
-        console.log(`👤 User ${userId} is online`);
-        onlineUsers.set(userId, socket.id);
+        const userIdStr = userId.toString();
+        console.log(`👤 User ${userIdStr} is online`);
+        onlineUsers.set(userIdStr, socket.id);
 
         // Broadcast to all connected clients (including sender)
         io.emit('user-status-changed', {
-          userId,
+          userId: userIdStr,
           status: 'online'
         });
 
@@ -1236,7 +1237,21 @@ function initializeRoutes(dependencies) {
         };
 
         console.log('📡 Broadcasting message to conversation room:', `conversation:${conversationId}`);
+
+        // Broadcast to conversation room AND to all connected clients
+        // This ensures message delivery even if socket temporarily disconnected from room
         io.to(`conversation:${conversationId}`).emit('new-message', messageData);
+
+        // Also emit to all participants directly by their user IDs
+        conversation.participants.forEach(participant => {
+          const participantId = participant._id || participant;
+          const participantSocketId = onlineUsers.get(participantId.toString());
+          if (participantSocketId) {
+            io.to(participantSocketId).emit('new-message', messageData);
+            console.log(`📨 Message sent directly to user ${participantId}`);
+          }
+        });
+
         console.log('✅ Message broadcasted successfully');
       }
 

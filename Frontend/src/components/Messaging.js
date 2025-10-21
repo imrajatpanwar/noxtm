@@ -8,7 +8,7 @@ import api from '../config/api';
 import './Messaging.css';
 
 function Messaging() {
-  const { socket, onlineUsers, typingUsers, emitTypingStart, emitTypingStop } = useContext(MessagingContext);
+  const { socket, onlineUsers, typingUsers, isConnected, emitTypingStart, emitTypingStop } = useContext(MessagingContext);
 
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -30,6 +30,29 @@ function Messaging() {
     loadUsers();
     loadConversations();
   }, []);
+
+  // Handle socket reconnection
+  useEffect(() => {
+    const handleReconnect = () => {
+      console.log('🔄 Socket reconnected, rejoining conversation room');
+      if (selectedConversation && socket) {
+        socket.emit('join-conversation', selectedConversation._id);
+        toast.success('Reconnected to messaging');
+      }
+    };
+
+    const handleDisconnect = () => {
+      toast.error('Connection lost. Trying to reconnect...', { duration: 2000 });
+    };
+
+    window.addEventListener('socket:reconnected', handleReconnect);
+    window.addEventListener('socket:disconnected', handleDisconnect);
+
+    return () => {
+      window.removeEventListener('socket:reconnected', handleReconnect);
+      window.removeEventListener('socket:disconnected', handleDisconnect);
+    };
+  }, [selectedConversation, socket]);
 
   // Update ref when selectedConversation changes
   useEffect(() => {
@@ -186,13 +209,29 @@ function Messaging() {
       return;
     }
 
-    try {
-      // Stop typing indicator
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-      }
-      emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
+    // Stop typing indicator
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
 
+    // Create optimistic message (show immediately)
+    const optimisticMessage = {
+      _id: `temp-${Date.now()}`,
+      content,
+      sender: {
+        _id: currentUser.id || currentUser._id,
+        fullName: currentUser.fullName,
+        email: currentUser.email
+      },
+      createdAt: new Date().toISOString(),
+      isPending: true
+    };
+
+    // Add optimistic message to UI immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+
+    try {
       console.log('📤 Sending message:', {
         conversationId: selectedConversation._id,
         content: content.substring(0, 50)
@@ -206,12 +245,18 @@ function Messaging() {
 
       const newMessage = response.data.data || response.data.message;
 
-      // Add message to local state
-      setMessages(prev => [...prev, newMessage]);
-
-      toast.success('Message sent');
+      // Replace optimistic message with real message
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === optimisticMessage._id ? newMessage : msg
+        )
+      );
     } catch (error) {
       console.error('❌ Send message error:', error);
+
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+
       console.error('Error details:', {
         status: error.response?.status,
         message: error.response?.data?.message,
@@ -270,6 +315,18 @@ function Messaging() {
 
   return (
     <div className="messaging-container">
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <div className="connection-banner offline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+          <span>Disconnected - Trying to reconnect...</span>
+        </div>
+      )}
+
       {/* Left Sidebar - User List */}
       <div className="messaging-sidebar">
         <UserList
