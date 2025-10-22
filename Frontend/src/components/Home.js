@@ -11,6 +11,10 @@ import blogImage1 from './image/Blog1.jpg';
 import blogImage2 from './image/Blog2.jpg';
 import blogImage3 from './image/Blog3.jpg';
 import { ReactComponent as LinkArrow } from './image/link_arrow_white.svg';
+// Mountain chair images
+import mountainChairBg from './image/Mountain_chair_bg.webp';
+import mountainChairOverlay from './image/Mountain_chair_bg_uperlayer.webp';
+import chairMountain from './image/chair_mountain.webp';
 
 function Home({ user }) {
   const [featuredBlogs, setFeaturedBlogs] = useState([]);
@@ -198,6 +202,26 @@ function Home({ user }) {
                   <OperaLogo className="company-logo" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Mountain Decision Section */}
+          <div className="mountain-decision-section">
+            <div
+              className="mountain-bg-base"
+              style={{ backgroundImage: `url(${mountainChairBg})` }}
+            ></div>
+            <div
+              className="mountain-bg-overlay"
+              style={{ backgroundImage: `url(${mountainChairOverlay})` }}
+            ></div>
+            <div
+              className="mountain-chair"
+              style={{ backgroundImage: `url(${chairMountain})` }}
+            ></div>
+            <div className="mountain-text-overlay">
+              <h2 className="decision-line-1">Decisions are being made without you.</h2>
+              <h2 className="decision-line-2">Act before it's too late.</h2>
             </div>
           </div>
 
