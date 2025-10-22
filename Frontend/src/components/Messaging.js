@@ -17,8 +17,7 @@ function Messaging() {
   const [currentUser, setCurrentUser] = useState(null);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // Menu and Modal States
-  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  // Modal States
   const [showChatSettings, setShowChatSettings] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
 
@@ -40,7 +39,6 @@ function Messaging() {
 
   const messagesEndRef = useRef(null);
   const selectedConversationRef = useRef(null);
-  const menuRef = useRef(null);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -55,30 +53,12 @@ function Messaging() {
     loadConversations();
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowHeaderMenu(false);
-      }
-    };
-
-    if (showHeaderMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showHeaderMenu]);
-
   // Close modals on ESC key
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === 'Escape') {
         setShowChatSettings(false);
         setShowCreateGroupModal(false);
-        setShowHeaderMenu(false);
       }
     };
 
@@ -203,13 +183,11 @@ function Messaging() {
   };
 
   const handleCreateGroup = () => {
-    setShowHeaderMenu(false);
     setShowCreateGroupModal(true);
     loadAvailableUsers();
   };
 
   const handleOpenChatSettings = () => {
-    setShowHeaderMenu(false);
     setShowChatSettings(true);
   };
 
@@ -227,12 +205,30 @@ function Messaging() {
     try {
       const response = await api.get('/users');
       const users = response.data.users || response.data || [];
-      // Filter out current user
+
+      // Get current user's company ID
       const currentUserId = currentUser?.id || currentUser?._id;
+      const currentUserCompanyId = currentUser?.company?._id || currentUser?.company?.id || currentUser?.companyId;
+
+      // Filter users: exclude current user AND only show users from same company
       const filteredUsers = users.filter(user => {
         const userId = user._id || user.id;
-        return userId?.toString() !== currentUserId?.toString();
+        const userCompanyId = user.company?._id || user.company?.id || user.companyId;
+
+        // Exclude current user
+        if (userId?.toString() === currentUserId?.toString()) {
+          return false;
+        }
+
+        // Only include users from the same company
+        if (currentUserCompanyId && userCompanyId) {
+          return userCompanyId?.toString() === currentUserCompanyId?.toString();
+        }
+
+        // If no company ID, don't include (safety measure)
+        return false;
       });
+
       setAvailableUsers(filteredUsers);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -442,6 +438,7 @@ function Messaging() {
           selectedConversation={selectedConversation}
           onSelectConversation={handleSelectConversation}
           onCreateGroup={handleCreateGroup}
+          onOpenChatSettings={handleOpenChatSettings}
         />
       </div>
 
@@ -487,44 +484,6 @@ function Messaging() {
                       </span>
                     </div>
                   </>
-                )}
-              </div>
-
-              {/* 3-Dot Menu */}
-              <div className="header-menu-wrapper" ref={menuRef}>
-                <button
-                  className="header-menu-button"
-                  onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-                  title="Options"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <circle cx="10" cy="4" r="1.5" />
-                    <circle cx="10" cy="10" r="1.5" />
-                    <circle cx="10" cy="16" r="1.5" />
-                  </svg>
-                </button>
-
-                {showHeaderMenu && (
-                  <div className="header-dropdown-menu">
-                    <button
-                      className="header-menu-item"
-                      onClick={handleCreateGroup}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 3.5a1 1 0 011 1V7h2.5a1 1 0 110 2H9v2.5a1 1 0 11-2 0V9H4.5a1 1 0 110-2H7V4.5a1 1 0 011-1z"/>
-                      </svg>
-                      <span>Create Group</span>
-                    </button>
-                    <button
-                      className="header-menu-item"
-                      onClick={handleOpenChatSettings}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM6.5 9.5h3v1h-3v-1zm0-2h5v1h-5v-1zm0-2h5v1h-5v-1z"/>
-                      </svg>
-                      <span>Chat Settings</span>
-                    </button>
-                  </div>
                 )}
               </div>
             </div>

@@ -14,7 +14,8 @@ function ConversationList({
   currentUser,
   selectedConversation,
   onSelectConversation,
-  onCreateGroup
+  onCreateGroup,
+  onOpenChatSettings
 }) {
   const { onlineUsers } = useContext(MessagingContext);
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,11 +141,17 @@ function ConversationList({
                 </svg>
                 <span>Create Group</span>
               </button>
-              <button className="menu-item">
+              <button
+                className="menu-item"
+                onClick={() => {
+                  setShowMenu(false);
+                  onOpenChatSettings();
+                }}
+              >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 11V9h2v2H7zm0-4V4h2v3H7z"/>
                 </svg>
-                <span>Settings</span>
+                <span>Chat Settings</span>
               </button>
               <button className="menu-item">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
