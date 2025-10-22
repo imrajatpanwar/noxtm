@@ -6,10 +6,6 @@ import { ReactComponent as CreativeFuelLogo } from './image/creativefuel.svg';
 import { ReactComponent as EfdStudioLogo } from './image/efd_studio.svg';
 import { ReactComponent as MaxternLogo } from './image/maxtern.svg';
 import { ReactComponent as OperaLogo } from './image/opera.svg';
-import { ReactComponent as DesignIcon } from './image/design.svg';
-import { ReactComponent as WebDevIcon } from './image/webdev.svg';
-import { ReactComponent as MediaBuyingIcon } from './image/media_buying.svg';
-import { ReactComponent as JobPlacementIcon } from './image/job_placement.svg';
 // Blog images (fallback)
 import blogImage1 from './image/Blog1.jpg';
 import blogImage2 from './image/Blog2.jpg';
@@ -205,91 +201,12 @@ function Home({ user }) {
             </div>
           </div>
 
-          {/* Services Section */}
-          <div className="services-section">
-            <div className="service-container">
-              <div className="services-grid">
-                {/* Identity & Design */}
-                <div className="service-card">
-                  <div className="service-icon">
-                    <DesignIcon />
-                  </div>
-                  <h3 className="service-title">Identity & Design</h3>
-                  <p className="service-description">We create impactful brand identities and visuals that inspire trust, stand out, and drive interconnection.</p>
-                  <div className="service-footer">
-                    <div className="service-pricing">
-                      <span className="pricing-label">Starting from</span>
-                      <span className="pricing-amount">$10</span>
-                    </div>
-                    <button className="service-btn">See More</button>
-                  </div>
-                </div>
-
-                {/* Web Development */}
-                <div className="service-card">
-                  <div className="service-icon">
-                    <WebDevIcon />
-                  </div>
-                  <h3 className="service-title">Web Development</h3>
-                  <p className="service-description">We craft fast, modern, and conversion focused websites that attract, engage, and grow your business.</p>
-                  <div className="service-footer">
-                    <div className="service-pricing">
-                      <span className="pricing-label">Starting from</span>
-                      <span className="pricing-amount">$100</span>
-                    </div>
-                    <button className="service-btn">See More</button>
-                  </div>
-                </div>
-
-                {/* Media Planning & Buying */}
-                <div className="service-card">
-                  <div className="service-icon">
-                    <MediaBuyingIcon />
-                  </div>
-                  <h3 className="service-title">Media Planning & Buying</h3>
-                  <p className="service-description">Connecting your brand with the right people, at the right moment, for real connections and measurable growth.</p>
-                  <div className="service-footer">
-                    <div className="service-pricing">
-                      <span className="pricing-label">Starting from</span>
-                      <span className="pricing-amount">$150</span>
-                    </div>
-                    <button className="service-btn">See More</button>
-                  </div>
-                </div>
-
-                {/* Job Placement */}
-                <div className="service-card">
-                  <div className="service-icon">
-                    <JobPlacementIcon />
-                  </div>
-                  <h3 className="service-title">Job Placement</h3>
-                  <p className="service-description">Helping people find meaningful careers and businesses discover the talent they can truly grow with.</p>
-                  <div className="service-footer">
-                    <div className="service-pricing">
-                      <span className="pricing-label">Starting from</span>
-                      <span className="pricing-amount">Free</span>
-                    </div>
-                    <button className="service-btn">See More</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Blog Journal Section - Dynamic Content */}
           <div className="blog-journal-section">
             <div className="blog-journal-layout">
               <div className="blog-journal-heading">
                 <h2 className="blog-story-text">Your Story,</h2>
                 <h2 className="blog-insights-text">Our Insights.</h2>
-                <Link to="/blog" className="read-all-journals">
-                  <span>Read All Journals</span>
-                  <svg width="20" height="20" viewBox="0 0 12 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <line y1="2.06159" x2="11.4127" y2="2.06159" stroke="black" strokeWidth="2.12341"/>
-                    <line x1="10.6728" y1="0.976868" x2="10.9215" y2="12.3896" stroke="black" strokeWidth="2.12341"/>
-                    <line x1="10.9617" y1="1.75074" x2="1.35094" y2="11.3615" stroke="black" strokeWidth="2.12341"/>
-                  </svg>
-                </Link>
               </div>
               
               <div className="blog-journal-grid">
