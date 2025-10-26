@@ -1101,3 +1101,149 @@ input:checked + .toggle-slider:before {
     justify-content: center;
   }
 }
+
+/* Department Badge */
+.member-department {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: #f3f4f6;
+  border-radius: 0.25rem;
+  display: inline-block;
+}
+
+/* Permissions Section */
+.permissions-section {
+  margin-top: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.permissions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.permissions-header:hover {
+  background: #f3f4f6;
+}
+
+.permissions-header .form-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.permissions-header svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+}
+
+/* Permissions Grid */
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background: white;
+}
+
+.permission-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.permission-checkbox-item input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.permission-checkbox-item label {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+  user-select: none;
+  margin: 0;
+}
+
+.permission-checkbox-item input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.permission-checkbox-item input[type="checkbox"]:disabled + label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Member Actions */
+.member-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-edit {
+  padding: 0.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.btn-edit:hover {
+  background: #2563eb;
+}
+
+.btn-edit svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Edit Permissions Modal */
+.edit-permissions-modal {
+  max-width: 600px;
+}
+
+.edit-permissions-modal .form-hint {
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.edit-permissions-modal .form-hint strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* Responsive Permissions Grid */
+@media (max-width: 640px) {
+  .permissions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .btn-edit,
+  .btn-remove {
+    width: 100%;
+  }
+}

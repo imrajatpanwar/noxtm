@@ -186,14 +186,60 @@ const companySchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User who created the company
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    roleInCompany: { type: String, enum: ['Owner', 'Admin', 'Member'], default: 'Member' },
+    roleInCompany: { type: String, enum: ['Owner', 'Manager', 'Employee'], default: 'Employee' },
+    department: {
+      type: String,
+      enum: [
+        'Management Team',
+        'Digital Team',
+        'SEO Team',
+        'Graphic Design Team',
+        'Marketing Team',
+        'Sales Team',
+        'Development Team',
+        'HR Team',
+        'Finance Team',
+        'Support Team',
+        'Operations Team'
+      ]
+    },
     invitedAt: { type: Date, default: Date.now },
     joinedAt: { type: Date }
   }],
   invitations: [{
     email: { type: String, required: true },
     token: { type: String, required: true, unique: true },
-    roleInCompany: { type: String, enum: ['Admin', 'Member'], default: 'Member' },
+    roleInCompany: { type: String, enum: ['Manager', 'Employee'], default: 'Employee' },
+    department: {
+      type: String,
+      required: true,
+      enum: [
+        'Management Team',
+        'Digital Team',
+        'SEO Team',
+        'Graphic Design Team',
+        'Marketing Team',
+        'Sales Team',
+        'Development Team',
+        'HR Team',
+        'Finance Team',
+        'Support Team',
+        'Operations Team'
+      ]
+    },
+    customPermissions: {
+      dashboard: { type: Boolean },
+      dataCenter: { type: Boolean },
+      projects: { type: Boolean },
+      teamCommunication: { type: Boolean },
+      digitalMediaManagement: { type: Boolean },
+      marketing: { type: Boolean },
+      hrManagement: { type: Boolean },
+      financeManagement: { type: Boolean },
+      seoManagement: { type: Boolean },
+      internalPolicies: { type: Boolean },
+      settingsConfiguration: { type: Boolean }
+    },
     invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }, // 7 days
@@ -1922,7 +1968,7 @@ app.get('/api/company/members', authenticateToken, async (req, res) => {
     }
 
     const company = await Company.findById(user.companyId)
-      .populate('members.user', 'fullName email role profileImage status createdAt');
+      .populate('members.user', 'fullName email role profileImage status createdAt permissions');
 
     if (!company) {
       return res.status(404).json({ message: 'Company not found' });
@@ -1935,8 +1981,10 @@ app.get('/api/company/members', authenticateToken, async (req, res) => {
       email: member.user.email,
       role: member.user.role,
       roleInCompany: member.roleInCompany,
+      department: member.department,
       profileImage: member.user.profileImage,
       status: member.user.status,
+      permissions: member.user.permissions,
       joinedAt: member.joinedAt,
       invitedAt: member.invitedAt,
       createdAt: member.user.createdAt
@@ -1957,19 +2005,176 @@ app.get('/api/company/members', authenticateToken, async (req, res) => {
   }
 });
 
+// Department permission defaults
+const DEPARTMENT_DEFAULTS = {
+  'Management Team': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: true,
+    financeManagement: true,
+    seoManagement: true,
+    internalPolicies: true,
+    settingsConfiguration: true
+  },
+  'Digital Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'SEO Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Graphic Design Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Marketing Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Sales Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: true,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Development Team': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'HR Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: true,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false
+  },
+  'Finance Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: true,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Support Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Operations Team': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false
+  }
+};
+
 // Generate invite link for company
 app.post('/api/company/invite', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { email, roleInCompany } = req.body;
+    const { email, roleInCompany, department, customPermissions } = req.body;
 
     // Validate inputs
     if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       return res.status(400).json({ message: 'Valid email is required' });
     }
 
-    if (!roleInCompany || !['Admin', 'Member'].includes(roleInCompany)) {
-      return res.status(400).json({ message: 'Valid role is required (Admin or Member)' });
+    if (!roleInCompany || !['Manager', 'Employee'].includes(roleInCompany)) {
+      return res.status(400).json({ message: 'Valid role is required (Manager or Employee)' });
+    }
+
+    const validDepartments = [
+      'Management Team', 'Digital Team', 'SEO Team', 'Graphic Design Team',
+      'Marketing Team', 'Sales Team', 'Development Team', 'HR Team',
+      'Finance Team', 'Support Team', 'Operations Team'
+    ];
+
+    if (!department || !validDepartments.includes(department)) {
+      return res.status(400).json({ message: 'Valid department is required' });
     }
 
     const user = await User.findById(userId);
@@ -1986,11 +2191,11 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    // Check if user has permission to invite (Owner or Admin)
+    // Check if user has permission to invite (Owner or Manager)
     const userMembership = company.members.find(m => m.user.toString() === userId);
-    if (!userMembership || !['Owner', 'Admin'].includes(userMembership.roleInCompany)) {
+    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
       return res.status(403).json({
-        message: 'Only company owners and admins can invite new members'
+        message: 'Only company owners and managers can invite new members'
       });
     }
 
@@ -2026,11 +2231,16 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
     const crypto = require('crypto');
     const inviteToken = crypto.randomBytes(32).toString('hex');
 
+    // Use custom permissions if provided, otherwise use department defaults
+    const permissions = customPermissions || DEPARTMENT_DEFAULTS[department] || {};
+
     // Create invitation
     company.invitations.push({
       email: email.toLowerCase(),
       token: inviteToken,
       roleInCompany,
+      department,
+      customPermissions: permissions,
       invitedBy: userId,
       createdAt: new Date(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -2171,6 +2381,7 @@ app.post('/api/company/invite/:token/accept', authenticateToken, async (req, res
     company.members.push({
       user: userId,
       roleInCompany: invitation.roleInCompany,
+      department: invitation.department,
       invitedAt: invitation.createdAt,
       joinedAt: new Date()
     });
@@ -2179,8 +2390,26 @@ app.post('/api/company/invite/:token/accept', authenticateToken, async (req, res
     invitation.status = 'accepted';
     await company.save();
 
-    // Update user with companyId
+    // Update user with companyId and permissions
     user.companyId = company._id;
+
+    // Apply custom permissions from invitation
+    if (invitation.customPermissions) {
+      user.permissions = {
+        dashboard: invitation.customPermissions.dashboard || false,
+        dataCenter: invitation.customPermissions.dataCenter || false,
+        projects: invitation.customPermissions.projects || false,
+        teamCommunication: invitation.customPermissions.teamCommunication || false,
+        digitalMediaManagement: invitation.customPermissions.digitalMediaManagement || false,
+        marketing: invitation.customPermissions.marketing || false,
+        hrManagement: invitation.customPermissions.hrManagement || false,
+        financeManagement: invitation.customPermissions.financeManagement || false,
+        seoManagement: invitation.customPermissions.seoManagement || false,
+        internalPolicies: invitation.customPermissions.internalPolicies || false,
+        settingsConfiguration: invitation.customPermissions.settingsConfiguration || false
+      };
+    }
+
     await user.save();
 
     res.json({
@@ -2221,11 +2450,11 @@ app.delete('/api/company/members/:memberId', authenticateToken, async (req, res)
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    // Check if user has permission (Owner or Admin)
+    // Check if user has permission (Owner or Manager)
     const userMembership = company.members.find(m => m.user.toString() === userId);
-    if (!userMembership || !['Owner', 'Admin'].includes(userMembership.roleInCompany)) {
+    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
       return res.status(403).json({
-        message: 'Only company owners and admins can remove members'
+        message: 'Only company owners and managers can remove members'
       });
     }
 
@@ -2260,6 +2489,90 @@ app.delete('/api/company/members/:memberId', authenticateToken, async (req, res)
     console.error('Remove member error:', error);
     res.status(500).json({
       message: 'Server error while removing member',
+      error: error.message
+    });
+  }
+});
+
+// Update member permissions
+app.put('/api/company/members/:memberId/permissions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { memberId } = req.params;
+    const { permissions } = req.body;
+
+    // Validate permissions object
+    if (!permissions || typeof permissions !== 'object') {
+      return res.status(400).json({ message: 'Valid permissions object is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.companyId) {
+      return res.status(403).json({ message: 'You are not part of any company' });
+    }
+
+    const company = await Company.findById(user.companyId);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    // Check if user has permission (Owner or Manager)
+    const userMembership = company.members.find(m => m.user.toString() === userId);
+    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
+      return res.status(403).json({
+        message: 'Only company owners and managers can update permissions'
+      });
+    }
+
+    // Check if target member exists in company
+    const targetMemberInCompany = company.members.find(m => m.user.toString() === memberId);
+    if (!targetMemberInCompany) {
+      return res.status(404).json({ message: 'Member not found in company' });
+    }
+
+    // Prevent modifying owner permissions
+    if (company.owner.toString() === memberId) {
+      return res.status(403).json({
+        message: 'Cannot modify company owner permissions'
+      });
+    }
+
+    // Update member permissions
+    const memberUser = await User.findById(memberId);
+    if (!memberUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update permissions
+    memberUser.permissions = {
+      dashboard: permissions.dashboard || false,
+      dataCenter: permissions.dataCenter || false,
+      projects: permissions.projects || false,
+      teamCommunication: permissions.teamCommunication || false,
+      digitalMediaManagement: permissions.digitalMediaManagement || false,
+      marketing: permissions.marketing || false,
+      hrManagement: permissions.hrManagement || false,
+      financeManagement: permissions.financeManagement || false,
+      seoManagement: permissions.seoManagement || false,
+      internalPolicies: permissions.internalPolicies || false,
+      settingsConfiguration: permissions.settingsConfiguration || false
+    };
+
+    await memberUser.save();
+
+    res.json({
+      success: true,
+      message: 'Permissions updated successfully',
+      permissions: memberUser.permissions
+    });
+  } catch (error) {
+    console.error('Update permissions error:', error);
+    res.status(500).json({
+      message: 'Server error while updating permissions',
       error: error.message
     });
   }
