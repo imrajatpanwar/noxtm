@@ -19,12 +19,9 @@ import JoinCompany from './components/JoinCompany';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
-import CancellationRefunds from './components/CancellationRefunds';
-import TermsConditions from './components/TermsConditions';
-import Shipping from './components/Shipping';
-import PrivacyPolicy from './components/PrivacyPolicy';
 import BotgitPrivacyPolicy from './components/BotgitPrivacyPolicy';
-import ContactUs from './components/ContactUs';
+import Legal from './components/Legal/Legal';
+import InviteAccept from './components/InviteAccept';
 
 // API configuration is now handled in config/api.js
 
@@ -32,7 +29,8 @@ function ConditionalFooter() {
   const location = useLocation();
   const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company'];
 
-  if (hideFooterRoutes.includes(location.pathname)) {
+  // Also hide footer on invite pages
+  if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
     return null;
   }
 
@@ -334,12 +332,9 @@ function App() {
             />
             <Route path="/blog" element={<PublicBlogList />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/cancellation-refunds" element={<CancellationRefunds />} />
-            <Route path="/terms" element={<TermsConditions />} />
-            <Route path="/shipping" element={<Shipping />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/botgit-privacy" element={<BotgitPrivacyPolicy />} />
-            <Route path="/contact" element={<ContactUs />} />
+            <Route path="/legal/*" element={<Legal />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
           </Routes>
           <ConditionalFooter />
         </div>
