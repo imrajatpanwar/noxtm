@@ -2,6 +2,11 @@ const express = require('express');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+// Email security middleware
+const { invitationEmailLimiter } = require('../middleware/emailRateLimit');
+const { sendAndLogEmail } = require('../middleware/emailLogger');
+const { validateEmail } = require('../middleware/emailValidator');
+
 // Initialize routes with dependencies from server.js
 function initializeRoutes(dependencies) {
   const router = express.Router();
@@ -101,7 +106,7 @@ function initializeRoutes(dependencies) {
   // ===== COMPANY INVITATIONS =====
 
   // Send invitation to join company
-  router.post('/invitations/send', authenticateToken, requireCompanyAccess, async (req, res) => {
+  router.post('/invitations/send', authenticateToken, requireCompanyAccess, invitationEmailLimiter, async (req, res) => {
     try {
       const { email, roleInCompany } = req.body;
       const companyId = req.companyId;
@@ -110,6 +115,15 @@ function initializeRoutes(dependencies) {
       // Validate input
       if (!email) {
         return res.status(400).json({ message: 'Email is required' });
+      }
+
+      // Validate email format and check for disposable domains
+      const emailValidation = validateEmail(email, false);
+      if (!emailValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: emailValidation.message
+        });
       }
 
       // Get company details
@@ -190,7 +204,7 @@ function initializeRoutes(dependencies) {
           const transporter = nodemailer.createTransport(transportConfig);
           const invitationUrl = `${process.env.FRONTEND_URL || 'http://noxtm.com'}/join-company?token=${invitationToken}`;
 
-          await transporter.sendMail({
+          const mailOptions = {
             from: `"${company.companyName}" <${process.env.EMAIL_FROM}>`,
             to: email,
             subject: `You've been invited to join ${company.companyName}`,
@@ -208,6 +222,12 @@ function initializeRoutes(dependencies) {
                 <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
               </div>
             `
+          };
+
+          // Use sendAndLogEmail for logging and monitoring
+          await sendAndLogEmail(transporter, mailOptions, {
+            userId: inviterId,
+            type: 'invitation'
           });
         } catch (emailError) {
           console.error('Failed to send invitation email:', emailError);
@@ -988,7 +1008,7 @@ function initializeRoutes(dependencies) {
 
       const companyId = user.companyId;
       const userId = user._id;
-      const { type, participantIds, name } = req.body;
+      const { type, participantIds, name, groupIcon } = req.body;
 
       // Validate input
       if (!type || !['direct', 'group'].includes(type)) {
@@ -1051,6 +1071,7 @@ function initializeRoutes(dependencies) {
         companyId,
         type,
         name: type === 'group' ? name : null,
+        groupIcon: type === 'group' ? groupIcon : null,
         participants: [userId, ...participantIds].map(id => ({
           user: id,
           joinedAt: new Date(),
@@ -1071,6 +1092,60 @@ function initializeRoutes(dependencies) {
       });
     } catch (error) {
       console.error('Create conversation error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Delete a conversation (group only)
+  router.delete('/conversations/:conversationId', authenticateToken, requireCompanyAccess, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const companyId = req.companyId;
+      const userId = req.userId;
+
+      console.log('🗑️ Delete conversation request:', { conversationId, userId });
+
+      // Find the conversation
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        companyId,
+        'participants.user': userId
+      });
+
+      if (!conversation) {
+        return res.status(404).json({
+          message: 'Conversation not found or access denied'
+        });
+      }
+
+      // Only allow deletion of group conversations
+      if (conversation.type !== 'group') {
+        return res.status(400).json({
+          message: 'Only group conversations can be deleted'
+        });
+      }
+
+      // Verify user is the creator of the group
+      if (conversation.createdBy.toString() !== userId.toString()) {
+        return res.status(403).json({
+          message: 'Only the group creator can delete the group'
+        });
+      }
+
+      // Delete all messages in this conversation
+      await Message.deleteMany({ conversationId });
+
+      // Delete the conversation
+      await Conversation.deleteOne({ _id: conversationId });
+
+      console.log('✅ Conversation deleted successfully:', conversationId);
+
+      res.json({
+        success: true,
+        message: 'Group deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete conversation error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
@@ -1265,6 +1340,355 @@ function initializeRoutes(dependencies) {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
+
+  // File upload for messages (requires multer middleware)
+  const multer = require('multer');
+  const path = require('path');
+  const fs = require('fs');
+
+  // Configure multer for file upload
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      const uploadDir = path.join(__dirname, '../uploads/messages');
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+
+  const upload = multer({
+    storage: storage,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB max
+    },
+    fileFilter: function (req, file, cb) {
+      // Accept images, documents, and PDFs
+      const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|xls|xlsx|ppt|pptx/;
+      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype);
+
+      if (extname && mimetype) {
+        return cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only images and documents are allowed.'));
+      }
+    }
+  });
+
+  // Upload file and send as message
+  router.post('/conversations/:conversationId/messages/upload',
+    authenticateToken,
+    requireCompanyAccess,
+    upload.single('file'),
+    async (req, res) => {
+      try {
+        const { conversationId } = req.params;
+        const companyId = req.companyId;
+        const userId = req.userId;
+        const { content } = req.body; // Optional caption
+
+        if (!req.file) {
+          return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Verify user has access to this conversation
+        const conversation = await Conversation.findOne({
+          _id: conversationId,
+          companyId,
+          'participants.user': userId
+        });
+
+        if (!conversation) {
+          // Delete uploaded file if conversation not found
+          fs.unlinkSync(req.file.path);
+          return res.status(404).json({ message: 'Conversation not found or access denied' });
+        }
+
+        // Determine message type based on file
+        const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'file';
+
+        // Create file URL (relative path for serving)
+        const fileUrl = `/uploads/messages/${req.file.filename}`;
+
+        // Create message
+        const message = new Message({
+          conversationId,
+          companyId,
+          sender: userId,
+          content: content || req.file.originalname,
+          type: fileType,
+          fileUrl,
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          readBy: [{
+            user: userId,
+            readAt: new Date()
+          }]
+        });
+
+        await message.save();
+
+        // Update conversation's lastMessage
+        conversation.lastMessage = {
+          content: content || `📎 ${req.file.originalname}`,
+          sender: userId,
+          timestamp: message.createdAt
+        };
+        conversation.updatedAt = new Date();
+        await conversation.save();
+
+        // Populate sender for response
+        await message.populate('sender', 'fullName email');
+
+        // Emit real-time message
+        if (io) {
+          const messageData = {
+            conversationId,
+            message: {
+              _id: message._id,
+              content: message.content,
+              type: message.type,
+              fileUrl: message.fileUrl,
+              fileName: message.fileName,
+              fileSize: message.fileSize,
+              sender: {
+                _id: message.sender._id,
+                fullName: message.sender.fullName,
+                username: message.sender.fullName,
+                email: message.sender.email
+              },
+              createdAt: message.createdAt,
+              readBy: message.readBy
+            }
+          };
+
+          io.to(`conversation:${conversationId}`).emit('new-message', messageData);
+
+          // Also emit to participants directly
+          conversation.participants.forEach(participant => {
+            const participantId = participant._id || participant;
+            const participantSocketId = onlineUsers.get(participantId.toString());
+            if (participantSocketId) {
+              io.to(participantSocketId).emit('new-message', messageData);
+            }
+          });
+        }
+
+        res.status(201).json({
+          success: true,
+          message: 'File uploaded successfully',
+          data: message
+        });
+      } catch (error) {
+        console.error('File upload error:', error);
+        // Clean up uploaded file on error
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ message: 'Server error', error: error.message });
+      }
+    }
+  );
+
+  // Edit message
+  router.put('/conversations/:conversationId/messages/:messageId',
+    authenticateToken,
+    requireCompanyAccess,
+    async (req, res) => {
+      try {
+        const { conversationId, messageId } = req.params;
+        const companyId = req.companyId;
+        const userId = req.userId;
+        const { content } = req.body;
+
+        if (!content || content.trim() === '') {
+          return res.status(400).json({ message: 'Message content is required' });
+        }
+
+        // Find message and verify user is the sender
+        const message = await Message.findOne({
+          _id: messageId,
+          conversationId,
+          companyId,
+          sender: userId
+        });
+
+        if (!message) {
+          return res.status(404).json({
+            message: 'Message not found or you do not have permission to edit it'
+          });
+        }
+
+        // Save old content to edit history
+        if (!message.editHistory) {
+          message.editHistory = [];
+        }
+        message.editHistory.push({
+          content: message.content,
+          editedAt: new Date()
+        });
+
+        // Update message
+        message.content = content.trim();
+        message.isEdited = true;
+        message.updatedAt = new Date();
+
+        await message.save();
+        await message.populate('sender', 'fullName email');
+
+        // Emit real-time update
+        if (io) {
+          io.to(`conversation:${conversationId}`).emit('message-edited', {
+            conversationId,
+            messageId,
+            content: message.content,
+            isEdited: message.isEdited,
+            updatedAt: message.updatedAt
+          });
+        }
+
+        res.json({
+          success: true,
+          message: 'Message edited successfully',
+          data: message
+        });
+      } catch (error) {
+        console.error('Edit message error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+      }
+    }
+  );
+
+  // Delete message (soft delete)
+  router.delete('/conversations/:conversationId/messages/:messageId',
+    authenticateToken,
+    requireCompanyAccess,
+    async (req, res) => {
+      try {
+        const { conversationId, messageId } = req.params;
+        const companyId = req.companyId;
+        const userId = req.userId;
+
+        // Find message and verify user is the sender
+        const message = await Message.findOne({
+          _id: messageId,
+          conversationId,
+          companyId,
+          sender: userId
+        });
+
+        if (!message) {
+          return res.status(404).json({
+            message: 'Message not found or you do not have permission to delete it'
+          });
+        }
+
+        // Soft delete
+        message.isDeleted = true;
+        message.deletedAt = new Date();
+        message.content = 'This message was deleted';
+
+        await message.save();
+        await message.populate('sender', 'fullName email');
+
+        // Emit real-time update
+        if (io) {
+          io.to(`conversation:${conversationId}`).emit('message-deleted', {
+            conversationId,
+            messageId,
+            isDeleted: message.isDeleted,
+            deletedAt: message.deletedAt
+          });
+        }
+
+        res.json({
+          success: true,
+          message: 'Message deleted successfully',
+          data: message
+        });
+      } catch (error) {
+        console.error('Delete message error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+      }
+    }
+  );
+
+  // React to message
+  router.post('/conversations/:conversationId/messages/:messageId/react',
+    authenticateToken,
+    requireCompanyAccess,
+    async (req, res) => {
+      try {
+        const { conversationId, messageId } = req.params;
+        const companyId = req.companyId;
+        const userId = req.userId;
+        const { emoji } = req.body;
+
+        if (!emoji) {
+          return res.status(400).json({ message: 'Emoji is required' });
+        }
+
+        // Find message
+        const message = await Message.findOne({
+          _id: messageId,
+          conversationId,
+          companyId
+        });
+
+        if (!message) {
+          return res.status(404).json({ message: 'Message not found' });
+        }
+
+        if (!message.reactions) {
+          message.reactions = [];
+        }
+
+        // Check if user already reacted with this emoji
+        const existingReactionIndex = message.reactions.findIndex(
+          r => r.user.toString() === userId.toString() && r.emoji === emoji
+        );
+
+        if (existingReactionIndex !== -1) {
+          // Remove reaction (toggle off)
+          message.reactions.splice(existingReactionIndex, 1);
+        } else {
+          // Add reaction
+          message.reactions.push({
+            user: userId,
+            emoji,
+            timestamp: new Date()
+          });
+        }
+
+        await message.save();
+        await message.populate('sender', 'fullName email');
+
+        // Emit real-time update
+        if (io) {
+          io.to(`conversation:${conversationId}`).emit('message-reaction', {
+            conversationId,
+            messageId,
+            reactions: message.reactions
+          });
+        }
+
+        res.json({
+          success: true,
+          message: 'Reaction updated successfully',
+          data: message
+        });
+      } catch (error) {
+        console.error('Reaction error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+      }
+    }
+  );
 
   return router;
 }

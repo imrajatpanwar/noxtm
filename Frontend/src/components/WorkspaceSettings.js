@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiLink } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail } from 'react-icons/fi';
 import { toast } from 'sonner';
 import './WorkspaceSettings.css';
 

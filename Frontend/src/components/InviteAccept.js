@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FiCheck, FiX, FiAlertCircle, FiUsers, FiBriefcase } from 'react-icons/fi';
@@ -12,11 +12,7 @@ const InviteAccept = () => {
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
 
-  useEffect(() => {
-    validateInvite();
-  }, [token]);
-
-  const validateInvite = async () => {
+  const validateInvite = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/company/invite/${token}`);
@@ -34,7 +30,11 @@ const InviteAccept = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    validateInvite();
+  }, [validateInvite]);
 
   const handleAcceptInvite = async () => {
     const token = localStorage.getItem('token');

@@ -160,6 +160,30 @@ export function MessagingProvider({ children }) {
       }
     });
 
+    // Listen for message edits
+    newSocket.on('message-edited', (data) => {
+      console.log('✏️ MessagingContext: Message edited', data);
+      window.dispatchEvent(new CustomEvent('messaging:messageEdited', {
+        detail: data
+      }));
+    });
+
+    // Listen for message deletes
+    newSocket.on('message-deleted', (data) => {
+      console.log('🗑️ MessagingContext: Message deleted', data);
+      window.dispatchEvent(new CustomEvent('messaging:messageDeleted', {
+        detail: data
+      }));
+    });
+
+    // Listen for message reactions
+    newSocket.on('message-reaction', (data) => {
+      console.log('👍 MessagingContext: Message reaction', data);
+      window.dispatchEvent(new CustomEvent('messaging:messageReaction', {
+        detail: data
+      }));
+    });
+
     // Cleanup on unmount
     return () => {
       console.log('🧹 MessagingContext: Cleaning up socket connection');

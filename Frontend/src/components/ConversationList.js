@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { MessagingContext } from '../contexts/MessagingContext';
 import {
   formatTimestamp,
@@ -15,13 +15,15 @@ function ConversationList({
   selectedConversation,
   onSelectConversation,
   onCreateGroup,
-  onOpenChatSettings
+  onOpenChatSettings,
+  getGroupIconSrc
 }) {
   const { onlineUsers } = useContext(MessagingContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPinned, setShowPinned] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [filteredConversations, setFilteredConversations] = useState([]);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     // Filter conversations based on search query
@@ -41,6 +43,23 @@ function ConversationList({
 
     setFilteredConversations(filtered);
   }, [conversations, searchQuery, currentUser]);
+
+  // Handle click outside to close dropdown menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   // Check if user is online
   const isUserOnline = (userId) => {
@@ -78,6 +97,7 @@ function ConversationList({
     const unreadCount = conversation.unreadCount || 0;
     const isOnline = getConversationOnlineStatus(conversation);
     const isSelected = selectedConversation?._id === conversation._id;
+    const isGroup = conversation.type === 'group' || !conversation.isDirectMessage;
 
     return (
       <div
@@ -87,9 +107,13 @@ function ConversationList({
       >
         <div className="conversation-avatar-wrapper">
           <div className="conversation-avatar">
-            {initials}
+            {isGroup && conversation.groupIcon ? (
+              <img src={getGroupIconSrc(conversation.groupIcon)} alt="Group icon" />
+            ) : (
+              initials
+            )}
           </div>
-          {isOnline && <div className="online-indicator"></div>}
+          {!isGroup && isOnline && <div className="online-indicator"></div>}
         </div>
 
         <div className="conversation-info">
@@ -113,10 +137,13 @@ function ConversationList({
       {/* Header */}
       <div className="conversation-list-header">
         <h2 className="header-title">Team Chats</h2>
-        <div className="menu-wrapper">
+        <div className="menu-wrapper" ref={menuRef}>
           <button
             className="menu-button"
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={() => {
+              console.log('Menu button clicked, current state:', showMenu);
+              setShowMenu(!showMenu);
+            }}
             title="Menu"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
