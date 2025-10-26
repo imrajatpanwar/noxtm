@@ -6,6 +6,27 @@ import MessageInput from './MessageInput';
 import ConversationList from './ConversationList';
 import api from '../config/api';
 import './Messaging.css';
+// Group icon PNG imports
+import groupIcon1 from './image/group_icon (1).png';
+import groupIcon2 from './image/group_icon (2).png';
+import groupIcon3 from './image/group_icon (3).png';
+import groupIcon4 from './image/group_icon (4).png';
+import groupIcon5 from './image/group_icon (5).png';
+
+// Available icons for group selection (5 PNG icons)
+const AVAILABLE_ICONS = [
+  { id: 1, name: 'group_icon (1).png', src: groupIcon1, label: 'Icon 1' },
+  { id: 2, name: 'group_icon (2).png', src: groupIcon2, label: 'Icon 2' },
+  { id: 3, name: 'group_icon (3).png', src: groupIcon3, label: 'Icon 3' },
+  { id: 4, name: 'group_icon (4).png', src: groupIcon4, label: 'Icon 4' },
+  { id: 5, name: 'group_icon (5).png', src: groupIcon5, label: 'Icon 5' }
+];
+
+// Helper function to get icon source from filename
+const getGroupIconSrc = (iconName) => {
+  const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
+  return icon ? icon.src : groupIcon1; // Default to first icon if not found
+};
 
 function Messaging() {
   const { socket, onlineUsers, typingUsers, isConnected, emitTypingStart, emitTypingStop } = useContext(MessagingContext);
@@ -20,6 +41,7 @@ function Messaging() {
   // Modal States
   const [showChatSettings, setShowChatSettings] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   // Chat Settings State
   const [chatSettings, setChatSettings] = useState({
@@ -31,7 +53,7 @@ function Messaging() {
   });
 
   // Create Group State
-  const [groupIcon, setGroupIcon] = useState(null);
+  const [groupIcon, setGroupIcon] = useState('group_icon (1).png'); // Stores PNG filename
   const [groupName, setGroupName] = useState('');
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
@@ -130,12 +152,66 @@ function Messaging() {
       });
     };
 
+    // Handle message edit
+    const handleMessageEdit = (data) => {
+      const { conversationId, messageId, content, isEdited, updatedAt } = data;
+
+      // Update message in state if viewing this conversation
+      if (selectedConversation?._id === conversationId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId
+              ? { ...msg, content, isEdited, updatedAt }
+              : msg
+          )
+        );
+      }
+    };
+
+    // Handle message delete
+    const handleMessageDelete = (data) => {
+      const { conversationId, messageId, isDeleted, deletedAt } = data;
+
+      // Update message in state if viewing this conversation
+      if (selectedConversation?._id === conversationId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId
+              ? { ...msg, content: 'This message was deleted', isDeleted, deletedAt }
+              : msg
+          )
+        );
+      }
+    };
+
+    // Handle message reaction
+    const handleMessageReaction = (data) => {
+      const { conversationId, messageId, reactions } = data;
+
+      // Update message in state if viewing this conversation
+      if (selectedConversation?._id === conversationId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId
+              ? { ...msg, reactions }
+              : msg
+          )
+        );
+      }
+    };
+
     socket.on('new-message', handleNewMessage);
+    socket.on('message-edited', handleMessageEdit);
+    socket.on('message-deleted', handleMessageDelete);
+    socket.on('message-reaction', handleMessageReaction);
 
     return () => {
       socket.off('new-message', handleNewMessage);
+      socket.off('message-edited', handleMessageEdit);
+      socket.off('message-deleted', handleMessageDelete);
+      socket.off('message-reaction', handleMessageReaction);
     };
-  }, [socket]);
+  }, [socket, selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -191,6 +267,34 @@ function Messaging() {
     setShowChatSettings(true);
   };
 
+  const handleOpenGroupInfo = () => {
+    if (selectedConversation && (selectedConversation.type === 'group' || !selectedConversation.isDirectMessage)) {
+      setShowGroupInfo(true);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedConversation) return;
+
+    const confirmed = window.confirm('Are you sure you want to delete this group? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/messaging/conversations/${selectedConversation._id}`);
+      toast.success('Group deleted successfully');
+
+      // Clear selected conversation
+      setSelectedConversation(null);
+      setShowGroupInfo(false);
+
+      // Reload conversations
+      loadConversations();
+    } catch (error) {
+      console.error('Delete group error:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete group');
+    }
+  };
+
   const handleToggleSetting = (setting) => {
     const newSettings = {
       ...chatSettings,
@@ -203,17 +307,31 @@ function Messaging() {
 
   const loadAvailableUsers = async () => {
     try {
+      console.log('Loading available users...');
+      console.log('Current user:', currentUser);
+
       const response = await api.get('/users');
       const users = response.data.users || response.data || [];
+      console.log('Fetched users from API:', users.length, users);
 
       // Get current user's company ID
       const currentUserId = currentUser?.id || currentUser?._id;
       const currentUserCompanyId = currentUser?.company?._id || currentUser?.company?.id || currentUser?.companyId;
 
+      console.log('Current User ID:', currentUserId);
+      console.log('Current User Company ID:', currentUserCompanyId);
+
       // Filter users: exclude current user AND only show users from same company
       const filteredUsers = users.filter(user => {
         const userId = user._id || user.id;
         const userCompanyId = user.company?._id || user.company?.id || user.companyId;
+
+        console.log(`Checking user ${user.firstName} ${user.lastName}:`, {
+          userId,
+          userCompanyId,
+          isSameCompany: userCompanyId?.toString() === currentUserCompanyId?.toString(),
+          isCurrentUser: userId?.toString() === currentUserId?.toString()
+        });
 
         // Exclude current user
         if (userId?.toString() === currentUserId?.toString()) {
@@ -229,36 +347,40 @@ function Messaging() {
         return false;
       });
 
+      console.log('Filtered users for group creation:', filteredUsers.length, filteredUsers);
       setAvailableUsers(filteredUsers);
+
+      if (filteredUsers.length === 0) {
+        console.warn('No users available to add to group!');
+      }
     } catch (error) {
       console.error('Error loading users:', error);
+      console.error('Error details:', error.response?.data || error.message);
       toast.error('Failed to load users');
+      setAvailableUsers([]);
     }
   };
 
-  const handleGroupIconUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setGroupIcon(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleSelectIcon = (iconName) => {
+    console.log('Icon selected:', iconName);
+    setGroupIcon(iconName);
   };
 
   const handleToggleMember = (user) => {
+    console.log('Toggle member clicked:', user);
     const userId = user._id || user.id;
     const isSelected = selectedMembers.some(m => (m._id || m.id) === userId);
 
+    console.log('User ID:', userId, 'Is already selected:', isSelected);
+
     if (isSelected) {
-      setSelectedMembers(selectedMembers.filter(m => (m._id || m.id) !== userId));
+      const updatedMembers = selectedMembers.filter(m => (m._id || m.id) !== userId);
+      console.log('Removing member. Updated list:', updatedMembers);
+      setSelectedMembers(updatedMembers);
     } else {
-      setSelectedMembers([...selectedMembers, user]);
+      const updatedMembers = [...selectedMembers, user];
+      console.log('Adding member. Updated list:', updatedMembers);
+      setSelectedMembers(updatedMembers);
     }
   };
 
@@ -276,9 +398,9 @@ function Messaging() {
     try {
       const memberIds = selectedMembers.map(m => m._id || m.id);
       await api.post('/messaging/conversations', {
-        isDirectMessage: false,
+        type: 'group',
         name: groupName,
-        participants: memberIds,
+        participantIds: memberIds,
         groupIcon: groupIcon
       });
 
@@ -286,7 +408,7 @@ function Messaging() {
 
       // Reset form
       setGroupName('');
-      setGroupIcon(null);
+      setGroupIcon('group_icon (1).png'); // Reset to default icon
       setSelectedMembers([]);
       setMemberSearchQuery('');
       setShowCreateGroupModal(false);
@@ -399,6 +521,123 @@ function Messaging() {
     setTypingTimeout(timeout);
   };
 
+  // Handle file upload
+  const handleSendFile = async (file, caption) => {
+    if (!selectedConversation) {
+      toast.error('Please select a conversation first');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (caption) formData.append('content', caption);
+
+      console.log('📎 Uploading file:', file.name);
+
+      const response = await api.post(
+        `/messaging/conversations/${selectedConversation._id}/messages/upload`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      console.log('✅ File uploaded successfully');
+
+      const newMessage = response.data.data || response.data.message;
+      setMessages(prev => [...prev, newMessage]);
+
+      toast.success('File sent successfully');
+    } catch (error) {
+      console.error('❌ File upload error:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload file');
+    }
+  };
+
+  // Handle edit message
+  const handleEditMessage = async (messageId, newContent) => {
+    if (!selectedConversation) return;
+
+    try {
+      console.log('✏️ Editing message:', messageId);
+
+      const response = await api.put(
+        `/messaging/conversations/${selectedConversation._id}/messages/${messageId}`,
+        { content: newContent }
+      );
+
+      console.log('✅ Message edited successfully');
+
+      const updatedMessage = response.data.data || response.data.message;
+
+      // Update message in state
+      setMessages(prev =>
+        prev.map(msg => (msg._id === messageId ? updatedMessage : msg))
+      );
+
+      toast.success('Message edited');
+    } catch (error) {
+      console.error('❌ Edit message error:', error);
+      toast.error(error.response?.data?.message || 'Failed to edit message');
+    }
+  };
+
+  // Handle delete message
+  const handleDeleteMessage = async (messageId) => {
+    if (!selectedConversation) return;
+
+    try {
+      console.log('🗑️ Deleting message:', messageId);
+
+      const response = await api.delete(
+        `/messaging/conversations/${selectedConversation._id}/messages/${messageId}`
+      );
+
+      console.log('✅ Message deleted successfully');
+
+      const deletedMessage = response.data.data || response.data.message;
+
+      // Update message in state (soft delete - mark as deleted)
+      setMessages(prev =>
+        prev.map(msg => (msg._id === messageId ? deletedMessage : msg))
+      );
+
+      toast.success('Message deleted');
+    } catch (error) {
+      console.error('❌ Delete message error:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete message');
+    }
+  };
+
+  // Handle reaction to message
+  const handleReactToMessage = async (messageId, emoji) => {
+    if (!selectedConversation) return;
+
+    try {
+      console.log('👍 Reacting to message:', messageId, emoji);
+
+      const response = await api.post(
+        `/messaging/conversations/${selectedConversation._id}/messages/${messageId}/react`,
+        { emoji }
+      );
+
+      console.log('✅ Reaction added successfully');
+
+      const updatedMessage = response.data.data || response.data.message;
+
+      // Update message in state
+      setMessages(prev =>
+        prev.map(msg => (msg._id === messageId ? updatedMessage : msg))
+      );
+    } catch (error) {
+      console.error('❌ Reaction error:', error);
+      toast.error(error.response?.data?.message || 'Failed to add reaction');
+    }
+  };
+
   const getOtherParticipant = (conversation) => {
     if (!conversation || !currentUser) return null;
 
@@ -439,16 +678,206 @@ function Messaging() {
           onSelectConversation={handleSelectConversation}
           onCreateGroup={handleCreateGroup}
           onOpenChatSettings={handleOpenChatSettings}
+          getGroupIconSrc={getGroupIconSrc}
         />
       </div>
 
       {/* Right Side - Chat Area */}
       <div className="messaging-main">
-        {selectedConversation ? (
+        {showChatSettings ? (
+          /* Chat Settings View */
+          <div className="settings-main-view">
+            <div className="settings-header">
+              <button
+                className="back-button"
+                onClick={() => setShowChatSettings(false)}
+                title="Back"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
+                </svg>
+              </button>
+              <h2>Chat Settings & Privacy</h2>
+            </div>
+
+            <div className="settings-content">
+              {/* Notification Settings */}
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <label>Notification Settings</label>
+                    <p>When a chat arrives you will be notified</p>
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${chatSettings.notifications ? 'active' : ''}`}
+                  onClick={() => handleToggleSetting('notifications')}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
+
+              {/* Data Sharing */}
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                      <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                  </div>
+                  <div>
+                    <label>Data Sharing</label>
+                    <p>Data sharing for business activities</p>
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${chatSettings.dataSharing ? 'active' : ''}`}
+                  onClick={() => handleToggleSetting('dataSharing')}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
+
+              {/* Read Receipts */}
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <div>
+                    <label>Read Receipts</label>
+                    <p>Others can see when you've read their messages</p>
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${chatSettings.readReceipts ? 'active' : ''}`}
+                  onClick={() => handleToggleSetting('readReceipts')}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
+
+              {/* Typing Indicator */}
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                  </div>
+                  <div>
+                    <label>Typing Indicator</label>
+                    <p>Others can see when you're typing</p>
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${chatSettings.typingIndicator ? 'active' : ''}`}
+                  onClick={() => handleToggleSetting('typingIndicator')}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
+
+              {/* Tag */}
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                      <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                  </div>
+                  <div>
+                    <label>Tag</label>
+                    <p>Others can tag you in the group</p>
+                  </div>
+                </div>
+                <button
+                  className={`toggle-switch ${chatSettings.tag ? 'active' : ''}`}
+                  onClick={() => handleToggleSetting('tag')}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : showGroupInfo && selectedConversation && (selectedConversation.type === 'group' || !selectedConversation.isDirectMessage) ? (
+          /* Group Info View */
+          <div className="group-info-view">
+            <div className="group-info-header">
+              <button className="back-button" onClick={() => setShowGroupInfo(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h2>Group Info</h2>
+            </div>
+            <div className="group-info-content">
+              <div className="group-icon-display">
+                {selectedConversation.groupIcon ? (
+                  <img src={getGroupIconSrc(selectedConversation.groupIcon)} alt="Group icon" />
+                ) : (
+                  <div className="default-group-icon">#</div>
+                )}
+              </div>
+              <h3 className="group-name">{selectedConversation.name || 'Group Chat'}</h3>
+
+              <div className="info-section">
+                <h4>Members ({selectedConversation.participants?.length || 0})</h4>
+                <div className="members-grid">
+                  {selectedConversation.participants?.map((participant) => {
+                    const user = participant.user || participant;
+                    return (
+                      <div key={user._id || user.id} className="member-card">
+                        <div className="member-avatar-circle">
+                          {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="member-details">
+                          <p className="member-name">{user.fullName || 'Unknown'}</p>
+                          <p className="member-email">{user.email}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="info-section">
+                <h4>Created</h4>
+                <p className="created-date">
+                  {new Date(selectedConversation.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
+              <button className="delete-group-btn" onClick={handleDeleteGroup}>
+                Delete Group
+              </button>
+            </div>
+          </div>
+        ) : selectedConversation ? (
           <>
             {/* Chat Header */}
             <div className="messaging-header">
-              <div className="chat-header-info">
+              <div
+                className={`chat-header-info ${!selectedConversation.isDirectMessage ? 'clickable' : ''}`}
+                onClick={!selectedConversation.isDirectMessage ? handleOpenGroupInfo : undefined}
+                style={!selectedConversation.isDirectMessage ? { cursor: 'pointer' } : {}}
+              >
                 {selectedConversation.isDirectMessage ? (
                   <>
                     {(() => {
@@ -476,7 +905,13 @@ function Messaging() {
                   </>
                 ) : (
                   <>
-                    <div className="chat-avatar">#</div>
+                    <div className="chat-avatar">
+                      {selectedConversation.groupIcon ? (
+                        <img src={getGroupIconSrc(selectedConversation.groupIcon)} alt="Group icon" />
+                      ) : (
+                        '#'
+                      )}
+                    </div>
                     <div className="chat-header-text">
                       <h3>{selectedConversation.name || 'Group Chat'}</h3>
                       <span className="group-members">
@@ -501,6 +936,10 @@ function Messaging() {
                   currentUserId={currentUser?.id || currentUser?._id}
                   messagesEndRef={messagesEndRef}
                   typingUser={currentTypingUser}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onReactToMessage={handleReactToMessage}
+                  onlineUsers={onlineUsers}
                 />
               )}
             </div>
@@ -509,102 +948,11 @@ function Messaging() {
             <div className="messaging-footer">
               <MessageInput
                 onSendMessage={handleSendMessage}
+                onSendFile={handleSendFile}
                 onTyping={handleTyping}
                 disabled={!selectedConversation}
               />
             </div>
-
-            {/* Chat Settings Panel */}
-            {showChatSettings && (
-              <>
-                <div className="settings-backdrop" onClick={() => setShowChatSettings(false)} />
-                <div className="chat-settings-panel">
-                  <div className="settings-panel-header">
-                    <h3>Chat Setting & Privacy</h3>
-                    <button
-                      className="close-panel-button"
-                      onClick={() => setShowChatSettings(false)}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/>
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="settings-panel-content">
-                    {/* Notification Settings */}
-                    <div className="setting-item">
-                      <div className="setting-info">
-                        <label>Notification Settings</label>
-                        <p>When a chat arrives you will be notified</p>
-                      </div>
-                      <button
-                        className={`toggle-switch ${chatSettings.notifications ? 'active' : ''}`}
-                        onClick={() => handleToggleSetting('notifications')}
-                      >
-                        <span className="toggle-slider" />
-                      </button>
-                    </div>
-
-                    {/* Data Sharing */}
-                    <div className="setting-item">
-                      <div className="setting-info">
-                        <label>Data Sharing</label>
-                        <p>Data sharing for business activities</p>
-                      </div>
-                      <button
-                        className={`toggle-switch ${chatSettings.dataSharing ? 'active' : ''}`}
-                        onClick={() => handleToggleSetting('dataSharing')}
-                      >
-                        <span className="toggle-slider" />
-                      </button>
-                    </div>
-
-                    {/* Read Receipts */}
-                    <div className="setting-item">
-                      <div className="setting-info">
-                        <label>Read Receipts</label>
-                        <p>Others can see when you've read their messages</p>
-                      </div>
-                      <button
-                        className={`toggle-switch ${chatSettings.readReceipts ? 'active' : ''}`}
-                        onClick={() => handleToggleSetting('readReceipts')}
-                      >
-                        <span className="toggle-slider" />
-                      </button>
-                    </div>
-
-                    {/* Typing Indicator */}
-                    <div className="setting-item">
-                      <div className="setting-info">
-                        <label>Typing Indicator</label>
-                        <p>Others can see when you're typing</p>
-                      </div>
-                      <button
-                        className={`toggle-switch ${chatSettings.typingIndicator ? 'active' : ''}`}
-                        onClick={() => handleToggleSetting('typingIndicator')}
-                      >
-                        <span className="toggle-slider" />
-                      </button>
-                    </div>
-
-                    {/* Tag */}
-                    <div className="setting-item">
-                      <div className="setting-info">
-                        <label>Tag</label>
-                        <p>Others can tag you in the group</p>
-                      </div>
-                      <button
-                        className={`toggle-switch ${chatSettings.tag ? 'active' : ''}`}
-                        onClick={() => handleToggleSetting('tag')}
-                      >
-                        <span className="toggle-slider" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
           </>
         ) : (
           <div className="messaging-empty-state">
@@ -641,13 +989,12 @@ function Messaging() {
 
       {/* Create Group Modal */}
       {showCreateGroupModal && (
-        <>
-          <div className="modal-backdrop" onClick={() => setShowCreateGroupModal(false)} />
-          <div className="create-group-modal">
-            <div className="modal-header">
+        <div className="popup-x-msg-backdrop" onClick={() => setShowCreateGroupModal(false)}>
+          <div className="popup-x-msg-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-x-msg-header">
               <h3>Create Group</h3>
               <button
-                className="close-modal-button"
+                className="popup-x-msg-close-button"
                 onClick={() => setShowCreateGroupModal(false)}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -656,42 +1003,30 @@ function Messaging() {
               </button>
             </div>
 
-            <div className="modal-content">
-              {/* Group Icon Upload */}
-              <div className="group-icon-section">
-                <label className="group-icon-label">Group Icon</label>
-                <div className="group-icon-upload">
-                  <input
-                    type="file"
-                    id="group-icon-input"
-                    accept="image/*"
-                    onChange={handleGroupIconUpload}
-                    style={{ display: 'none' }}
-                  />
-                  <label htmlFor="group-icon-input" className="group-icon-preview">
-                    {groupIcon ? (
-                      <img src={groupIcon} alt="Group Icon" />
-                    ) : (
-                      <div className="icon-placeholder">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                      </div>
-                    )}
-                    <div className="edit-icon-overlay">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-                      </svg>
-                    </div>
-                  </label>
+            <div className="popup-x-msg-content">
+              {/* Group Icon Selector */}
+              <div className="popup-x-msg-icon-section">
+                <label className="popup-x-msg-icon-label">Select Group Icon</label>
+                <div className="popup-x-msg-icon-grid">
+                  {AVAILABLE_ICONS.map((icon) => {
+                    const isSelected = groupIcon === icon.name;
+                    return (
+                      <button
+                        key={icon.id}
+                        type="button"
+                        className={`popup-x-msg-icon-option ${isSelected ? 'selected' : ''}`}
+                        onClick={() => handleSelectIcon(icon.name)}
+                        title={icon.label}
+                      >
+                        <img src={icon.src} alt={icon.label} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Group Name */}
-              <div className="form-group">
+              <div className="popup-x-msg-form-group">
                 <label htmlFor="group-name">Group Name</label>
                 <input
                   type="text"
@@ -699,33 +1034,33 @@ function Messaging() {
                   placeholder="Enter group name"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  className="group-name-input"
+                  className="popup-x-msg-input"
                 />
               </div>
 
               {/* Add Members */}
-              <div className="form-group">
+              <div className="popup-x-msg-form-group">
                 <label>Add Members</label>
                 <input
                   type="text"
                   placeholder="Search users..."
                   value={memberSearchQuery}
                   onChange={(e) => setMemberSearchQuery(e.target.value)}
-                  className="member-search-input"
+                  className="popup-x-msg-input"
                 />
               </div>
 
               {/* Selected Members */}
               {selectedMembers.length > 0 && (
-                <div className="selected-members">
+                <div className="popup-x-msg-selected-members">
                   <label>Selected Members ({selectedMembers.length})</label>
-                  <div className="selected-members-list">
+                  <div className="popup-x-msg-selected-list">
                     {selectedMembers.map(member => (
-                      <div key={member._id || member.id} className="selected-member-chip">
+                      <div key={member._id || member.id} className="popup-x-msg-member-chip">
                         <span>{member.fullName || member.email}</span>
                         <button
                           onClick={() => handleToggleMember(member)}
-                          className="remove-member-button"
+                          className="popup-x-msg-remove-btn"
                         >
                           ×
                         </button>
@@ -736,7 +1071,7 @@ function Messaging() {
               )}
 
               {/* Available Users List */}
-              <div className="members-list">
+              <div className="popup-x-msg-members-list">
                 {filteredAvailableUsers.length > 0 ? (
                   filteredAvailableUsers.map(user => {
                     const userId = user._id || user.id;
@@ -745,17 +1080,17 @@ function Messaging() {
                     return (
                       <div
                         key={userId}
-                        className={`member-item ${isSelected ? 'selected' : ''}`}
+                        className={`popup-x-msg-member-item ${isSelected ? 'selected' : ''}`}
                         onClick={() => handleToggleMember(user)}
                       >
-                        <div className="member-avatar">
+                        <div className="popup-x-msg-member-avatar">
                           {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
-                        <div className="member-info">
-                          <div className="member-name">{user.fullName || 'Unknown'}</div>
-                          <div className="member-email">{user.email}</div>
+                        <div className="popup-x-msg-member-info">
+                          <div className="popup-x-msg-member-name">{user.fullName || 'Unknown'}</div>
+                          <div className="popup-x-msg-member-email">{user.email}</div>
                         </div>
-                        <div className="member-checkbox">
+                        <div className="popup-x-msg-member-checkbox">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -767,22 +1102,26 @@ function Messaging() {
                     );
                   })
                 ) : (
-                  <div className="no-users">
-                    {memberSearchQuery ? 'No users found' : 'Loading users...'}
+                  <div className="popup-x-msg-no-users">
+                    {memberSearchQuery
+                      ? 'No users found matching your search'
+                      : availableUsers.length === 0
+                        ? 'No users available. Make sure you have colleagues in your company.'
+                        : 'Loading users...'}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="modal-footer">
+            <div className="popup-x-msg-footer">
               <button
-                className="btn-cancel"
+                className="popup-x-msg-btn-cancel"
                 onClick={() => setShowCreateGroupModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="btn-create-group"
+                className="popup-x-msg-btn-create"
                 onClick={handleCreateGroupSubmit}
                 disabled={!groupName.trim() || selectedMembers.length === 0}
               >
@@ -790,7 +1129,7 @@ function Messaging() {
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
