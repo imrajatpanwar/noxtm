@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiLink } from 'react-icons/fi';
+import { toast } from 'sonner';
 import './WorkspaceSettings.css';
 
 function WorkspaceSettings({ user, onLogout }) {
@@ -17,6 +18,20 @@ function WorkspaceSettings({ user, onLogout }) {
   });
 
   const [editedWorkspace, setEditedWorkspace] = useState({ ...workspaceData });
+
+  // Company members state
+  const [companyMembers, setCompanyMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [companyDetails, setCompanyDetails] = useState(null);
+
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('Member');
+  const [generatingInvite, setGeneratingInvite] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [inviteExpiresAt, setInviteExpiresAt] = useState(null);
   
   // Profile state management
   const [profileData, setProfileData] = useState({
@@ -95,6 +110,174 @@ function WorkspaceSettings({ user, onLogout }) {
       profileImage: ''
     }));
   };
+
+  // Fetch company members
+  const fetchCompanyMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found');
+        setCompanyMembers([]);
+        setLoadingMembers(false);
+        return;
+      }
+
+      console.log('Fetching company members...');
+      const response = await fetch('/api/company/members', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok && data.success) {
+        setCompanyMembers(data.members || []);
+        if (data.companyName) {
+          setWorkspaceData(prev => ({ ...prev, name: data.companyName }));
+        }
+        console.log('Loaded members:', data.members?.length || 0);
+      } else {
+        console.log('No company members:', data.message);
+        setCompanyMembers([]);
+        // Don't show error toast if user simply doesn't have a company
+        if (response.status !== 404) {
+          toast.error(data.message || 'Failed to load company members');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching company members:', error);
+      toast.error('Failed to load company members: ' + error.message);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  // Fetch company details
+  const fetchCompanyDetails = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found for company details');
+        return;
+      }
+
+      console.log('Fetching company details...');
+      const response = await fetch('/api/company/details', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      console.log('Company details response:', data);
+
+      if (response.ok && data.success) {
+        setCompanyDetails(data.company);
+        console.log('Company details loaded:', data.company);
+      } else {
+        console.log('No company details:', data.message);
+        setCompanyDetails(null);
+      }
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      setCompanyDetails(null);
+    }
+  };
+
+  // Generate invite link
+  const handleGenerateInvite = async () => {
+    if (!inviteEmail || !inviteEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setGeneratingInvite(true);
+    try {
+      const response = await fetch('/api/company/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          email: inviteEmail,
+          roleInCompany: inviteRole
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setInviteLink(data.inviteUrl);
+        setInviteExpiresAt(data.expiresAt);
+        toast.success(data.message || 'Invitation created successfully');
+      } else {
+        toast.error(data.message || 'Failed to generate invite link');
+      }
+    } catch (error) {
+      console.error('Error generating invite:', error);
+      toast.error('Failed to generate invite link');
+    } finally {
+      setGeneratingInvite(false);
+    }
+  };
+
+  // Copy invite link to clipboard
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    toast.success('Invite link copied to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Remove member from company
+  const handleRemoveMember = async (memberId, memberName) => {
+    if (!window.confirm(`Are you sure you want to remove ${memberName} from the company?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/company/members/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Member removed successfully');
+        fetchCompanyMembers(); // Refresh the list
+      } else {
+        toast.error(data.message || 'Failed to remove member');
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      toast.error('Failed to remove member');
+    }
+  };
+
+  // Close invite modal
+  const handleCloseInviteModal = () => {
+    setShowInviteModal(false);
+    setInviteEmail('');
+    setInviteRole('Member');
+    setInviteLink('');
+    setCopied(false);
+    setInviteExpiresAt(null);
+  };
+
+  // Load members when Members tab is active
+  useEffect(() => {
+    if (activeTab === 'members') {
+      fetchCompanyMembers();
+      fetchCompanyDetails();
+    }
+  }, [activeTab]);
 
   const renderGeneralSettings = () => (
     <div className="workspace-tab-content">
@@ -230,57 +413,206 @@ function WorkspaceSettings({ user, onLogout }) {
     </div>
   );
 
-  const renderMembersSettings = () => (
-    <div className="workspace-tab-content">
-      <div className="members-header">
-        <h3>👥 Workspace Members</h3>
-        <button className="btn-primary">
-          <FiPlus /> Invite Members
-        </button>
+  const renderMembersSettings = () => {
+    const getInitials = (name) => {
+      if (!name) return '?';
+      const parts = name.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    };
+
+    const isOwnerOrAdmin = () => {
+      // If user doesn't have a company, they can't invite
+      if (!user?.companyId) return false;
+
+      // If we have company details and user is the owner, they can invite
+      if (companyDetails && companyDetails.owner?._id === user._id) {
+        return true;
+      }
+
+      // Check if user is in members list with Owner or Admin role
+      if (companyMembers.length > 0) {
+        const currentUserMember = companyMembers.find(m => m._id === user?._id);
+        if (currentUserMember && ['Owner', 'Admin'].includes(currentUserMember.roleInCompany)) {
+          return true;
+        }
+      }
+
+      // If we have companyId but details haven't loaded yet, show the button
+      // The API will validate permissions anyway
+      return user?.companyId ? true : false;
+    };
+
+    return (
+      <div className="workspace-tab-content">
+        <div className="members-header">
+          <div>
+            <h3>👥 Company Members</h3>
+            {companyDetails && (
+              <p className="members-subtitle">
+                {companyDetails.companyName} • {companyMembers.length} member{companyMembers.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          {isOwnerOrAdmin() && (
+            <button className="btn-primary" onClick={() => setShowInviteModal(true)}>
+              <FiPlus /> Invite Members
+            </button>
+          )}
+        </div>
+
+        {loadingMembers ? (
+          <div className="loading-members">Loading members...</div>
+        ) : !user?.companyId ? (
+          <div className="no-members">
+            <h4>No Company Associated</h4>
+            <p>You need to set up a company first to manage members.</p>
+            <p>Subscribe to the Noxtm plan and complete company setup to get started.</p>
+          </div>
+        ) : companyMembers.length === 0 ? (
+          <div className="no-members">
+            <h4>No Members Yet</h4>
+            <p>Start by inviting team members to your company.</p>
+          </div>
+        ) : (
+          <div className="members-list">
+            {companyMembers.map(member => (
+              <div key={member._id} className="member-item">
+                <div className="member-avatar">
+                  {member.profileImage ? (
+                    <img src={member.profileImage} alt={member.fullName} />
+                  ) : (
+                    getInitials(member.fullName)
+                  )}
+                </div>
+                <div className="member-info">
+                  <div className="member-name">{member.fullName || 'Unknown'}</div>
+                  <div className="member-email">{member.email || 'No email'}</div>
+                </div>
+                <div className="member-role-badge">{member.roleInCompany || 'Member'}</div>
+                <div className={`member-status ${member.status?.toLowerCase() || 'active'}`}>
+                  {member.status || 'Active'}
+                </div>
+                {isOwnerOrAdmin() && member._id !== companyDetails?.owner?._id && (
+                  <button
+                    className="btn-remove"
+                    onClick={() => handleRemoveMember(member._id, member.fullName)}
+                    title="Remove member"
+                  >
+                    <FiTrash2 />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Invite Modal */}
+        {showInviteModal && (
+          <div className="modal-overlay" onClick={handleCloseInviteModal}>
+            <div className="modal-content invite-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><FiMail /> Invite New Member</h3>
+                <button className="btn-close" onClick={handleCloseInviteModal}>
+                  <FiX />
+                </button>
+              </div>
+
+              {!inviteLink ? (
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label className="form-label">Email Address</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      placeholder="colleague@company.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      disabled={generatingInvite}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Role in Company</label>
+                    <select
+                      className="form-select"
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      disabled={generatingInvite}
+                    >
+                      <option value="Member">Member</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                    <p className="form-hint">
+                      Admins can invite and manage other members
+                    </p>
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn-cancel"
+                      onClick={handleCloseInviteModal}
+                      disabled={generatingInvite}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn-primary"
+                      onClick={handleGenerateInvite}
+                      disabled={generatingInvite}
+                    >
+                      {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="modal-body">
+                  <div className="invite-success">
+                    <FiCheck className="success-icon" />
+                    <h4>Invitation Created!</h4>
+                    <p>Share this link with {inviteEmail}</p>
+                  </div>
+
+                  <div className="invite-link-container">
+                    <input
+                      type="text"
+                      className="form-input invite-link-input"
+                      value={inviteLink}
+                      readOnly
+                    />
+                    <button
+                      className={`btn-copy ${copied ? 'copied' : ''}`}
+                      onClick={handleCopyInviteLink}
+                    >
+                      {copied ? <FiCheck /> : <FiCopy />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+
+                  {inviteExpiresAt && (
+                    <p className="invite-expiry">
+                      This link expires on {new Date(inviteExpiresAt).toLocaleDateString()} at {new Date(inviteExpiresAt).toLocaleTimeString()}
+                    </p>
+                  )}
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn-primary full-width"
+                      onClick={handleCloseInviteModal}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-      
-      <div className="members-list">
-        <div className="member-item">
-          <div className="member-avatar">JD</div>
-          <div className="member-info">
-            <div className="member-name">John Doe</div>
-            <div className="member-email">john@noxtm.com</div>
-          </div>
-          <div className="member-role">Admin</div>
-          <div className="member-status active">Active</div>
-          <button className="btn-remove">
-            <FiTrash2 />
-          </button>
-        </div>
-        
-        <div className="member-item">
-          <div className="member-avatar">SM</div>
-          <div className="member-info">
-            <div className="member-name">Sarah Miller</div>
-            <div className="member-email">sarah@noxtm.com</div>
-          </div>
-          <div className="member-role">Project Manager</div>
-          <div className="member-status active">Active</div>
-          <button className="btn-remove">
-            <FiTrash2 />
-          </button>
-        </div>
-        
-        <div className="member-item">
-          <div className="member-avatar">RJ</div>
-          <div className="member-info">
-            <div className="member-name">Robert Johnson</div>
-            <div className="member-email">robert@noxtm.com</div>
-          </div>
-          <div className="member-role">Developer</div>
-          <div className="member-status pending">Pending</div>
-          <button className="btn-remove">
-            <FiTrash2 />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderProfileSettings = () => {
     const getDisplayProfile = () => isEditingProfile ? editedProfile : profileData;

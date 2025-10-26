@@ -12,6 +12,17 @@ const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
+// Email security middleware
+const {
+  verificationEmailLimiter,
+  passwordResetLimiter,
+  invitationEmailLimiter,
+  templateEmailLimiter,
+  globalEmailLimiter
+} = require('./middleware/emailRateLimit');
+const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
+const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -105,9 +116,15 @@ db.once('open', () => {
 // User Schema
 const userSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
+  username: { type: String }, // Optional username
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, required: true, default: 'User' },
+  // Profile fields
+  profileImage: { type: String }, // Base64 or URL to profile image
+  phoneNumber: { type: String },
+  bio: { type: String, maxLength: 500 },
+  lastLogin: { type: Date },
   // Company ID for multi-tenancy (Noxtm users only)
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
   subscription: {
@@ -334,11 +351,15 @@ emailLogSchema.index({ from: 1 });
 
 const EmailLog = mongoose.model('EmailLog', emailLogSchema);
 
+// Initialize email logger with EmailLog model
+initializeEmailLogger(EmailLog);
+
 // Conversation Schema (for messaging system)
 const conversationSchema = new mongoose.Schema({
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
   name: { type: String }, // For group chats
   type: { type: String, enum: ['direct', 'group'], required: true },
+  groupIcon: { type: String }, // For group chats - stores filename like "group_icon (1).png"
   participants: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     joinedAt: { type: Date, default: Date.now },
@@ -375,10 +396,27 @@ const messageSchema = new mongoose.Schema({
   type: { type: String, enum: ['text', 'file', 'image'], default: 'text' },
   fileUrl: { type: String }, // For file/image messages
   fileName: { type: String },
+  fileSize: { type: Number }, // File size in bytes
   readBy: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     readAt: { type: Date, default: Date.now }
   }],
+  deliveredTo: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    deliveredAt: { type: Date, default: Date.now }
+  }],
+  reactions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: { type: String },
+    timestamp: { type: Date, default: Date.now }
+  }],
+  isEdited: { type: Boolean, default: false },
+  editHistory: [{
+    content: { type: String },
+    editedAt: { type: Date, default: Date.now }
+  }],
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -1119,7 +1157,7 @@ app.get('/api/scraped-data', async (req, res) => {
 // });
 
 // Send verification code
-app.post('/api/send-verification-code', async (req, res) => {
+app.post('/api/send-verification-code', verificationEmailLimiter, validateEmailMiddleware('email', false), async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
 
@@ -1206,8 +1244,14 @@ app.post('/api/send-verification-code', async (req, res) => {
     };
 
     try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log('✅ Email sent successfully:', info.messageId);
+      // Use sendAndLogEmail instead of transporter.sendMail directly
+      const info = await sendAndLogEmail(transporter, mailOptions, {
+        userId: null, // No user ID yet (signup)
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        type: 'verification'
+      });
+      console.log('✅ Verification email sent successfully:', info.messageId);
 
       res.status(200).json({
         success: true,
@@ -1215,7 +1259,7 @@ app.post('/api/send-verification-code', async (req, res) => {
         email: email
       });
     } catch (mailError) {
-      console.error('❌ Failed to send email:', mailError);
+      console.error('❌ Failed to send verification email:', mailError);
       throw mailError; // Re-throw to be caught by outer catch
     }
   } catch (error) {
@@ -1354,7 +1398,7 @@ app.post('/api/verify-code', async (req, res) => {
 // ===== FORGOT PASSWORD ROUTES =====
 
 // Send password reset code
-app.post('/api/forgot-password', async (req, res) => {
+app.post('/api/forgot-password', passwordResetLimiter, validateEmailMiddleware('email', false), async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -1434,7 +1478,13 @@ app.post('/api/forgot-password', async (req, res) => {
     };
 
     try {
-      const info = await transporter.sendMail(mailOptions);
+      // Use sendAndLogEmail instead of transporter.sendMail directly
+      const info = await sendAndLogEmail(transporter, mailOptions, {
+        userId: user ? user._id : null,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        type: 'password-reset'
+      });
       console.log('✅ Password reset email sent:', info.messageId);
 
       res.status(200).json({
@@ -1443,7 +1493,7 @@ app.post('/api/forgot-password', async (req, res) => {
         email: email
       });
     } catch (mailError) {
-      console.error('❌ Failed to send email:', mailError);
+      console.error('❌ Failed to send password reset email:', mailError);
       throw mailError;
     }
   } catch (error) {
@@ -1810,6 +1860,411 @@ app.post('/api/company/setup', authenticateToken, async (req, res) => {
   }
 });
 
+// Get company details for current user
+app.get('/api/company/details', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.companyId) {
+      return res.status(404).json({ message: 'No company associated with this user' });
+    }
+
+    const company = await Company.findById(user.companyId)
+      .populate('owner', 'fullName email')
+      .populate('members.user', 'fullName email role profileImage status');
+
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    res.json({
+      success: true,
+      company: {
+        _id: company._id,
+        companyName: company.companyName,
+        industry: company.industry,
+        size: company.size,
+        address: company.address,
+        owner: company.owner,
+        memberCount: company.members.length,
+        subscription: company.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Get company details error:', error);
+    res.status(500).json({
+      message: 'Server error while fetching company details',
+      error: error.message
+    });
+  }
+});
+
+// Get all members of user's company
+app.get('/api/company/members', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.companyId) {
+      return res.status(404).json({
+        message: 'No company associated with this user',
+        members: []
+      });
+    }
+
+    const company = await Company.findById(user.companyId)
+      .populate('members.user', 'fullName email role profileImage status createdAt');
+
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    // Format members data
+    const members = company.members.map(member => ({
+      _id: member.user._id,
+      fullName: member.user.fullName,
+      email: member.user.email,
+      role: member.user.role,
+      roleInCompany: member.roleInCompany,
+      profileImage: member.user.profileImage,
+      status: member.user.status,
+      joinedAt: member.joinedAt,
+      invitedAt: member.invitedAt,
+      createdAt: member.user.createdAt
+    }));
+
+    res.json({
+      success: true,
+      members,
+      total: members.length,
+      companyName: company.companyName
+    });
+  } catch (error) {
+    console.error('Get company members error:', error);
+    res.status(500).json({
+      message: 'Server error while fetching company members',
+      error: error.message
+    });
+  }
+});
+
+// Generate invite link for company
+app.post('/api/company/invite', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { email, roleInCompany } = req.body;
+
+    // Validate inputs
+    if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      return res.status(400).json({ message: 'Valid email is required' });
+    }
+
+    if (!roleInCompany || !['Admin', 'Member'].includes(roleInCompany)) {
+      return res.status(400).json({ message: 'Valid role is required (Admin or Member)' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.companyId) {
+      return res.status(403).json({ message: 'You must be part of a company to invite members' });
+    }
+
+    const company = await Company.findById(user.companyId);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    // Check if user has permission to invite (Owner or Admin)
+    const userMembership = company.members.find(m => m.user.toString() === userId);
+    if (!userMembership || !['Owner', 'Admin'].includes(userMembership.roleInCompany)) {
+      return res.status(403).json({
+        message: 'Only company owners and admins can invite new members'
+      });
+    }
+
+    // Check if user is already a member
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser && existingUser.companyId && existingUser.companyId.toString() === company._id.toString()) {
+      return res.status(400).json({ message: 'This user is already a member of your company' });
+    }
+
+    // Check if there's already a pending invitation
+    const existingInvite = company.invitations.find(
+      inv => inv.email.toLowerCase() === email.toLowerCase() && inv.status === 'pending'
+    );
+
+    if (existingInvite) {
+      // Return existing invite if not expired
+      if (new Date() < existingInvite.expiresAt) {
+        const inviteUrl = `${req.protocol}://${req.get('host')}/invite/${existingInvite.token}`;
+        return res.json({
+          success: true,
+          message: 'An active invitation already exists for this email',
+          inviteToken: existingInvite.token,
+          inviteUrl,
+          expiresAt: existingInvite.expiresAt
+        });
+      } else {
+        // Mark old invite as expired
+        existingInvite.status = 'expired';
+      }
+    }
+
+    // Generate unique token
+    const crypto = require('crypto');
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+
+    // Create invitation
+    company.invitations.push({
+      email: email.toLowerCase(),
+      token: inviteToken,
+      roleInCompany,
+      invitedBy: userId,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      status: 'pending'
+    });
+
+    await company.save();
+
+    // Generate full invite URL
+    const inviteUrl = `${req.protocol}://${req.get('host')}/invite/${inviteToken}`;
+
+    res.json({
+      success: true,
+      message: 'Invitation created successfully',
+      inviteToken,
+      inviteUrl,
+      expiresAt: company.invitations[company.invitations.length - 1].expiresAt
+    });
+  } catch (error) {
+    console.error('Create invitation error:', error);
+    res.status(500).json({
+      message: 'Server error while creating invitation',
+      error: error.message
+    });
+  }
+});
+
+// Get invite details (validate token)
+app.get('/api/company/invite/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const company = await Company.findOne({ 'invitations.token': token })
+      .populate('owner', 'fullName email');
+
+    if (!company) {
+      return res.status(404).json({
+        valid: false,
+        message: 'Invalid invitation link'
+      });
+    }
+
+    const invitation = company.invitations.find(inv => inv.token === token);
+
+    if (!invitation) {
+      return res.status(404).json({
+        valid: false,
+        message: 'Invitation not found'
+      });
+    }
+
+    // Check if expired
+    if (new Date() > invitation.expiresAt) {
+      invitation.status = 'expired';
+      await company.save();
+      return res.status(400).json({
+        valid: false,
+        message: 'This invitation link has expired'
+      });
+    }
+
+    // Check if already accepted
+    if (invitation.status === 'accepted') {
+      return res.status(400).json({
+        valid: false,
+        message: 'This invitation has already been accepted'
+      });
+    }
+
+    res.json({
+      valid: true,
+      invitation: {
+        email: invitation.email,
+        roleInCompany: invitation.roleInCompany,
+        expiresAt: invitation.expiresAt,
+        companyName: company.companyName,
+        industry: company.industry,
+        companyId: company._id
+      }
+    });
+  } catch (error) {
+    console.error('Validate invite error:', error);
+    res.status(500).json({
+      valid: false,
+      message: 'Server error while validating invitation',
+      error: error.message
+    });
+  }
+});
+
+// Accept company invitation
+app.post('/api/company/invite/:token/accept', authenticateToken, async (req, res) => {
+  try {
+    const { token } = req.params;
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const company = await Company.findOne({ 'invitations.token': token });
+    if (!company) {
+      return res.status(404).json({ message: 'Invalid invitation link' });
+    }
+
+    const invitation = company.invitations.find(inv => inv.token === token);
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    // Validate invitation
+    if (new Date() > invitation.expiresAt) {
+      invitation.status = 'expired';
+      await company.save();
+      return res.status(400).json({ message: 'This invitation has expired' });
+    }
+
+    if (invitation.status === 'accepted') {
+      return res.status(400).json({ message: 'This invitation has already been used' });
+    }
+
+    // Check if email matches
+    if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(403).json({
+        message: 'This invitation was sent to a different email address'
+      });
+    }
+
+    // Check if user already has a company
+    if (user.companyId) {
+      return res.status(400).json({
+        message: 'You are already part of a company. Please leave your current company first.'
+      });
+    }
+
+    // Add user to company
+    company.members.push({
+      user: userId,
+      roleInCompany: invitation.roleInCompany,
+      invitedAt: invitation.createdAt,
+      joinedAt: new Date()
+    });
+
+    // Mark invitation as accepted
+    invitation.status = 'accepted';
+    await company.save();
+
+    // Update user with companyId
+    user.companyId = company._id;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Successfully joined the company',
+      company: {
+        _id: company._id,
+        companyName: company.companyName,
+        industry: company.industry
+      }
+    });
+  } catch (error) {
+    console.error('Accept invitation error:', error);
+    res.status(500).json({
+      message: 'Server error while accepting invitation',
+      error: error.message
+    });
+  }
+});
+
+// Remove member from company
+app.delete('/api/company/members/:memberId', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { memberId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.companyId) {
+      return res.status(403).json({ message: 'You are not part of any company' });
+    }
+
+    const company = await Company.findById(user.companyId);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    // Check if user has permission (Owner or Admin)
+    const userMembership = company.members.find(m => m.user.toString() === userId);
+    if (!userMembership || !['Owner', 'Admin'].includes(userMembership.roleInCompany)) {
+      return res.status(403).json({
+        message: 'Only company owners and admins can remove members'
+      });
+    }
+
+    // Prevent removing the owner
+    if (company.owner.toString() === memberId) {
+      return res.status(403).json({
+        message: 'Cannot remove the company owner'
+      });
+    }
+
+    // Remove member from company
+    const memberIndex = company.members.findIndex(m => m.user.toString() === memberId);
+    if (memberIndex === -1) {
+      return res.status(404).json({ message: 'Member not found in company' });
+    }
+
+    company.members.splice(memberIndex, 1);
+    await company.save();
+
+    // Remove companyId from user
+    const memberUser = await User.findById(memberId);
+    if (memberUser) {
+      memberUser.companyId = null;
+      await memberUser.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Member removed successfully'
+    });
+  } catch (error) {
+    console.error('Remove member error:', error);
+    res.status(500).json({
+      message: 'Server error while removing member',
+      error: error.message
+    });
+  }
+});
+
 // Login
 app.post('/api/login', async (req, res) => {
   try {
@@ -2170,6 +2625,223 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
     });
   } catch (error) {
     console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ===== PROFILE MANAGEMENT ROUTES =====
+// Get current user profile
+app.get('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    const user = await User.findById(req.user.userId)
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user profile (own profile)
+app.put('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const { fullName, username, phoneNumber, bio, email } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    // Build update object with only allowed fields
+    const updateData = {
+      updatedAt: new Date()
+    };
+
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (username !== undefined) updateData.username = username;
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    if (bio !== undefined) updateData.bio = bio;
+    if (email !== undefined) {
+      // Check if email is already taken by another user
+      const existingUser = await User.findOne({
+        email,
+        _id: { $ne: req.user.userId }
+      });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+      updateData.email = email;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      updateData,
+      { new: true, runValidators: true }
+    )
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Invalid data provided',
+        details: error.errors
+      });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update profile picture
+app.put('/api/profile/picture', authenticateToken, async (req, res) => {
+  try {
+    const { profileImage } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    if (!profileImage) {
+      return res.status(400).json({ message: 'Profile image is required' });
+    }
+
+    // Validate base64 image (optional - basic check)
+    if (!profileImage.startsWith('data:image/')) {
+      return res.status(400).json({ message: 'Invalid image format' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        profileImage,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile picture updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Update profile picture error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete profile picture
+app.delete('/api/profile/picture', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        profileImage: null,
+        updatedAt: new Date()
+      },
+      { new: true }
+    )
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile picture removed successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Delete profile picture error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Change password
+app.put('/api/profile/password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    user.password = hashedPassword;
+    user.updatedAt = new Date();
+    await user.save();
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
