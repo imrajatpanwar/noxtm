@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import './WorkspaceSettings.css';
 
 function WorkspaceSettings({ user, onLogout }) {
@@ -27,11 +28,20 @@ function WorkspaceSettings({ user, onLogout }) {
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('Member');
+  const [inviteRole, setInviteRole] = useState('Employee');
+  const [inviteDepartment, setInviteDepartment] = useState('Management Team');
+  const [customPermissions, setCustomPermissions] = useState(DEPARTMENT_DEFAULTS['Management Team']);
+  const [showPermissions, setShowPermissions] = useState(false);
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [inviteExpiresAt, setInviteExpiresAt] = useState(null);
+
+  // Edit permissions modal state
+  const [showEditPermissionsModal, setShowEditPermissionsModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [editPermissions, setEditPermissions] = useState({});
+  const [savingPermissions, setSavingPermissions] = useState(false);
   
   // Profile state management
   const [profileData, setProfileData] = useState({
@@ -194,6 +204,11 @@ function WorkspaceSettings({ user, onLogout }) {
       return;
     }
 
+    if (!inviteDepartment) {
+      toast.error('Please select a department');
+      return;
+    }
+
     setGeneratingInvite(true);
     try {
       const response = await fetch('/api/company/invite', {
@@ -204,7 +219,9 @@ function WorkspaceSettings({ user, onLogout }) {
         },
         body: JSON.stringify({
           email: inviteEmail,
-          roleInCompany: inviteRole
+          roleInCompany: inviteRole,
+          department: inviteDepartment,
+          customPermissions: customPermissions
         })
       });
 
@@ -265,10 +282,74 @@ function WorkspaceSettings({ user, onLogout }) {
   const handleCloseInviteModal = () => {
     setShowInviteModal(false);
     setInviteEmail('');
-    setInviteRole('Member');
+    setInviteRole('Employee');
+    setInviteDepartment('Management Team');
+    setCustomPermissions(DEPARTMENT_DEFAULTS['Management Team']);
+    setShowPermissions(false);
     setInviteLink('');
     setCopied(false);
     setInviteExpiresAt(null);
+  };
+
+  // Handle department change - update default permissions
+  const handleDepartmentChange = (department) => {
+    setInviteDepartment(department);
+    setCustomPermissions(DEPARTMENT_DEFAULTS[department] || {});
+  };
+
+  // Handle permission toggle
+  const handlePermissionToggle = (permissionKey) => {
+    setCustomPermissions(prev => ({
+      ...prev,
+      [permissionKey]: !prev[permissionKey]
+    }));
+  };
+
+  // Open edit permissions modal
+  const handleEditMemberPermissions = (member) => {
+    setSelectedMember(member);
+    setEditPermissions(member.permissions || {});
+    setShowEditPermissionsModal(true);
+  };
+
+  // Save edited permissions
+  const handleSavePermissions = async () => {
+    if (!selectedMember) return;
+
+    setSavingPermissions(true);
+    try {
+      const response = await fetch(`/api/company/members/${selectedMember._id}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ permissions: editPermissions })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Permissions updated successfully');
+        setShowEditPermissionsModal(false);
+        fetchCompanyMembers(); // Refresh members list
+      } else {
+        toast.error(data.message || 'Failed to update permissions');
+      }
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast.error('Failed to update permissions');
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  // Toggle edit permission
+  const handleEditPermissionToggle = (permissionKey) => {
+    setEditPermissions(prev => ({
+      ...prev,
+      [permissionKey]: !prev[permissionKey]
+    }));
   };
 
   // Load members when Members tab is active
@@ -490,20 +571,34 @@ function WorkspaceSettings({ user, onLogout }) {
                 <div className="member-info">
                   <div className="member-name">{member.fullName || 'Unknown'}</div>
                   <div className="member-email">{member.email || 'No email'}</div>
+                  {member.department && (
+                    <div className="member-department">{member.department}</div>
+                  )}
                 </div>
-                <div className="member-role-badge">{member.roleInCompany || 'Member'}</div>
+                <div className="member-role-badge">{member.roleInCompany || 'Employee'}</div>
                 <div className={`member-status ${member.status?.toLowerCase() || 'active'}`}>
                   {member.status || 'Active'}
                 </div>
-                {isOwnerOrAdmin() && member._id !== companyDetails?.owner?._id && (
-                  <button
-                    className="btn-remove"
-                    onClick={() => handleRemoveMember(member._id, member.fullName)}
-                    title="Remove member"
-                  >
-                    <FiTrash2 />
-                  </button>
-                )}
+                <div className="member-actions">
+                  {isOwnerOrAdmin() && member._id !== companyDetails?.owner?._id && (
+                    <>
+                      <button
+                        className="btn-edit"
+                        onClick={() => handleEditMemberPermissions(member)}
+                        title="Edit permissions"
+                      >
+                        <FiEdit3 />
+                      </button>
+                      <button
+                        className="btn-remove"
+                        onClick={() => handleRemoveMember(member._id, member.fullName)}
+                        title="Remove member"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -542,12 +637,58 @@ function WorkspaceSettings({ user, onLogout }) {
                       onChange={(e) => setInviteRole(e.target.value)}
                       disabled={generatingInvite}
                     >
-                      <option value="Member">Member</option>
-                      <option value="Admin">Admin</option>
+                      <option value="Employee">Employee</option>
+                      <option value="Manager">Manager</option>
                     </select>
                     <p className="form-hint">
-                      Admins can invite and manage other members
+                      Managers can invite and manage other members
                     </p>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Department</label>
+                    <select
+                      className="form-select"
+                      value={inviteDepartment}
+                      onChange={(e) => handleDepartmentChange(e.target.value)}
+                      disabled={generatingInvite}
+                    >
+                      {DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                    <p className="form-hint">
+                      Default permissions will be set based on department
+                    </p>
+                  </div>
+
+                  <div className="permissions-section">
+                    <div
+                      className="permissions-header"
+                      onClick={() => setShowPermissions(!showPermissions)}
+                    >
+                      <label className="form-label">Custom Permissions (Optional)</label>
+                      {showPermissions ? <FiChevronUp /> : <FiChevronDown />}
+                    </div>
+
+                    {showPermissions && (
+                      <div className="permissions-grid">
+                        {Object.keys(PERMISSION_LABELS).map(key => (
+                          <div key={key} className="permission-checkbox-item">
+                            <input
+                              type="checkbox"
+                              id={`perm-${key}`}
+                              checked={customPermissions[key] || false}
+                              onChange={() => handlePermissionToggle(key)}
+                              disabled={generatingInvite}
+                            />
+                            <label htmlFor={`perm-${key}`}>
+                              {PERMISSION_LABELS[key]}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="modal-actions">
@@ -607,6 +748,63 @@ function WorkspaceSettings({ user, onLogout }) {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Edit Permissions Modal */}
+        {showEditPermissionsModal && selectedMember && (
+          <div className="modal-overlay" onClick={() => setShowEditPermissionsModal(false)}>
+            <div className="modal-content edit-permissions-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><FiShield /> Edit Permissions: {selectedMember.fullName}</h3>
+                <button className="btn-close" onClick={() => setShowEditPermissionsModal(false)}>
+                  <FiX />
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <p className="form-hint">
+                  Department: <strong>{selectedMember.department || 'Not assigned'}</strong>
+                </p>
+                <p className="form-hint">
+                  Role: <strong>{selectedMember.roleInCompany || 'Employee'}</strong>
+                </p>
+
+                <div className="permissions-grid">
+                  {Object.keys(PERMISSION_LABELS).map(key => (
+                    <div key={key} className="permission-checkbox-item">
+                      <input
+                        type="checkbox"
+                        id={`edit-perm-${key}`}
+                        checked={editPermissions[key] || false}
+                        onChange={() => handleEditPermissionToggle(key)}
+                        disabled={savingPermissions}
+                      />
+                      <label htmlFor={`edit-perm-${key}`}>
+                        {PERMISSION_LABELS[key]}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    className="btn-cancel"
+                    onClick={() => setShowEditPermissionsModal(false)}
+                    disabled={savingPermissions}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={handleSavePermissions}
+                    disabled={savingPermissions}
+                  >
+                    {savingPermissions ? 'Saving...' : 'Save Permissions'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
