@@ -715,7 +715,14 @@ function getDefaultPermissions(planOrRole) {
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'uploads', 'blog-images');
+    // Determine upload directory based on the route
+    let uploadDir;
+    if (req.path.includes('profile')) {
+      uploadDir = path.join(__dirname, 'uploads', 'profile-images');
+    } else {
+      uploadDir = path.join(__dirname, 'uploads', 'blog-images');
+    }
+    
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -723,7 +730,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'blog-' + uniqueSuffix + path.extname(file.originalname));
+    const prefix = req.path.includes('profile') ? 'profile-' : 'blog-';
+    cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -2665,7 +2673,9 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user.userId)
+      .populate('companyId', 'companyName')
+      .select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -2677,10 +2687,10 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
     // Debug: Check other users with same companyId
     if (user.companyId) {
       const companyUsers = await User.find({
-        companyId: user.companyId,
+        companyId: user.companyId._id || user.companyId,
         _id: { $ne: user._id }
       }).select('fullName email');
-      console.log(`👥 Users with same companyId (${user.companyId}):`, companyUsers.length);
+      console.log(`👥 Users with same companyId (${user.companyId._id || user.companyId}):`, companyUsers.length);
       companyUsers.forEach(u => console.log(`  - ${u.fullName} (${u.email})`));
     } else {
       console.log('⚠️ User has NO companyId:', user.email);
@@ -2688,6 +2698,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
     res.json({
       id: user._id,
+      _id: user._id,
       fullName: user.fullName,
       email: user.email,
       role: user.role,
@@ -2695,8 +2706,11 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       permissions: normalizedPermissions,
       status: user.status,
       subscription: user.subscription || { plan: 'None', status: 'inactive' },
-      companyId: user.companyId, // Include companyId for invited users
-      createdAt: user.createdAt
+      companyId: user.companyId, // Populated with company details
+      createdAt: user.createdAt,
+      phoneNumber: user.phoneNumber,
+      bio: user.bio,
+      profileImage: user.profileImage
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -3024,6 +3038,62 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
       });
     }
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload profile image (file upload)
+app.post('/api/profile/upload-image', authenticateToken, upload.single('profileImage'), async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'No image file provided' 
+      });
+    }
+
+    // Generate the URL for the uploaded image
+    const imageUrl = `/uploads/profile-images/${req.file.filename}`;
+
+    // Update user's profile image in database
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        profileImage: imageUrl,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile image uploaded successfully',
+      imageUrl: imageUrl,
+      profileImage: imageUrl,
+      user
+    });
+  } catch (error) {
+    console.error('Upload profile image error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error while uploading image',
+      error: error.message 
+    });
   }
 });
 
