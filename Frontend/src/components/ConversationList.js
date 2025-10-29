@@ -20,7 +20,8 @@ function ConversationList({
 }) {
   const { onlineUsers } = useContext(MessagingContext);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showPinned, setShowPinned] = useState(true);
+  const [showGroups, setShowGroups] = useState(true);
+  const [showChats, setShowChats] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [filteredConversations, setFilteredConversations] = useState([]);
   const menuRef = useRef(null);
@@ -85,9 +86,9 @@ function ConversationList({
     return isUserOnline(participantId);
   };
 
-  // Separate pinned and unpinned conversations
-  const pinnedConversations = filteredConversations.filter(conv => conv.isPinned);
-  const unpinnedConversations = filteredConversations.filter(conv => !conv.isPinned);
+  // Separate groups and direct messages
+  const groupConversations = filteredConversations.filter(conv => !conv.isDirectMessage);
+  const directMessageConversations = filteredConversations.filter(conv => conv.isDirectMessage);
 
   const renderConversationItem = (conversation) => {
     const name = getConversationName(conversation, currentUser);
@@ -99,47 +100,102 @@ function ConversationList({
     const isSelected = selectedConversation?._id === conversation._id;
     const isGroup = conversation.type === 'group' || !conversation.isDirectMessage;
 
+    // Debug group icon
+    if (isGroup) {
+      console.log('Group conversation:', {
+        name: conversation.name,
+        type: conversation.type,
+        isDirectMessage: conversation.isDirectMessage,
+        groupIcon: conversation.groupIcon,
+        hasGroupIcon: !!conversation.groupIcon
+      });
+    }
+
+    // Get other participant's profile image for direct messages
+    const currentUserId = currentUser?.id || currentUser?._id;
+    const otherParticipant = conversation.isDirectMessage 
+      ? conversation.participants?.find(p => {
+          const participantId = p._id || p.id || p.user?._id || p.user?.id;
+          return participantId?.toString() !== currentUserId?.toString();
+        })
+      : null;
+    const otherUser = otherParticipant?.user || otherParticipant;
+    
+    // Debug logging
+    console.log('Conversation:', conversation.name || 'Direct Message');
+    console.log('Other user:', otherUser);
+    console.log('Profile image fields:', {
+      profileImage: otherUser?.profileImage,
+      avatarUrl: otherUser?.avatarUrl,
+      image: otherUser?.image,
+      photoUrl: otherUser?.photoUrl
+    });
+    
+    // Get profile image with proper URL construction
+    let profileImage = otherUser?.profileImage || otherUser?.avatarUrl || otherUser?.image || otherUser?.photoUrl;
+    
+    console.log('Selected profile image:', profileImage);
+    
+    // If profile image is a relative path, prepend the API base URL
+    if (profileImage && !profileImage.startsWith('http') && !profileImage.startsWith('data:')) {
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      profileImage = `${apiBaseUrl}${profileImage}`;
+      console.log('Constructed full URL:', profileImage);
+    }
+
     return (
       <div
         key={conversation._id}
-        className={`conversation-item ${isSelected ? 'selected' : ''}`}
+        className={`cl-noxtm-sidepanel-conversation-item ${isGroup ? 'cl-noxtm-group-chat' : 'cl-noxtm-direct-message'} ${isSelected ? 'cl-selected' : ''}`}
         onClick={() => onSelectConversation(conversation)}
       >
-        <div className="conversation-avatar-wrapper">
-          <div className="conversation-avatar">
+        <div className="cl-conversation-avatar-wrapper">
+          <div className={`cl-main-chat-sidebar-conversation-avatar ${!isGroup ? 'cl-user-avatar' : 'cl-group-avatar'}`}>
             {isGroup && conversation.groupIcon ? (
               <img src={getGroupIconSrc(conversation.groupIcon)} alt="Group icon" />
+            ) : !isGroup && profileImage ? (
+              <img
+                src={profileImage}
+                alt={name}
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                onError={(e) => {
+                  console.log('Failed to load profile image:', profileImage);
+                  e.target.style.display = 'none';
+                }}
+              />
             ) : (
               initials
             )}
           </div>
-          {!isGroup && isOnline && <div className="online-indicator"></div>}
+          {!isGroup && isOnline && <div className="cl-online-indicator"></div>}
         </div>
 
-        <div className="conversation-info">
-          <div className="conversation-header">
-            <span className="conversation-name">{name}</span>
-            <span className="conversation-time">{formatTimestamp(timestamp)}</span>
+        <div className="cl-conversation-info">
+          <div className={`${isGroup ? 'cl-conversation-header' : 'cl-dm-conversation-header'}`}>
+            <span className="cl-conversation-name">{name}</span>
+            <span className="cl-conversation-time">{formatTimestamp(timestamp)}</span>
           </div>
-          <div className="conversation-preview">
-            <span className="last-message">{truncateMessage(lastMessage, 35)}</span>
-            {unreadCount > 0 && (
-              <span className="unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-            )}
-          </div>
+          {!isGroup && (
+            <div className="cl-conversation-preview">
+              <span className="cl-last-message">{truncateMessage(lastMessage, 35)}</span>
+              {unreadCount > 0 && (
+                <span className="cl-unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="conversation-list-container">
+    <div className="cl-conversation-list-container">
       {/* Header */}
-      <div className="conversation-list-header">
-        <h2 className="header-title">Team Chats</h2>
-        <div className="menu-wrapper" ref={menuRef}>
+      <div className="cl-conversation-list-header">
+  <h2 className="cl-header-title">Team Direct Messages</h2>
+        <div className="cl-menu-wrapper" ref={menuRef}>
           <button
-            className="menu-button"
+            className="cl-menu-button"
             onClick={() => {
               console.log('Menu button clicked, current state:', showMenu);
               setShowMenu(!showMenu);
@@ -155,9 +211,9 @@ function ConversationList({
 
           {/* Dropdown Menu */}
           {showMenu && (
-            <div className="dropdown-menu">
+            <div className="cl-dropdown-menu">
               <button
-                className="menu-item"
+                className="cl-menu-item"
                 onClick={() => {
                   setShowMenu(false);
                   onCreateGroup();
@@ -169,7 +225,7 @@ function ConversationList({
                 <span>Create Group</span>
               </button>
               <button
-                className="menu-item"
+                className="cl-menu-item"
                 onClick={() => {
                   setShowMenu(false);
                   onOpenChatSettings();
@@ -180,7 +236,7 @@ function ConversationList({
                 </svg>
                 <span>Chat Settings</span>
               </button>
-              <button className="menu-item">
+              <button className="cl-menu-item">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 11V9h2v2H7zm0-4V4h2v3H7z"/>
                 </svg>
@@ -192,9 +248,9 @@ function ConversationList({
       </div>
 
       {/* Search Bar */}
-      <div className="conversation-search">
-        <div className="search-input-wrapper">
-          <svg className="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <div className="cl-noxtm-msg-conversation-search">
+        <div className="cl-noxtm-msg-search-input-wrapper">
+          <svg className="cl-noxtm-msg-search-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
           </svg>
           <input
@@ -202,11 +258,11 @@ function ConversationList({
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
+            className="cl-noxtm-msg-search-input"
           />
           {searchQuery && (
             <button
-              className="clear-search"
+              className="cl-noxtm-msg-clear-search"
               onClick={() => setSearchQuery('')}
             >
               ×
@@ -216,17 +272,17 @@ function ConversationList({
       </div>
 
       {/* Conversations List */}
-      <div className="conversations-scroll">
-        {/* Pinned Chats Section */}
-        {pinnedConversations.length > 0 && (
-          <div className="conversation-section pinned-section">
+      <div className="cl-conversations-scroll">
+        {/* Groups Section */}
+        {groupConversations.length > 0 && (
+          <div className="cl-conversation-section cl-groups-section">
             <div
-              className="section-header"
-              onClick={() => setShowPinned(!showPinned)}
+                className="cl-message-internal cl-section-header"
+              onClick={() => setShowGroups(!showGroups)}
             >
-              <div className="section-header-content">
+              <div className="cl-section-header-content">
                 <svg
-                  className={`chevron-icon ${showPinned ? 'open' : ''}`}
+                  className={`cl-chevron-icon ${showGroups ? 'cl-open' : ''}`}
                   width="12"
                   height="12"
                   viewBox="0 0 12 12"
@@ -234,32 +290,49 @@ function ConversationList({
                 >
                   <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-                <span className="section-title">Pinned Chats</span>
+                <span className="cl-message-group-nox cl-section-title">Groups</span>
               </div>
             </div>
-            {showPinned && (
-              <div className="section-content">
-                {pinnedConversations.map(renderConversationItem)}
+            {showGroups && (
+              <div className="cl-section-content">
+                {groupConversations.map(renderConversationItem)}
               </div>
             )}
           </div>
         )}
 
-        {/* Regular Chats Section */}
-        <div className="conversation-section">
-          <div className="section-content">
-            {unpinnedConversations.length > 0 ? (
-              unpinnedConversations.map(renderConversationItem)
-            ) : (
-              !pinnedConversations.length && (
-                <div className="empty-conversations">
-                  <div className="empty-icon">💬</div>
-                  <p>No conversations yet</p>
-                  <span>Start a new conversation or create a group</span>
-                </div>
-              )
-            )}
+        {/* Direct Messages Section - All Company Members */}
+        <div className="cl-conversation-section cl-chats-section">
+          <div
+              className="cl-message-internal cl-section-header"
+            onClick={() => setShowChats(!showChats)}
+          >
+            <div className="cl-section-header-content">
+              <svg
+                className={`cl-chevron-icon ${showChats ? 'cl-open' : ''}`}
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+              >
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span className="cl-Message-nox-ls-Section-title">Direct Messages</span>
+            </div>
           </div>
+          {showChats && (
+            <div className="cl-section-content">
+              {directMessageConversations.length > 0 ? (
+                directMessageConversations.map(renderConversationItem)
+              ) : (
+                <div className="cl-empty-conversations">
+                  <div className="cl-empty-icon">💬</div>
+                  <p>No direct messages yet</p>
+                  <span>Start a direct message with a team member</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

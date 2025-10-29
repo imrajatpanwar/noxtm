@@ -80,6 +80,17 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Check if NOXTM MAIL should be hidden (for active Noxtm subscription users)
   const shouldHideNoxtmMail = subscription?.plan === 'Noxtm' && subscription?.status === 'active';
 
+  // Check if user has BOTGIT subscription access
+  const hasBotgitSubscription = useMemo(() => {
+    const userSubscription = currentUser?.subscription?.plan;
+    const subscriptionStatus = currentUser?.subscription?.status;
+    
+    // BOTGIT is available for these subscription plans
+    const botgitEnabledPlans = ['Botgit', 'Enterprise', 'Noxtm'];
+    
+    return subscriptionStatus === 'active' && botgitEnabledPlans.includes(userSubscription);
+  }, [currentUser?.subscription]);
+
   // Memoized permission checking to prevent unnecessary re-renders and glitches
   const sectionPermissions = useMemo(() => {
     // For Admin users, grant access to all sections (super-admin)
@@ -97,7 +108,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': true,
         'Workspace Settings': true,
-        'Botgit': true,
+        'Botgit': hasBotgitSubscription, // Require subscription even for Admin
         'Profile': true
       };
     }
@@ -117,7 +128,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': false,
         'Workspace Settings': true,
-        'Botgit': true,
+        'Botgit': hasBotgitSubscription, // Require subscription
         'Profile': true
       };
     }
@@ -137,7 +148,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': false,
         'Settings & Configuration': false,
         'Workspace Settings': false,
-        'Botgit': true,
+        'Botgit': false, // SOLOHQ users don't get BOTGIT (free plan)
         'Profile': true
       };
     }
@@ -157,7 +168,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
         'Workspace Settings': false, // Team Members don't get workspace settings
-        'Botgit': hasPermission(MODULES.PROJECTS), // Botgit tied to projects permission
+        'Botgit': hasPermission(MODULES.PROJECTS) && hasBotgitSubscription, // Require both permission and subscription
         'Profile': true // Profile is available to all users
       };
     }
@@ -176,10 +187,10 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
-      'Botgit': true, // Botgit is available to specific roles
+      'Botgit': hasBotgitSubscription, // Botgit requires active subscription
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role]); // Add currentUser dependencies
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasBotgitSubscription]); // Add hasBotgitSubscription dependency
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -596,14 +607,14 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <span>YouTube</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'x-com' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'x-com' ? 'active' : ''}`}
                       onClick={() => onSectionChange('x-com')}
                     >
                       <FiTwitter className="sidebar-icon" />
                       <span>X.com</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'reddit' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'reddit' ? 'active' : ''}`}
                       onClick={() => onSectionChange('reddit')}
                     >
                       <FiMessageSquare className="sidebar-icon" />
@@ -623,7 +634,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               {/* Email Marketing with Submenu */}
               <div className="sidebar-item-container">
                 <div 
-                  className={`sidebar-item ${activeSection === 'email-marketing' ? 'active' : ''}`}
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'email-marketing' ? 'active' : ''}`}
                   onClick={toggleEmailMarketing}
                 >
                   <FiMail className="sidebar-icon" />
@@ -637,25 +648,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                 {emailMarketingExpanded && (
                   <div className="sidebar-submenu">
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'email-setup' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'email-setup' ? 'active' : ''}`}
                       onClick={() => onSectionChange('email-setup')}
                     >
                       <span>Email Setup</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'campaign-setup' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'campaign-setup' ? 'active' : ''}`}
                       onClick={() => onSectionChange('campaign-setup')}
                     >
                       <span>Campaign Setup</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'email-template' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'email-template' ? 'active' : ''}`}
                       onClick={() => onSectionChange('email-template')}
                     >
                       <span>Create Email Template</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'email-analytics' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'email-analytics' ? 'active' : ''}`}
                       onClick={() => onSectionChange('email-analytics')}
                     >
                       <span>Analytics & Reporting</span>
@@ -665,7 +676,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               </div>
 
               <div 
-                className={`sidebar-item ${activeSection === 'whatsapp-marketing' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'whatsapp-marketing' ? 'active' : ''}`}
                 onClick={() => onSectionChange('whatsapp-marketing')}
               >
                 <FiMessageCircle className="sidebar-icon" />
@@ -673,7 +684,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               </div>
               
               <div 
-                className={`sidebar-item ${activeSection === 'referral-client' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'referral-client' ? 'active' : ''}`}
                 onClick={() => onSectionChange('referral-client')}
               >
                 <FiUserPlus className="sidebar-icon" />
@@ -681,7 +692,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               </div>
               
               <div 
-                className={`sidebar-item ${activeSection === 'case-studies' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'case-studies' ? 'active' : ''}`}
                 onClick={() => onSectionChange('case-studies')}
               >
                 <FiFileText className="sidebar-icon" />
@@ -695,42 +706,42 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">NOXTM MAIL</h4>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-dashboard')}
               >
                 <FiGrid className="sidebar-icon" />
                 <span>Dashboard</span>
               </div>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-accounts' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-accounts' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-accounts')}
               >
                 <FiUsers className="sidebar-icon" />
                 <span>Email Accounts</span>
               </div>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-domains' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-domains' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-domains')}
               >
                 <FiGlobe className="sidebar-icon" />
                 <span>Domains</span>
               </div>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-templates')}
               >
                 <FiFileText className="sidebar-icon" />
                 <span>Email Templates</span>
               </div>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-logs')}
               >
                 <FiActivity className="sidebar-icon" />
                 <span>Email Logs</span>
               </div>
               <div
-                className={`sidebar-item ${activeSection === 'noxtm-mail-audit' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-audit' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-audit')}
               >
                 <FiShield className="sidebar-icon" />
@@ -746,7 +757,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               
               <div className="sidebar-item-container">
                 <div 
-                  className={`sidebar-item ${activeSection === 'hr-management' ? 'active' : ''}`}
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'hr-management' ? 'active' : ''}`}
                   onClick={toggleHrManagement}
                 >
                   <FiUserCheck className="sidebar-icon" />
@@ -762,7 +773,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     {/* HR Management Expandable Submenu */}
                     <div className="sidebar-item-container">
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'hr-management-sub' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-management-sub' ? 'active' : ''}`}
                         onClick={toggleHrManagementSub}
                       >
                         <FiUserCheck className="sidebar-icon" />
@@ -776,25 +787,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                       {hrManagementSubExpanded && (
                         <div className="sidebar-sub-submenu">
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'hr-overview' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'hr-overview' ? 'active' : ''}`}
                             onClick={() => onSectionChange('hr-overview')}
                           >
                             <span>HR Overview</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'interview-management' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'interview-management' ? 'active' : ''}`}
                             onClick={() => onSectionChange('interview-management')}
                           >
                             <span>Interview Management</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'letter-templates' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'letter-templates' ? 'active' : ''}`}
                             onClick={() => onSectionChange('letter-templates')}
                           >
                             <span>Letter Templates</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'hr-manage' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'hr-manage' ? 'active' : ''}`}
                             onClick={() => onSectionChange('hr-manage')}
                           >
                             <span>HR Manage</span>
@@ -806,7 +817,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     {/* Employees Expandable Submenu */}
                     <div className="sidebar-item-container">
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'employees' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'employees' ? 'active' : ''}`}
                         onClick={toggleEmployees}
                       >
                         <FiUser className="sidebar-icon" />
@@ -820,25 +831,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                       {employeesExpanded && (
                         <div className="sidebar-sub-submenu">
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'employee-details' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'employee-details' ? 'active' : ''}`}
                             onClick={() => onSectionChange('employee-details')}
                           >
                             <span>Employee Details</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'attendance-summary' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'attendance-summary' ? 'active' : ''}`}
                             onClick={() => onSectionChange('attendance-summary')}
                           >
                             <span>Attendance Summary</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
                             onClick={() => onSectionChange('holiday-calendar')}
                           >
                             <span>Holiday Calendar</span>
                           </div>
                           <div 
-                            className={`sidebar-item sidebar-sub-subitem ${activeSection === 'incentives' ? 'active' : ''}`}
+                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'incentives' ? 'active' : ''}`}
                             onClick={() => onSectionChange('incentives')}
                           >
                             <span>Incentives</span>
@@ -861,14 +872,14 @@ function Sidebar({ activeSection, onSectionChange }) {
                 // SOLOHQ users see only specific items directly (no expandable menu)
                 <>
                   <div 
-                    className={`sidebar-item ${activeSection === 'billing-payments' ? 'active' : ''}`}
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'billing-payments' ? 'active' : ''}`}
                     onClick={() => onSectionChange('billing-payments')}
                   >
                     <FiDollarSign className="sidebar-icon" />
                     <span>Billing & Payments</span>
                   </div>
                   <div 
-                    className={`sidebar-item ${activeSection === 'invoice-generation' ? 'active' : ''}`}
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'invoice-generation' ? 'active' : ''}`}
                     onClick={() => onSectionChange('invoice-generation')}
                   >
                     <FiFileText className="sidebar-icon" />
@@ -879,7 +890,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                 // Other users see the full expandable menu
                 <div className="sidebar-item-container">
                   <div 
-                    className={`sidebar-item ${activeSection === 'finance-management' ? 'active' : ''}`}
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'finance-management' ? 'active' : ''}`}
                     onClick={toggleFinanceManagement}
                   >
                     <FiDollarSign className="sidebar-icon" />
@@ -893,25 +904,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                   {financeManagementExpanded && (
                     <div className="sidebar-submenu">
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
                         onClick={() => onSectionChange('billing-payments')}
                       >
                         <span>Billing & Payments</span>
                       </div>
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'invoice-generation' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'invoice-generation' ? 'active' : ''}`}
                         onClick={() => onSectionChange('invoice-generation')}
                       >
                         <span>Invoice Generation</span>
                       </div>
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}
                         onClick={() => onSectionChange('payment-records')}
                       >
                         <span>Payment Records</span>
                       </div>
                       <div 
-                        className={`sidebar-item sidebar-subitem ${activeSection === 'expense-management' ? 'active' : ''}`}
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'expense-management' ? 'active' : ''}`}
                         onClick={() => onSectionChange('expense-management')}
                       >
                         <span>Expense Management</span>
@@ -930,7 +941,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               
               <div className="sidebar-item-container">
                 <div 
-                  className={`sidebar-item ${activeSection === 'seo-management' ? 'active' : ''}`}
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'seo-management' ? 'active' : ''}`}
                   onClick={toggleSeoManagement}
                 >
                   <FiActivity className="sidebar-icon" />
@@ -944,25 +955,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                 {seoManagementExpanded && (
                   <div className="sidebar-submenu">
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
                       onClick={() => onSectionChange('website-analytics')}
                     >
                       <span>Website Analytics</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
                       onClick={() => onSectionChange('seo-insights')}
                     >
                       <span>SEO Insights</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
                       onClick={() => onSectionChange('web-settings')}
                     >
                       <span>Web Settings</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
                       onClick={() => onSectionChange('blogs')}
                     >
                       <span>Website Blogs</span>
@@ -980,7 +991,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               
               <div className="sidebar-item-container">
                 <div 
-                  className={`sidebar-item ${activeSection === 'internal-policies' ? 'active' : ''}`}
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'internal-policies' ? 'active' : ''}`}
                   onClick={toggleInternalPolicies}
                 >
                   <FiShield className="sidebar-icon" />
@@ -994,13 +1005,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 {internalPoliciesExpanded && (
                   <div className="sidebar-submenu">
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'company-policies' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'company-policies' ? 'active' : ''}`}
                       onClick={() => onSectionChange('company-policies')}
                     >
                       <span>Company Policies</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'company-handbook' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'company-handbook' ? 'active' : ''}`}
                       onClick={() => onSectionChange('company-handbook')}
                     >
                       <span>Company Handbook</span>
@@ -1018,7 +1029,7 @@ function Sidebar({ activeSection, onSectionChange }) {
               
               <div className="sidebar-item-container">
                 <div 
-                  className={`sidebar-item ${activeSection === 'settings-configuration' ? 'active' : ''}`}
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'settings-configuration' ? 'active' : ''}`}
                   onClick={toggleSettingsConfig}
                 >
                   <FiSettings className="sidebar-icon" />
@@ -1032,19 +1043,19 @@ function Sidebar({ activeSection, onSectionChange }) {
                 {settingsConfigExpanded && (
                   <div className="sidebar-submenu">
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'manage-integrations' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'manage-integrations' ? 'active' : ''}`}
                       onClick={() => onSectionChange('manage-integrations')}
                     >
                       <span>Manage Integrations</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'users-roles' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'users-roles' ? 'active' : ''}`}
                       onClick={() => onSectionChange('users-roles')}
                     >
                       <span>Users & Roles</span>
                     </div>
                     <div 
-                      className={`sidebar-item sidebar-subitem ${activeSection === 'credentials' ? 'active' : ''}`}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'credentials' ? 'active' : ''}`}
                       onClick={() => onSectionChange('credentials')}
                     >
                       <span>Credentials</span>
@@ -1060,14 +1071,14 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">BOTGIT</h4>
               <div 
-                className={`sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
                 onClick={() => onSectionChange('botgit-data')}
               >
                 <FiDatabase className="sidebar-icon" />
                 <span>Scraped Data</span>
               </div>
               <div 
-                className={`sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
                 onClick={() => onSectionChange('botgit-settings')}
               >
                 <FiSliders className="sidebar-icon" />
@@ -1081,7 +1092,7 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">PROFILE</h4>
               <div 
-                className={`sidebar-item ${activeSection === 'profile-settings' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'profile-settings' ? 'active' : ''}`}
                 onClick={() => onSectionChange('profile-settings')}
               >
                 <FiUser className="sidebar-icon" />
@@ -1095,7 +1106,7 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">WORKSPACE</h4>
               <div 
-                className={`sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
                 onClick={() => onSectionChange('workspace-settings')}
               >
                 <FiSettings className="sidebar-icon" />

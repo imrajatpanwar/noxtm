@@ -787,7 +787,7 @@ function initializeRoutes(dependencies) {
         companyId,
         'participants.user': userId
       })
-        .populate('participants.user', 'fullName email')
+        .populate('participants.user', 'fullName email profileImage')
         .populate('lastMessage.sender', 'fullName')
         .populate('createdBy', 'fullName')
         .sort({ updatedAt: -1 });
@@ -817,6 +817,7 @@ function initializeRoutes(dependencies) {
           type: conv.type,
           isDirectMessage, // Add this for frontend compatibility
           name: displayName,
+          groupIcon: conv.groupIcon, // Include group icon
           participants: conv.participants.map(p => ({
             _id: p.user._id,
             id: p.user._id,
@@ -824,11 +825,13 @@ function initializeRoutes(dependencies) {
               _id: p.user._id,
               fullName: p.user.fullName,
               username: p.user.fullName,
-              email: p.user.email
+              email: p.user.email,
+              profileImage: p.user.profileImage
             },
             fullName: p.user.fullName,
             username: p.user.fullName,
-            email: p.user.email
+            email: p.user.email,
+            profileImage: p.user.profileImage
           })),
           lastMessage: conv.lastMessage,
           lastReadAt,
@@ -1185,7 +1188,7 @@ function initializeRoutes(dependencies) {
       }
 
       const messages = await Message.find(query)
-        .populate('sender', 'fullName email')
+        .populate('sender', 'fullName email profileImage')
         .sort({ createdAt: -1 })
         .limit(parseInt(limit));
 
@@ -1290,7 +1293,7 @@ function initializeRoutes(dependencies) {
       await conversation.save();
 
       // Populate sender for response
-      await message.populate('sender', 'fullName email');
+      await message.populate('sender', 'fullName email profileImage');
 
       // Emit real-time message to all participants in the conversation
       if (io) {
@@ -1444,7 +1447,7 @@ function initializeRoutes(dependencies) {
         await conversation.save();
 
         // Populate sender for response
-        await message.populate('sender', 'fullName email');
+        await message.populate('sender', 'fullName email profileImage');
 
         // Emit real-time message
         if (io) {
@@ -1540,7 +1543,7 @@ function initializeRoutes(dependencies) {
         message.updatedAt = new Date();
 
         await message.save();
-        await message.populate('sender', 'fullName email');
+        await message.populate('sender', 'fullName email profileImage');
 
         // Emit real-time update
         if (io) {
@@ -1595,7 +1598,7 @@ function initializeRoutes(dependencies) {
         message.content = 'This message was deleted';
 
         await message.save();
-        await message.populate('sender', 'fullName email');
+        await message.populate('sender', 'fullName email profileImage');
 
         // Emit real-time update
         if (io) {
@@ -1667,7 +1670,7 @@ function initializeRoutes(dependencies) {
         }
 
         await message.save();
-        await message.populate('sender', 'fullName email');
+        await message.populate('sender', 'fullName email profileImage');
 
         // Emit real-time update
         if (io) {

@@ -7,11 +7,11 @@ import ConversationList from './ConversationList';
 import api from '../config/api';
 import './Messaging.css';
 // Group icon PNG imports
-import groupIcon1 from './image/group_icon (1).png';
-import groupIcon2 from './image/group_icon (2).png';
-import groupIcon3 from './image/group_icon (3).png';
-import groupIcon4 from './image/group_icon (4).png';
-import groupIcon5 from './image/group_icon (5).png';
+import groupIcon1 from './image/group-icons/group_icon (1).png';
+import groupIcon2 from './image/group-icons/group_icon (2).png';
+import groupIcon3 from './image/group-icons/group_icon (3).png';
+import groupIcon4 from './image/group-icons/group_icon (4).png';
+import groupIcon5 from './image/group-icons/group_icon (5).png';
 
 // Available icons for group selection (5 PNG icons)
 const AVAILABLE_ICONS = [
