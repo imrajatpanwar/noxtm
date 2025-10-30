@@ -157,30 +157,16 @@ function Messaging() {
       // Update messages if it's for the currently selected conversation
       if (isCurrentConversation) {
         setMessages(prev => {
-          // Check if message already exists by real ID
+          // Check if message already exists by real ID to prevent duplicates
           const messageExists = prev.some(msg => msg._id === data.message._id);
           
-          // If this is our own message, check if we have a pending optimistic message
-          // and replace it instead of adding a duplicate
-          if (isOwnMessage) {
-            const pendingMessageIndex = prev.findIndex(msg => 
-              msg.isPending && 
-              msg.content === data.message.content &&
-              msg.sender._id === data.message.sender._id
-            );
-            
-            if (pendingMessageIndex !== -1) {
-              // Replace pending message with real message
-              const updated = [...prev];
-              updated[pendingMessageIndex] = data.message;
-              return updated;
-            }
+          if (!messageExists) {
+            console.log('➕ Adding new message to conversation');
+            return [...prev, data.message];
+          } else {
+            console.log('⚠️ Message already exists, skipping duplicate');
           }
           
-          // Add message only if it doesn't exist
-          if (!messageExists) {
-            return [...prev, data.message];
-          }
           return prev;
         });
       }
@@ -543,49 +529,24 @@ function Messaging() {
     }
     emitTypingStop(selectedConversation._id, currentUser.id || currentUser._id);
 
-    // Create optimistic message (show immediately)
-    const optimisticMessage = {
-      _id: `temp-${Date.now()}`,
-      content,
-      sender: {
-        _id: currentUser.id || currentUser._id,
-        fullName: currentUser.fullName,
-        email: currentUser.email
-      },
-      createdAt: new Date().toISOString(),
-      isPending: true
-    };
-
-    // Add optimistic message to UI immediately
-    setMessages(prev => [...prev, optimisticMessage]);
-
     try {
       console.log('📤 Sending message:', {
         conversationId: selectedConversation._id,
         content: content.substring(0, 50)
       });
 
+      // Send message to server - don't add locally, let socket event handle it
       const response = await api.post(`/messaging/conversations/${selectedConversation._id}/messages`, {
         content
       });
 
       console.log('✅ Message sent successfully:', response.data);
-
-      const newMessage = response.data.data || response.data.message;
-
-      // Replace optimistic message with real message from API
-      // Note: Socket will also send this message, but our socket handler
-      // will detect it's a duplicate and skip it
-      setMessages(prev =>
-        prev.map(msg =>
-          msg._id === optimisticMessage._id ? { ...newMessage, isPending: false } : msg
-        )
-      );
+      
+      // Message will be added to UI via socket 'new-message' event
+      // No local update needed - prevents duplicates
+      
     } catch (error) {
       console.error('❌ Send message error:', error);
-
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
 
       console.error('Error details:', {
         status: error.response?.status,
