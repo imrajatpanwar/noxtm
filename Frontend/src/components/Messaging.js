@@ -157,7 +157,27 @@ function Messaging() {
       // Update messages if it's for the currently selected conversation
       if (isCurrentConversation) {
         setMessages(prev => {
+          // Check if message already exists by real ID
           const messageExists = prev.some(msg => msg._id === data.message._id);
+          
+          // If this is our own message, check if we have a pending optimistic message
+          // and replace it instead of adding a duplicate
+          if (isOwnMessage) {
+            const pendingMessageIndex = prev.findIndex(msg => 
+              msg.isPending && 
+              msg.content === data.message.content &&
+              msg.sender._id === data.message.sender._id
+            );
+            
+            if (pendingMessageIndex !== -1) {
+              // Replace pending message with real message
+              const updated = [...prev];
+              updated[pendingMessageIndex] = data.message;
+              return updated;
+            }
+          }
+          
+          // Add message only if it doesn't exist
           if (!messageExists) {
             return [...prev, data.message];
           }
@@ -553,10 +573,12 @@ function Messaging() {
 
       const newMessage = response.data.data || response.data.message;
 
-      // Replace optimistic message with real message
+      // Replace optimistic message with real message from API
+      // Note: Socket will also send this message, but our socket handler
+      // will detect it's a duplicate and skip it
       setMessages(prev =>
         prev.map(msg =>
-          msg._id === optimisticMessage._id ? newMessage : msg
+          msg._id === optimisticMessage._id ? { ...newMessage, isPending: false } : msg
         )
       );
     } catch (error) {
