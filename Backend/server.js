@@ -36,14 +36,17 @@ const io = new Server(server, {
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS']
   },
-  // Socket.io transport and stability configuration
-  transports: ['polling', 'websocket'],  // Start with polling, upgrade to WebSocket
-  pingInterval: 25000,          // Send ping every 25 seconds
-  pingTimeout: 60000,            // Wait 60 seconds for pong before disconnect
-  maxHttpBufferSize: 1e6,        // 1MB max buffer size
-  allowEIO3: true,               // Support EIO3 protocol for compatibility
-  connectTimeout: 45000,         // 45 second connection timeout
-  allowUpgrades: true            // Allow upgrading from polling to WebSocket
+  // Optimized Socket.IO configuration for low latency messaging
+  transports: ['websocket', 'polling'],  // Prefer WebSocket first for lower latency
+  pingInterval: 10000,          // Send ping every 10 seconds (faster connection check)
+  pingTimeout: 20000,           // Wait 20 seconds for pong (faster disconnect detection)
+  maxHttpBufferSize: 1e6,       // 1MB max buffer size
+  allowEIO3: true,              // Support EIO3 protocol for compatibility
+  connectTimeout: 10000,        // 10 second connection timeout (faster initial connection)
+  allowUpgrades: true,          // Allow upgrading from polling to WebSocket
+  upgradeTimeout: 3000,         // Upgrade to WebSocket within 3 seconds
+  perMessageDeflate: false,     // Disable compression for lower latency
+  httpCompression: false        // Disable HTTP compression for speed
 });
 
 const PORT = process.env.PORT || 5000;
