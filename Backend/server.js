@@ -2229,7 +2229,8 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
     if (existingInvite) {
       // Return existing invite if not expired
       if (new Date() < existingInvite.expiresAt) {
-        const inviteUrl = `${req.protocol}://${req.get('host')}/invite/${existingInvite.token}`;
+        const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+        const inviteUrl = `${frontendUrl}/invite/${existingInvite.token}`;
         return res.json({
           success: true,
           message: 'An active invitation already exists for this email',
@@ -2265,8 +2266,9 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
 
     await company.save();
 
-    // Generate full invite URL
-    const inviteUrl = `${req.protocol}://${req.get('host')}/invite/${inviteToken}`;
+    // Generate full invite URL using FRONTEND_URL from environment
+    const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    const inviteUrl = `${frontendUrl}/invite/${inviteToken}`;
 
     res.json({
       success: true,
