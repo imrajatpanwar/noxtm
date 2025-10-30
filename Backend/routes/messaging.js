@@ -45,14 +45,26 @@ function initializeRoutes(dependencies) {
 
       // Join conversation room
       socket.on('join-conversation', (conversationId) => {
-        socket.join(`conversation:${conversationId}`);
-        console.log(`User ${socket.id} joined conversation: ${conversationId}`);
+        const roomName = `conversation:${conversationId}`;
+        
+        // Leave all previous conversation rooms first to prevent duplicates
+        const rooms = Array.from(socket.rooms);
+        rooms.forEach(room => {
+          if (room.startsWith('conversation:') && room !== roomName) {
+            socket.leave(room);
+            console.log(`👋 User ${socket.id} left previous conversation: ${room}`);
+          }
+        });
+        
+        // Now join the new conversation room
+        socket.join(roomName);
+        console.log(`✅ User ${socket.id} joined conversation: ${conversationId}`);
       });
 
       // Leave conversation room
       socket.on('leave-conversation', (conversationId) => {
         socket.leave(`conversation:${conversationId}`);
-        console.log(`User ${socket.id} left conversation: ${conversationId}`);
+        console.log(`👋 User ${socket.id} left conversation: ${conversationId}`);
       });
 
       // Typing indicator - start typing
@@ -78,15 +90,15 @@ function initializeRoutes(dependencies) {
         });
       });
 
-      socket.on('disconnect', (reason) => {
-        console.log('User disconnected from messaging:', socket.id);
-        console.log('Disconnect reason:', reason);
-
-        // Find and remove user from online users
+      // Clean up before disconnect to prevent memory leaks
+      socket.on('disconnecting', () => {
+        console.log('🔌 User disconnecting, cleaning up rooms:', Array.from(socket.rooms));
+        
+        // Find user and mark as offline before removing listeners
         for (const [userId, socketId] of onlineUsers.entries()) {
           if (socketId === socket.id) {
             onlineUsers.delete(userId);
-            console.log(`👤 User ${userId} went offline`);
+            console.log(`👤 User ${userId} going offline`);
             // Broadcast to all connected clients
             io.emit('user-status-changed', {
               userId,
@@ -100,6 +112,14 @@ function initializeRoutes(dependencies) {
             break;
           }
         }
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('❌ User disconnected from messaging:', socket.id);
+        console.log('📝 Disconnect reason:', reason);
+        
+        // Remove all listeners to prevent memory leaks
+        socket.removeAllListeners();
       });
     });
   }
@@ -1372,19 +1392,19 @@ function initializeRoutes(dependencies) {
 
         console.log('📡 Broadcasting message to conversation room:', `conversation:${conversationId}`);
 
-        // Broadcast to conversation room AND to all connected clients
-        // This ensures message delivery even if socket temporarily disconnected from room
+        // Broadcast to conversation room - this is the primary delivery method
         io.to(`conversation:${conversationId}`).emit('new-message', messageData);
 
-        // Also emit to all participants directly by their user IDs and update unread counts
+        // Update unread counts for all participants (except sender)
         for (const participant of conversation.participants) {
           const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
           const participantSocketId = onlineUsers.get(participantId.toString());
-          if (participantSocketId) {
-            io.to(participantSocketId).emit('new-message', messageData);
-            console.log(`📨 Message sent directly to user ${participantId}`);
+          
+          // Only update unread count for participants who are NOT the sender
+          if (participantId.toString() !== userId.toString() && participantSocketId) {
+            console.log(`� Updating unread count for user ${participantId}`);
 
-            // Update unread count for this participant (if not the sender)
+            // Update unread count for this participant
             if (participantId.toString() !== userId.toString()) {
               const participantData = conversation.participants.find(
                 p => p.user.toString() === participantId.toString()
