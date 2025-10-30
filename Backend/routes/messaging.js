@@ -1359,19 +1359,10 @@ function initializeRoutes(dependencies) {
       await message.save();
       console.log('✅ Message saved:', message._id);
 
-      // Update conversation's lastMessage
-      conversation.lastMessage = {
-        content: content.trim(),
-        sender: userId,
-        timestamp: message.createdAt
-      };
-      conversation.updatedAt = new Date();
-      await conversation.save();
-
-      // Populate sender for response
+      // Populate sender BEFORE updating conversation (faster response)
       await message.populate('sender', 'fullName email profileImage');
 
-      // Emit real-time message to all participants in the conversation
+      // Emit real-time message IMMEDIATELY to all participants (no wait for conversation update)
       if (io) {
         const messageData = {
           conversationId,
@@ -1427,6 +1418,22 @@ function initializeRoutes(dependencies) {
 
         console.log('✅ Message broadcasted successfully');
       }
+
+      // Update conversation's lastMessage AFTER emitting socket event (non-blocking)
+      // This doesn't delay the real-time message delivery to clients
+      setImmediate(async () => {
+        try {
+          conversation.lastMessage = {
+            content: content.trim(),
+            sender: userId,
+            timestamp: message.createdAt
+          };
+          conversation.updatedAt = new Date();
+          await conversation.save();
+        } catch (err) {
+          console.error('⚠️ Error updating conversation lastMessage:', err);
+        }
+      });
 
       res.status(201).json({
         success: true,
