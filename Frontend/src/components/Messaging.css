@@ -1,7 +1,7 @@
 /* Main Messaging Container */
 .messaging-container {
   display: flex;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 66px);
   background: #f8f9fa;
   overflow: hidden;
 }
@@ -423,7 +423,7 @@
 }
 
 .messaging-header {
-  padding: 20px;
+  padding: 9px;
   border-bottom: 1px solid #e2e8f0;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -819,18 +819,34 @@
   font-size: 20px;
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
 }
 
 .chat-avatar img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  border-radius: 50%;
-  background: #ffffff;
+  object-fit: cover;
+  border-radius: 6px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.chat-avatar .avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+  font-family: 'Switzer', sans-serif;
 }
 
 .chat-avatar.online {
-  border: 3px solid #48bb78;
+  border: 0px solid #48bb78;
 }
 
 .status-dot {
@@ -861,16 +877,27 @@
   }
 }
 
-.chat-header-text h3 {
-  margin: 0 0 4px 0;
+.chat-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1;
+}
+
+.chat-header-name {
+  margin: 0;
   font-size: 18px;
   color: #2d3748;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.2;
+  font-family: 'Switzer', sans-serif;
 }
 
 .user-status {
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  font-family: 'Switzer', sans-serif;
 }
 
 .user-status.online {
@@ -881,6 +908,14 @@
   color: #a0aec0;
 }
 
+.group-members-count {
+  font-size: 13px;
+  color: #718096;
+  font-weight: 500;
+  line-height: 1;
+  font-family: 'Switzer', sans-serif;
+}
+
 /* Message List Styles */
 .messaging-body {
   flex: 1;
@@ -888,23 +923,13 @@
   overflow-x: hidden;
   background: #f8f9fa;
   scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
+/* Hide Scrollbar (Chrome, Safari, Opera) */
 .messaging-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.messaging-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.messaging-body::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 10px;
-}
-
-.messaging-body::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  display: none;
 }
 
 .messaging-empty-state {
@@ -1587,24 +1612,25 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #f8f9fa;
 }
 
 .group-info-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
+  position: relative;
 }
 
 .group-info-header .back-button {
   background: none;
   border: none;
-  padding: 8px;
+  padding: 4px;
   cursor: pointer;
-  color: #000000;
+  color: #1f2937;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1613,33 +1639,77 @@
 }
 
 .group-info-header .back-button:hover {
-  background: #f7fafc;
+  background: #f3f4f6;
 }
 
 .group-info-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: #000000;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1f2937;
+  font-family: 'Switzer', sans-serif;
+  flex: 1;
+}
+
+.group-avatars-cluster {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.cluster-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  border: 2px solid white;
+  margin-left: -8px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.cluster-avatar:first-child {
+  margin-left: 0;
+}
+
+.cluster-avatar.more-count {
+  background: #6b7280;
+  font-size: 11px;
 }
 
 .group-info-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px;
+  padding: 0;
+  background: #f8f9fa;
+}
+
+.group-info-top-section {
+  background: white;
+  padding: 32px 24px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.group-info-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 .group-icon-display {
-  width: 120px;
-  height: 120px;
-  margin-bottom: 16px;
-  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .group-icon-display img {
@@ -1651,111 +1721,176 @@
 .default-group-icon {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 48px;
+  font-size: 32px;
   font-weight: 700;
+  font-family: 'Switzer', sans-serif;
+}
+
+.group-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .group-name {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  color: #000000;
-  margin: 0 0 32px 0;
-  text-align: center;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1f2937;
+  margin: 0;
+  font-family: 'Switzer', sans-serif;
 }
 
-.info-section {
-  width: 100%;
-  max-width: 600px;
-  margin-bottom: 24px;
-  padding: 20px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
+.created-by-text {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+  font-family: 'Switzer', sans-serif;
 }
 
-.info-section h4 {
-  margin: 0 0 16px 0;
+.group-created-date {
+  font-size: 14px;
+  color: #6b7280;
+  font-family: 'Switzer', sans-serif;
+}
+
+.group-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.group-members-title {
   font-size: 16px;
+  font-weight: 400;
+  color: #6b7280;
+  margin: 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.members-count {
   font-weight: 600;
-  color: #000000;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1f2937;
 }
 
-.members-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 12px;
+.edit-group-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Switzer', sans-serif;
 }
 
-.member-card {
+.edit-group-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.edit-group-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.members-list {
+  background: white;
+  padding: 0 24px;
+}
+
+.member-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  background: #f7fafc;
-  border-radius: 8px;
-  transition: all 0.2s;
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.member-card:hover {
-  background: #edf2f7;
+.member-item:last-child {
+  border-bottom: none;
 }
 
 .member-avatar-circle {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #1f2937;
   font-weight: 600;
   font-size: 16px;
   flex-shrink: 0;
+  font-family: 'Switzer', sans-serif;
 }
 
-.member-details {
+.member-info {
   flex: 1;
   min-width: 0;
 }
 
-.member-details .member-name {
-  margin: 0 0 4px 0;
-  font-size: 14px;
+.member-name {
+  margin: 0 0 2px 0;
+  font-size: 15px;
   font-weight: 600;
-  color: #000000;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1f2937;
+  font-family: 'Switzer', sans-serif;
 }
 
-.member-details .member-email {
+.member-email {
   margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  font-family: 'Switzer', sans-serif;
+}
+
+.admin-badge {
+  padding: 4px 12px;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 12px;
   font-size: 12px;
-  color: #718096;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 600;
+  font-family: 'Switzer', sans-serif;
 }
 
-.created-date {
-  margin: 0;
+.delete-group-section {
+  background: white;
+  padding: 24px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.delete-warning {
   font-size: 14px;
-  color: #4a5568;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #6b7280;
+  margin: 0;
+  text-align: center;
+  font-family: 'Switzer', sans-serif;
 }
 
 .delete-group-btn {
   width: 100%;
-  max-width: 600px;
+  max-width: 400px;
   padding: 12px 24px;
-  margin-top: 24px;
-  background: #f56565;
+  background: #dc2626;
   color: white;
   border: none;
   border-radius: 8px;
@@ -1763,13 +1898,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Switzer', sans-serif;
 }
 
 .delete-group-btn:hover {
-  background: #e53e3e;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+  background: #b91c1c;
 }
 
 /* ========================================

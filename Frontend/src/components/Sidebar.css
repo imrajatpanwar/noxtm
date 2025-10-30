@@ -4,14 +4,13 @@
   border-right: 1px solid #e5e7eb;
   padding: 20px 16px 0px;
   position: fixed;
-  height: calc(95vh - 18px);
+  height: calc(94vh - 18px);
   overflow-y: auto;
   top: 60px;
   left: 0;
   z-index: 10;
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -325,21 +324,19 @@
 /* Message badge */
 .sidebar-message-badge {
   margin-left: auto;
-  background: #f3f4f6;
-  color: #374151;
-  min-width: 26px;
-  height: 26px;
+  min-width: 23px;
+  height: 23px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid #ff000057;
+  padding: 0 6px;
   font-size: 12px;
-  font-weight: 700;
-  border: 1px solid #e5e7eb;
+  font-weight: 500;
 }
 
 .Dash-noxtm-sidebar-item .sidebar-message-badge {
-  background: #ffffff;
-  color: #111827;
+  background: #f9dfdf;
+  color: #ff0000;
 }

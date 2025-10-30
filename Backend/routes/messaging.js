@@ -78,8 +78,9 @@ function initializeRoutes(dependencies) {
         });
       });
 
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (reason) => {
         console.log('User disconnected from messaging:', socket.id);
+        console.log('Disconnect reason:', reason);
 
         // Find and remove user from online users
         for (const [userId, socketId] of onlineUsers.entries()) {
@@ -790,10 +791,11 @@ function initializeRoutes(dependencies) {
         .populate('participants.user', 'fullName email profileImage')
         .populate('lastMessage.sender', 'fullName')
         .populate('createdBy', 'fullName')
-        .sort({ updatedAt: -1 });
+        .sort({ updatedAt: -1 })
+        .limit(100);  // ⚡ Load only 100 most recent conversations for performance
 
-      // Format conversations for response
-      const formattedConversations = conversations.map(conv => {
+      // Format conversations for response with unread counts
+      const formattedConversations = await Promise.all(conversations.map(async (conv) => {
         // For direct chats, get the other participant's name
         let displayName = conv.name;
         const isDirectMessage = conv.type === 'direct';
@@ -810,6 +812,13 @@ function initializeRoutes(dependencies) {
           p => p.user._id.toString() === userId.toString()
         );
         const lastReadAt = currentParticipant ? currentParticipant.lastReadAt : new Date(0);
+
+        // Count unread messages (messages created after lastReadAt that are not from current user)
+        const unreadCount = await Message.countDocuments({
+          conversationId: conv._id,
+          createdAt: { $gt: lastReadAt },
+          sender: { $ne: userId }
+        });
 
         return {
           _id: conv._id,
@@ -835,10 +844,11 @@ function initializeRoutes(dependencies) {
           })),
           lastMessage: conv.lastMessage,
           lastReadAt,
+          unreadCount, // Add unread count to response
           createdAt: conv.createdAt,
           updatedAt: conv.updatedAt
         };
-      });
+      }));
 
       res.json({
         conversations: formattedConversations,
@@ -1192,6 +1202,39 @@ function initializeRoutes(dependencies) {
         .sort({ createdAt: -1 })
         .limit(parseInt(limit));
 
+      // Note: Messages are NOT automatically marked as read on fetch
+      // Use the POST /conversations/:conversationId/mark-read endpoint to mark as read
+
+      res.json({
+        messages: messages.reverse(),
+        total: messages.length
+      });
+    } catch (error) {
+      console.error('Get messages error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
+
+  // Mark conversation messages as read
+  router.post('/conversations/:conversationId/mark-read', authenticateToken, requireCompanyAccess, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const companyId = req.companyId;
+      const userId = req.userId;
+
+      // Verify user has access to this conversation
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        companyId,
+        'participants.user': userId
+      });
+
+      if (!conversation) {
+        return res.status(404).json({
+          message: 'Conversation not found or access denied'
+        });
+      }
+
       // Mark messages as read
       await Message.updateMany(
         {
@@ -1221,12 +1264,25 @@ function initializeRoutes(dependencies) {
         }
       );
 
+      // Calculate new unread count (should be 0 after marking as read)
+      const participantData = conversation.participants.find(
+        p => p.user.toString() === userId.toString()
+      );
+      const lastReadAt = new Date();
+
+      const unreadCount = await Message.countDocuments({
+        conversationId: conversation._id,
+        createdAt: { $gt: lastReadAt },
+        sender: { $ne: userId }
+      });
+
       res.json({
-        messages: messages.reverse(),
-        total: messages.length
+        success: true,
+        message: 'Messages marked as read',
+        unreadCount: unreadCount
       });
     } catch (error) {
-      console.error('Get messages error:', error);
+      console.error('Mark as read error:', error);
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   });
@@ -1320,15 +1376,34 @@ function initializeRoutes(dependencies) {
         // This ensures message delivery even if socket temporarily disconnected from room
         io.to(`conversation:${conversationId}`).emit('new-message', messageData);
 
-        // Also emit to all participants directly by their user IDs
-        conversation.participants.forEach(participant => {
-          const participantId = participant._id || participant;
+        // Also emit to all participants directly by their user IDs and update unread counts
+        for (const participant of conversation.participants) {
+          const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
           const participantSocketId = onlineUsers.get(participantId.toString());
           if (participantSocketId) {
             io.to(participantSocketId).emit('new-message', messageData);
             console.log(`📨 Message sent directly to user ${participantId}`);
+
+            // Update unread count for this participant (if not the sender)
+            if (participantId.toString() !== userId.toString()) {
+              const participantData = conversation.participants.find(
+                p => p.user.toString() === participantId.toString()
+              );
+              const lastReadAt = participantData?.lastReadAt || new Date(0);
+
+              const unreadCount = await Message.countDocuments({
+                conversationId: conversation._id,
+                createdAt: { $gt: lastReadAt },
+                sender: { $ne: participantId }
+              });
+
+              io.to(participantSocketId).emit('unread-count-update', {
+                conversationId: conversationId,
+                unreadCount: unreadCount
+              });
+            }
           }
-        });
+        }
 
         console.log('✅ Message broadcasted successfully');
       }
@@ -1473,14 +1548,33 @@ function initializeRoutes(dependencies) {
 
           io.to(`conversation:${conversationId}`).emit('new-message', messageData);
 
-          // Also emit to participants directly
-          conversation.participants.forEach(participant => {
-            const participantId = participant._id || participant;
+          // Also emit to participants directly and update unread counts
+          for (const participant of conversation.participants) {
+            const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
             const participantSocketId = onlineUsers.get(participantId.toString());
             if (participantSocketId) {
               io.to(participantSocketId).emit('new-message', messageData);
+
+              // Update unread count for this participant (if not the sender)
+              if (participantId.toString() !== req.user.userId.toString()) {
+                const participantData = conversation.participants.find(
+                  p => p.user.toString() === participantId.toString()
+                );
+                const lastReadAt = participantData?.lastReadAt || new Date(0);
+
+                const unreadCount = await Message.countDocuments({
+                  conversationId: conversation._id,
+                  createdAt: { $gt: lastReadAt },
+                  sender: { $ne: participantId }
+                });
+
+                io.to(participantSocketId).emit('unread-count-update', {
+                  conversationId: conversationId,
+                  unreadCount: unreadCount
+                });
+              }
             }
-          });
+          }
         }
 
         res.status(201).json({

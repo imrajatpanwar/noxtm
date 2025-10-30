@@ -146,11 +146,11 @@ function ConversationList({
     return (
       <div
         key={conversation._id}
-        className={`cl-noxtm-sidepanel-conversation-item ${isGroup ? 'cl-noxtm-group-chat' : 'cl-noxtm-direct-message'} ${isSelected ? 'cl-selected' : ''}`}
+        className={isGroup ? `cl-noxtm-sidepanel-conversation-item cl-noxtm-group-chat ${isSelected ? 'cl-selected' : ''}` : `cl-noxtm-direct-message-item ${isSelected ? 'cl-dm-selected' : ''}`}
         onClick={() => onSelectConversation(conversation)}
       >
-        <div className="cl-conversation-avatar-wrapper">
-          <div className={`cl-main-chat-sidebar-conversation-avatar ${!isGroup ? 'cl-user-avatar' : 'cl-group-avatar'}`}>
+        <div className={isGroup ? "cl-conversation-avatar-wrapper" : "cl-dm-avatar-wrapper"}>
+          <div className={isGroup ? `cl-main-chat-sidebar-conversation-avatar cl-group-avatar` : `cl-dm-avatar cl-user-avatar`}>
             {isGroup && conversation.groupIcon ? (
               <img src={getGroupIconSrc(conversation.groupIcon)} alt="Group icon" />
             ) : !isGroup && profileImage ? (
@@ -167,7 +167,7 @@ function ConversationList({
               initials
             )}
           </div>
-          {!isGroup && isOnline && <div className="cl-online-indicator"></div>}
+          {!isGroup && isOnline && <div className="cl-dm-online-indicator"></div>}
         </div>
 
         <div className="cl-conversation-info">
@@ -175,14 +175,12 @@ function ConversationList({
             <span className="cl-conversation-name">{name}</span>
             <span className="cl-conversation-time">{formatTimestamp(timestamp)}</span>
           </div>
-          {!isGroup && (
-            <div className="cl-conversation-preview">
-              <span className="cl-last-message">{truncateMessage(lastMessage, 35)}</span>
-              {unreadCount > 0 && (
-                <span className="cl-unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-              )}
-            </div>
-          )}
+          <div className="cl-conversation-preview">
+            <span className="cl-last-message">{truncateMessage(lastMessage, 35)}</span>
+            {unreadCount > 0 && (
+              <span className="cl-unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -12,20 +12,30 @@ import groupIcon2 from './image/group-icons/group_icon (2).png';
 import groupIcon3 from './image/group-icons/group_icon (3).png';
 import groupIcon4 from './image/group-icons/group_icon (4).png';
 import groupIcon5 from './image/group-icons/group_icon (5).png';
+import groupIcon6 from './image/group-icons/group_icon (6).png';
+import groupIcon7 from './image/group-icons/group_icon (7).png';
 
-// Available icons for group selection (5 PNG icons)
+// Available icons for group selection (7 PNG icons)
 const AVAILABLE_ICONS = [
   { id: 1, name: 'group_icon (1).png', src: groupIcon1, label: 'Icon 1' },
   { id: 2, name: 'group_icon (2).png', src: groupIcon2, label: 'Icon 2' },
   { id: 3, name: 'group_icon (3).png', src: groupIcon3, label: 'Icon 3' },
   { id: 4, name: 'group_icon (4).png', src: groupIcon4, label: 'Icon 4' },
-  { id: 5, name: 'group_icon (5).png', src: groupIcon5, label: 'Icon 5' }
+  { id: 5, name: 'group_icon (5).png', src: groupIcon5, label: 'Icon 5' },
+  { id: 6, name: 'group_icon (6).png', src: groupIcon6, label: 'Icon 6' },
+  { id: 7, name: 'group_icon (7).png', src: groupIcon7, label: 'Icon 7' }
 ];
 
 // Helper function to get icon source from filename
 const getGroupIconSrc = (iconName) => {
   const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
   return icon ? icon.src : groupIcon1; // Default to first icon if not found
+};
+
+// Helper function to get random group icon
+const getRandomGroupIcon = () => {
+  const randomIndex = Math.floor(Math.random() * 7) + 1;
+  return `group_icon (${randomIndex}).png`;
 };
 
 function Messaging() {
@@ -61,6 +71,9 @@ function Messaging() {
 
   const messagesEndRef = useRef(null);
   const selectedConversationRef = useRef(null);
+  const currentUserRef = useRef(null);
+  const chatSettingsRef = useRef(chatSettings);
+  const conversationsRef = useRef(conversations);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -111,10 +124,22 @@ function Messaging() {
     };
   }, [selectedConversation, socket]);
 
-  // Update ref when selectedConversation changes
+  // Update refs when selectedConversation or currentUser changes
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  useEffect(() => {
+    chatSettingsRef.current = chatSettings;
+  }, [chatSettings]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   // Listen for new messages from Socket.IO
   useEffect(() => {
@@ -123,8 +148,14 @@ function Messaging() {
     const handleNewMessage = (data) => {
       console.log('📩 New message received:', data);
 
+      const isOwnMessage = data.message.sender._id === currentUserRef.current?._id;
+      const isCurrentConversation = selectedConversationRef.current?._id === data.conversationId;
+
+      // Note: Toast notifications are now handled globally by MessagingContext
+      // This component only updates the UI for the current conversation
+
       // Update messages if it's for the currently selected conversation
-      if (selectedConversationRef.current?._id === data.conversationId) {
+      if (isCurrentConversation) {
         setMessages(prev => {
           const messageExists = prev.some(msg => msg._id === data.message._id);
           if (!messageExists) {
@@ -144,7 +175,11 @@ function Messaging() {
                 content: data.message.content,
                 timestamp: data.message.createdAt,
                 sender: data.message.sender
-              }
+              },
+              // Increment unread count if not viewing this conversation and not own message
+              unreadCount: (!isCurrentConversation && !isOwnMessage)
+                ? (conv.unreadCount || 0) + 1
+                : conv.unreadCount || 0
             };
           }
           return conv;
@@ -157,7 +192,7 @@ function Messaging() {
       const { conversationId, messageId, content, isEdited, updatedAt } = data;
 
       // Update message in state if viewing this conversation
-      if (selectedConversation?._id === conversationId) {
+      if (selectedConversationRef.current?._id === conversationId) {
         setMessages(prev =>
           prev.map(msg =>
             msg._id === messageId
@@ -173,7 +208,7 @@ function Messaging() {
       const { conversationId, messageId, isDeleted, deletedAt } = data;
 
       // Update message in state if viewing this conversation
-      if (selectedConversation?._id === conversationId) {
+      if (selectedConversationRef.current?._id === conversationId) {
         setMessages(prev =>
           prev.map(msg =>
             msg._id === messageId
@@ -189,7 +224,7 @@ function Messaging() {
       const { conversationId, messageId, reactions } = data;
 
       // Update message in state if viewing this conversation
-      if (selectedConversation?._id === conversationId) {
+      if (selectedConversationRef.current?._id === conversationId) {
         setMessages(prev =>
           prev.map(msg =>
             msg._id === messageId
@@ -200,22 +235,46 @@ function Messaging() {
       }
     };
 
+    // Handle unread count update
+    const handleUnreadCountUpdate = (data) => {
+      const { conversationId, unreadCount } = data;
+      console.log('📊 Unread count update received:', data);
+
+      setConversations(prevConversations => {
+        return prevConversations.map(conv => {
+          if (conv._id === conversationId) {
+            return {
+              ...conv,
+              unreadCount: unreadCount
+            };
+          }
+          return conv;
+        });
+      });
+    };
+
     socket.on('new-message', handleNewMessage);
     socket.on('message-edited', handleMessageEdit);
     socket.on('message-deleted', handleMessageDelete);
     socket.on('message-reaction', handleMessageReaction);
+    socket.on('unread-count-update', handleUnreadCountUpdate);
 
     return () => {
       socket.off('new-message', handleNewMessage);
       socket.off('message-edited', handleMessageEdit);
       socket.off('message-deleted', handleMessageDelete);
       socket.off('message-reaction', handleMessageReaction);
+      socket.off('unread-count-update', handleUnreadCountUpdate);
     };
-  }, [socket, selectedConversation]);
+  }, [socket]);
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation._id);
+      // Load messages first
+      loadMessages(selectedConversation._id).then(() => {
+        // Mark conversation as read after messages are loaded and displayed
+        markConversationAsRead(selectedConversation._id);
+      });
 
       // Join conversation room
       if (socket) {
@@ -254,11 +313,40 @@ function Messaging() {
     }
   };
 
+  const markConversationAsRead = async (conversationId) => {
+    try {
+      await api.post(`/messaging/conversations/${conversationId}/mark-read`);
+
+      // Reset unread count in local state after successfully marking as read
+      setConversations(prevConversations => {
+        return prevConversations.map(conv => {
+          if (conv._id === conversationId) {
+            return {
+              ...conv,
+              unreadCount: 0
+            };
+          }
+          return conv;
+        });
+      });
+
+      // Emit event to notify Sidebar to update unread count instantly
+      window.dispatchEvent(new CustomEvent('conversation:markedAsRead', {
+        detail: { conversationId }
+      }));
+    } catch (error) {
+      console.error('Mark as read error:', error);
+    }
+  };
+
   const handleSelectConversation = (conversation) => {
     setSelectedConversation(conversation);
+    // Note: Unread count will be reset when messages are loaded and marked as read
   };
 
   const handleCreateGroup = () => {
+    // Auto-assign random group icon
+    setGroupIcon(getRandomGroupIcon());
     setShowCreateGroupModal(true);
     loadAvailableUsers();
   };
@@ -361,11 +449,6 @@ function Messaging() {
     }
   };
 
-  const handleSelectIcon = (iconName) => {
-    console.log('Icon selected:', iconName);
-    setGroupIcon(iconName);
-  };
-
   const handleToggleMember = (user) => {
     console.log('Toggle member clicked:', user);
     const userId = user._id || user.id;
@@ -408,7 +491,7 @@ function Messaging() {
 
       // Reset form
       setGroupName('');
-      setGroupIcon('group_icon (1).png'); // Reset to default icon
+      setGroupIcon(getRandomGroupIcon()); // Reset to random icon for next use
       setSelectedMembers([]);
       setMemberSearchQuery('');
       setShowCreateGroupModal(false);
@@ -822,51 +905,67 @@ function Messaging() {
               <h2>Group Info</h2>
             </div>
             <div className="group-info-content">
-              <div className="group-icon-display">
-                {selectedConversation.groupIcon ? (
-                  <img src={getGroupIconSrc(selectedConversation.groupIcon)} alt="Group icon" />
-                ) : (
-                  <div className="default-group-icon">#</div>
-                )}
-              </div>
-              <h3 className="group-name">{selectedConversation.name || 'Group Chat'}</h3>
-
-              <div className="info-section">
-                <h4>Members ({selectedConversation.participants?.length || 0})</h4>
-                <div className="members-grid">
-                  {selectedConversation.participants?.map((participant) => {
-                    const user = participant.user || participant;
-                    return (
-                      <div key={user._id || user.id} className="member-card">
-                        <div className="member-avatar-circle">
-                          {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                        </div>
-                        <div className="member-details">
-                          <p className="member-name">{user.fullName || 'Unknown'}</p>
-                          <p className="member-email">{user.email}</p>
-                        </div>
-                      </div>
-                    );
+              <div className="group-info-top-section">
+                <div className="group-info-main">
+                  <div className="group-icon-display">
+                    {selectedConversation.groupIcon ? (
+                      <img src={getGroupIconSrc(selectedConversation.groupIcon)} alt="Group icon" />
+                    ) : (
+                      <div className="default-group-icon">#</div>
+                    )}
+                  </div>
+                  <div className="group-info-text">
+                    <h3 className="group-name">{selectedConversation.name || 'Group Chat'}</h3>
+                    <p className="created-by-text">Created by :</p>
+                  </div>
+                </div>
+                <div className="group-created-date">
+                  {new Date(selectedConversation.createdAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
                   })}
                 </div>
               </div>
 
-              <div className="info-section">
-                <h4>Created</h4>
-                <p className="created-date">
-                  {new Date(selectedConversation.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
+              <div className="group-members-header">
+                <h4 className="group-members-title">
+                  Group Member's : <span className="members-count">{selectedConversation.participants?.length || 0}</span>
+                </h4>
+                <button className="edit-group-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit Group
+                </button>
               </div>
 
-              <button className="delete-group-btn" onClick={handleDeleteGroup}>
-                Delete Group
-              </button>
+              <div className="members-list">
+                {selectedConversation.participants?.map((participant, index) => {
+                  const user = participant.user || participant;
+                  const isAdmin = index === 0; // First user is admin for demo
+                  return (
+                    <div key={user._id || user.id} className="member-item">
+                      <div className="member-avatar-circle">
+                        {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                      <div className="member-info">
+                        <p className="member-name">{user.fullName || 'Unknown'}</p>
+                        <p className="member-email">{user.email}</p>
+                      </div>
+                      {isAdmin && <span className="admin-badge">Admin</span>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="delete-group-section">
+                <p className="delete-warning">Once deleted, all messages and members will be removed permanently.</p>
+                <button className="delete-group-btn" onClick={handleDeleteGroup}>
+                  Delete Group
+                </button>
+              </div>
             </div>
           </div>
         ) : selectedConversation ? (
@@ -884,17 +983,34 @@ function Messaging() {
                       const otherUser = getOtherParticipant(selectedConversation);
                       const userId = otherUser?._id || otherUser?.id;
                       const online = isUserOnline(userId);
+                      
+                      // Get profile image
+                      let profileImage = otherUser?.profileImage || otherUser?.avatarUrl || otherUser?.image || otherUser?.photoUrl;
+                      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                      const apiBaseUrl = isDevelopment ? 'http://localhost:5000' : '';
+                      
+                      if (profileImage && !profileImage.startsWith('http') && !profileImage.startsWith('data:')) {
+                        profileImage = `${apiBaseUrl}${profileImage}`;
+                      }
 
                       return (
                         <>
                           <div className="chat-avatar-container">
                             <div className={`chat-avatar ${online ? 'online' : ''}`}>
-                              {otherUser?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                              {profileImage ? (
+                                <img src={profileImage} alt={otherUser?.fullName} onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }} />
+                              ) : null}
+                              <span className="avatar-fallback" style={{ display: profileImage ? 'none' : 'flex' }}>
+                                {otherUser?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                              </span>
                             </div>
                             <div className={`status-dot ${online ? 'online' : 'offline'}`} />
                           </div>
                           <div className="chat-header-text">
-                            <h3>{otherUser?.fullName || 'Unknown User'}</h3>
+                            <h3 className="chat-header-name">{otherUser?.fullName || 'Unknown User'}</h3>
                             <span className={`user-status ${online ? 'online' : 'offline'}`}>
                               {online ? 'Online' : 'Offline'}
                             </span>
@@ -913,8 +1029,8 @@ function Messaging() {
                       )}
                     </div>
                     <div className="chat-header-text">
-                      <h3>{selectedConversation.name || 'Group Chat'}</h3>
-                      <span className="group-members">
+                      <h3 className="chat-header-name">{selectedConversation.name || 'Group Chat'}</h3>
+                      <span className="group-members-count">
                         {selectedConversation.participants?.length || 0} members
                       </span>
                     </div>
@@ -1004,27 +1120,6 @@ function Messaging() {
             </div>
 
             <div className="popup-x-msg-content">
-              {/* Group Icon Selector */}
-              <div className="popup-x-msg-icon-section">
-                <label className="popup-x-msg-icon-label">Select Group Icon</label>
-                <div className="popup-x-msg-icon-grid">
-                  {AVAILABLE_ICONS.map((icon) => {
-                    const isSelected = groupIcon === icon.name;
-                    return (
-                      <button
-                        key={icon.id}
-                        type="button"
-                        className={`popup-x-msg-icon-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectIcon(icon.name)}
-                        title={icon.label}
-                      >
-                        <img src={icon.src} alt={icon.label} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Group Name */}
               <div className="popup-x-msg-form-group">
                 <label htmlFor="group-name">Group Name</label>

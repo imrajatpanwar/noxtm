@@ -39,6 +39,7 @@
   margin: 0;
   white-space: nowrap;
   min-width: 140px;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cl-menu-wrapper {
@@ -330,25 +331,37 @@
   background: #f3f3f3;
 }
 
-/* Direct Message Specific Styles */
-.cl-noxtm-sidepanel-conversation-item.cl-noxtm-direct-message {
-  background: #ffffff;
-  border-left: 3px solid transparent;
-  padding-left: 8px;
+/* Direct Message Specific Styles - Completely Separate from Groups */
+.cl-noxtm-direct-message-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 9px 6px 6px;
+  margin: 4px 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 6px;
+  background: #f8f5f58a;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.cl-noxtm-sidepanel-conversation-item.cl-noxtm-direct-message:hover {
-  background: #f9fafb;
-  border-left: 3px solid #e2e8f0;
+.cl-noxtm-direct-message-item:hover {
+  background: #f3f3f3;
 }
 
-.cl-noxtm-sidepanel-conversation-item.cl-noxtm-direct-message.cl-selected {
-  background: #f5f5f5;
-  border-left: 3px solid #a0aec0;
+.cl-noxtm-direct-message-item.cl-dm-selected {
+  background: #f3f3f3;
 }
 
-/* Avatar */
+/* Avatar - Group Chat */
 .cl-conversation-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Avatar - Direct Message (Separate Class) */
+.cl-dm-avatar-wrapper {
   position: relative;
   flex-shrink: 0;
 }
@@ -368,12 +381,6 @@
   flex-shrink: 0;
 }
 
-/* User avatars are circular */
-.cl-main-chat-sidebar-conversation-avatar.cl-user-avatar {
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-}
-
 /* Group avatars have rounded corners with gradient */
 /* Removed `.cl-main-chat-sidebar-conversation-avatar.cl-group-avatar` styles per request */
 
@@ -390,6 +397,31 @@
   object-fit: contain;
 }
 
+/* Direct Message Avatar - Completely Separate from Group Avatar */
+.cl-dm-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 2px solid #0000000d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 18px;
+  overflow: hidden;
+  flex-shrink: 0;
+  /* background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); */
+}
+
+.cl-dm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Online Indicator for Groups */
 .cl-online-indicator {
   position: absolute;
   bottom: -2px;
@@ -401,6 +433,18 @@
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgba(72, 187, 120, 0.2);
   animation: cl-onlinePulse 2s ease-in-out infinite;
+}
+
+/* Online Indicator for Direct Messages - Separate Class */
+.cl-dm-online-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #48bb78;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
 }
 
 @keyframes cl-onlinePulse {
@@ -419,6 +463,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 0;
 }
 
 .cl-conversation-header {
@@ -426,7 +471,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  min-height: 32px;
+  min-height: 15px;
 }
 
 .cl-dm-conversation-header {
@@ -469,16 +514,21 @@
 }
 
 .cl-unread-badge {
-  background: #e53e3e;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 20px;
+  background: #ededed;
+  color: #212121;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #b7b7b7;
+  padding: 4px 7px;
+  border-radius: 6px;
+  min-width: 23px;
+  height: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(229, 62, 62, 0.3);
+  font-family: 'Switzer', sans-serif;
 }
 
 /* Empty State */
