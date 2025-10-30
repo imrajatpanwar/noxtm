@@ -11,9 +11,9 @@ const verificationEmailLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  keyGenerator: (req) => {
-    // Rate limit by email address
-    return req.body.email ? req.body.email.toLowerCase() : req.ip;
+  keyGenerator: (req, res) => {
+    // Rate limit by email address, fallback handled by express-rate-limit
+    return req.body.email ? req.body.email.toLowerCase() : undefined;
   },
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for verification email: ${req.body.email || req.ip}`);
@@ -37,9 +37,9 @@ const passwordResetLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit by email address
-    return req.body.email ? req.body.email.toLowerCase() : req.ip;
+  keyGenerator: (req, res) => {
+    // Rate limit by email address, fallback handled by express-rate-limit
+    return req.body.email ? req.body.email.toLowerCase() : undefined;
   },
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for password reset: ${req.body.email || req.ip}`);
@@ -63,9 +63,9 @@ const invitationEmailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit by authenticated user ID
-    return req.user ? req.user.userId.toString() : req.ip;
+  keyGenerator: (req, res) => {
+    // Rate limit by authenticated user ID, fallback handled by express-rate-limit
+    return req.user ? req.user.userId.toString() : undefined;
   },
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for invitation: ${req.user?.userId || req.ip}`);
@@ -89,9 +89,9 @@ const templateEmailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit by authenticated user ID
-    return req.user ? req.user.userId.toString() : req.ip;
+  keyGenerator: (req, res) => {
+    // Rate limit by authenticated user ID, fallback handled by express-rate-limit
+    return req.user ? req.user.userId.toString() : undefined;
   },
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for template email: ${req.user?.userId || req.ip}`);
