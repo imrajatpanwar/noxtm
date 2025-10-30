@@ -1,11 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useContext } from 'react';
 import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiDatabase, FiSliders } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
+import { MessagingContext } from '../contexts/MessagingContext';
 import './Sidebar.css';
-import { useRef } from 'react';
+import api from '../config/api';
 
 function Sidebar({ activeSection, onSectionChange }) {
   const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
+  const { socket } = useContext(MessagingContext);
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
@@ -19,7 +21,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
-  const mountedRef = useRef(true);
 
   // Get current user from RoleContext (always up-to-date)
   const { currentUser: contextCurrentUser } = useRole();
@@ -51,28 +52,87 @@ function Sidebar({ activeSection, onSectionChange }) {
     }
   }, [currentUser]);
 
-  // Listen for messaging events to update unread count
-  useEffect(() => {
-    mountedRef.current = true;
-    const handleNewMsg = (e) => {
-      if (!mountedRef.current) return;
+  // Fetch total unread count from conversations API
+  const fetchTotalUnreadCount = async () => {
+    try {
+      const response = await api.get('/messaging/conversations');
+      const conversations = response.data.conversations || [];
+      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      setMessageUnreadCount(totalUnread);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
 
-      // Only increment badge if user is NOT currently viewing the Message section
-      if (activeSection !== 'message') {
-        console.log('🔔 Incrementing message badge (not on Message page)');
+  // Initial fetch and periodic refresh
+  useEffect(() => {
+    if (currentUser) {
+      fetchTotalUnreadCount();
+    }
+  }, [currentUser]);
+
+  // Listen for socket events to update unread count in real-time
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUnreadCountUpdate = (data) => {
+      console.log('📊 Sidebar received unread-count-update:', data);
+      // Always update unread count when backend sends update
+      fetchTotalUnreadCount();
+    };
+
+    const handleNewMessage = (data) => {
+      console.log('📩 Sidebar received new-message:', data);
+      // Instantly update unread count when new message arrives
+      // This works even if user is not on Message page
+      const currentUserId = currentUser?._id || currentUser?.id;
+      const isOwnMessage = data.message?.sender?._id === currentUserId;
+
+      // Only increment if it's not the current user's own message
+      if (!isOwnMessage) {
+        // Increment badge count immediately for instant feedback
         setMessageUnreadCount(prev => prev + 1);
-      } else {
-        console.log('👁️ User is on Message page, skipping badge increment');
+
+        // Then fetch accurate count from backend
+        setTimeout(() => {
+          fetchTotalUnreadCount();
+        }, 100);
       }
     };
 
-    window.addEventListener('messaging:newMessage', handleNewMsg);
+    socket.on('unread-count-update', handleUnreadCountUpdate);
+    socket.on('new-message', handleNewMessage);
 
     return () => {
-      mountedRef.current = false;
-      window.removeEventListener('messaging:newMessage', handleNewMsg);
+      socket.off('unread-count-update', handleUnreadCountUpdate);
+      socket.off('new-message', handleNewMessage);
     };
+  }, [socket, currentUser]);
+
+  // Reset unread count when user opens the Message section
+  useEffect(() => {
+    if (activeSection === 'message') {
+      // Give it a small delay to let the Messaging component mark messages as read
+      const timer = setTimeout(() => {
+        fetchTotalUnreadCount();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
   }, [activeSection]);
+
+  // Listen for instant updates when conversations are marked as read
+  useEffect(() => {
+    const handleMarkedAsRead = () => {
+      // Instantly refresh unread count when a conversation is marked as read
+      fetchTotalUnreadCount();
+    };
+
+    window.addEventListener('conversation:markedAsRead', handleMarkedAsRead);
+
+    return () => {
+      window.removeEventListener('conversation:markedAsRead', handleMarkedAsRead);
+    };
+  }, []);
 
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
@@ -516,10 +576,9 @@ function Sidebar({ activeSection, onSectionChange }) {
               <h4 className="Dash-noxtm-sidebar-section-title">TEAM COMMUNICATION</h4>
               {!isSOLOHQUser && (
                 <>
-                  <div 
+                  <div
                     className={`Dash-noxtm-sidebar-item ${activeSection === 'message' ? 'active' : ''}`}
                     onClick={() => {
-                      setMessageUnreadCount(0); // clear badge when user opens Message
                       onSectionChange('message');
                     }}
                   >

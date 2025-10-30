@@ -34,8 +34,16 @@ const io = new Server(server, {
       'http://localhost:3001'
     ],
     credentials: true,
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST', 'OPTIONS']
+  },
+  // Socket.io transport and stability configuration
+  transports: ['polling', 'websocket'],  // Start with polling, upgrade to WebSocket
+  pingInterval: 25000,          // Send ping every 25 seconds
+  pingTimeout: 60000,            // Wait 60 seconds for pong before disconnect
+  maxHttpBufferSize: 1e6,        // 1MB max buffer size
+  allowEIO3: true,               // Support EIO3 protocol for compatibility
+  connectTimeout: 45000,         // 45 second connection timeout
+  allowUpgrades: true            // Allow upgrading from polling to WebSocket
 });
 
 const PORT = process.env.PORT || 5000;

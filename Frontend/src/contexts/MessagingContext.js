@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { toast } from 'sonner';
+import axios from 'axios';
+import notificationSound from '../components/assets/notification.mp3';
 
 export const MessagingContext = createContext({
   socket: null,
@@ -26,23 +29,146 @@ export function MessagingProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState({});
   const [isConnected, setIsConnected] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [chatSettings, setChatSettings] = useState({
+    notifications: true,
+    dataSharing: false,
+    readReceipts: true,
+    typingIndicator: true,
+    tag: true
+  });
   const socketRef = useRef(null);
+  const conversationsRef = useRef(conversations);
+  const chatSettingsRef = useRef(chatSettings);
+
+  // Create singleton audio instance for notification sound
+  const [notificationAudio] = useState(() => {
+    const audio = new Audio(notificationSound);
+    audio.volume = 0.5;  // 50% volume
+    audio.preload = 'auto';
+    return audio;
+  });
+
+  // Function to play notification sound
+  const playNotificationSound = useCallback(() => {
+    if (notificationAudio) {
+      notificationAudio.currentTime = 0;  // Reset to start
+      notificationAudio.play().catch(error => {
+        // Silently handle autoplay restrictions
+        console.log('Audio play prevented:', error.message);
+      });
+    }
+  }, [notificationAudio]);
+
+  // Load chat settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('chatSettings');
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+
+      // DEBUG: Log loaded settings
+      console.log('🔧 Loaded chat settings from localStorage:', parsed);
+      console.log('🔧 Notifications enabled?', parsed.notifications);
+
+      // FORCE ENABLE notifications if disabled (for debugging toast issues)
+      if (parsed.notifications === false) {
+        console.warn('⚠️ Notifications were disabled in localStorage. Forcing ON for debugging.');
+        parsed.notifications = true;
+        localStorage.setItem('chatSettings', JSON.stringify(parsed));
+      }
+
+      setChatSettings(parsed);
+      chatSettingsRef.current = parsed;
+    } else {
+      // First time: Save default settings to localStorage
+      const defaultSettings = {
+        notifications: true,
+        dataSharing: false,
+        readReceipts: true,
+        typingIndicator: true,
+        tag: true
+      };
+      console.log('💾 No saved settings found. Using defaults:', defaultSettings);
+      localStorage.setItem('chatSettings', JSON.stringify(defaultSettings));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep refs synchronized
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   useEffect(() => {
-    // Initialize Socket.IO connection
-    const socketUrl = getSocketUrl();
-    console.log('🔌 MessagingContext: Connecting to Socket.IO at:', socketUrl);
+    chatSettingsRef.current = chatSettings;
+  }, [chatSettings]);
 
-    const newSocket = io(socketUrl, {
-      transports: ['polling', 'websocket'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10
-    });
+  // Initialize socket connection IMMEDIATELY for real-time messaging
+  useEffect(() => {
+    const t0 = performance.now();
+    let newSocket = null;
 
-    socketRef.current = newSocket;
-    setSocket(newSocket);
+    const initializeMessaging = async () => {
+      // Step 1: Load cached conversations immediately for instant availability
+      const cachedConversations = localStorage.getItem('cachedConversations');
+      if (cachedConversations) {
+        try {
+          const parsed = JSON.parse(cachedConversations);
+          setConversations(parsed);
+          conversationsRef.current = parsed;
+          console.log(`⚡ [T=${(performance.now() - t0).toFixed(0)}ms] Loaded ${parsed.length} cached conversations`);
+        } catch (e) {
+          console.error('Cache parse error:', e);
+        }
+      }
+
+      // Step 2: Connect socket IMMEDIATELY (don't wait for API!)
+      const socketUrl = getSocketUrl();
+      console.log(`🔌 [T=${(performance.now() - t0).toFixed(0)}ms] Connecting socket immediately...`);
+
+      newSocket = io(socketUrl, {
+        transports: ['polling', 'websocket'],  // ⚡ Start with polling (more stable), upgrade to WebSocket
+        withCredentials: true,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 10,
+        reconnectionDelayMax: 5000,
+        randomizationFactor: 0.5,
+        timeout: 20000,             // 20 second timeout
+        upgrade: true,              // Allow transport upgrades to WebSocket
+        rememberUpgrade: true,      // Cache successful WebSocket connection
+        autoConnect: true           // Connect immediately
+      });
+
+      socketRef.current = newSocket;
+      setSocket(newSocket);
+
+      // Step 3: Load fresh conversations from API (in parallel, non-blocking!)
+      const loadConversationsAsync = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            console.log(`📋 [T=${(performance.now() - t0).toFixed(0)}ms] Fetching conversations (async)...`);
+            const response = await axios.get('/api/messaging/conversations', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.conversations) {
+              setConversations(response.data.conversations);
+              conversationsRef.current = response.data.conversations;
+              // Update cache
+              localStorage.setItem('cachedConversations', JSON.stringify(response.data.conversations));
+              console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Loaded ${response.data.conversations.length} fresh conversations`);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading conversations:', error);
+          // Socket still works even if API fails!
+        }
+      };
+
+      // Start loading conversations in the background (non-blocking)
+      loadConversationsAsync();
 
     const registerUserOnline = () => {
       // Get current user from localStorage
@@ -59,7 +185,7 @@ export function MessagingProvider({ children }) {
     };
 
     newSocket.on('connect', () => {
-      console.log('✅ MessagingContext: Connected to Socket.IO');
+      console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Socket connected! Ready to receive messages 🚀`);
       setIsConnected(true);
       registerUserOnline();
     });
@@ -77,6 +203,15 @@ export function MessagingProvider({ children }) {
       console.log('❌ MessagingContext: Disconnected from Socket.IO. Reason:', reason);
       setIsConnected(false);
       window.dispatchEvent(new CustomEvent('socket:disconnected', { detail: { reason } }));
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('🔴 Socket connection error:', error.message);
+      console.error('Error details:', error);
+    });
+
+    newSocket.on('error', (error) => {
+      console.error('🔴 Socket error:', error);
     });
 
     // Listen for initial online users list
@@ -140,7 +275,7 @@ export function MessagingProvider({ children }) {
       }
     });
 
-    // Listen for new messages (for unread count)
+    // Listen for new messages (for unread count and toast notifications)
     newSocket.on('new-message', (data) => {
       console.log('📩 MessagingContext: New message received', data);
 
@@ -148,13 +283,69 @@ export function MessagingProvider({ children }) {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const currentUserId = (userData.id || userData._id)?.toString();
       const messageSenderId = data.message.sender._id?.toString();
+      const isOwnMessage = currentUserId && messageSenderId && currentUserId === messageSenderId;
+
+      // DEBUG: Log message arrival details
+      console.log('🔍 Debug - Current user ID:', currentUserId);
+      console.log('🔍 Debug - Message sender ID:', messageSenderId);
+      console.log('🔍 Debug - Is own message?', isOwnMessage);
+      console.log('🔍 Debug - Notifications enabled?', chatSettingsRef.current.notifications);
+      console.log('🔍 Debug - Should show toast?', !isOwnMessage && chatSettingsRef.current.notifications);
 
       // Only dispatch if message is NOT from current user
-      if (currentUserId && messageSenderId && currentUserId !== messageSenderId) {
+      if (!isOwnMessage) {
         console.log('📬 Dispatching unread message event for Sidebar badge');
         window.dispatchEvent(new CustomEvent('messaging:newMessage', {
           detail: data
         }));
+
+        // Show toast notification if notifications are enabled
+        if (chatSettingsRef.current.notifications) {
+          console.log('🔔 Showing toast notification for new message');
+
+          // Find the conversation to get its name
+          const conversation = conversationsRef.current.find(c => c._id === data.conversationId);
+
+          // Smart fallback for conversation name:
+          // 1. Try conversation.name (for group chats)
+          // 2. Try to find the other participant's name (for 1-on-1 chats)
+          // 3. Use sender's name directly as fallback
+          // 4. Last resort: "New Message"
+          let conversationName = 'New Message';
+
+          if (conversation?.name) {
+            // Group chat with a name
+            conversationName = conversation.name;
+          } else if (conversation?.participants) {
+            // 1-on-1 chat: find the other person
+            const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
+            if (otherParticipant?.fullName) {
+              conversationName = otherParticipant.fullName;
+            }
+          } else if (data.message.sender?.fullName) {
+            // Fallback: use sender's name directly from the message data
+            conversationName = data.message.sender.fullName;
+          }
+
+          // Truncate message content for preview
+          const messagePreview = data.message.content.length > 50
+            ? data.message.content.substring(0, 50) + '...'
+            : data.message.content;
+
+          // Show toast with sender name and message preview
+          toast.info(
+            `${data.message.sender.fullName}: ${messagePreview}`,
+            {
+              description: conversationName !== data.message.sender.fullName ? `in ${conversationName}` : '',
+              duration: 4000
+            }
+          );
+
+          // Play notification sound
+          playNotificationSound();
+
+          console.log('✅ Toast shown for message from:', data.message.sender.fullName, 'in:', conversationName);
+        }
       } else {
         console.log('📭 Skipping badge update (message from current user)');
       }
@@ -184,6 +375,11 @@ export function MessagingProvider({ children }) {
       }));
     });
 
+    };
+
+    // Initialize everything
+    initializeMessaging();
+
     // Cleanup on unmount
     return () => {
       console.log('🧹 MessagingContext: Cleaning up socket connection');
@@ -191,7 +387,7 @@ export function MessagingProvider({ children }) {
         newSocket.disconnect();
       }
     };
-  }, []);
+  }, [playNotificationSound]);
 
   const incrementUnread = useCallback((by = 1) => {
     setUnreadCount(prev => prev + by);
