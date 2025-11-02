@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import api from './config/api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from 'sonner';
-import { initializeExtension } from './utils/extensionManager';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import Header from './components/Header';
@@ -22,12 +21,14 @@ import BlogPost from './components/BlogPost';
 import BotgitPrivacyPolicy from './components/BotgitPrivacyPolicy';
 import Legal from './components/Legal/Legal';
 import InviteAccept from './components/InviteAccept';
+import ExtensionLogin from './components/ExtensionLogin';
+import ExtensionAuthCallback from './components/ExtensionAuthCallback';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company'];
+  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback'];
 
   // Also hide footer on invite pages
   if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
@@ -42,11 +43,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Initialize Botgit extension connection
-  useEffect(() => {
-    // Initialize extension message handling
-    initializeExtension();
-  }, []);
 
   // Listen for storage changes (when other components update localStorage)
   useEffect(() => {
@@ -278,7 +274,15 @@ function App() {
       <MessagingProvider>
         <Router>
           <div className="App">
-          <Toaster position="top-right" richColors />
+          <Toaster 
+            position="top-right" 
+            richColors 
+            toastOptions={{ 
+              style: { zIndex: 10000 },
+              className: 'toast-notification'
+            }} 
+            style={{ zIndex: 10000 }}
+          />
           <Header user={user} onLogout={logout} />
           <Routes>
             <Route path="/" element={<Home user={user} />} />
@@ -335,6 +339,8 @@ function App() {
             <Route path="/botgit-privacy" element={<BotgitPrivacyPolicy />} />
             <Route path="/legal/*" element={<Legal />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route path="/extension-login" element={<ExtensionLogin />} />
+            <Route path="/extension-auth-callback" element={<ExtensionAuthCallback />} />
           </Routes>
           <ConditionalFooter />
         </div>

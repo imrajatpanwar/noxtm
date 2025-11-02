@@ -144,3 +144,12 @@ code {
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+/* Ensure toast notifications appear above all other elements */
+[data-sonner-toaster] {
+  z-index: 10000 !important;
+}
+
+[data-sonner-toast] {
+  z-index: 10000 !important;
+}
+

@@ -18,8 +18,8 @@ module.exports = {
     env_production: {
       NODE_ENV: 'production',
       PORT: 5000,
-      MONGODB_URI: 'mongodb+srv://noxtmstudio:qWWniMmKtOxnJcm9@cluster0.4jneyth.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
-      JWT_SECRET: 'noxtm-super-secure-jwt-secret-key-2024-production-very-long-and-random',
+      // SECURITY: Credentials loaded from .env file (not version controlled)
+      // MONGODB_URI and JWT_SECRET must be set in Backend/.env on production server
       BCRYPT_ROUNDS: 12
     }
   }]

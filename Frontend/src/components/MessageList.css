@@ -492,8 +492,8 @@
 .reaction-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 5px 10px;
   background: #ffffff;
   border: 1px solid #e5e5e5;
   border-radius: 12px;
@@ -506,6 +506,7 @@
 .reaction-item:hover {
   background: #f5f5f5;
   border-color: #d0d0d0;
+  transform: scale(1.05);
 }
 
 .reaction-item.user-reacted {
@@ -547,51 +548,77 @@
   border-color: #d0d0d0;
 }
 
-/* Reaction Picker */
-.reaction-picker {
+/* Hover Reaction Picker - Shows on message hover */
+.hover-reaction-picker {
   position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 8px;
+  top: -45px;
+  right: 10px;
   background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 2px solid #e0e0e0;
+  border-radius: 30px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   display: flex;
-  gap: 4px;
+  gap: 6px;
   z-index: 100;
-  animation: reactionPickerFadeIn 0.2s ease-out;
+  animation: reactionPickerSlideIn 0.2s ease-out;
 }
 
-@keyframes reactionPickerFadeIn {
+/* SVG Emoji Styling */
+.reaction-emoji-svg {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.reaction-emoji-svg-small {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+@keyframes reactionPickerSlideIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
-.reaction-option {
-  width: 32px;
-  height: 32px;
+.hover-reaction-option {
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
+  border-radius: 50%;
+  transition: all 0.2s ease;
   background: none;
   border: none;
+  padding: 6px;
 }
 
-.reaction-option:hover {
+.hover-reaction-option:hover {
   background: #f5f5f5;
   transform: scale(1.2);
+}
+
+.hover-reaction-option:active {
+  transform: scale(1.05);
+}
+
+/* Message Reactions Display */
+.message-reactions-display {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
 
 /* Read Receipts */

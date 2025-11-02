@@ -82,6 +82,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Email routes
 app.use('/api/email', emailRoutes);
 
+// Extension authentication routes
+const extensionAuthRoutes = require('./routes/extension-auth');
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
@@ -344,6 +347,38 @@ const scrapedDataSchema = new mongoose.Schema({
 scrapedDataSchema.index({ profileUrl: 1 }, { unique: true });
 
 const ScrapedData = mongoose.model('ScrapedData', scrapedDataSchema);
+
+// Lead Schema (Miner Extension integration)
+const leadSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, trim: true },
+  phone: { type: String, trim: true },
+  company: { type: String, trim: true },
+  source: {
+    type: String,
+    enum: ['Website', 'Referral', 'Social Media', 'Email Campaign', 'LinkedIn', 'Miner Extension', 'Other'],
+    default: 'Miner Extension'
+  },
+  status: {
+    type: String,
+    enum: ['New', 'In Progress', 'Qualified', 'Converted', 'Lost'],
+    default: 'New'
+  },
+  notes: { type: String, trim: true },
+  priority: {
+    type: String,
+    enum: ['High', 'Medium', 'Low'],
+    default: 'Medium'
+  },
+  lastContact: { type: Date },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' }
+}, { timestamps: true });
+
+// Index for faster queries by user
+leadSchema.index({ userId: 1, createdAt: -1 });
+
+const Lead = mongoose.model('Lead', leadSchema);
 
 // Email Verification Schema
 const emailVerificationSchema = new mongoose.Schema({
@@ -1202,6 +1237,189 @@ app.get('/api/scraped-data', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// ==================== MINER EXTENSION - LEADS API ====================
+
+// Create a new lead (Miner Extension)
+app.post('/api/leads', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const { name, email, phone, company, source, status, notes, priority } = req.body;
+
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ message: 'Name and email are required' });
+    }
+
+    // Get user from token
+    const userId = req.user.userId;
+
+    // Check if user exists and get companyId
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create new lead
+    const lead = new Lead({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone ? phone.trim() : undefined,
+      company: company ? company.trim() : undefined,
+      source: source || 'Miner Extension',
+      status: status || 'New',
+      notes: notes ? notes.trim() : undefined,
+      priority: priority || 'Medium',
+      userId: userId,
+      companyId: user.companyId || undefined,
+      lastContact: new Date()
+    });
+
+    await lead.save();
+
+    res.status(201).json({
+      message: 'Lead created successfully',
+      lead: lead
+    });
+  } catch (error) {
+    console.error('Lead creation error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all leads for authenticated user
+app.get('/api/leads', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const userId = req.user.userId;
+    const { page = 1, limit = 100, status, source } = req.query;
+
+    // Build query filter
+    const filter = { userId };
+    if (status) filter.status = status;
+    if (source) filter.source = source;
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get total count and leads
+    const total = await Lead.countDocuments(filter);
+    const leads = await Lead.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    res.json({
+      leads,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
+  } catch (error) {
+    console.error('Leads fetch error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update lead status or details
+app.put('/api/leads/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const updates = req.body;
+
+    // Find lead and verify ownership
+    const lead = await Lead.findOne({ _id: id, userId });
+    if (!lead) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+
+    // Update allowed fields
+    const allowedFields = ['name', 'email', 'phone', 'company', 'status', 'notes', 'priority', 'source'];
+    allowedFields.forEach(field => {
+      if (updates[field] !== undefined) {
+        lead[field] = updates[field];
+      }
+    });
+
+    lead.lastContact = new Date();
+    await lead.save();
+
+    res.json({
+      message: 'Lead updated successfully',
+      lead
+    });
+  } catch (error) {
+    console.error('Lead update error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete a lead
+app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    // Find and delete lead (verify ownership)
+    const lead = await Lead.findOneAndDelete({ _id: id, userId });
+    if (!lead) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+
+    res.json({ message: 'Lead deleted successfully' });
+  } catch (error) {
+    console.error('Lead deletion error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Extension authentication verification endpoint
+app.get('/api/extension-auth', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({ message: 'Database unavailable' });
+    }
+
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      authenticated: true,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Extension auth verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== END MINER EXTENSION API ====================
 
 // DEPRECATED: Check domain endpoint - no longer used (businessName/businessEmail/userType fields removed)
 // app.post('/api/check-domain', async (req, res) => {
@@ -3273,6 +3491,10 @@ const messaging = messagingRoutes.initializeRoutes({
   io // Pass Socket.IO instance for real-time messaging
 });
 app.use('/api/messaging', messaging);
+
+// ===== EXTENSION AUTHENTICATION ROUTES =====
+// No authentication middleware - these routes handle their own auth
+app.use('/api/auth/extension', extensionAuthRoutes);
 
 // ===== EMAIL MANAGEMENT ROUTES =====
 const emailAccountsRoutes = require('./routes/email-accounts');
