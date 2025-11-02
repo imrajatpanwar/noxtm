@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { toast } from 'sonner';
 import axios from 'axios';
 import notificationSound from '../components/assets/notification.mp3';
+import { showMessageToast } from '../components/CustomToast';
 
 export const MessagingContext = createContext({
   socket: null,
@@ -300,11 +300,26 @@ export function MessagingProvider({ children }) {
         }));
 
         // Show toast notification if notifications are enabled
-        if (chatSettingsRef.current.notifications) {
-          console.log('🔔 Showing toast notification for new message');
+        // BUT NOT if the user is currently viewing this conversation
+        const activeConvId = sessionStorage.getItem('activeConversationId');
+        const isOnDashboard = window.location.pathname.includes('/dashboard');
+        const isViewingThisConversation = isOnDashboard && activeConvId === data.conversationId;
+        
+        console.log('🔍 Toast Check - On Dashboard:', isOnDashboard);
+        console.log('🔍 Toast Check - Active Conversation ID:', activeConvId);
+        console.log('🔍 Toast Check - Message Conversation ID:', data.conversationId);
+        console.log('🔍 Toast Check - Is Viewing This Conversation:', isViewingThisConversation);
+        console.log('🔍 Toast Check - Notifications Enabled:', chatSettingsRef.current.notifications);
+        console.log('🔍 Toast Check - SHOULD SHOW TOAST:', chatSettingsRef.current.notifications && !isViewingThisConversation);
+        
+        if (chatSettingsRef.current.notifications && !isViewingThisConversation) {
+          console.log('🔔 ✅ SHOWING toast notification for new message');
+          console.log('🔍 Available conversations:', conversationsRef.current.length);
+          console.log('🔍 Looking for conversation ID:', data.conversationId);
 
           // Find the conversation to get its name
           const conversation = conversationsRef.current.find(c => c._id === data.conversationId);
+          console.log('🔍 Found conversation:', conversation ? 'YES' : 'NO');
 
           // Smart fallback for conversation name:
           // 1. Try conversation.name (for group chats)
@@ -332,14 +347,58 @@ export function MessagingProvider({ children }) {
             ? data.message.content.substring(0, 50) + '...'
             : data.message.content;
 
-          // Show toast with sender name and message preview
-          toast.info(
-            `${data.message.sender.fullName}: ${messagePreview}`,
-            {
-              description: conversationName !== data.message.sender.fullName ? `in ${conversationName}` : '',
-              duration: 4000
+          // Get avatar URL
+          const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const apiBaseUrl = isDevelopment ? 'http://localhost:5000' : '';
+          let avatarUrl = data.message.sender.profileImage || data.message.sender.avatarUrl || data.message.sender.image;
+          
+          // Fix relative URLs
+          if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('data:')) {
+            avatarUrl = `${apiBaseUrl}${avatarUrl}`;
+          }
+
+          // Show custom toast with sender info and message preview
+          console.log('📢 CALLING showMessageToast NOW!');
+          showMessageToast({
+            title: conversationName !== data.message.sender.fullName ? conversationName : 'New Message',
+            description: messagePreview,
+            sender: data.message.sender.fullName,
+            timestamp: data.message.createdAt,
+            avatarUrl: avatarUrl,
+            button: {
+              label: 'Reply',
+              onClick: () => {
+                // Navigate to dashboard messaging section
+                const currentPath = window.location.pathname;
+                
+                // If not on dashboard, navigate to dashboard first
+                if (!currentPath.includes('/dashboard')) {
+                  window.location.href = '/dashboard';
+                  
+                  // Wait for dashboard to load, then navigate to messaging
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('dashboard:navigateToMessaging'));
+                    
+                    // Then open the specific conversation
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('messaging:openConversation', {
+                        detail: { conversationId: data.conversationId }
+                      }));
+                    }, 100);
+                  }, 500);
+                } else {
+                  // Already on dashboard, just navigate to messaging and open conversation
+                  window.dispatchEvent(new CustomEvent('dashboard:navigateToMessaging'));
+                  
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('messaging:openConversation', {
+                      detail: { conversationId: data.conversationId }
+                    }));
+                  }, 100);
+                }
+              }
             }
-          );
+          });
 
           // Play notification sound
           playNotificationSound();

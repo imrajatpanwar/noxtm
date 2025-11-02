@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiSearch, FiEdit3, FiUser, FiPlus, FiMail, FiPhone, FiMapPin, FiCalendar, FiStar, FiActivity, FiMoreHorizontal, FiDownload, FiUpload } from 'react-icons/fi';
 import { toast } from 'sonner';
+import api from '../config/api';
 import './ClientLeads.css';
 
 function ClientLeads() {
@@ -11,7 +12,7 @@ function ClientLeads() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterSource, setFilterSource] = useState('All');
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [newClient, setNewClient] = useState({
@@ -23,7 +24,7 @@ function ClientLeads() {
     notes: ''
   });
 
-  // Enhanced mock data for leads
+  // Leads from backend API (replaces mock data)
   const [leads, setLeads] = useState([
     { 
       id: 1, 
@@ -131,6 +132,47 @@ function ClientLeads() {
     },
   ]);
 
+  // Fetch leads from backend API
+  const fetchLeads = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get('/leads');
+
+      if (response.data && response.data.leads) {
+        // Transform backend data to match component structure
+        const transformedLeads = response.data.leads.map(lead => ({
+          id: lead._id,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone || '',
+          company: lead.company || '',
+          status: lead.status,
+          date: lead.createdAt ? new Date(lead.createdAt).toISOString().split('T')[0] : '',
+          source: lead.source,
+          notes: lead.notes || '',
+          lastContact: lead.lastContact ? new Date(lead.lastContact).toISOString().split('T')[0] : '',
+          priority: lead.priority || 'Medium'
+        }));
+
+        setLeads(transformedLeads);
+      }
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      // Keep mock data on error, don't show error toast on initial load
+      if (leads.length === 0) {
+        // If there are no leads at all, it might be the first time
+        console.log('Using mock data as fallback');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch leads on component mount
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+
   // Calculate statistics
   const [stats, setStats] = useState({
     total: 0,
@@ -146,7 +188,7 @@ function ClientLeads() {
     const inProgress = leads.filter(lead => lead.status === 'In Progress').length;
     const qualified = leads.filter(lead => lead.status === 'Qualified').length;
     const converted = leads.filter(lead => lead.status === 'Converted').length;
-    
+
     setStats({ total, new: newLeads, inProgress, qualified, converted });
   }, [leads]);
 
@@ -173,26 +215,51 @@ function ClientLeads() {
     setShowAddForm(true);
   };
 
-  const handleAddClient = (e) => {
+  const handleAddClient = async (e) => {
     e.preventDefault();
     if (newClient.name && newClient.email) {
-      const newLead = {
-        id: leads.length + 1,
-        name: newClient.name,
-        email: newClient.email,
-        phone: newClient.phone,
-        company: newClient.company,
-        status: 'New',
-        date: new Date().toISOString().split('T')[0],
-        source: newClient.source,
-        notes: newClient.notes,
-        lastContact: new Date().toISOString().split('T')[0],
-        priority: 'Medium'
-      };
-      setLeads([newLead, ...leads]);
-      setNewClient({ name: '', email: '', phone: '', company: '', source: 'Website', notes: '' });
-      setShowAddForm(false);
-      toast.success('Lead added successfully!');
+      try {
+        setIsLoading(true);
+
+        // Send lead to backend API
+        const response = await api.post('/leads', {
+          name: newClient.name,
+          email: newClient.email,
+          phone: newClient.phone || undefined,
+          company: newClient.company || undefined,
+          source: newClient.source,
+          notes: newClient.notes || undefined,
+          status: 'New',
+          priority: 'Medium'
+        });
+
+        if (response.data && response.data.lead) {
+          // Transform backend data
+          const savedLead = {
+            id: response.data.lead._id,
+            name: response.data.lead.name,
+            email: response.data.lead.email,
+            phone: response.data.lead.phone || '',
+            company: response.data.lead.company || '',
+            status: response.data.lead.status,
+            date: new Date(response.data.lead.createdAt).toISOString().split('T')[0],
+            source: response.data.lead.source,
+            notes: response.data.lead.notes || '',
+            lastContact: new Date(response.data.lead.lastContact).toISOString().split('T')[0],
+            priority: response.data.lead.priority || 'Medium'
+          };
+
+          setLeads([savedLead, ...leads]);
+          setNewClient({ name: '', email: '', phone: '', company: '', source: 'Website', notes: '' });
+          setShowAddForm(false);
+          toast.success('Lead added successfully!');
+        }
+      } catch (error) {
+        console.error('Error adding lead:', error);
+        toast.error(error.response?.data?.message || 'Failed to add lead. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -206,18 +273,39 @@ function ClientLeads() {
     setSelectedLead(null);
   };
 
-  const handleDeleteLead = (leadId) => {
+  const handleDeleteLead = async (leadId) => {
     if (window.confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-      setLeads(leads.filter(lead => lead.id !== leadId));
-      toast.success('Lead deleted successfully!');
+      try {
+        setIsLoading(true);
+        await api.delete(`/leads/${leadId}`);
+
+        setLeads(leads.filter(lead => lead.id !== leadId));
+        toast.success('Lead deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting lead:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete lead. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleStatusChange = (leadId, newStatus) => {
-    setLeads(leads.map(lead => 
-      lead.id === leadId ? { ...lead, status: newStatus } : lead
-    ));
-    toast.success('Lead status updated successfully!');
+  const handleStatusChange = async (leadId, newStatus) => {
+    try {
+      setIsLoading(true);
+
+      await api.put(`/leads/${leadId}`, { status: newStatus });
+
+      setLeads(leads.map(lead =>
+        lead.id === leadId ? { ...lead, status: newStatus } : lead
+      ));
+      toast.success('Lead status updated successfully!');
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update lead status. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleExportLeads = () => {

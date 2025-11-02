@@ -29,6 +29,7 @@ function Login({ onLogin }) {
     const result = await onLogin(formData.email, formData.password);
 
     if (result.success) {
+      // Normal login flow
       // Admin users always go directly to dashboard (bypass subscription checks)
       if (result.user.role === 'Admin' || result.user.role === 'Lord') {
         navigate('/dashboard');

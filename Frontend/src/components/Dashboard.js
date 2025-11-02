@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
-import { sendExtensionMessage } from '../utils/extensionHelpers';
-import { checkExtensionConnection } from '../utils/extensionManager';
 import { useRole } from '../contexts/RoleContext';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
@@ -76,71 +74,7 @@ function Dashboard({ user, onLogout }) {
     }
 
     try {
-      // If user is admin, bypass extension check and use direct API call
-      if (isAdmin) {
-        try {
-          const response = await api.get('/dashboard');
-          setDashboardData(response.data);
-          setLoading(false);
-          return;
-        } catch (adminError) {
-          console.warn('Admin API call failed:', adminError);
-          // For admin users, show error but don't redirect
-          setError('Failed to load dashboard data. Please try again.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // For non-admin users, proceed with normal flow
-      const extensionConnected = await checkExtensionConnection();
-      let extensionAttempted = false;
-      
-      // Try to get data from extension if available
-      if (extensionConnected) {
-        extensionAttempted = true;
-        try {
-          // Using our helper that handles lastError properly
-          const extensionData = await sendExtensionMessage({ 
-            type: 'getDashboardData' 
-          }).catch(err => {
-            console.warn('Extension data fetch failed:', err.message);
-            return null;
-          });
-          
-          // If we got data from extension, use it
-          if (extensionData && !extensionData.error) {
-            setDashboardData(extensionData);
-            setLoading(false);
-            return;
-          }
-          // Otherwise fall through to API call
-        } catch (extError) {
-          console.warn('Extension error caught:', extError);
-          // Fall through to regular API call
-        }
-      }
-      
-      // If extension didn't work, use default data instead of requiring subscription
-      if (extensionAttempted) {
-        // Provide demo dashboard data instead of requiring subscription
-        const demoData = {
-          message: 'Demo dashboard data',
-          data: {
-            totalUsers: 5,
-            recentActivity: [
-              { id: 1, action: 'Extension demo data loaded', timestamp: new Date() },
-              { id: 2, action: 'Welcome to Botgit Extension', timestamp: new Date() }
-            ]
-          }
-        };
-        setDashboardData(demoData);
-        setLoading(false);
-        return;
-      }
-      
-      // Only fall through to API call if extension was never attempted
-      // Standard API fallback when extension is not available at all
+      // Direct API call for dashboard data
       const response = await api.get('/dashboard');
       setDashboardData(response.data);
     } catch (error) {
@@ -186,6 +120,16 @@ function Dashboard({ user, onLogout }) {
       fetchDashboardData();
     }
   }, [currentUser, fetchDashboardData]);
+
+  // Listen for navigation to messaging from toast notifications
+  useEffect(() => {
+    const handleNavigateToMessaging = () => {
+      setActiveSection('message');
+    };
+
+    window.addEventListener('dashboard:navigateToMessaging', handleNavigateToMessaging);
+    return () => window.removeEventListener('dashboard:navigateToMessaging', handleNavigateToMessaging);
+  }, []);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);

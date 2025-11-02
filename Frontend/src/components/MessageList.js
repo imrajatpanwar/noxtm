@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './MessageList.css';
+// Import SVG emoji assets
+import doneEmoji from './assets/emoji/done.svg';
+import hahaEmoji from './assets/emoji/haha.svg';
+import niceEmoji from './assets/emoji/nice.svg';
+import partyEmoji from './assets/emoji/party.svg';
+import sadEmoji from './assets/emoji/sad.svg';
 
 function MessageList({
   messages,
@@ -18,8 +24,14 @@ function MessageList({
   const actionsRef = useRef(null);
   const reactionPickerRef = useRef(null);
 
-  // Common emoji reactions
-  const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
+  // SVG emoji reactions with their identifiers
+  const REACTION_EMOJIS = [
+    { id: 'done', src: doneEmoji, alt: 'Done' },
+    { id: 'haha', src: hahaEmoji, alt: 'Haha' },
+    { id: 'nice', src: niceEmoji, alt: 'Nice' },
+    { id: 'party', src: partyEmoji, alt: 'Party' },
+    { id: 'sad', src: sadEmoji, alt: 'Sad' }
+  ];
 
   // Handle click outside and keyboard events to close menus
   useEffect(() => {
@@ -161,9 +173,9 @@ function MessageList({
     }
   };
 
-  const handleReaction = (msgId, emoji) => {
+  const handleReaction = (msgId, emojiId) => {
     if (onReactToMessage) {
-      onReactToMessage(msgId, emoji);
+      onReactToMessage(msgId, emojiId);
       setShowReactionPickerFor(null);
     }
   };
@@ -173,15 +185,16 @@ function MessageList({
 
     const summary = {};
     reactions.forEach(reaction => {
-      if (!summary[reaction.emoji]) {
-        summary[reaction.emoji] = {
-          emoji: reaction.emoji,
+      const emojiId = reaction.emoji;
+      if (!summary[emojiId]) {
+        summary[emojiId] = {
+          emojiId: emojiId,
           count: 0,
           users: []
         };
       }
-      summary[reaction.emoji].count++;
-      summary[reaction.emoji].users.push(reaction.user);
+      summary[emojiId].count++;
+      summary[emojiId].users.push(reaction.user);
     });
 
     return Object.values(summary);
@@ -256,6 +269,8 @@ function MessageList({
                 {/* Message */}
                 <div
                   className={`message-wrapper ${isSent ? 'sent' : 'received'} ${isDeleted ? 'deleted-message' : ''} message-fade-in`}
+                  onMouseEnter={() => !isDeleted && !isSent && setShowReactionPickerFor(msg._id)}
+                  onMouseLeave={() => setShowReactionPickerFor(null)}
                   onContextMenu={(e) => {
                     // Show edit/delete menu on right-click for sent messages
                     if (isSent && !isDeleted && !isEditing) {
@@ -373,70 +388,41 @@ function MessageList({
                         </div>
                       )}
 
-                      {/* Reactions - Only for received messages (users can't react to their own messages) */}
-                      {!isSent && !isDeleted && reactionSummary.length > 0 && (
-                        <div className="message-reactions">
-                          {reactionSummary.map((reaction, idx) => (
-                            <div
-                              key={idx}
-                              className={`reaction-item ${hasUserReacted(reaction, currentUserId) ? 'user-reacted' : ''}`}
-                              onClick={() => handleReaction(msg._id, reaction.emoji)}
-                            >
-                              <span className="reaction-emoji">{reaction.emoji}</span>
-                              <span className="reaction-count">{reaction.count}</span>
-                            </div>
-                          ))}
-                          {/* Add Reaction Button */}
-                          <div style={{ position: 'relative' }} ref={showReactionPickerFor === msg._id ? reactionPickerRef : null}>
+                      {/* Hover Reaction Picker - Shows on hover for all messages */}
+                      {!isDeleted && showReactionPickerFor === msg._id && (
+                        <div className="hover-reaction-picker" ref={reactionPickerRef}>
+                          {REACTION_EMOJIS.map((emoji) => (
                             <button
-                              className="add-reaction-button"
-                              onClick={() => setShowReactionPickerFor(showReactionPickerFor === msg._id ? null : msg._id)}
+                              key={emoji.id}
+                              className="hover-reaction-option"
+                              onClick={() => handleReaction(msg._id, emoji.id)}
+                              title={`React with ${emoji.alt}`}
                             >
-                              +
+                              <img src={emoji.src} alt={emoji.alt} className="reaction-emoji-svg" />
                             </button>
-
-                            {showReactionPickerFor === msg._id && (
-                              <div className="reaction-picker">
-                                {REACTION_EMOJIS.map((emoji, idx) => (
-                                  <button
-                                    key={idx}
-                                    className="reaction-option"
-                                    onClick={() => handleReaction(msg._id, emoji)}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          ))}
                         </div>
                       )}
 
-                      {/* Add Reaction Button (when no reactions exist) - Only for received messages */}
-                      {!isSent && !isDeleted && reactionSummary.length === 0 && (
-                        <div style={{ position: 'relative' }} ref={showReactionPickerFor === msg._id ? reactionPickerRef : null}>
-                          <div className="message-reactions">
-                            <button
-                              className="add-reaction-button"
-                              onClick={() => setShowReactionPickerFor(showReactionPickerFor === msg._id ? null : msg._id)}
-                            >
-                              +
-                            </button>
-                          </div>
+                      {/* Display Reactions (if any exist) */}
+                      {!isDeleted && reactionSummary.length > 0 && (
+                        <div className="message-reactions-display">
+                          {reactionSummary.map((reaction, idx) => {
+                            const emojiData = REACTION_EMOJIS.find(e => e.id === reaction.emojiId);
+                            if (!emojiData) return null;
 
-                          {showReactionPickerFor === msg._id && (
-                            <div className="reaction-picker">
-                              {REACTION_EMOJIS.map((emoji, idx) => (
-                                <button
-                                  key={idx}
-                                  className="reaction-option"
-                                  onClick={() => handleReaction(msg._id, emoji)}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                            return (
+                              <div
+                                key={idx}
+                                className={`reaction-item ${hasUserReacted(reaction, currentUserId) ? 'user-reacted' : ''}`}
+                                onClick={() => handleReaction(msg._id, reaction.emojiId)}
+                                title={`${reaction.count} reaction${reaction.count > 1 ? 's' : ''}`}
+                              >
+                                <img src={emojiData.src} alt={emojiData.alt} className="reaction-emoji-svg-small" />
+                                <span className="reaction-count">{reaction.count}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -445,27 +431,23 @@ function MessageList({
               </React.Fragment>
             );
           })}
-
-          {/* Typing Indicator */}
-          {typingUser && (
-            <div className="message-wrapper received typing-indicator-wrapper">
-              <div className="message-avatar">
-                {getInitials(typingUser.userName)}
-              </div>
-              <div className="message-content-wrapper">
-                <div className="message-sender-info">
-                  <span className="message-sender-name">{typingUser.userName}</span>
-                </div>
-                <div className="typing-indicator">
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
+
+      {/* Typing Indicator */}
+      {typingUser && (
+        <div className="typing-indicator-wrapper">
+          <div className="typing-avatar">
+            {getInitials(typingUser.userName)}
+          </div>
+          <div className="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      )}
+
       <div ref={messagesEndRef} />
     </div>
   );

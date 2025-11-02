@@ -86,6 +86,12 @@ function Messaging() {
     }
 
     loadConversations();
+
+    // Cleanup: Clear active conversation when leaving messaging section
+    return () => {
+      console.log('🧹 Messaging component unmounting - clearing active conversation');
+      sessionStorage.removeItem('activeConversationId');
+    };
   }, []);
 
   // Close modals on ESC key
@@ -139,6 +145,24 @@ function Messaging() {
 
   useEffect(() => {
     conversationsRef.current = conversations;
+  }, [conversations]);
+
+  // Listen for open conversation events (from toast notifications)
+  useEffect(() => {
+    const handleOpenConversation = (event) => {
+      const { conversationId } = event.detail;
+      const conversation = conversations.find(c => c._id === conversationId);
+      if (conversation) {
+        setSelectedConversation(conversation);
+        // Close any open modals
+        setShowChatSettings(false);
+        setShowCreateGroupModal(false);
+        setShowGroupInfo(false);
+      }
+    };
+
+    window.addEventListener('messaging:openConversation', handleOpenConversation);
+    return () => window.removeEventListener('messaging:openConversation', handleOpenConversation);
   }, [conversations]);
 
   // Listen for new messages from Socket.IO
@@ -276,6 +300,9 @@ function Messaging() {
 
   useEffect(() => {
     if (selectedConversation) {
+      // Store active conversation ID in sessionStorage to prevent toast notifications
+      sessionStorage.setItem('activeConversationId', selectedConversation._id);
+      
       // Load messages first
       loadMessages(selectedConversation._id).then(() => {
         // Mark conversation as read after messages are loaded and displayed
@@ -286,6 +313,9 @@ function Messaging() {
       if (socket) {
         socket.emit('join-conversation', selectedConversation._id);
       }
+    } else {
+      // Clear active conversation ID when no conversation is selected
+      sessionStorage.removeItem('activeConversationId');
     }
   }, [selectedConversation, socket]);
 
