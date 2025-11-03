@@ -12,9 +12,10 @@ const verificationEmailLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   keyGenerator: (req, res) => {
-    // Rate limit by email address, fallback to IP (no custom fallback needed)
-    return req.body.email ? req.body.email.toLowerCase() : req.ip;
+    // Rate limit by email address only
+    return req.body.email ? req.body.email.toLowerCase() : 'no-email';
   },
+  skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for verification email: ${req.body.email || req.ip}`);
     res.status(429).json({
@@ -38,9 +39,10 @@ const passwordResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
-    // Rate limit by email address, fallback to IP (no custom fallback needed)
-    return req.body.email ? req.body.email.toLowerCase() : req.ip;
+    // Rate limit by email address only
+    return req.body.email ? req.body.email.toLowerCase() : 'no-email';
   },
+  skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for password reset: ${req.body.email || req.ip}`);
     res.status(429).json({
@@ -64,9 +66,10 @@ const invitationEmailLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
-    // Rate limit by authenticated user ID, fallback to IP (no custom fallback needed)
-    return req.user ? req.user.userId.toString() : req.ip;
+    // Rate limit by authenticated user ID only
+    return req.user ? req.user.userId.toString() : 'no-user';
   },
+  skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for invitation: ${req.user?.userId || req.ip}`);
     res.status(429).json({
@@ -90,9 +93,10 @@ const templateEmailLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
-    // Rate limit by authenticated user ID, fallback to IP (no custom fallback needed)
-    return req.user ? req.user.userId.toString() : req.ip;
+    // Rate limit by authenticated user ID only
+    return req.user ? req.user.userId.toString() : 'no-user';
   },
+  skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for template email: ${req.user?.userId || req.ip}`);
     res.status(429).json({
