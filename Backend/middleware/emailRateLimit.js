@@ -9,20 +9,19 @@ const verificationEmailLimiter = rateLimit({
     message: 'Too many verification code requests. Please try again in an hour.',
     error: 'RATE_LIMIT_EXCEEDED'
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  keyGenerator: (req, res) => {
-    // Rate limit by email address only
-    return req.body.email ? req.body.email.toLowerCase() : 'no-email';
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Rate limit by email address
+    return `email:${req.body.email ? req.body.email.toLowerCase() : 'none'}`;
   },
-  skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for verification email: ${req.body.email || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many verification code requests from this email. Please try again in 1 hour.',
       error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60)
     });
   }
 });
@@ -38,18 +37,17 @@ const passwordResetLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
-    // Rate limit by email address only
-    return req.body.email ? req.body.email.toLowerCase() : 'no-email';
+  keyGenerator: (req) => {
+    // Rate limit by email address
+    return `reset:${req.body.email ? req.body.email.toLowerCase() : 'none'}`;
   },
-  skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for password reset: ${req.body.email || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many password reset requests from this email. Please try again in 1 hour.',
       error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60)
     });
   }
 });
@@ -65,18 +63,17 @@ const invitationEmailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
-    // Rate limit by authenticated user ID only
-    return req.user ? req.user.userId.toString() : 'no-user';
+  keyGenerator: (req) => {
+    // Rate limit by authenticated user ID
+    return `invite:${req.user ? req.user.userId.toString() : 'none'}`;
   },
-  skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for invitation: ${req.user?.userId || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many invitation requests. You can send up to 10 invitations per hour.',
       error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60)
     });
   }
 });
@@ -92,43 +89,32 @@ const templateEmailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
-    // Rate limit by authenticated user ID only
-    return req.user ? req.user.userId.toString() : 'no-user';
+  keyGenerator: (req) => {
+    // Rate limit by authenticated user ID
+    return `template:${req.user ? req.user.userId.toString() : 'none'}`;
   },
-  skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit exceeded for template email: ${req.user?.userId || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many email sends. You can send up to 50 emails per hour.',
       error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60)
     });
   }
 });
 
-// Global email rate limiter - prevents brute force
+// Global rate limiter
 const globalEmailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 100, // Limit each address to 100 email-related requests per hour
+  max: 100,
   message: {
     success: false,
     message: 'Too many requests. Please try again later.',
     error: 'RATE_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  // Use default rate limiting
-  handler: (req, res) => {
-    console.warn(`⚠️  Global rate limit exceeded`);
-    res.status(429).json({
-      success: false,
-      message: 'Too many requests. Please try again in 1 hour.',
-      error: 'RATE_LIMIT_EXCEEDED',
-      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
-    });
-  }
+  legacyHeaders: false
 });
 
 module.exports = {
