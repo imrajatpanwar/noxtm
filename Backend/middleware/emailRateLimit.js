@@ -17,7 +17,7 @@ const verificationEmailLimiter = rateLimit({
   },
   skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit exceeded for verification email: ${req.body.email || req.ip}`);
+    console.warn(`⚠️  Rate limit exceeded for verification email: ${req.body.email || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many verification code requests from this email. Please try again in 1 hour.',
@@ -44,7 +44,7 @@ const passwordResetLimiter = rateLimit({
   },
   skip: (req) => !req.body.email, // Skip rate limiting if no email provided
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit exceeded for password reset: ${req.body.email || req.ip}`);
+    console.warn(`⚠️  Rate limit exceeded for password reset: ${req.body.email || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many password reset requests from this email. Please try again in 1 hour.',
@@ -71,7 +71,7 @@ const invitationEmailLimiter = rateLimit({
   },
   skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit exceeded for invitation: ${req.user?.userId || req.ip}`);
+    console.warn(`⚠️  Rate limit exceeded for invitation: ${req.user?.userId || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many invitation requests. You can send up to 10 invitations per hour.',
@@ -98,7 +98,7 @@ const templateEmailLimiter = rateLimit({
   },
   skip: (req) => !req.user, // Skip rate limiting if not authenticated
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit exceeded for template email: ${req.user?.userId || req.ip}`);
+    console.warn(`⚠️  Rate limit exceeded for template email: ${req.user?.userId || 'unknown'}`);
     res.status(429).json({
       success: false,
       message: 'Too many email sends. You can send up to 50 emails per hour.',
@@ -119,9 +119,9 @@ const globalEmailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Don't use keyGenerator - let express-rate-limit handle IP properly
+  // Use default IP-based limiting
   handler: (req, res) => {
-    console.warn(`⚠️  Global rate limit exceeded for IP: ${req.ip}`);
+    console.warn(`⚠️  Global rate limit exceeded`);
     res.status(429).json({
       success: false,
       message: 'Too many requests from your IP address. Please try again in 1 hour.',
