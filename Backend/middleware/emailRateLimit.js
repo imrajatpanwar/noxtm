@@ -108,23 +108,23 @@ const templateEmailLimiter = rateLimit({
   }
 });
 
-// Global email rate limiter (per IP) - prevents brute force from single IP
+// Global email rate limiter - prevents brute force
 const globalEmailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 100, // Limit each IP to 100 email-related requests per hour
+  max: 100, // Limit each address to 100 email-related requests per hour
   message: {
     success: false,
-    message: 'Too many requests from this IP address. Please try again later.',
+    message: 'Too many requests. Please try again later.',
     error: 'RATE_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default IP-based limiting
+  // Use default rate limiting
   handler: (req, res) => {
     console.warn(`⚠️  Global rate limit exceeded`);
     res.status(429).json({
       success: false,
-      message: 'Too many requests from your IP address. Please try again in 1 hour.',
+      message: 'Too many requests. Please try again in 1 hour.',
       error: 'RATE_LIMIT_EXCEEDED',
       retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60) // minutes
     });
