@@ -47,7 +47,8 @@ router.post('/validate', async (req, res) => {
         companyId: user.companyId,
         subscription: user.subscription,
         permissions: user.permissions,
-        access: user.access
+        access: user.access,
+        profileImage: user.profileImage
       }
     });
 
@@ -130,7 +131,8 @@ router.post('/login', async (req, res) => {
         companyId: user.companyId,
         subscription: user.subscription,
         permissions: user.permissions,
-        access: user.access
+        access: user.access,
+        profileImage: user.profileImage
       }
     });
 
@@ -191,7 +193,8 @@ router.get('/check-session', async (req, res) => {
         companyId: user.companyId,
         subscription: user.subscription,
         permissions: user.permissions,
-        access: user.access
+        access: user.access,
+        profileImage: user.profileImage
       }
     });
 
@@ -243,7 +246,8 @@ router.get('/profile', async (req, res) => {
         companyId: user.companyId,
         subscription: user.subscription,
         permissions: user.permissions,
-        access: user.access
+        access: user.access,
+        profileImage: user.profileImage
       }
     });
 
