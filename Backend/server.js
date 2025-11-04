@@ -84,6 +84,7 @@ app.use('/api/email', emailRoutes);
 
 // Extension authentication routes
 const extensionAuthRoutes = require('./routes/extension-auth');
+app.use('/api/extension-auth', extensionAuthRoutes);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
