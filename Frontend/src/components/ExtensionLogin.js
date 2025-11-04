@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
 import './Login.css';
@@ -10,7 +10,32 @@ function ExtensionLogin() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
+
+  // Check if user already has an active session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        const response = await api.get('/api/auth/extension/check-session');
+
+        if (response.data.success && response.data.authenticated) {
+          // User is already logged in! Auto-redirect with token
+          const { token, user } = response.data;
+          navigate(`/extension-auth-callback#token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`);
+        } else {
+          // No active session, show login form
+          setCheckingSession(false);
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+        // On error, show login form
+        setCheckingSession(false);
+      }
+    };
+
+    checkExistingSession();
+  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -52,6 +77,18 @@ function ExtensionLogin() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking for existing session
+  if (checkingSession) {
+    return (
+      <div className="login-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div className="login-card" style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+          <h2 style={{ color: '#333', marginBottom: '20px' }}>Checking session...</h2>
+          <p style={{ color: '#666', fontSize: '14px' }}>Please wait while we verify your login status.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
