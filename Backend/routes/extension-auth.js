@@ -143,6 +143,67 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Check if user has active session and return token if logged in
+router.get('/check-session', async (req, res) => {
+  try {
+    // Check if user is authenticated via session
+    if (!req.session || !req.session.userId) {
+      return res.json({
+        success: true,
+        authenticated: false,
+        message: 'No active session'
+      });
+    }
+
+    // Get user from database
+    const User = getUser();
+    const user = await User.findById(req.session.userId).select('-password');
+
+    if (!user) {
+      return res.json({
+        success: true,
+        authenticated: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate JWT token (7 days for extension)
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        fullName: user.fullName,
+        email: user.email
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Return token and user data
+    res.json({
+      success: true,
+      authenticated: true,
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        subscription: user.subscription,
+        permissions: user.permissions,
+        access: user.access
+      }
+    });
+
+  } catch (error) {
+    console.error('Extension session check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during session check'
+    });
+  }
+});
+
 // Get user profile (requires valid token in Authorization header)
 router.get('/profile', async (req, res) => {
   try {
