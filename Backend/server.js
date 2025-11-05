@@ -51,6 +51,9 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy - required for rate limiting behind reverse proxy
+app.set('trust proxy', true);
+
 // Security middleware
 app.use((req, res, next) => {
   // Security headers
