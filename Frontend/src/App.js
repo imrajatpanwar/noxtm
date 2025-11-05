@@ -5,6 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from 'sonner';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
+import { ModuleProvider } from './contexts/ModuleContext';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -271,8 +272,9 @@ function App() {
 
   return (
     <RoleProvider>
-      <MessagingProvider>
-        <Router>
+      <ModuleProvider>
+        <MessagingProvider>
+          <Router>
           <div className="App">
           <Toaster 
             position="top-right" 
@@ -344,8 +346,9 @@ function App() {
           </Routes>
           <ConditionalFooter />
         </div>
-        </Router>
-      </MessagingProvider>
+          </Router>
+        </MessagingProvider>
+      </ModuleProvider>
     </RoleProvider>
   );
 }

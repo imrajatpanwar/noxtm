@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
+import { useModules } from '../contexts/ModuleContext';
 import './WorkspaceSettings.css';
 
 function WorkspaceSettings({ user, onLogout }) {
+  const { isModuleInstalled, isModuleInstalling, installModule, uninstallModule } = useModules();
   const [activeTab, setActiveTab] = useState('general');
+  const [moduleTab, setModuleTab] = useState('all'); // 'all' or 'installed'
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [workspaceData, setWorkspaceData] = useState({
@@ -1030,49 +1033,155 @@ function WorkspaceSettings({ user, onLogout }) {
     </div>
   );
 
-  const renderIntegrationsSettings = () => (
-    <div className="workspace-tab-content">
-      <h3>🔗 Integrations & Apps</h3>
-      
-      <div className="integrations-grid">
-        <div className="integration-card">
-          <div className="integration-icon">📧</div>
-          <div className="integration-info">
-            <h4>Email Integration</h4>
-            <p>Connect your email provider for seamless communication.</p>
-          </div>
-          <button className="btn-primary">Connect</button>
+  const handleModuleInstall = async (moduleId) => {
+    const result = await installModule(moduleId);
+    if (result.success) {
+      toast.success(`${moduleId} module activated successfully!`);
+    } else {
+      toast.error(result.message || `Failed to activate ${moduleId} module`);
+    }
+  };
+
+  const handleModuleUninstall = async (moduleId) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to uninstall ${moduleId}?\n\nThis will remove the module from your sidebar and disable its features.`
+    );
+
+    if (!confirmed) {
+      return; // User cancelled
+    }
+
+    const result = await uninstallModule(moduleId);
+    if (result.success) {
+      toast.success(`${moduleId} module uninstalled successfully!`);
+    } else {
+      toast.error(result.message || `Failed to uninstall ${moduleId} module`);
+    }
+  };
+
+  const renderModulesSettings = () => {
+    // Define all modules
+    const allModules = [
+      {
+        id: 'BoothOS',
+        name: 'BoothOS',
+        company: 'Exhibition Contractors Company',
+        description: 'BoothOS is the ultimate all-in-one plugin built from the ground up for exhibition and trade show contractors. It\'s the central "Operating System" you need to manage your entire business, from the first client call to the final booth takedown.',
+        require: 'N/A',
+        lastUpdate: '28 Oct 2025',
+        logo: (
+          <svg className="module-logo" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+            <path d="M10 15L20 10L30 15V25L20 30L10 25V15Z" fill="white"/>
+          </svg>
+        )
+      },
+      {
+        id: 'BotGit',
+        name: 'BotGit',
+        company: 'Linkedin AI Commenter',
+        description: 'An intelligent tool that automatically writes meaningful and professional comments on LinkedIn posts. It helps you stay active, engage with your network, and build connections with customizable tone and topic options.',
+        require: 'Chrome Extension',
+        lastUpdate: '28 Oct 2025',
+        logo: (
+          <svg className="module-logo" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#3B82F6"/>
+            <circle cx="12" cy="20" r="3" fill="white"/>
+            <circle cx="28" cy="20" r="3" fill="white"/>
+            <path d="M12 20L28 20" stroke="white" strokeWidth="2"/>
+            <path d="M20 12V28" stroke="white" strokeWidth="2"/>
+          </svg>
+        )
+      }
+    ];
+
+    // Filter modules based on active tab
+    const displayedModules = moduleTab === 'installed'
+      ? allModules.filter(module => isModuleInstalled(module.id))
+      : allModules;
+
+    return (
+      <div className="workspace-tab-content">
+        <div className="modules-tabs">
+          <button
+            className={`module-tab ${moduleTab === 'all' ? 'active' : ''}`}
+            onClick={() => setModuleTab('all')}
+          >
+            All Modules
+          </button>
+          <button
+            className={`module-tab ${moduleTab === 'installed' ? 'active' : ''}`}
+            onClick={() => setModuleTab('installed')}
+          >
+            Installed
+          </button>
         </div>
-        
-        <div className="integration-card connected">
-          <div className="integration-icon">📱</div>
-          <div className="integration-info">
-            <h4>Slack Integration</h4>
-            <p>Get notifications and updates in your Slack channels.</p>
-          </div>
-          <button className="btn-connected">Connected</button>
-        </div>
-        
-        <div className="integration-card">
-          <div className="integration-icon">📊</div>
-          <div className="integration-info">
-            <h4>Analytics Tools</h4>
-            <p>Connect Google Analytics and other tracking tools.</p>
-          </div>
-          <button className="btn-primary">Connect</button>
-        </div>
-        
-        <div className="integration-card">
-          <div className="integration-icon">☁️</div>
-          <div className="integration-info">
-            <h4>Cloud Storage</h4>
-            <p>Sync files with Google Drive, Dropbox, or OneDrive.</p>
-          </div>
-          <button className="btn-primary">Connect</button>
+
+        <div className="modules-grid">
+          {displayedModules.length > 0 ? (
+            displayedModules.map((module) => (
+              <div key={module.id} className="module-card">
+                <div className="module-header">
+                  <div className="module-icon-box">
+                    {module.logo}
+                  </div>
+                  <div className="module-title-section">
+                    <h4 className="module-title">{module.name}</h4>
+                    <p className="module-company">{module.company}</p>
+                  </div>
+                  {isModuleInstalling(module.id) ? (
+                    <button className="btn-module-install installing" disabled>
+                      Installing...
+                    </button>
+                  ) : isModuleInstalled(module.id) ? (
+                    <button
+                      className="btn-module-install installed"
+                      onClick={() => handleModuleUninstall(module.id)}
+                    >
+                      Installed
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-module-install"
+                      onClick={() => handleModuleInstall(module.id)}
+                    >
+                      Install
+                    </button>
+                  )}
+                </div>
+                <p className="module-description">
+                  {module.description}
+                </p>
+                <div className="module-footer">
+                  <span className="module-require">Require: {module.require}</span>
+                  <span className="module-update">Last Update: {module.lastUpdate}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+              <p>No modules installed yet.</p>
+              <button
+                onClick={() => setModuleTab('all')}
+                style={{
+                  marginTop: '1rem',
+                  padding: '8px 16px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Browse All Modules
+              </button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="workspace-settings">
@@ -1106,11 +1215,11 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiShield /> Security
         </button>
-        <button 
-          className={`tab-button ${activeTab === 'integrations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('integrations')}
+        <button
+          className={`tab-button ${activeTab === 'modules' ? 'active' : ''}`}
+          onClick={() => setActiveTab('modules')}
         >
-          <FiDatabase /> Integrations
+          <FiPackage /> Modules
         </button>
       </div>
 
@@ -1119,21 +1228,7 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'members' && renderMembersSettings()}
         {activeTab === 'profile' && renderProfileSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
-        {activeTab === 'integrations' && renderIntegrationsSettings()}
-      </div>
-
-      {/* Danger Zone */}
-      <div className="danger-zone">
-        <h3>🚨 Danger Zone</h3>
-        <p>Actions in this section are irreversible. Please proceed with caution.</p>
-        <div className="danger-actions">
-          <button className="btn-danger" onClick={onLogout}>
-            Leave Workspace
-          </button>
-          <button className="btn-danger">
-            Delete Workspace
-          </button>
-        </div>
+        {activeTab === 'modules' && renderModulesSettings()}
       </div>
     </div>
   );

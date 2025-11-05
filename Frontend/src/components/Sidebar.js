@@ -2,12 +2,14 @@ import React, { useState, useMemo, useEffect, useContext } from 'react';
 import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiDatabase, FiSliders } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
+import { useModules } from '../contexts/ModuleContext';
 import './Sidebar.css';
 import api from '../config/api';
 
 function Sidebar({ activeSection, onSectionChange }) {
   const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
   const { socket } = useContext(MessagingContext);
+  const { isModuleInstalled } = useModules();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
@@ -318,6 +320,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Lead Metrics', section: 'lead-metrics', category: 'Lead Management' },
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
+    { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
     
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -482,6 +485,20 @@ function Sidebar({ activeSection, onSectionChange }) {
           {hasPermissionForSection('Data Center') && (
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">DATA CENTER</h4>
+              
+              {/* Global Trade Show Section - Only show if BoothOS module is installed */}
+              {isModuleInstalled('BoothOS') && (
+                <div className="sidebar-item-container">
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'global-trade-show' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('global-trade-show')}
+                  >
+                    <FiGlobe className="sidebar-icon" />
+                    <span>Global Trade Shows</span>
+                  </div>
+                </div>
+              )}
+
               <div className="sidebar-item-container">
                 <div 
                   className={`Dash-noxtm-sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
@@ -1126,17 +1143,17 @@ function Sidebar({ activeSection, onSectionChange }) {
           )}
 
           {/* Botgit Section */}
-          {hasPermissionForSection('Botgit') && (
+          {hasPermissionForSection('Botgit') && isModuleInstalled('BotGit') && (
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">BOTGIT</h4>
-              <div 
+              <div
                 className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
                 onClick={() => onSectionChange('botgit-data')}
               >
                 <FiDatabase className="sidebar-icon" />
                 <span>Scraped Data</span>
               </div>
-              <div 
+              <div
                 className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
                 onClick={() => onSectionChange('botgit-settings')}
               >
