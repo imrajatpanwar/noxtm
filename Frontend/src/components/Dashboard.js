@@ -53,6 +53,7 @@ import EmailDomains from './EmailDomains';
 import EmailTemplates from './EmailTemplates';
 import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
+import GlobalTradeShow from './GlobalTradeShow';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -147,6 +148,8 @@ function Dashboard({ user, onLogout }) {
         return <CampaignMetrics />;
       case 'conversion-tracking':
         return <ConversionTracking />;
+      case 'global-trade-show':
+        return <GlobalTradeShow />;
       case 'our-projects':
         return <OurProjects />;
       case 'project-delivered':
