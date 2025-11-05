@@ -12,6 +12,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
+const app = express();
+
+// Trust proxy - MUST be set before importing rate limiters
+app.set('trust proxy', true);
+
 // Email security middleware
 const {
   verificationEmailLimiter,
@@ -22,8 +27,6 @@ const {
 } = require('./middleware/emailRateLimit');
 const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
 const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
-
-const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -50,9 +53,6 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 5000;
-
-// Trust proxy - required for rate limiting behind reverse proxy
-app.set('trust proxy', true);
 
 // Security middleware
 app.use((req, res, next) => {
