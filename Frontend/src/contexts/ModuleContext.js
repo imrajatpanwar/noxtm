@@ -25,7 +25,7 @@ export const ModuleProvider = ({ children }) => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/modules/installed', {
+      const response = await fetch('http://noxtm.com/api/modules/installed', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -97,7 +97,7 @@ export const ModuleProvider = ({ children }) => {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('http://localhost:5000/api/modules/install', {
+      const response = await fetch('http://noxtm.com/api/modules/install', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ export const ModuleProvider = ({ children }) => {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`http://localhost:5000/api/modules/${moduleId}/uninstall`, {
+      const response = await fetch(`http://noxtm.com/api/modules/${moduleId}/uninstall`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
