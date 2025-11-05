@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 router.get('/installed', auth, async (req, res) => {
   try {
     const modules = await InstalledModule.find({
-      userId: req.user._id,
+      userId: req.user.userId,
       status: 'active',
     }).select('moduleId installedAt');
 
@@ -42,7 +42,7 @@ router.post('/install', auth, async (req, res) => {
 
     // Check if module is already installed
     const existingModule = await InstalledModule.findOne({
-      userId: req.user._id,
+      userId: req.user.userId,
       moduleId,
     });
 
@@ -70,7 +70,7 @@ router.post('/install', auth, async (req, res) => {
 
     // Install the module
     const newModule = new InstalledModule({
-      userId: req.user._id,
+      userId: req.user.userId,
       moduleId,
       status: 'active',
     });
@@ -108,7 +108,7 @@ router.delete('/:moduleId/uninstall', auth, async (req, res) => {
     }
 
     const module = await InstalledModule.findOne({
-      userId: req.user._id,
+      userId: req.user.userId,
       moduleId,
     });
 
