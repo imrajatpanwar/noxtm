@@ -36,7 +36,7 @@
 
 .dashboard-content h1 {
   color: #111827;
-  /* margin-bottom: 32px; */
+  margin-bottom: 0px;
   font-size: 2.5rem;
   font-weight: 600;
   font-family: 'Switzer', sans-serif;

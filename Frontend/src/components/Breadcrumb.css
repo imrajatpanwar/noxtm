@@ -1,0 +1,39 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.breadcrumb-item {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  color: #111827;
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  color: #111827;
+  font-weight: 500;
+}
+
+.breadcrumb-separator {
+  color: #d1d5db;
+  font-size: 16px;
+  user-select: none;
+}

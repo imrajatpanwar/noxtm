@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiUser, FiCamera, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
+import exhibitosLogo from './assets/exhibitos.svg';
+import botgitLogo from './assets/botgit-logo.svg';
 import './WorkspaceSettings.css';
 
 function WorkspaceSettings({ user, onLogout }) {
@@ -10,7 +12,6 @@ function WorkspaceSettings({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('general');
   const [moduleTab, setModuleTab] = useState('all'); // 'all' or 'installed'
   const [isEditing, setIsEditing] = useState(false);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [workspaceData, setWorkspaceData] = useState({
     name: 'NOXTM Workspace',
     description: 'Primary workspace for team collaboration',
@@ -45,31 +46,12 @@ function WorkspaceSettings({ user, onLogout }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [editPermissions, setEditPermissions] = useState({});
   const [savingPermissions, setSavingPermissions] = useState(false);
-  
-  // Profile state management
-  const [profileData, setProfileData] = useState({
-    username: user?.username || '',
-    email: user?.email || '',
-    role: user?.role || '',
-    status: user?.status || 'Active',
-    profileImage: user?.profileImage || ''
-  });
-  const [editedProfile, setEditedProfile] = useState({ ...profileData });
-  const [profileImage, setProfileImage] = useState(user?.profileImage || '');
 
   const handleEditToggle = () => {
     if (isEditing) {
       setEditedWorkspace({ ...workspaceData });
     }
     setIsEditing(!isEditing);
-  };
-
-  const handleProfileEditToggle = () => {
-    if (isEditingProfile) {
-      setEditedProfile({ ...profileData });
-      setProfileImage(profileData.profileImage || '');
-    }
-    setIsEditingProfile(!isEditingProfile);
   };
 
   const handleSave = () => {
@@ -79,48 +61,10 @@ function WorkspaceSettings({ user, onLogout }) {
     console.log('Saving workspace data:', editedWorkspace);
   };
 
-  const handleProfileSave = () => {
-    setProfileData(editedProfile);
-    setIsEditingProfile(false);
-    // Add API call here to save profile settings
-    console.log('Saving profile data:', editedProfile);
-  };
-
   const handleInputChange = (field, value) => {
     setEditedWorkspace(prev => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const handleProfileInputChange = (field, value) => {
-    setEditedProfile(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
-        setProfileImage(imageUrl);
-        setEditedProfile(prev => ({
-          ...prev,
-          profileImage: imageUrl
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setProfileImage('');
-    setEditedProfile(prev => ({
-      ...prev,
-      profileImage: ''
     }));
   };
 
@@ -815,189 +759,6 @@ function WorkspaceSettings({ user, onLogout }) {
     );
   };
 
-  const renderProfileSettings = () => {
-    const getDisplayProfile = () => isEditingProfile ? editedProfile : profileData;
-    const displayProfile = getDisplayProfile();
-
-    return (
-      <div className="workspace-tab-content">
-        {/* Profile Image Section */}
-        <div className="profile-image-section">
-          <div className="profile-image-container">
-            {profileImage ? (
-              <img src={profileImage} alt="Profile" className="profile-image" />
-            ) : (
-              <div className="profile-image">
-                <FiUser />
-              </div>
-            )}
-            {isEditingProfile && (
-              <div className="profile-image-overlay" onClick={() => document.getElementById('image-upload').click()}>
-                <FiCamera />
-              </div>
-            )}
-          </div>
-          <div className="profile-image-info">
-            <h3>{displayProfile?.username || 'User'}</h3>
-            <p>Upload a profile picture to personalize your account</p>
-            {isEditingProfile && (
-              <div className="image-upload-buttons">
-                <input
-                  type="file"
-                  id="image-upload"
-                  className="file-input"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-                <button className="btn-upload" onClick={() => document.getElementById('image-upload').click()}>
-                  Upload Image
-                </button>
-                <button 
-                  className="btn-remove" 
-                  onClick={handleRemoveImage}
-                  disabled={!profileImage}
-                >
-                  Remove Image
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Profile Information */}
-        {!isEditingProfile ? (
-          <div className="user-preview">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3>👤 Profile Information</h3>
-              <button className="btn-edit" onClick={handleProfileEditToggle}>
-                <FiEdit3 style={{ marginRight: '0.5rem' }} />
-                Edit Profile
-              </button>
-            </div>
-            <div className="user-preview-grid">
-              <div className="user-preview-item">
-                <p className="user-preview-label">Username:</p>
-                <p className="user-preview-value">
-                  {displayProfile?.username || 'Not specified'}
-                </p>
-              </div>
-              <div className="user-preview-item">
-                <p className="user-preview-label">Email:</p>
-                <p className="user-preview-value">
-                  {displayProfile?.email || 'Not specified'}
-                </p>
-              </div>
-              <div className="user-preview-item">
-                <p className="user-preview-label">Role:</p>
-                <p className={`user-preview-value role-badge ${displayProfile?.role === 'User' ? 'role-user' : 'role-admin'}`}>
-                  {displayProfile?.role || 'Not specified'}
-                </p>
-              </div>
-              <div className="user-preview-item">
-                <p className="user-preview-label">Status:</p>
-                <p className="user-preview-value status-badge status-active">
-                  {displayProfile?.status || 'Active'}
-                </p>
-              </div>
-            </div>
-            {displayProfile?.role === 'User' && (
-              <div className="restricted-warning">
-                <p style={{ margin: '0' }}>
-                  ⚠️ <strong>Restricted Access:</strong> Your account has limited permissions. Contact an administrator to request additional access.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Profile Edit Form */
-          <div className="edit-form">
-            <h3>✏️ Edit Profile Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Username</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editedProfile.username}
-                  onChange={(e) => handleProfileInputChange('username', e.target.value)}
-                  placeholder="Enter username"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={editedProfile.email}
-                  onChange={(e) => handleProfileInputChange('email', e.target.value)}
-                  placeholder="Enter email"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Role</label>
-                <select
-                  className="form-select"
-                  value={editedProfile.role}
-                  onChange={(e) => handleProfileInputChange('role', e.target.value)}
-                >
-                  <option value="User">User</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Web Developer">Web Developer</option>
-                  <option value="Project Manager">Project Manager</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select
-                  className="form-select"
-                  value={editedProfile.status}
-                  onChange={(e) => handleProfileInputChange('status', e.target.value)}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-actions">
-              <button className="btn-cancel" onClick={handleProfileEditToggle}>
-                <FiX style={{ marginRight: '0.5rem' }} />
-                Cancel
-              </button>
-              <button className="btn-save" onClick={handleProfileSave}>
-                <FiSave style={{ marginRight: '0.5rem' }} />
-                Save Changes
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Profile Settings Cards */}
-        <div className="settings-grid">
-          <div className="settings-card">
-            <h3>Personal Information</h3>
-            <p>Update your name, email, phone number, and contact details.</p>
-          </div>
-          
-          <div className="settings-card">
-            <h3>Account Security</h3>
-            <p>Change password, enable two-factor authentication, and security settings.</p>
-          </div>
-          
-          <div className="settings-card">
-            <h3>Preferences</h3>
-            <p>Configure notifications, language, timezone, and display preferences.</p>
-          </div>
-          
-          <div className="settings-card">
-            <h3>Privacy Settings</h3>
-            <p>Manage data privacy, visibility settings, and account permissions.</p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderSecuritySettings = () => (
     <div className="workspace-tab-content">
       <h3>🔒 Security & Permissions</h3>
@@ -1064,35 +825,22 @@ function WorkspaceSettings({ user, onLogout }) {
     // Define all modules
     const allModules = [
       {
-        id: 'BoothOS',
-        name: 'BoothOS',
+        id: 'ExhibitOS',
+        name: 'Exhibit OS',
         company: 'Exhibition Contractors Company',
-        description: 'BoothOS is the ultimate all-in-one plugin built from the ground up for exhibition and trade show contractors. It\'s the central "Operating System" you need to manage your entire business, from the first client call to the final booth takedown.',
+        description: 'Exhibit OS is your all-in-one tool to run your entire exhibition business, from first client call to booth teardown. It\'s the system every contractor wishes they had before.',
         require: 'N/A',
         lastUpdate: '28 Oct 2025',
-        logo: (
-          <svg className="module-logo" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-            <path d="M10 15L20 10L30 15V25L20 30L10 25V15Z" fill="white"/>
-          </svg>
-        )
+        logo: <img src={exhibitosLogo} alt="Exhibit OS" className="module-logo" />
       },
       {
         id: 'BotGit',
         name: 'BotGit',
-        company: 'Linkedin AI Commenter',
-        description: 'An intelligent tool that automatically writes meaningful and professional comments on LinkedIn posts. It helps you stay active, engage with your network, and build connections with customizable tone and topic options.',
+        company: 'Linkedin Extractor',
+        description: 'Unlimited LinkedIn Connection Data Extractor. Instantly get names, phones, emails, and job titles from your own LinkedIn in one click. Super simple and lightning fast.',
         require: 'Chrome Extension',
         lastUpdate: '28 Oct 2025',
-        logo: (
-          <svg className="module-logo" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="8" fill="#3B82F6"/>
-            <circle cx="12" cy="20" r="3" fill="white"/>
-            <circle cx="28" cy="20" r="3" fill="white"/>
-            <path d="M12 20L28 20" stroke="white" strokeWidth="2"/>
-            <path d="M20 12V28" stroke="white" strokeWidth="2"/>
-          </svg>
-        )
+        logo: <img src={botgitLogo} alt="BotGit" className="module-logo" />
       }
     ];
 
@@ -1204,12 +952,6 @@ function WorkspaceSettings({ user, onLogout }) {
           <FiUsers /> Members
         </button>
         <button 
-          className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
-          onClick={() => setActiveTab('profile')}
-        >
-          <FiUser /> Profile
-        </button>
-        <button 
           className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
         >
@@ -1226,7 +968,6 @@ function WorkspaceSettings({ user, onLogout }) {
       <div className="workspace-content">
         {activeTab === 'general' && renderGeneralSettings()}
         {activeTab === 'members' && renderMembersSettings()}
-        {activeTab === 'profile' && renderProfileSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
       </div>

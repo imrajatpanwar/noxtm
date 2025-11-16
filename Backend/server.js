@@ -89,9 +89,21 @@ app.use('/api/email', emailRoutes);
 const extensionAuthRoutes = require('./routes/extension-auth');
 app.use('/api/extension-auth', extensionAuthRoutes);
 
+// Botgit Extension routes (optimized endpoints)
+const botgitExtensionRoutes = require('./routes/botgit-extension');
+app.use('/api/botgit', botgitExtensionRoutes);
+
 // Modules routes
 const modulesRoutes = require('./routes/modules');
 app.use('/api/modules', modulesRoutes);
+
+// Trade Shows routes
+const tradeShowsRoutes = require('./routes/trade-shows');
+app.use('/api/trade-shows', tradeShowsRoutes);
+
+// Exhibitors routes
+const exhibitorsRoutes = require('./routes/exhibitors');
+app.use('/api', exhibitorsRoutes);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
@@ -789,7 +801,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -799,6 +811,85 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+// Trade Show file upload configuration
+const tradeShowStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads', 'trade-shows');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const prefix = file.fieldname === 'showLogo' ? 'logo-' : 'floorplan-';
+    cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// Logo upload with 100KB limit
+const uploadLogo = multer({
+  storage: tradeShowStorage,
+  limits: {
+    fileSize: 100 * 1024 // 100KB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPG, PNG, and SVG files are allowed for logos!'), false);
+    }
+  }
+});
+
+// Floor plan upload with 10MB limit
+const uploadFloorPlan = multer({
+  storage: tradeShowStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, JPG, and PNG files are allowed for floor plans!'), false);
+    }
+  }
+});
+
+// Combined upload for trade shows (logo + floor plan)
+const uploadTradeShowFiles = multer({
+  storage: tradeShowStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for largest file
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'showLogo') {
+      const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
+      if (allowedMimes.includes(file.mimetype)) {
+        if (file.size && file.size > 100 * 1024) {
+          cb(new Error('Logo file size must be less than 100KB!'), false);
+        } else {
+          cb(null, true);
+        }
+      } else {
+        cb(new Error('Only JPG, PNG, and SVG files are allowed for logos!'), false);
+      }
+    } else if (file.fieldname === 'floorPlan') {
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF, JPG, and PNG files are allowed for floor plans!'), false);
+      }
+    } else {
+      cb(new Error('Unexpected field'), false);
     }
   }
 });

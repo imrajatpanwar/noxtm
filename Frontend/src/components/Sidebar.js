@@ -321,6 +321,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
+    { name: 'Botgit', section: 'botgit', category: 'Data Center' },
     
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -486,8 +487,8 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">DATA CENTER</h4>
               
-              {/* Global Trade Show Section - Only show if BoothOS module is installed */}
-              {isModuleInstalled('BoothOS') && (
+              {/* Global Trade Show Section - Only show if ExhibitOS module is installed */}
+              {isModuleInstalled('ExhibitOS') && (
                 <div className="sidebar-item-container">
                   <div
                     className={`Dash-noxtm-sidebar-item ${activeSection === 'global-trade-show' ? 'active' : ''}`}
@@ -495,6 +496,19 @@ function Sidebar({ activeSection, onSectionChange }) {
                   >
                     <FiGlobe className="sidebar-icon" />
                     <span>Global Trade Shows</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Botgit Section - Only show if ExhibitOS module is installed */}
+              {isModuleInstalled('ExhibitOS') && (
+                <div className="sidebar-item-container">
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('botgit')}
+                  >
+                    <FiDatabase className="sidebar-icon" />
+                    <span>Botgit</span>
                   </div>
                 </div>
               )}
