@@ -17,7 +17,7 @@ function Botgit() {
     setLoadingTradeShows(true);
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = 'http://localhost:5000/api/trade-shows';
+      const apiUrl = '/api/trade-shows';
       console.log('Fetching trade shows from:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -67,7 +67,7 @@ function Botgit() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/botgit/settings', {
+      const response = await fetch('/api/botgit/settings', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

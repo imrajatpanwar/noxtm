@@ -17,7 +17,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
   const fetchExhibitors = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/trade-shows/${tradeShow._id}/exhibitors`, {
+      const response = await fetch(`/api/trade-shows/${tradeShow._id}/exhibitors`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -44,8 +44,8 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
     try {
       const token = localStorage.getItem('token');
       const url = editingId
-        ? `http://localhost:5000/api/exhibitors/${editingId}`
-        : `http://localhost:5000/api/trade-shows/${tradeShow._id}/exhibitors`;
+        ? `/api/exhibitors/${editingId}`
+        : `/api/trade-shows/${tradeShow._id}/exhibitors`;
 
       const response = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
@@ -89,7 +89,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/exhibitors/${id}`, {
+      const response = await fetch(`/api/exhibitors/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
