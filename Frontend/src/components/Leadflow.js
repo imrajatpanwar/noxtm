@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import './leadflow.css';
+import './Leadflow.css';
 
-function leadflow() {
+function Leadflow() {
   const [tradeShows, setTradeShows] = useState([]);
   const [selectedTradeShow, setSelectedTradeShow] = useState('');
   const [extractionType, setExtractionType] = useState('');
@@ -201,4 +201,4 @@ function leadflow() {
   );
 }
 
-export default leadflow;
+export default Leadflow;
