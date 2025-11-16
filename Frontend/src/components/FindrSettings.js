@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Button, Container, Card } from 'react-bootstrap';
-import './findrSettings.css';
+import './FindrSettings.css';
 
-const findrSettings = () => {
+const FindrSettings = () => {
   const [settings, setSettings] = useState({
     autoScrape: false,
     scrapeInterval: '24',
@@ -110,4 +110,4 @@ const findrSettings = () => {
   );
 };
 
-export default findrSettings;
+export default FindrSettings;

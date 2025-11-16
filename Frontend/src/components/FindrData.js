@@ -8,10 +8,10 @@ import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import './findrData.css';
+import './FindrData.css';
 import { API_BASE_URL } from '../config/apiConfig';
 
-const findrData = () => {
+const FindrData = () => {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -346,4 +346,4 @@ const findrData = () => {
   );
 };
 
-export default findrData;
+export default FindrData;
