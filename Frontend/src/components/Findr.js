@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import './findr.css';
+import './Findr.css';
 
-function findr() {
+function Findr() {
   const [tradeShows, setTradeShows] = useState([]);
   const [selectedTradeShow, setSelectedTradeShow] = useState('');
   const [extractionType, setExtractionType] = useState('');
@@ -201,4 +201,4 @@ function findr() {
   );
 }
 
-export default findr;
+export default Findr;
