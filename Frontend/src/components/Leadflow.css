@@ -1,5 +1,5 @@
-/* Botgit Container */
-.botgit-container {
+/* leadflow Container */
+.leadflow-container {
   padding: 0;
   max-width: 100%;
   margin: 0;
@@ -9,11 +9,11 @@
 }
 
 /* Header */
-.botgit-header {
+.leadflow-header {
   margin-bottom: 24px;
 }
 
-.botgit-title {
+.leadflow-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #111827;
@@ -21,7 +21,7 @@
   font-family: 'Switzer', sans-serif;
 }
 
-.botgit-subtitle {
+.leadflow-subtitle {
   font-size: 0.875rem;
   color: #6b7280;
   margin: 0;
@@ -29,13 +29,13 @@
 }
 
 /* Content */
-.botgit-content {
+.leadflow-content {
   display: flex;
   justify-content: center;
   padding: 40px 0;
 }
 
-.botgit-card {
+.leadflow-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -46,11 +46,11 @@
 }
 
 /* Form Fields */
-.botgit-field {
+.leadflow-field {
   margin-bottom: 24px;
 }
 
-.botgit-label {
+.leadflow-label {
   display: block;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -59,7 +59,7 @@
   margin-bottom: 8px;
 }
 
-.botgit-select {
+.leadflow-select {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -77,12 +77,12 @@
   padding-right: 36px;
 }
 
-.botgit-select:focus {
+.leadflow-select:focus {
   outline: none;
   border-color: #111827;
 }
 
-.botgit-select option {
+.leadflow-select option {
   padding: 10px;
 }
 
@@ -96,13 +96,13 @@
 }
 
 /* Radio Group */
-.botgit-radio-group {
+.leadflow-radio-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.botgit-radio-label {
+.leadflow-radio-label {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -116,24 +116,24 @@
   transition: all 0.2s;
 }
 
-.botgit-radio-label:hover {
+.leadflow-radio-label:hover {
   background: #F9FAFB;
   border-color: #D1D5DB;
 }
 
-.botgit-radio {
+.leadflow-radio {
   width: 18px;
   height: 18px;
   cursor: pointer;
   accent-color: #111827;
 }
 
-.botgit-radio-label span {
+.leadflow-radio-label span {
   flex: 1;
 }
 
 /* Extract Button */
-.botgit-extract-btn {
+.leadflow-extract-btn {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 15px;
@@ -148,18 +148,18 @@
   margin-top: 8px;
 }
 
-.botgit-extract-btn:hover:not(:disabled) {
+.leadflow-extract-btn:hover:not(:disabled) {
   background: #1f2937;
 }
 
-.botgit-extract-btn:disabled {
+.leadflow-extract-btn:disabled {
   background: #E5E7EB;
   color: #9CA3AF;
   cursor: not-allowed;
 }
 
 /* Features Info Section */
-.botgit-features-info {
+.leadflow-features-info {
   margin-bottom: 24px;
 }
 
@@ -222,14 +222,14 @@
 }
 
 /* Divider */
-.botgit-divider {
+.leadflow-divider {
   height: 1px;
   background: #E5E7EB;
   margin: 24px 0;
 }
 
 /* Info Box */
-.botgit-info-box {
+.leadflow-info-box {
   background: #F0F9FF;
   border: 1px solid #BAE6FD;
   border-radius: 12px;
@@ -291,12 +291,12 @@
 }
 
 /* Radio Disabled State */
-.botgit-radio-disabled {
+.leadflow-radio-disabled {
   opacity: 0.6;
   cursor: not-allowed !important;
 }
 
-.botgit-radio-disabled:hover {
+.leadflow-radio-disabled:hover {
   background: transparent !important;
   border-color: #E5E5E5 !important;
 }
@@ -339,7 +339,7 @@
 }
 
 /* Input Fields */
-.botgit-input {
+.leadflow-input {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -351,12 +351,12 @@
   transition: all 0.2s;
 }
 
-.botgit-input:focus {
+.leadflow-input:focus {
   outline: none;
   border-color: #111827;
 }
 
-.botgit-input::placeholder {
+.leadflow-input::placeholder {
   color: #9CA3AF;
 }
 
@@ -403,17 +403,17 @@
   margin-top: 0;
 }
 
-.exhibitor-form .botgit-field:last-of-type {
+.exhibitor-form .leadflow-field:last-of-type {
   margin-bottom: 24px;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .botgit-card {
+  .leadflow-card {
     padding: 24px;
   }
   
-  .botgit-content {
+  .leadflow-content {
     padding: 20px 0;
   }
 }

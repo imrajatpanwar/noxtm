@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Button, Container, Card } from 'react-bootstrap';
-import './BotgitSettings.css';
+import './leadflowSettings.css';
 
-const BotgitSettings = () => {
+const leadflowSettings = () => {
   const [settings, setSettings] = useState({
     autoScrape: false,
     scrapeInterval: '24',
@@ -27,8 +27,8 @@ const BotgitSettings = () => {
   };
 
   return (
-    <Container className="botgit-settings-container">
-      <h2>Botgit Settings</h2>
+    <Container className="leadflow-settings-container">
+      <h2>leadflow Settings</h2>
       <Card>
         <Card.Body>
           <Form onSubmit={handleSubmit}>
@@ -110,4 +110,4 @@ const BotgitSettings = () => {
   );
 };
 
-export default BotgitSettings;
+export default leadflowSettings;

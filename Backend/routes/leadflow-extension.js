@@ -10,7 +10,7 @@ const Exhibitor = require('../models/Exhibitor');
 
 // ===== USER SETTINGS =====
 
-// Save user's botgit settings
+// Save user's leadflow settings
 router.post('/settings', auth, async (req, res) => {
   try {
     const { selectedTradeShowId, extractionType } = req.body;
@@ -25,14 +25,14 @@ router.post('/settings', auth, async (req, res) => {
       });
     }
 
-    // Update user with botgit settings
+    // Update user with leadflow settings
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       {
         $set: {
-          'botgitSettings.selectedTradeShowId': selectedTradeShowId,
-          'botgitSettings.extractionType': extractionType,
-          'botgitSettings.updatedAt': new Date()
+          'leadflowSettings.selectedTradeShowId': selectedTradeShowId,
+          'leadflowSettings.extractionType': extractionType,
+          'leadflowSettings.updatedAt': new Date()
         }
       },
       { new: true }
@@ -48,10 +48,10 @@ router.post('/settings', auth, async (req, res) => {
     res.json({
       success: true,
       message: 'Settings saved successfully',
-      settings: user.botgitSettings
+      settings: user.leadflowSettings
     });
   } catch (error) {
-    console.error('Error saving botgit settings:', error);
+    console.error('Error saving leadflow settings:', error);
     res.status(500).json({
       success: false,
       message: 'Error saving settings',
@@ -60,12 +60,12 @@ router.post('/settings', auth, async (req, res) => {
   }
 });
 
-// Get user's botgit settings
+// Get user's leadflow settings
 router.get('/settings', auth, async (req, res) => {
   try {
     const User = getUser();
     const user = await User.findById(req.user.userId)
-      .select('botgitSettings');
+      .select('leadflowSettings');
     
     if (!user) {
       return res.status(404).json({
@@ -75,19 +75,19 @@ router.get('/settings', auth, async (req, res) => {
     }
 
     // If settings exist, populate trade show info
-    if (user.botgitSettings && user.botgitSettings.selectedTradeShowId) {
-      const tradeShow = await TradeShow.findById(user.botgitSettings.selectedTradeShowId)
+    if (user.leadflowSettings && user.leadflowSettings.selectedTradeShowId) {
+      const tradeShow = await TradeShow.findById(user.leadflowSettings.selectedTradeShowId)
         .select('shortName fullName location');
       
       if (tradeShow) {
         return res.json({
           success: true,
           settings: {
-            selectedTradeShowId: user.botgitSettings.selectedTradeShowId,
+            selectedTradeShowId: user.leadflowSettings.selectedTradeShowId,
             tradeShowName: tradeShow.shortName,
             tradeShowLocation: tradeShow.location,
-            extractionType: user.botgitSettings.extractionType,
-            updatedAt: user.botgitSettings.updatedAt
+            extractionType: user.leadflowSettings.extractionType,
+            updatedAt: user.leadflowSettings.updatedAt
           }
         });
       }
@@ -98,7 +98,7 @@ router.get('/settings', auth, async (req, res) => {
       settings: null
     });
   } catch (error) {
-    console.error('Error fetching botgit settings:', error);
+    console.error('Error fetching leadflow settings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching settings',
