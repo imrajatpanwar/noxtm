@@ -1,5 +1,5 @@
-/* leadflow Container */
-.leadflow-container {
+/* findr Container */
+.findr-container {
   padding: 0;
   max-width: 100%;
   margin: 0;
@@ -9,11 +9,11 @@
 }
 
 /* Header */
-.leadflow-header {
+.findr-header {
   margin-bottom: 24px;
 }
 
-.leadflow-title {
+.findr-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #111827;
@@ -21,7 +21,7 @@
   font-family: 'Switzer', sans-serif;
 }
 
-.leadflow-subtitle {
+.findr-subtitle {
   font-size: 0.875rem;
   color: #6b7280;
   margin: 0;
@@ -29,13 +29,13 @@
 }
 
 /* Content */
-.leadflow-content {
+.findr-content {
   display: flex;
   justify-content: center;
   padding: 40px 0;
 }
 
-.leadflow-card {
+.findr-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -46,11 +46,11 @@
 }
 
 /* Form Fields */
-.leadflow-field {
+.findr-field {
   margin-bottom: 24px;
 }
 
-.leadflow-label {
+.findr-label {
   display: block;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -59,7 +59,7 @@
   margin-bottom: 8px;
 }
 
-.leadflow-select {
+.findr-select {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -77,12 +77,12 @@
   padding-right: 36px;
 }
 
-.leadflow-select:focus {
+.findr-select:focus {
   outline: none;
   border-color: #111827;
 }
 
-.leadflow-select option {
+.findr-select option {
   padding: 10px;
 }
 
@@ -96,13 +96,13 @@
 }
 
 /* Radio Group */
-.leadflow-radio-group {
+.findr-radio-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.leadflow-radio-label {
+.findr-radio-label {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -116,24 +116,24 @@
   transition: all 0.2s;
 }
 
-.leadflow-radio-label:hover {
+.findr-radio-label:hover {
   background: #F9FAFB;
   border-color: #D1D5DB;
 }
 
-.leadflow-radio {
+.findr-radio {
   width: 18px;
   height: 18px;
   cursor: pointer;
   accent-color: #111827;
 }
 
-.leadflow-radio-label span {
+.findr-radio-label span {
   flex: 1;
 }
 
 /* Extract Button */
-.leadflow-extract-btn {
+.findr-extract-btn {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 15px;
@@ -148,18 +148,18 @@
   margin-top: 8px;
 }
 
-.leadflow-extract-btn:hover:not(:disabled) {
+.findr-extract-btn:hover:not(:disabled) {
   background: #1f2937;
 }
 
-.leadflow-extract-btn:disabled {
+.findr-extract-btn:disabled {
   background: #E5E7EB;
   color: #9CA3AF;
   cursor: not-allowed;
 }
 
 /* Features Info Section */
-.leadflow-features-info {
+.findr-features-info {
   margin-bottom: 24px;
 }
 
@@ -222,14 +222,14 @@
 }
 
 /* Divider */
-.leadflow-divider {
+.findr-divider {
   height: 1px;
   background: #E5E7EB;
   margin: 24px 0;
 }
 
 /* Info Box */
-.leadflow-info-box {
+.findr-info-box {
   background: #F0F9FF;
   border: 1px solid #BAE6FD;
   border-radius: 12px;
@@ -291,12 +291,12 @@
 }
 
 /* Radio Disabled State */
-.leadflow-radio-disabled {
+.findr-radio-disabled {
   opacity: 0.6;
   cursor: not-allowed !important;
 }
 
-.leadflow-radio-disabled:hover {
+.findr-radio-disabled:hover {
   background: transparent !important;
   border-color: #E5E5E5 !important;
 }
@@ -339,7 +339,7 @@
 }
 
 /* Input Fields */
-.leadflow-input {
+.findr-input {
   width: 100%;
   font-family: 'Switzer', sans-serif;
   font-size: 14px;
@@ -351,12 +351,12 @@
   transition: all 0.2s;
 }
 
-.leadflow-input:focus {
+.findr-input:focus {
   outline: none;
   border-color: #111827;
 }
 
-.leadflow-input::placeholder {
+.findr-input::placeholder {
   color: #9CA3AF;
 }
 
@@ -403,17 +403,17 @@
   margin-top: 0;
 }
 
-.exhibitor-form .leadflow-field:last-of-type {
+.exhibitor-form .findr-field:last-of-type {
   margin-bottom: 24px;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .leadflow-card {
+  .findr-card {
     padding: 24px;
   }
   
-  .leadflow-content {
+  .findr-content {
     padding: 20px 0;
   }
 }

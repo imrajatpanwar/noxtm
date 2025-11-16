@@ -44,8 +44,8 @@ import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
-import leadflowData from './leadflowData';
-import leadflowSettings from './leadflowSettings';
+import findrData from './findrData';
+import findrSettings from './findrSettings';
 import ProfileSettings from './ProfileSettings';
 import NoxtmMailDashboard from './NoxtmMailDashboard';
 import EmailAccounts from './EmailAccounts';
@@ -55,7 +55,7 @@ import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import leadflow from './leadflow';
+import findr from './findr';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -160,8 +160,8 @@ function Dashboard({ user, onLogout }) {
         return <ConversionTracking />;
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
-      case 'leadflow':
-        return <leadflow />;
+      case 'findr':
+        return <findr />;
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
@@ -254,10 +254,10 @@ function Dashboard({ user, onLogout }) {
         return <SeoInsights />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
-      case 'leadflow-data':
-        return <leadflowData />;
-      case 'leadflow-settings':
-        return <leadflowSettings />;
+      case 'findr-data':
+        return <findrData />;
+      case 'findr-settings':
+        return <findrSettings />;
       case 'profile-settings':
         return <ProfileSettings user={user} />;
       default:

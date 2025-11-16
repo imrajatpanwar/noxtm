@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Button, Container, Card } from 'react-bootstrap';
-import './leadflowSettings.css';
+import './findrSettings.css';
 
-const leadflowSettings = () => {
+const findrSettings = () => {
   const [settings, setSettings] = useState({
     autoScrape: false,
     scrapeInterval: '24',
@@ -27,8 +27,8 @@ const leadflowSettings = () => {
   };
 
   return (
-    <Container className="leadflow-settings-container">
-      <h2>leadflow Settings</h2>
+    <Container className="findr-settings-container">
+      <h2>findr Settings</h2>
       <Card>
         <Card.Body>
           <Form onSubmit={handleSubmit}>
@@ -110,4 +110,4 @@ const leadflowSettings = () => {
   );
 };
 
-export default leadflowSettings;
+export default findrSettings;

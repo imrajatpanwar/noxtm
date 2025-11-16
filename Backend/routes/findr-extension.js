@@ -10,7 +10,7 @@ const Exhibitor = require('../models/Exhibitor');
 
 // ===== USER SETTINGS =====
 
-// Save user's leadflow settings
+// Save user's findr settings
 router.post('/settings', auth, async (req, res) => {
   try {
     const { selectedTradeShowId, extractionType } = req.body;
@@ -25,14 +25,14 @@ router.post('/settings', auth, async (req, res) => {
       });
     }
 
-    // Update user with leadflow settings
+    // Update user with findr settings
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       {
         $set: {
-          'leadflowSettings.selectedTradeShowId': selectedTradeShowId,
-          'leadflowSettings.extractionType': extractionType,
-          'leadflowSettings.updatedAt': new Date()
+          'findrSettings.selectedTradeShowId': selectedTradeShowId,
+          'findrSettings.extractionType': extractionType,
+          'findrSettings.updatedAt': new Date()
         }
       },
       { new: true }
@@ -48,10 +48,10 @@ router.post('/settings', auth, async (req, res) => {
     res.json({
       success: true,
       message: 'Settings saved successfully',
-      settings: user.leadflowSettings
+      settings: user.findrSettings
     });
   } catch (error) {
-    console.error('Error saving leadflow settings:', error);
+    console.error('Error saving findr settings:', error);
     res.status(500).json({
       success: false,
       message: 'Error saving settings',
@@ -60,12 +60,12 @@ router.post('/settings', auth, async (req, res) => {
   }
 });
 
-// Get user's leadflow settings
+// Get user's findr settings
 router.get('/settings', auth, async (req, res) => {
   try {
     const User = getUser();
     const user = await User.findById(req.user.userId)
-      .select('leadflowSettings');
+      .select('findrSettings');
     
     if (!user) {
       return res.status(404).json({
@@ -75,19 +75,19 @@ router.get('/settings', auth, async (req, res) => {
     }
 
     // If settings exist, populate trade show info
-    if (user.leadflowSettings && user.leadflowSettings.selectedTradeShowId) {
-      const tradeShow = await TradeShow.findById(user.leadflowSettings.selectedTradeShowId)
+    if (user.findrSettings && user.findrSettings.selectedTradeShowId) {
+      const tradeShow = await TradeShow.findById(user.findrSettings.selectedTradeShowId)
         .select('shortName fullName location');
       
       if (tradeShow) {
         return res.json({
           success: true,
           settings: {
-            selectedTradeShowId: user.leadflowSettings.selectedTradeShowId,
+            selectedTradeShowId: user.findrSettings.selectedTradeShowId,
             tradeShowName: tradeShow.shortName,
             tradeShowLocation: tradeShow.location,
-            extractionType: user.leadflowSettings.extractionType,
-            updatedAt: user.leadflowSettings.updatedAt
+            extractionType: user.findrSettings.extractionType,
+            updatedAt: user.findrSettings.updatedAt
           }
         });
       }
@@ -98,7 +98,7 @@ router.get('/settings', auth, async (req, res) => {
       settings: null
     });
   } catch (error) {
-    console.error('Error fetching leadflow settings:', error);
+    console.error('Error fetching findr settings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching settings',
