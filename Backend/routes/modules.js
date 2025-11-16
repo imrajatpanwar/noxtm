@@ -33,7 +33,7 @@ router.post('/install', auth, async (req, res) => {
     const { moduleId } = req.body;
 
     // Validate moduleId
-    if (!moduleId || !['BotGit', 'BoothOS'].includes(moduleId)) {
+    if (!moduleId || !['BotGit', 'ExhibitOS'].includes(moduleId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid module ID',
@@ -100,7 +100,7 @@ router.delete('/:moduleId/uninstall', auth, async (req, res) => {
     const { moduleId } = req.params;
 
     // Validate moduleId
-    if (!['BotGit', 'BoothOS'].includes(moduleId)) {
+    if (!['BotGit', 'ExhibitOS'].includes(moduleId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid module ID',

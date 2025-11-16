@@ -810,7 +810,7 @@ input:checked + .toggle-slider:before {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 14px;
+  padding: 14px 14px 3px 14px;
   transition: all 0.2s ease;
 }
 
@@ -831,8 +831,8 @@ input:checked + .toggle-slider:before {
 }
 
 .module-logo {
-  width: 48px;
-  height: 48px;
+  width: 33px;
+  height: 33px;
   border-radius: 8px;
 }
 
@@ -845,12 +845,12 @@ input:checked + .toggle-slider:before {
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
-  margin: 0 0 2px 0;
+  margin: 0px;
   font-family: 'Switzer', sans-serif;
 }
 
 .module-company {
-  font-size: 0.8125rem;
+  font-size: 12px;
   color: #6b7280;
   margin: 0;
   font-family: 'Switzer', sans-serif;
@@ -859,11 +859,11 @@ input:checked + .toggle-slider:before {
 /* Module Install Button */
 .btn-module-install {
   padding: 6px 16px;
-  border: 1px solid #111827;
-  border-radius: 6px;
-  background: #111827;
-  color: white;
-  font-weight: 600;
+  border: 1px solid #D8D8D8;
+  border-radius: 8px;
+  background: #F6F6F6;
+  color: #111827;
+  font-weight: 500;
   font-size: 0.8125rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -873,35 +873,34 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-module-install:hover {
-  background: #000000;
-  border-color: #000000;
+  background: #F1F1F1;
+  color: #111827;
+  border-color: #656565;
 }
 
 .btn-module-install.installed {
-  background: transparent;
-  color: #111827;
-  border-color: #e5e7eb;
+  background: #F6F6F6;
+  color: #9ca3af;
+  border-color: #E8E8E8;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .btn-module-install.installed:hover {
-  background: #fef2f2;
-  border-color: #fecaca;
+  background: #ffe4e4;
   color: #dc2626;
+  border-color: #fca5a5;
 }
 
 .btn-module-install.installing {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
+  background: #F6F6F6;
+  border-color: #D8D8D8;
+  color: #B1B1B1;
   cursor: not-allowed;
-  opacity: 0.8;
 }
 
 /* Module Description */
 .module-description {
-  font-size: 10px;
+  font-size: 12px;
   color: #717885;
   line-height: 1.5;
   margin: 0 0 6px 0;

@@ -54,6 +54,8 @@ import EmailTemplates from './EmailTemplates';
 import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
 import GlobalTradeShow from './GlobalTradeShow';
+import ExhibitorsList from './ExhibitorsList';
+import Botgit from './Botgit';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -63,7 +65,8 @@ function Dashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
-  
+  const [selectedTradeShow, setSelectedTradeShow] = useState(null);
+
   const isAdmin = currentUser?.role === 'Admin';
 
   const fetchDashboardData = useCallback(async () => {
@@ -136,6 +139,13 @@ function Dashboard({ user, onLogout }) {
     setActiveSection(section);
   };
 
+  const handleNavigate = (section, data) => {
+    setActiveSection(section);
+    if (data) {
+      setSelectedTradeShow(data);
+    }
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -149,7 +159,11 @@ function Dashboard({ user, onLogout }) {
       case 'conversion-tracking':
         return <ConversionTracking />;
       case 'global-trade-show':
-        return <GlobalTradeShow />;
+        return <GlobalTradeShow onNavigate={handleNavigate} />;
+      case 'botgit':
+        return <Botgit />;
+      case 'exhibitor-list':
+        return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
         return <OurProjects />;
       case 'project-delivered':

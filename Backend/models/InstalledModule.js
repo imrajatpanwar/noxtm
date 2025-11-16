@@ -9,7 +9,7 @@ const installedModuleSchema = new mongoose.Schema({
   moduleId: {
     type: String,
     required: true,
-    enum: ['BotGit', 'BoothOS'], // Only these two modules for now
+    enum: ['BotGit', 'ExhibitOS'], // Only these two modules for now
   },
   status: {
     type: String,
