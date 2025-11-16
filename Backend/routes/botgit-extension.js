@@ -84,7 +84,7 @@ router.get('/settings', auth, async (req, res) => {
           success: true,
           settings: {
             selectedTradeShowId: user.botgitSettings.selectedTradeShowId,
-            tradeShowName: tradeShow.fullName || tradeShow.shortName,
+            tradeShowName: tradeShow.shortName,
             tradeShowLocation: tradeShow.location,
             extractionType: user.botgitSettings.extractionType,
             updatedAt: user.botgitSettings.updatedAt
