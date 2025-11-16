@@ -99,7 +99,7 @@ function GlobalTradeShow({ onNavigate }) {
   const fetchCompanyUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/company/members', {
+      const response = await fetch('/api/company/members', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -124,7 +124,7 @@ function GlobalTradeShow({ onNavigate }) {
   const fetchTradeShows = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/trade-shows', {
+      const response = await fetch('/api/trade-shows', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -411,7 +411,7 @@ function GlobalTradeShow({ onNavigate }) {
         formDataToSend.append('showLeadsAccessPeople', JSON.stringify(selectedShowLeadsAccessUsers.map(u => u._id)));
       }
 
-      const response = await fetch('http://localhost:5000/api/trade-shows', {
+      const response = await fetch('/api/trade-shows', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -621,7 +621,7 @@ function GlobalTradeShow({ onNavigate }) {
                             onMouseLeave={handleMouseLeave}
                           >
                             <img
-                              src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : `http://localhost:5000${user.profilePicture}`) : defaultAvatar}
+                              src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : user.profilePicture) : defaultAvatar}
                               alt={user.name}
                             />
                           </div>
@@ -653,7 +653,7 @@ function GlobalTradeShow({ onNavigate }) {
                               >
                                 <div className="gts-dropdown-avatar">
                                   <img
-                                    src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : `http://localhost:5000${user.profilePicture}`) : defaultAvatar}
+                                    src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : user.profilePicture) : defaultAvatar}
                                     alt={user.name}
                                   />
                                 </div>
@@ -686,7 +686,7 @@ function GlobalTradeShow({ onNavigate }) {
                             onMouseLeave={handleMouseLeave}
                           >
                             <img
-                              src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : `http://localhost:5000${user.profilePicture}`) : defaultAvatar}
+                              src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : user.profilePicture) : defaultAvatar}
                               alt={user.name}
                             />
                           </div>
@@ -718,7 +718,7 @@ function GlobalTradeShow({ onNavigate }) {
                                 >
                                   <div className="gts-dropdown-avatar">
                                     <img
-                                      src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : `http://localhost:5000${user.profilePicture}`) : defaultAvatar}
+                                      src={user.profilePicture ? (user.profilePicture.startsWith('http') || user.profilePicture.startsWith('data:') ? user.profilePicture : user.profilePicture) : defaultAvatar}
                                       alt={user.name}
                                     />
                                   </div>
@@ -900,7 +900,7 @@ function GlobalTradeShow({ onNavigate }) {
                   <div className="gts-card-logo">
                     {show.showLogo && show.showLogo.path ? (
                       <img
-                        src={`http://localhost:5000${show.showLogo.path}`}
+                        src={show.showLogo.path}
                         alt={show.fullName}
                         className="gts-show-logo"
                       />
@@ -946,7 +946,7 @@ function GlobalTradeShow({ onNavigate }) {
                     <div className="gts-card-info-row">
                       {show.floorPlan && show.floorPlan.path ? (
                         <a
-                          href={`http://localhost:5000${show.floorPlan.path}`}
+                          href={show.floorPlan.path}
                           download
                           className="gts-link-text"
                         >
@@ -969,7 +969,7 @@ function GlobalTradeShow({ onNavigate }) {
                           show.showAccessPeople.slice(0, 2).map((user, index) => (
                             <div key={user._id || index} className="gts-card-avatar">
                               <img
-                                src={user.profileImage ? (user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : `http://localhost:5000${user.profileImage}`) : defaultAvatar}
+                                src={user.profileImage ? (user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : user.profileImage) : defaultAvatar}
                                 alt={user.fullName || user.name}
                               />
                             </div>
@@ -1083,7 +1083,7 @@ function GlobalTradeShow({ onNavigate }) {
                 <div className="gts-about-panel-section">
                   <h3>Floor Plan</h3>
                   <a
-                    href={`http://localhost:5000${selectedShow.floorPlan.path}`}
+                    href={selectedShow.floorPlan.path}
                     download
                     className="gts-about-panel-download-btn"
                   >
