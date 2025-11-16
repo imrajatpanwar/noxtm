@@ -55,7 +55,7 @@ import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import findr from './findr';
+import Findr from './Findr';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -161,7 +161,7 @@ function Dashboard({ user, onLogout }) {
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
       case 'findr':
-        return <findr />;
+        return <Findr />;
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
