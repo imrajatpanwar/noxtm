@@ -8,10 +8,10 @@ import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import './leadflowData.css';
+import './findrData.css';
 import { API_BASE_URL } from '../config/apiConfig';
 
-const leadflowData = () => {
+const findrData = () => {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -131,7 +131,7 @@ const leadflowData = () => {
           throw new Error(`Failed to parse JSON response. Received: ${text.substring(0, 100)}...`);
         }
       } catch (err) {
-        console.error('leadflowData Error:', err);
+        console.error('findrData Error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -148,10 +148,10 @@ const leadflowData = () => {
   const paginatedData = filteredData.slice(startIdx, endIdx);
 
   return (
-    <div className="leadflow-data-page">
+    <div className="findr-data-page">
       <div className="header-flex">
         <div className="header-left">
-          <h2 className="header-title">leadflow Data</h2>
+          <h2 className="header-title">findr Data</h2>
         </div>
         <div className="header-right">
           <div className="search-box">
@@ -169,7 +169,7 @@ const leadflowData = () => {
         </div>
       </div>
 
-      <Container className="leadflow-data-container">
+      <Container className="findr-data-container">
         <div className="data-controls">
           <div className="info-section">
             <div className="total-count" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -346,4 +346,4 @@ const leadflowData = () => {
   );
 };
 
-export default leadflowData;
+export default findrData;

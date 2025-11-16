@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import './Leadflow.css';
+import './findr.css';
 
-function Leadflow() {
+function findr() {
   const [tradeShows, setTradeShows] = useState([]);
   const [selectedTradeShow, setSelectedTradeShow] = useState('');
   const [extractionType, setExtractionType] = useState('');
@@ -67,7 +67,7 @@ function Leadflow() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/leadflow/settings', {
+      const response = await fetch('/api/findr/settings', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -99,14 +99,14 @@ function Leadflow() {
   };
 
   return (
-    <div className="leadflow-container">
-      <div className="leadflow-header">
-        <h1 className="leadflow-title">leadflow</h1>
-        <p className="leadflow-subtitle">Configure extraction settings for the Chrome extension</p>
+    <div className="findr-container">
+      <div className="findr-header">
+        <h1 className="findr-title">findr</h1>
+        <p className="findr-subtitle">Configure extraction settings for the Chrome extension</p>
       </div>
 
-      <div className="leadflow-content">
-        <div className="leadflow-card">
+      <div className="findr-content">
+        <div className="findr-card">
           {successMessage && (
             <div className="success-banner">
               <span className="success-icon">✓</span>
@@ -114,27 +114,27 @@ function Leadflow() {
             </div>
           )}
 
-          <div className="leadflow-info-box">
-            <h3 className="info-title">📱 How to Use leadflow</h3>
+          <div className="findr-info-box">
+            <h3 className="info-title">📱 How to Use findr</h3>
             <ol className="info-steps">
               <li>Select a trade show from the dropdown below</li>
               <li>Choose the type of data you want to extract</li>
               <li>Click "Save Settings"</li>
-              <li>Use the <strong>leadflow Chrome Extension</strong> to add exhibitor data</li>
+              <li>Use the <strong>findr Chrome Extension</strong> to add exhibitor data</li>
             </ol>
             <p className="info-note">
               💡 The Chrome extension will automatically use these settings to save data to your account.
             </p>
           </div>
 
-          <div className="leadflow-divider"></div>
+          <div className="findr-divider"></div>
 
-          <div className="leadflow-field">
-            <label className="leadflow-label">Choose Trade Show</label>
+          <div className="findr-field">
+            <label className="findr-label">Choose Trade Show</label>
             <select
               value={selectedTradeShow}
               onChange={(e) => setSelectedTradeShow(e.target.value)}
-              className="leadflow-select"
+              className="findr-select"
               disabled={loadingTradeShows}
             >
               <option value="">
@@ -155,30 +155,30 @@ function Leadflow() {
             )}
           </div>
 
-          <div className="leadflow-field">
-            <label className="leadflow-label">Extract Data of?</label>
-            <div className="leadflow-radio-group">
-              <label className="leadflow-radio-label">
+          <div className="findr-field">
+            <label className="findr-label">Extract Data of?</label>
+            <div className="findr-radio-group">
+              <label className="findr-radio-label">
                 <input
                   type="radio"
                   name="extractionType"
                   value="exhibitors"
                   checked={extractionType === 'exhibitors'}
                   onChange={(e) => setExtractionType(e.target.value)}
-                  className="leadflow-radio"
+                  className="findr-radio"
                 />
                 <span>
                   <strong>Exhibitor's Data</strong> <span className="badge-active">Active</span>
                 </span>
               </label>
-              <label className="leadflow-radio-label leadflow-radio-disabled">
+              <label className="findr-radio-label findr-radio-disabled">
                 <input
                   type="radio"
                   name="extractionType"
                   value="companies"
                   checked={extractionType === 'companies'}
                   onChange={(e) => setExtractionType(e.target.value)}
-                  className="leadflow-radio"
+                  className="findr-radio"
                   disabled
                 />
                 <span>
@@ -191,7 +191,7 @@ function Leadflow() {
           <button
             onClick={handleSaveSettings}
             disabled={loading || !selectedTradeShow || !extractionType}
-            className="leadflow-extract-btn"
+            className="findr-extract-btn"
           >
             {loading ? 'Saving...' : 'Save Settings'}
           </button>
@@ -201,4 +201,4 @@ function Leadflow() {
   );
 }
 
-export default Leadflow;
+export default findr;

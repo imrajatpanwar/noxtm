@@ -142,15 +142,15 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Check if NOXTM MAIL should be hidden (for active Noxtm subscription users)
   const shouldHideNoxtmMail = subscription?.plan === 'Noxtm' && subscription?.status === 'active';
 
-  // Check if user has leadflow subscription access
-  const hasleadflowSubscription = useMemo(() => {
+  // Check if user has findr subscription access
+  const hasfindrSubscription = useMemo(() => {
     const userSubscription = currentUser?.subscription?.plan;
     const subscriptionStatus = currentUser?.subscription?.status;
     
-    // leadflow is available for these subscription plans
-    const leadflowEnabledPlans = ['leadflow', 'Enterprise', 'Noxtm'];
+    // findr is available for these subscription plans
+    const findrEnabledPlans = ['findr', 'Enterprise', 'Noxtm'];
     
-    return subscriptionStatus === 'active' && leadflowEnabledPlans.includes(userSubscription);
+    return subscriptionStatus === 'active' && findrEnabledPlans.includes(userSubscription);
   }, [currentUser?.subscription]);
 
   // Memoized permission checking to prevent unnecessary re-renders and glitches
@@ -170,7 +170,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': true,
         'Workspace Settings': true,
-        'leadflow': hasleadflowSubscription, // Require subscription even for Admin
+        'findr': hasfindrSubscription, // Require subscription even for Admin
         'Profile': true
       };
     }
@@ -190,7 +190,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': false,
         'Workspace Settings': true,
-        'leadflow': hasleadflowSubscription, // Require subscription
+        'findr': hasfindrSubscription, // Require subscription
         'Profile': true
       };
     }
@@ -210,7 +210,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': false,
         'Settings & Configuration': false,
         'Workspace Settings': false,
-        'leadflow': false, // SOLOHQ users don't get leadflow (free plan)
+        'findr': false, // SOLOHQ users don't get findr (free plan)
         'Profile': true
       };
     }
@@ -230,7 +230,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
         'Workspace Settings': false, // Team Members don't get workspace settings
-        'leadflow': hasPermission(MODULES.PROJECTS) && hasleadflowSubscription, // Require both permission and subscription
+        'findr': hasPermission(MODULES.PROJECTS) && hasfindrSubscription, // Require both permission and subscription
         'Profile': true // Profile is available to all users
       };
     }
@@ -249,10 +249,10 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
-      'leadflow': hasleadflowSubscription, // leadflow requires active subscription
+      'findr': hasfindrSubscription, // findr requires active subscription
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasleadflowSubscription]); // Add hasleadflowSubscription dependency
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasfindrSubscription]); // Add hasfindrSubscription dependency
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -321,7 +321,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'leadflow', section: 'leadflow', category: 'Data Center' },
+    { name: 'findr', section: 'findr', category: 'Data Center' },
     
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -391,9 +391,9 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
     
-    // leadflow
-    { name: 'Scraped Data', section: 'leadflow-data', category: 'leadflow' },
-    { name: 'leadflow Settings', section: 'leadflow-settings', category: 'leadflow' },
+    // findr
+    { name: 'Scraped Data', section: 'findr-data', category: 'findr' },
+    { name: 'findr Settings', section: 'findr-settings', category: 'findr' },
     
     // Profile
     { name: 'Profile Settings', section: 'profile-settings', category: 'Profile' },
@@ -500,15 +500,15 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
-              {/* leadflow Section - Only show if ExhibitOS module is installed */}
+              {/* findr Section - Only show if ExhibitOS module is installed */}
               {isModuleInstalled('ExhibitOS') && (
                 <div className="sidebar-item-container">
                   <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('leadflow')}
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'findr' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('findr')}
                   >
                     <FiDatabase className="sidebar-icon" />
-                    <span>leadflow</span>
+                    <span>findr</span>
                   </div>
                 </div>
               )}
@@ -1156,23 +1156,23 @@ function Sidebar({ activeSection, onSectionChange }) {
             </div>
           )}
 
-          {/* leadflow Section */}
-          {hasPermissionForSection('leadflow') && isModuleInstalled('leadflow') && (
+          {/* findr Section */}
+          {hasPermissionForSection('findr') && isModuleInstalled('findr') && (
             <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">leadflow</h4>
+              <h4 className="Dash-noxtm-sidebar-section-title">findr</h4>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow-data' ? 'active' : ''}`}
-                onClick={() => onSectionChange('leadflow-data')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'findr-data' ? 'active' : ''}`}
+                onClick={() => onSectionChange('findr-data')}
               >
                 <FiDatabase className="sidebar-icon" />
                 <span>Scraped Data</span>
               </div>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow-settings' ? 'active' : ''}`}
-                onClick={() => onSectionChange('leadflow-settings')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'findr-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('findr-settings')}
               >
                 <FiSliders className="sidebar-icon" />
-                <span>leadflow Settings</span>
+                <span>findr Settings</span>
               </div>
             </div>
           )}
