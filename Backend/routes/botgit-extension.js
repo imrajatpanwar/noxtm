@@ -77,15 +77,15 @@ router.get('/settings', auth, async (req, res) => {
     // If settings exist, populate trade show info
     if (user.botgitSettings && user.botgitSettings.selectedTradeShowId) {
       const tradeShow = await TradeShow.findById(user.botgitSettings.selectedTradeShowId)
-        .select('showName showLocation');
+        .select('shortName fullName location');
       
       if (tradeShow) {
         return res.json({
           success: true,
           settings: {
             selectedTradeShowId: user.botgitSettings.selectedTradeShowId,
-            tradeShowName: tradeShow.showName,
-            tradeShowLocation: tradeShow.showLocation,
+            tradeShowName: tradeShow.fullName || tradeShow.shortName,
+            tradeShowLocation: tradeShow.location,
             extractionType: user.botgitSettings.extractionType,
             updatedAt: user.botgitSettings.updatedAt
           }
