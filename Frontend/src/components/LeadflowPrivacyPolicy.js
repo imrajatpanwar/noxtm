@@ -1,22 +1,22 @@
 import React from 'react';
 import './PolicyPages.css';
 
-const BotgitPrivacyPolicy = () => {
+const leadflowPrivacyPolicy = () => {
   return (
     <div className="policy-wrapper">
-      <h1>Privacy Policy for Botgit Chrome Extension</h1>
+      <h1>Privacy Policy for leadflow Chrome Extension</h1>
       
       <section className="policy-section">
         <h2>Introduction</h2>
-        <p>Welcome to Botgit, a service provided by Noxtm Technologies ("we", "our", or "us").</p>
+        <p>Welcome to leadflow, a service provided by Noxtm Technologies ("we", "our", or "us").</p>
         <p>We are committed to protecting your personal information and your right to privacy.</p>
-        <p>This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website (noxtm.com) and our candidate import services (including the Botgit Chrome Extension).</p>
+        <p>This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website (noxtm.com) and our candidate import services (including the leadflow Chrome Extension).</p>
       </section>
 
       <section className="policy-section">
         <h2>Information We Collect</h2>
         <h3>1. Personal Information</h3>
-        <p>We may collect personal information that you provide directly when using Botgit, including:</p>
+        <p>We may collect personal information that you provide directly when using leadflow, including:</p>
         <ul>
           <li>Name</li>
           <li>Email address</li>
@@ -26,7 +26,7 @@ const BotgitPrivacyPolicy = () => {
           <li>LinkedIn profile URL</li>
           <li>Company or organization details</li>
         </ul>
-        <p>This information is collected when you import, manage, or organize candidate data through Botgit.</p>
+        <p>This information is collected when you import, manage, or organize candidate data through leadflow.</p>
 
         <h3>2. Usage Data</h3>
         <p>We automatically collect certain information when you interact with our website or extension, such as:</p>
@@ -52,7 +52,7 @@ const BotgitPrivacyPolicy = () => {
         <h2>How We Use Your Information</h2>
         <p>We use the information we collect to:</p>
         <ul>
-          <li>Provide, operate, and maintain the Botgit service</li>
+          <li>Provide, operate, and maintain the leadflow service</li>
           <li>Improve and personalize your experience</li>
           <li>Communicate updates, features, or support information</li>
           <li>Prevent fraudulent, unauthorized, or illegal activities</li>
@@ -105,4 +105,4 @@ const BotgitPrivacyPolicy = () => {
   );
 };
 
-export default BotgitPrivacyPolicy;
+export default leadflowPrivacyPolicy;

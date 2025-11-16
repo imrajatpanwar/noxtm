@@ -89,9 +89,9 @@ app.use('/api/email', emailRoutes);
 const extensionAuthRoutes = require('./routes/extension-auth');
 app.use('/api/extension-auth', extensionAuthRoutes);
 
-// Botgit Extension routes (optimized endpoints)
-const botgitExtensionRoutes = require('./routes/botgit-extension');
-app.use('/api/botgit', botgitExtensionRoutes);
+// leadflow Extension routes (optimized endpoints)
+const leadflowExtensionRoutes = require('./routes/leadflow-extension');
+app.use('/api/leadflow', leadflowExtensionRoutes);
 
 // Modules routes
 const modulesRoutes = require('./routes/modules');
@@ -199,8 +199,8 @@ const userSchema = new mongoose.Schema({
     default: 'Active',
     enum: ['Active', 'Inactive', 'Terminated', 'In Review']
   },
-  // Botgit Chrome Extension Settings
-  botgitSettings: {
+  // leadflow Chrome Extension Settings
+  leadflowSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
     updatedAt: { type: Date }
@@ -291,8 +291,8 @@ const companySchema = new mongoose.Schema({
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date }
   },
-  // Botgit Chrome Extension Settings
-  botgitSettings: {
+  // leadflow Chrome Extension Settings
+  leadflowSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
     updatedAt: { type: Date }
@@ -365,7 +365,7 @@ blogSchema.pre('save', function(next) {
 
 const Blog = mongoose.model('Blog', blogSchema);
 
-// Scraped Data Schema (Botgit integration)
+// Scraped Data Schema (leadflow integration)
 const scrapedDataSchema = new mongoose.Schema({
   name: { type: String, trim: true },
   location: { type: String, trim: true },
@@ -422,8 +422,8 @@ const emailVerificationSchema = new mongoose.Schema({
     password: String,
     role: String
   },
-  // Botgit Chrome Extension Settings
-  botgitSettings: {
+  // leadflow Chrome Extension Settings
+  leadflowSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
     updatedAt: { type: Date }
@@ -746,7 +746,7 @@ function getDefaultPermissions(planOrRole) {
       settingsConfiguration: true
     };
   }
-  // SoloHQ subscription plan: Only BOTGIT (projects), PROJECTS, and PROFILE access
+  // SoloHQ subscription plan: Only leadflow (projects), PROJECTS, and PROFILE access
   else if (planOrRole === 'SoloHQ') {
     return {
       dashboard: false,
@@ -1241,7 +1241,7 @@ app.get('/api/blogs/analytics/stats', authenticateToken, async (req, res) => {
   }
 });
 
-// ===== SCRAPED DATA (BOTGIT) API ROUTES =====
+// ===== SCRAPED DATA (leadflow) API ROUTES =====
 
 // Create or upsert scraped profile
 app.post('/api/scraped-data', async (req, res) => {

@@ -44,8 +44,8 @@ import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
-import BotgitData from './BotgitData';
-import BotgitSettings from './BotgitSettings';
+import leadflowData from './leadflowData';
+import leadflowSettings from './leadflowSettings';
 import ProfileSettings from './ProfileSettings';
 import NoxtmMailDashboard from './NoxtmMailDashboard';
 import EmailAccounts from './EmailAccounts';
@@ -55,7 +55,7 @@ import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import Botgit from './Botgit';
+import leadflow from './leadflow';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -160,8 +160,8 @@ function Dashboard({ user, onLogout }) {
         return <ConversionTracking />;
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
-      case 'botgit':
-        return <Botgit />;
+      case 'leadflow':
+        return <leadflow />;
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
@@ -254,10 +254,10 @@ function Dashboard({ user, onLogout }) {
         return <SeoInsights />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
-      case 'botgit-data':
-        return <BotgitData />;
-      case 'botgit-settings':
-        return <BotgitSettings />;
+      case 'leadflow-data':
+        return <leadflowData />;
+      case 'leadflow-settings':
+        return <leadflowSettings />;
       case 'profile-settings':
         return <ProfileSettings user={user} />;
       default:

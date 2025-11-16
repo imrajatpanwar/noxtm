@@ -8,10 +8,10 @@ import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import './BotgitData.css';
+import './leadflowData.css';
 import { API_BASE_URL } from '../config/apiConfig';
 
-const BotgitData = () => {
+const leadflowData = () => {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -131,7 +131,7 @@ const BotgitData = () => {
           throw new Error(`Failed to parse JSON response. Received: ${text.substring(0, 100)}...`);
         }
       } catch (err) {
-        console.error('BotgitData Error:', err);
+        console.error('leadflowData Error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -148,10 +148,10 @@ const BotgitData = () => {
   const paginatedData = filteredData.slice(startIdx, endIdx);
 
   return (
-    <div className="botgit-data-page">
+    <div className="leadflow-data-page">
       <div className="header-flex">
         <div className="header-left">
-          <h2 className="header-title">Botgit Data</h2>
+          <h2 className="header-title">leadflow Data</h2>
         </div>
         <div className="header-right">
           <div className="search-box">
@@ -169,7 +169,7 @@ const BotgitData = () => {
         </div>
       </div>
 
-      <Container className="botgit-data-container">
+      <Container className="leadflow-data-container">
         <div className="data-controls">
           <div className="info-section">
             <div className="total-count" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -346,4 +346,4 @@ const BotgitData = () => {
   );
 };
 
-export default BotgitData;
+export default leadflowData;

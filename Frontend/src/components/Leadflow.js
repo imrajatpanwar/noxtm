@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import './Botgit.css';
+import './leadflow.css';
 
-function Botgit() {
+function leadflow() {
   const [tradeShows, setTradeShows] = useState([]);
   const [selectedTradeShow, setSelectedTradeShow] = useState('');
   const [extractionType, setExtractionType] = useState('');
@@ -67,7 +67,7 @@ function Botgit() {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/botgit/settings', {
+      const response = await fetch('/api/leadflow/settings', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -99,14 +99,14 @@ function Botgit() {
   };
 
   return (
-    <div className="botgit-container">
-      <div className="botgit-header">
-        <h1 className="botgit-title">Botgit</h1>
-        <p className="botgit-subtitle">Configure extraction settings for the Chrome extension</p>
+    <div className="leadflow-container">
+      <div className="leadflow-header">
+        <h1 className="leadflow-title">leadflow</h1>
+        <p className="leadflow-subtitle">Configure extraction settings for the Chrome extension</p>
       </div>
 
-      <div className="botgit-content">
-        <div className="botgit-card">
+      <div className="leadflow-content">
+        <div className="leadflow-card">
           {successMessage && (
             <div className="success-banner">
               <span className="success-icon">✓</span>
@@ -114,27 +114,27 @@ function Botgit() {
             </div>
           )}
 
-          <div className="botgit-info-box">
-            <h3 className="info-title">📱 How to Use Botgit</h3>
+          <div className="leadflow-info-box">
+            <h3 className="info-title">📱 How to Use leadflow</h3>
             <ol className="info-steps">
               <li>Select a trade show from the dropdown below</li>
               <li>Choose the type of data you want to extract</li>
               <li>Click "Save Settings"</li>
-              <li>Use the <strong>Botgit Chrome Extension</strong> to add exhibitor data</li>
+              <li>Use the <strong>leadflow Chrome Extension</strong> to add exhibitor data</li>
             </ol>
             <p className="info-note">
               💡 The Chrome extension will automatically use these settings to save data to your account.
             </p>
           </div>
 
-          <div className="botgit-divider"></div>
+          <div className="leadflow-divider"></div>
 
-          <div className="botgit-field">
-            <label className="botgit-label">Choose Trade Show</label>
+          <div className="leadflow-field">
+            <label className="leadflow-label">Choose Trade Show</label>
             <select
               value={selectedTradeShow}
               onChange={(e) => setSelectedTradeShow(e.target.value)}
-              className="botgit-select"
+              className="leadflow-select"
               disabled={loadingTradeShows}
             >
               <option value="">
@@ -155,30 +155,30 @@ function Botgit() {
             )}
           </div>
 
-          <div className="botgit-field">
-            <label className="botgit-label">Extract Data of?</label>
-            <div className="botgit-radio-group">
-              <label className="botgit-radio-label">
+          <div className="leadflow-field">
+            <label className="leadflow-label">Extract Data of?</label>
+            <div className="leadflow-radio-group">
+              <label className="leadflow-radio-label">
                 <input
                   type="radio"
                   name="extractionType"
                   value="exhibitors"
                   checked={extractionType === 'exhibitors'}
                   onChange={(e) => setExtractionType(e.target.value)}
-                  className="botgit-radio"
+                  className="leadflow-radio"
                 />
                 <span>
                   <strong>Exhibitor's Data</strong> <span className="badge-active">Active</span>
                 </span>
               </label>
-              <label className="botgit-radio-label botgit-radio-disabled">
+              <label className="leadflow-radio-label leadflow-radio-disabled">
                 <input
                   type="radio"
                   name="extractionType"
                   value="companies"
                   checked={extractionType === 'companies'}
                   onChange={(e) => setExtractionType(e.target.value)}
-                  className="botgit-radio"
+                  className="leadflow-radio"
                   disabled
                 />
                 <span>
@@ -191,7 +191,7 @@ function Botgit() {
           <button
             onClick={handleSaveSettings}
             disabled={loading || !selectedTradeShow || !extractionType}
-            className="botgit-extract-btn"
+            className="leadflow-extract-btn"
           >
             {loading ? 'Saving...' : 'Save Settings'}
           </button>
@@ -201,4 +201,4 @@ function Botgit() {
   );
 }
 
-export default Botgit;
+export default leadflow;

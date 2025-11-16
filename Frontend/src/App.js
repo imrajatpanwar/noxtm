@@ -19,7 +19,7 @@ import JoinCompany from './components/JoinCompany';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
-import BotgitPrivacyPolicy from './components/BotgitPrivacyPolicy';
+import leadflowPrivacyPolicy from './components/leadflowPrivacyPolicy';
 import Legal from './components/Legal/Legal';
 import InviteAccept from './components/InviteAccept';
 import ExtensionLogin from './components/ExtensionLogin';
@@ -338,7 +338,7 @@ function App() {
             />
             <Route path="/blog" element={<PublicBlogList />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/botgit-privacy" element={<BotgitPrivacyPolicy />} />
+            <Route path="/leadflow-privacy" element={<leadflowPrivacyPolicy />} />
             <Route path="/legal/*" element={<Legal />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
             <Route path="/extension-login" element={<ExtensionLogin />} />

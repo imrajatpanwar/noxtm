@@ -142,15 +142,15 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Check if NOXTM MAIL should be hidden (for active Noxtm subscription users)
   const shouldHideNoxtmMail = subscription?.plan === 'Noxtm' && subscription?.status === 'active';
 
-  // Check if user has BOTGIT subscription access
-  const hasBotgitSubscription = useMemo(() => {
+  // Check if user has leadflow subscription access
+  const hasleadflowSubscription = useMemo(() => {
     const userSubscription = currentUser?.subscription?.plan;
     const subscriptionStatus = currentUser?.subscription?.status;
     
-    // BOTGIT is available for these subscription plans
-    const botgitEnabledPlans = ['Botgit', 'Enterprise', 'Noxtm'];
+    // leadflow is available for these subscription plans
+    const leadflowEnabledPlans = ['leadflow', 'Enterprise', 'Noxtm'];
     
-    return subscriptionStatus === 'active' && botgitEnabledPlans.includes(userSubscription);
+    return subscriptionStatus === 'active' && leadflowEnabledPlans.includes(userSubscription);
   }, [currentUser?.subscription]);
 
   // Memoized permission checking to prevent unnecessary re-renders and glitches
@@ -170,7 +170,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': true,
         'Workspace Settings': true,
-        'Botgit': hasBotgitSubscription, // Require subscription even for Admin
+        'leadflow': hasleadflowSubscription, // Require subscription even for Admin
         'Profile': true
       };
     }
@@ -190,7 +190,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': false,
         'Workspace Settings': true,
-        'Botgit': hasBotgitSubscription, // Require subscription
+        'leadflow': hasleadflowSubscription, // Require subscription
         'Profile': true
       };
     }
@@ -210,7 +210,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': false,
         'Settings & Configuration': false,
         'Workspace Settings': false,
-        'Botgit': false, // SOLOHQ users don't get BOTGIT (free plan)
+        'leadflow': false, // SOLOHQ users don't get leadflow (free plan)
         'Profile': true
       };
     }
@@ -230,7 +230,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
         'Workspace Settings': false, // Team Members don't get workspace settings
-        'Botgit': hasPermission(MODULES.PROJECTS) && hasBotgitSubscription, // Require both permission and subscription
+        'leadflow': hasPermission(MODULES.PROJECTS) && hasleadflowSubscription, // Require both permission and subscription
         'Profile': true // Profile is available to all users
       };
     }
@@ -249,10 +249,10 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
-      'Botgit': hasBotgitSubscription, // Botgit requires active subscription
+      'leadflow': hasleadflowSubscription, // leadflow requires active subscription
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasBotgitSubscription]); // Add hasBotgitSubscription dependency
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasleadflowSubscription]); // Add hasleadflowSubscription dependency
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -321,7 +321,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'Botgit', section: 'botgit', category: 'Data Center' },
+    { name: 'leadflow', section: 'leadflow', category: 'Data Center' },
     
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -391,9 +391,9 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
     
-    // Botgit
-    { name: 'Scraped Data', section: 'botgit-data', category: 'Botgit' },
-    { name: 'Botgit Settings', section: 'botgit-settings', category: 'Botgit' },
+    // leadflow
+    { name: 'Scraped Data', section: 'leadflow-data', category: 'leadflow' },
+    { name: 'leadflow Settings', section: 'leadflow-settings', category: 'leadflow' },
     
     // Profile
     { name: 'Profile Settings', section: 'profile-settings', category: 'Profile' },
@@ -500,15 +500,15 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
-              {/* Botgit Section - Only show if ExhibitOS module is installed */}
+              {/* leadflow Section - Only show if ExhibitOS module is installed */}
               {isModuleInstalled('ExhibitOS') && (
                 <div className="sidebar-item-container">
                   <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('botgit')}
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('leadflow')}
                   >
                     <FiDatabase className="sidebar-icon" />
-                    <span>Botgit</span>
+                    <span>leadflow</span>
                   </div>
                 </div>
               )}
@@ -1156,23 +1156,23 @@ function Sidebar({ activeSection, onSectionChange }) {
             </div>
           )}
 
-          {/* Botgit Section */}
-          {hasPermissionForSection('Botgit') && isModuleInstalled('BotGit') && (
+          {/* leadflow Section */}
+          {hasPermissionForSection('leadflow') && isModuleInstalled('leadflow') && (
             <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">BOTGIT</h4>
+              <h4 className="Dash-noxtm-sidebar-section-title">leadflow</h4>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-data' ? 'active' : ''}`}
-                onClick={() => onSectionChange('botgit-data')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow-data' ? 'active' : ''}`}
+                onClick={() => onSectionChange('leadflow-data')}
               >
                 <FiDatabase className="sidebar-icon" />
                 <span>Scraped Data</span>
               </div>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'botgit-settings' ? 'active' : ''}`}
-                onClick={() => onSectionChange('botgit-settings')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'leadflow-settings' ? 'active' : ''}`}
+                onClick={() => onSectionChange('leadflow-settings')}
               >
                 <FiSliders className="sidebar-icon" />
-                <span>Botgit Settings</span>
+                <span>leadflow Settings</span>
               </div>
             </div>
           )}
