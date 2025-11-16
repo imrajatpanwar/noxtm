@@ -44,8 +44,8 @@ import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
-import findrData from './findrData';
-import findrSettings from './findrSettings';
+import FindrData from './FindrData';
+import FindrSettings from './FindrSettings';
 import ProfileSettings from './ProfileSettings';
 import NoxtmMailDashboard from './NoxtmMailDashboard';
 import EmailAccounts from './EmailAccounts';
@@ -255,9 +255,9 @@ function Dashboard({ user, onLogout }) {
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
       case 'findr-data':
-        return <findrData />;
+        return <FindrData />;
       case 'findr-settings':
-        return <findrSettings />;
+        return <FindrSettings />;
       case 'profile-settings':
         return <ProfileSettings user={user} />;
       default:
