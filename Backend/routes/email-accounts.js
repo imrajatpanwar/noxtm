@@ -237,27 +237,34 @@ router.post('/create-noxtm', isAuthenticated, async (req, res) => {
       domain: 'noxtm.com',
       quota: quotaMB,
       isVerified: true, // Hosted accounts are auto-verified
-      createdBy: req.user._id,
+      createdBy: req.user?._id, // Optional
       imapEnabled: true,
       smtpEnabled: true
     });
 
     await account.save();
 
-    // Create audit log
-    await EmailAuditLog.log({
-      action: 'noxtm_account_created',
-      resourceType: 'email_account',
-      resourceId: account._id,
-      resourceIdentifier: account.email,
-      performedBy: req.user._id,
-      performedByEmail: req.user.email,
-      performedByName: req.user.fullName,
-      description: `Created @noxtm.com account: ${account.email}`,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-      companyId: req.user.companyId
-    });
+    // Create audit log (only if user info is available)
+    if (req.user?._id) {
+      try {
+        await EmailAuditLog.log({
+          action: 'noxtm_account_created',
+          resourceType: 'email_account',
+          resourceId: account._id,
+          resourceIdentifier: account.email,
+          performedBy: req.user._id,
+          performedByEmail: req.user.email,
+          performedByName: req.user.fullName,
+          description: `Created @noxtm.com account: ${account.email}`,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          companyId: req.user.companyId
+        });
+      } catch (auditError) {
+        console.error('Failed to create audit log:', auditError.message);
+        // Don't fail the request if audit log fails
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -406,26 +413,33 @@ router.post('/add-external', isAuthenticated, async (req, res) => {
         unreadMessages: testResult.imap?.stats?.unreadMessages || 0,
         lastSyncedAt: new Date()
       },
-      createdBy: req.user._id,
+      createdBy: req.user?._id, // Optional
       lastConnectionTest: new Date()
     });
 
     await account.save();
 
-    // Create audit log
-    await EmailAuditLog.log({
-      action: 'external_account_added',
-      resourceType: 'email_account',
-      resourceId: account._id,
-      resourceIdentifier: account.email,
-      performedBy: req.user._id,
-      performedByEmail: req.user.email,
-      performedByName: req.user.fullName,
-      description: `Added external email account: ${account.email}`,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-      companyId: req.user.companyId
-    });
+    // Create audit log (only if user info is available)
+    if (req.user?._id) {
+      try {
+        await EmailAuditLog.log({
+          action: 'external_account_added',
+          resourceType: 'email_account',
+          resourceId: account._id,
+          resourceIdentifier: account.email,
+          performedBy: req.user._id,
+          performedByEmail: req.user.email,
+          performedByName: req.user.fullName,
+          description: `Added external email account: ${account.email}`,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          companyId: req.user.companyId
+        });
+      } catch (auditError) {
+        console.error('Failed to create audit log:', auditError.message);
+        // Don't fail the request if audit log fails
+      }
+    }
 
     // Return account without sensitive data
     const accountData = account.toObject();
