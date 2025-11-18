@@ -9,8 +9,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
   const [formData, setFormData] = useState({
     companyName: '',
     boothNo: '',
-    location: '',
-    options: ''
+    location: ''
   });
   const [editingId, setEditingId] = useState(null);
 
@@ -75,8 +74,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
     setFormData({
       companyName: exhibitor.companyName,
       boothNo: exhibitor.boothNo,
-      location: exhibitor.location,
-      options: exhibitor.options
+      location: exhibitor.location
     });
     setEditingId(exhibitor._id);
     setShowAddModal(true);
@@ -139,8 +137,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
                 <th>Company Name</th>
                 <th>Booth No.</th>
                 <th>Location</th>
-                <th>Options</th>
-                <th>Actions</th>
+                <th>Total Contacts</th>
               </tr>
             </thead>
             <tbody>
@@ -149,17 +146,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
                   <td>{exhibitor.companyName}</td>
                   <td>{exhibitor.boothNo}</td>
                   <td>{exhibitor.location}</td>
-                  <td>{exhibitor.options}</td>
-                  <td>
-                    <div className="exhibitor-actions">
-                      <button className="exhibitor-icon-btn" onClick={() => handleEdit(exhibitor)} title="Edit">
-                        <FiEdit2 />
-                      </button>
-                      <button className="exhibitor-icon-btn exhibitor-delete-btn" onClick={() => handleDelete(exhibitor._id)} title="Delete">
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </td>
+                  <td>{exhibitor.contacts?.length || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -175,7 +162,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
       {showAddModal && (
         <div className="exhibitor-modal-overlay" onClick={() => {
           setShowAddModal(false);
-          setFormData({ companyName: '', boothNo: '', location: '', options: '' });
+          setFormData({ companyName: '', boothNo: '', location: '' });
           setEditingId(null);
         }}>
           <div className="exhibitor-modal-content" onClick={e => e.stopPropagation()}>
@@ -185,7 +172,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
                 className="exhibitor-modal-close"
                 onClick={() => {
                   setShowAddModal(false);
-                  setFormData({ companyName: '', boothNo: '', location: '', options: '' });
+                  setFormData({ companyName: '', boothNo: '', location: '' });
                   setEditingId(null);
                 }}
               >
@@ -226,23 +213,13 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
                 />
               </div>
 
-              <div className="exhibitor-form-field">
-                <label>Options</label>
-                <input
-                  type="text"
-                  value={formData.options}
-                  onChange={e => setFormData({ ...formData, options: e.target.value })}
-                  placeholder="Additional options or notes"
-                />
-              </div>
-
               <div className="exhibitor-form-actions">
                 <button
                   type="button"
                   className="exhibitor-cancel-btn"
                   onClick={() => {
                     setShowAddModal(false);
-                    setFormData({ companyName: '', boothNo: '', location: '', options: '' });
+                    setFormData({ companyName: '', boothNo: '', location: '' });
                     setEditingId(null);
                   }}
                 >

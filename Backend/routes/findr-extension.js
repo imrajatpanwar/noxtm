@@ -189,7 +189,7 @@ router.get('/trade-shows/:id', auth, async (req, res) => {
 // Create exhibitor (simplified for extension)
 router.post('/exhibitors', auth, async (req, res) => {
   try {
-    const { tradeShowId, tradeShowName, companyName, boothNo, location, website, extractedAt } = req.body;
+    const { tradeShowId, tradeShowName, companyName, boothNo, location, companyEmail, website, extractedAt, contacts } = req.body;
     const User = getUser();
     const user = await User.findById(req.user.userId);
     
@@ -227,7 +227,9 @@ router.post('/exhibitors', auth, async (req, res) => {
       companyName,
       boothNo: boothNo || '',
       location: location || '',
+      companyEmail: companyEmail || '',
       website: website || '',
+      contacts: contacts || [],
       extractedAt: extractedAt ? new Date(extractedAt) : new Date(),
       createdBy: user._id,
       companyId: user.companyId
@@ -244,7 +246,9 @@ router.post('/exhibitors', auth, async (req, res) => {
         companyName: exhibitor.companyName,
         boothNo: exhibitor.boothNo,
         location: exhibitor.location,
+        companyEmail: exhibitor.companyEmail,
         website: exhibitor.website,
+        contacts: exhibitor.contacts,
         extractedAt: exhibitor.extractedAt,
         createdAt: exhibitor.createdAt
       }
@@ -277,7 +281,7 @@ router.get('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
       tradeShowId,
       companyId: user.companyId
     })
-    .select('companyName boothNo location website extractedAt createdAt')
+    .select('companyName boothNo location companyEmail website contacts extractedAt createdAt')
     .sort({ createdAt: -1 })
     .lean();
 
@@ -300,7 +304,7 @@ router.get('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
 router.put('/exhibitors/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { companyName, boothNo, location, website } = req.body;
+    const { companyName, boothNo, location, companyEmail, website, contacts } = req.body;
     const User = getUser();
     const user = await User.findById(req.user.userId);
     
@@ -327,7 +331,9 @@ router.put('/exhibitors/:id', auth, async (req, res) => {
     if (companyName !== undefined) exhibitor.companyName = companyName;
     if (boothNo !== undefined) exhibitor.boothNo = boothNo;
     if (location !== undefined) exhibitor.location = location;
+    if (companyEmail !== undefined) exhibitor.companyEmail = companyEmail;
     if (website !== undefined) exhibitor.website = website;
+    if (contacts !== undefined) exhibitor.contacts = contacts;
 
     await exhibitor.save();
 
@@ -339,7 +345,9 @@ router.put('/exhibitors/:id', auth, async (req, res) => {
         companyName: exhibitor.companyName,
         boothNo: exhibitor.boothNo,
         location: exhibitor.location,
+        companyEmail: exhibitor.companyEmail,
         website: exhibitor.website,
+        contacts: exhibitor.contacts,
         updatedAt: exhibitor.updatedAt
       }
     });
@@ -514,6 +522,120 @@ router.post('/exhibitors/bulk', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error creating exhibitors',
+      error: error.message
+    });
+  }
+});
+
+// ===== USER REPORTS =====
+
+// Get user activity reports
+router.get('/user-reports', auth, async (req, res) => {
+  try {
+    const { filter = 'today' } = req.query;
+    const User = getUser();
+    
+    // Get current user to check company
+    const currentUser = await User.findById(req.user.userId);
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Calculate date range based on filter
+    const now = new Date();
+    let startDate;
+    
+    switch(filter) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'yesterday':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'this-month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'last-month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      case 'all':
+        startDate = new Date(0); // Beginning of time
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    // Get all users from the same company
+    const companyUsers = await User.find({ companyId: currentUser.companyId })
+      .select('fullName email findrSettings')
+      .lean();
+
+    // Build reports for each user
+    const reports = await Promise.all(companyUsers.map(async (user) => {
+      // Build date filter
+      let dateFilter = { createdBy: user._id };
+      
+      if (filter === 'yesterday') {
+        const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        dateFilter.createdAt = { $gte: yesterdayStart, $lt: yesterdayEnd };
+      } else if (filter === 'last-month') {
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        dateFilter.createdAt = { $gte: lastMonthStart, $lte: lastMonthEnd };
+      } else if (filter !== 'all') {
+        dateFilter.createdAt = { $gte: startDate };
+      }
+
+      // Count exhibitors data (Exhibitor's Data - basic exhibitors without much contact data)
+      const exhibitorsDataCount = await Exhibitor.countDocuments({
+        ...dateFilter,
+        $or: [
+          { contacts: { $exists: false } },
+          { contacts: { $size: 0 } }
+        ]
+      });
+
+      // Count company data (Exhibitors Company Data - exhibitors with contacts)
+      const companyDataCount = await Exhibitor.countDocuments({
+        ...dateFilter,
+        contacts: { $exists: true, $not: { $size: 0 } }
+      });
+
+      // Get last activity
+      const lastActivity = await Exhibitor.findOne({ createdBy: user._id })
+        .sort({ createdAt: -1 })
+        .select('createdAt')
+        .lean();
+
+      return {
+        userName: user.fullName || 'Unknown',
+        userEmail: user.email,
+        exhibitorsDataCount,
+        companyDataCount,
+        totalCount: exhibitorsDataCount + companyDataCount,
+        lastActivity: lastActivity ? lastActivity.createdAt : null
+      };
+    }));
+
+    // Sort by total count descending
+    reports.sort((a, b) => b.totalCount - a.totalCount);
+
+    res.json({
+      success: true,
+      filter,
+      reports
+    });
+  } catch (error) {
+    console.error('Error fetching user reports:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user reports',
       error: error.message
     });
   }

@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 // Simpler POST endpoint for Chrome extension
 router.post('/exhibitors', auth, async (req, res) => {
   try {
-    const { tradeShowId, tradeShowName, companyName, boothNo, location, website, extractedAt } = req.body;
+    const { tradeShowId, tradeShowName, companyName, boothNo, location, website, extractedAt, contacts } = req.body;
     const userId = req.user.userId;
 
     // Get User model and fetch user to get companyId
@@ -33,6 +33,7 @@ router.post('/exhibitors', auth, async (req, res) => {
       boothNo,
       location,
       website,
+      contacts: contacts || [],
       extractedAt: extractedAt ? new Date(extractedAt) : new Date(),
       createdBy: userId,
       companyId
@@ -85,7 +86,7 @@ router.get('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
 router.post('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
   try {
     const { tradeShowId } = req.params;
-    const { companyName, boothNo, location, website, options } = req.body;
+    const { companyName, boothNo, location, website, options, contacts } = req.body;
     const userId = req.user.userId;
 
     // Get User model and fetch user to get companyId
@@ -109,6 +110,7 @@ router.post('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
       location,
       website,
       options,
+      contacts: contacts || [],
       createdBy: userId,
       companyId
     });
@@ -129,7 +131,7 @@ router.post('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
 router.put('/exhibitors/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { companyName, boothNo, location, website, options } = req.body;
+    const { companyName, boothNo, location, website, options, contacts } = req.body;
 
     // Get User model and fetch user to get companyId
     const User = mongoose.model('User');
@@ -156,6 +158,7 @@ router.put('/exhibitors/:id', auth, async (req, res) => {
     exhibitor.location = location;
     exhibitor.website = website;
     exhibitor.options = options;
+    if (contacts !== undefined) exhibitor.contacts = contacts;
 
     await exhibitor.save();
 
