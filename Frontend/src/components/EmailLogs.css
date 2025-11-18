@@ -21,11 +21,73 @@
   margin: 0;
 }
 
+/* Stats Summary */
+.logs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+}
+
+.stat-card .stat-value.stat-success {
+  color: #28a745;
+}
+
+.stat-card .stat-value.stat-error {
+  color: #dc3545;
+}
+
+.stat-card .stat-value.stat-info {
+  color: #17a2b8;
+}
+
+/* Filter Groups */
 .logs-filters {
   display: flex;
-  gap: 12px;
+  gap: 24px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  min-width: 80px;
 }
 
 .filter-btn {
@@ -53,6 +115,29 @@
   background: #007bff;
   color: white;
   border-color: #007bff;
+}
+
+/* Direction Badge */
+.direction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.direction-sent {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.direction-received {
+  background: #d4edda;
+  color: #155724;
 }
 
 .logs-error {
