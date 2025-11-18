@@ -116,9 +116,9 @@ let mongoConnected = false;
 
 const connectWithTimeout = async () => {
   try {
+    console.log('Step 1: Getting MongoDB URI...');
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
-    console.log('Attempting to connect to MongoDB...');
-    console.log('MongoDB URI:', mongoUri.substring(0, 30) + '...');
+    console.log('Step 2: Attempting to connect to MongoDB...');
     
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000, // 10 second timeout
