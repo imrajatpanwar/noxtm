@@ -117,6 +117,7 @@ const connectWithTimeout = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
     console.log('Attempting to connect to MongoDB...');
+    console.log('MongoDB URI:', mongoUri.substring(0, 30) + '...');
     
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000, // 10 second timeout
@@ -128,13 +129,19 @@ const connectWithTimeout = async () => {
     mongoConnected = true;
   } catch (err) {
     console.error('❌ MongoDB connection failed:', err.message);
+    console.error('Full error:', err);
     console.warn('⚠️  Running without database - some features will be limited');
     mongoConnected = false;
   }
 };
 
 // Try to connect to MongoDB
-connectWithTimeout();
+console.log('Starting MongoDB connection...');
+connectWithTimeout().then(() => {
+  console.log('MongoDB connection attempt completed');
+}).catch((err) => {
+  console.error('Unexpected error in MongoDB connection:', err);
+});
 
 const db = mongoose.connection;
 db.on('error', (err) => {
