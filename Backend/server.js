@@ -109,6 +109,8 @@ app.use('/api', exhibitorsRoutes);
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
 
+console.log('✓ All routes loaded successfully');
+
 // MongoDB Connection with timeout and fallback
 let mongoConnected = false;
 
