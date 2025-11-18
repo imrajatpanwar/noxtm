@@ -69,7 +69,13 @@ This is an automated message, please do not reply to this email.`,
     fromName: 'Noxtm',
     fromEmail: 'noreply@noxtm.com',
     replyTo: 'support@noxtm.com',
-    variables: ['firstName', 'fullName', 'verificationCode', 'userName', 'email'],
+    variables: [
+      { name: 'firstName', description: 'User first name', required: true },
+      { name: 'fullName', description: 'User full name', required: true },
+      { name: 'verificationCode', description: 'Email verification code', required: true },
+      { name: 'userName', description: 'Username', required: false },
+      { name: 'email', description: 'User email address', required: false }
+    ],
     enabled: true
   },
   {
@@ -146,7 +152,14 @@ This is an automated message, please do not reply to this email.`,
     fromName: 'Noxtm Security',
     fromEmail: 'noreply@noxtm.com',
     replyTo: 'support@noxtm.com',
-    variables: ['firstName', 'fullName', 'verificationCode', 'resetCode', 'userName', 'email'],
+    variables: [
+      { name: 'firstName', description: 'User first name', required: true },
+      { name: 'fullName', description: 'User full name', required: true },
+      { name: 'verificationCode', description: 'Password reset code', required: true },
+      { name: 'resetCode', description: 'Password reset code (alias)', required: true },
+      { name: 'userName', description: 'Username', required: false },
+      { name: 'email', description: 'User email address', required: false }
+    ],
     enabled: true
   },
   {
@@ -222,7 +235,12 @@ Need help getting started? Check out our documentation at https://noxtm.com/docs
     fromName: 'Noxtm Team',
     fromEmail: 'noreply@noxtm.com',
     replyTo: 'support@noxtm.com',
-    variables: ['firstName', 'fullName', 'userName', 'email'],
+    variables: [
+      { name: 'firstName', description: 'User first name', required: true },
+      { name: 'fullName', description: 'User full name', required: false },
+      { name: 'userName', description: 'Username', required: false },
+      { name: 'email', description: 'User email address', required: false }
+    ],
     enabled: true
   }
 ];
