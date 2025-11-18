@@ -6,6 +6,9 @@ const EmailLog = require('../models/EmailLog');
 const EmailAuditLog = require('../models/EmailAuditLog');
 const EmailTemplate = require('../models/EmailTemplate');
 const nodemailer = require('nodemailer');
+const { encrypt, decrypt, generateSecurePassword } = require('../utils/encryption');
+const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../utils/imapHelper');
+const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable } = require('../utils/doveadmHelper');
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
@@ -184,6 +187,373 @@ router.post('/', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error creating email account:', error);
     res.status(500).json({ message: 'Failed to create email account', error: error.message });
+  }
+});
+
+// ==========================================
+// NEW: CREATE @noxtm.com HOSTED ACCOUNT
+// ==========================================
+
+// Create a new @noxtm.com email account on the server
+router.post('/create-noxtm', isAuthenticated, async (req, res) => {
+  try {
+    const { username, quotaMB = 1024 } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+
+    // Validate username format
+    if (!/^[a-z0-9._-]+$/i.test(username)) {
+      return res.status(400).json({ message: 'Invalid username format. Use only letters, numbers, dots, hyphens, and underscores.' });
+    }
+
+    // Check if doveadm is available
+    const doveadmAvailable = await isDoveadmAvailable();
+    if (!doveadmAvailable) {
+      return res.status(500).json({ message: 'Mail server (doveadm) not available. Please contact administrator.' });
+    }
+
+    const email = `${username}@noxtm.com`;
+
+    // Check if email already exists
+    const existingAccount = await EmailAccount.findOne({ email: email.toLowerCase() });
+    if (existingAccount) {
+      return res.status(400).json({ message: 'Email account already exists' });
+    }
+
+    // Generate secure password
+    const password = generateSecurePassword(16);
+
+    // Create mailbox on server using doveadm
+    await createMailbox(email, password, quotaMB);
+
+    // Create email account in database
+    const account = new EmailAccount({
+      email: email.toLowerCase(),
+      password, // Will be hashed by pre-save hook
+      accountType: 'noxtm-hosted',
+      displayName: username,
+      domain: 'noxtm.com',
+      quota: quotaMB,
+      isVerified: true, // Hosted accounts are auto-verified
+      createdBy: req.user._id,
+      imapEnabled: true,
+      smtpEnabled: true
+    });
+
+    await account.save();
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'noxtm_account_created',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Created @noxtm.com account: ${account.email}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Email account created successfully on Noxtm mail server',
+      data: {
+        email: account.email,
+        password: password, // Return plain password only once for user to save
+        imapHost: 'mail.noxtm.com',
+        imapPort: 993,
+        smtpHost: 'mail.noxtm.com',
+        smtpPort: 587,
+        quota: quotaMB
+      }
+    });
+  } catch (error) {
+    console.error('Error creating @noxtm.com account:', error);
+    res.status(500).json({ message: 'Failed to create email account', error: error.message });
+  }
+});
+
+// ==========================================
+// NEW: ADD EXISTING EXTERNAL EMAIL (IMAP)
+// ==========================================
+
+// Test email account connection (IMAP/SMTP)
+router.post('/test-connection', isAuthenticated, async (req, res) => {
+  try {
+    const { email, imapHost, imapPort, imapSecure, imapUsername, imapPassword, smtpHost, smtpPort, smtpSecure, smtpUsername, smtpPassword } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+
+    // Check for presets
+    const preset = getEmailProviderPreset(email);
+    
+    const imapConfig = {
+      host: imapHost || preset?.imap?.host,
+      port: imapPort || preset?.imap?.port || 993,
+      secure: imapSecure !== undefined ? imapSecure : (preset?.imap?.secure !== false),
+      username: imapUsername || email,
+      password: imapPassword
+    };
+
+    const smtpConfig = smtpHost ? {
+      host: smtpHost || preset?.smtp?.host,
+      port: smtpPort || preset?.smtp?.port || 587,
+      secure: smtpSecure !== undefined ? smtpSecure : (preset?.smtp?.secure !== false),
+      username: smtpUsername || email,
+      password: smtpPassword || imapPassword
+    } : null;
+
+    const results = await testEmailAccount(imapConfig, smtpConfig);
+
+    res.json({
+      success: results.imap?.success && (!smtpConfig || results.smtp?.success),
+      results: results,
+      message: results.imap?.success ? 'Connection test successful' : 'Connection test failed'
+    });
+  } catch (error) {
+    console.error('Error testing connection:', error);
+    res.status(500).json({ message: 'Connection test failed', error: error.message });
+  }
+});
+
+// Add existing external email account
+router.post('/add-external', isAuthenticated, async (req, res) => {
+  try {
+    const { 
+      email, 
+      displayName,
+      imapHost, 
+      imapPort, 
+      imapSecure, 
+      imapUsername, 
+      imapPassword,
+      smtpHost, 
+      smtpPort, 
+      smtpSecure, 
+      smtpUsername, 
+      smtpPassword 
+    } = req.body;
+
+    if (!email || !imapPassword) {
+      return res.status(400).json({ message: 'Email and IMAP password are required' });
+    }
+
+    // Check if email already exists
+    const existingAccount = await EmailAccount.findOne({ email: email.toLowerCase() });
+    if (existingAccount) {
+      return res.status(400).json({ message: 'Email account already added' });
+    }
+
+    // Get preset if available
+    const preset = getEmailProviderPreset(email);
+
+    // Test IMAP connection before saving
+    const imapConfig = {
+      host: imapHost || preset?.imap?.host,
+      port: imapPort || preset?.imap?.port || 993,
+      secure: imapSecure !== undefined ? imapSecure : true,
+      username: imapUsername || email,
+      password: imapPassword
+    };
+
+    const testResult = await testEmailAccount(imapConfig, null);
+
+    if (!testResult.imap?.success) {
+      return res.status(400).json({ 
+        message: 'IMAP connection failed', 
+        error: testResult.imap?.message 
+      });
+    }
+
+    // Encrypt passwords
+    const encryptedImapPassword = encrypt(imapPassword);
+    const encryptedSmtpPassword = smtpPassword ? encrypt(smtpPassword) : encrypt(imapPassword);
+
+    // Extract domain from email
+    const domain = email.split('@')[1];
+
+    // Create email account
+    const account = new EmailAccount({
+      email: email.toLowerCase(),
+      password: imapPassword, // Will be hashed by pre-save hook
+      accountType: 'external-imap',
+      displayName: displayName || email.split('@')[0],
+      domain: domain,
+      isVerified: true,
+      imapSettings: {
+        host: imapConfig.host,
+        port: imapConfig.port,
+        secure: imapConfig.secure,
+        username: imapConfig.username,
+        encryptedPassword: encryptedImapPassword
+      },
+      smtpSettings: {
+        host: smtpHost || preset?.smtp?.host || imapConfig.host,
+        port: smtpPort || preset?.smtp?.port || 587,
+        secure: smtpSecure !== undefined ? smtpSecure : false,
+        username: smtpUsername || email,
+        encryptedPassword: encryptedSmtpPassword
+      },
+      inboxStats: {
+        totalMessages: testResult.imap?.stats?.totalMessages || 0,
+        unreadMessages: testResult.imap?.stats?.unreadMessages || 0,
+        lastSyncedAt: new Date()
+      },
+      createdBy: req.user._id,
+      lastConnectionTest: new Date()
+    });
+
+    await account.save();
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'external_account_added',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Added external email account: ${account.email}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    // Return account without sensitive data
+    const accountData = account.toObject();
+    delete accountData.password;
+    delete accountData.imapSettings.encryptedPassword;
+    delete accountData.smtpSettings.encryptedPassword;
+
+    res.status(201).json({
+      success: true,
+      message: 'External email account added successfully',
+      data: accountData
+    });
+  } catch (error) {
+    console.error('Error adding external account:', error);
+    res.status(500).json({ message: 'Failed to add external account', error: error.message });
+  }
+});
+
+// ==========================================
+// NEW: QUOTA MANAGEMENT
+// ==========================================
+
+// Get quota for an email account
+router.get('/:id/quota', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    let quotaData = {
+      email: account.email,
+      accountType: account.accountType,
+      limit: account.quota,
+      used: account.usedStorage,
+      percentage: account.storagePercentage
+    };
+
+    // For hosted accounts, get real-time quota from doveadm
+    if (account.accountType === 'noxtm-hosted') {
+      try {
+        const doveadmQuota = await getQuota(account.email);
+        
+        // Update account with real quota data
+        account.usedStorage = doveadmQuota.used;
+        account.quota = doveadmQuota.limit;
+        await account.save();
+
+        quotaData = {
+          email: account.email,
+          accountType: account.accountType,
+          limit: doveadmQuota.limit,
+          used: doveadmQuota.used,
+          percentage: doveadmQuota.percentage
+        };
+      } catch (error) {
+        console.error('Error fetching doveadm quota:', error);
+        // Fall back to database values
+      }
+    }
+
+    res.json({
+      success: true,
+      data: quotaData
+    });
+  } catch (error) {
+    console.error('Error fetching quota:', error);
+    res.status(500).json({ message: 'Failed to fetch quota', error: error.message });
+  }
+});
+
+// Sync inbox stats for external IMAP account
+router.post('/:id/sync-inbox', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    if (account.accountType !== 'external-imap') {
+      return res.status(400).json({ message: 'Only external IMAP accounts can be synced' });
+    }
+
+    // Decrypt password and test connection
+    const imapPassword = decrypt(account.imapSettings.encryptedPassword);
+    
+    const stats = await getInboxStats({
+      host: account.imapSettings.host,
+      port: account.imapSettings.port,
+      secure: account.imapSettings.secure,
+      username: account.imapSettings.username,
+      password: imapPassword
+    });
+
+    // Update inbox stats
+    account.inboxStats = {
+      totalMessages: stats.total,
+      unreadMessages: stats.unread,
+      lastSyncedAt: new Date()
+    };
+    account.lastConnectionTest = new Date();
+    account.connectionError = null;
+
+    await account.save();
+
+    res.json({
+      success: true,
+      message: 'Inbox synced successfully',
+      data: {
+        totalMessages: stats.total,
+        unreadMessages: stats.unread,
+        lastSyncedAt: account.inboxStats.lastSyncedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error syncing inbox:', error);
+    
+    // Update connection error
+    const account = await EmailAccount.findById(req.params.id);
+    if (account) {
+      account.connectionError = error.message;
+      account.lastConnectionTest = new Date();
+      await account.save();
+    }
+
+    res.status(500).json({ message: 'Failed to sync inbox', error: error.message });
   }
 });
 
