@@ -158,7 +158,7 @@ const emailAccountSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Optional for imported accounts
   },
 
   lastModifiedBy: {
