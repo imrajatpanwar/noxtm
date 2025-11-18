@@ -838,6 +838,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <FiShield className="sidebar-icon" />
                 <span>Audit Trail</span>
               </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'aws-ses-domains' ? 'active' : ''}`}
+                onClick={() => onSectionChange('aws-ses-domains')}
+              >
+                <FiGlobe className="sidebar-icon" />
+                <span>AWS SES Domains</span>
+              </div>
             </div>
           )}
 
