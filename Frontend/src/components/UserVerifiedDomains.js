@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
-import { FiGlobe, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiCopy, FiCheck, FiAlertCircle, FiClock } from 'react-icons/fi';
+import { FiGlobe, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiCopy, FiCheck, FiAlertCircle, FiClock, FiActivity } from 'react-icons/fi';
 import './EmailManagement.css';
 
 function UserVerifiedDomains() {
