@@ -27,6 +27,7 @@ const {
 } = require('./middleware/emailRateLimit');
 const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
 const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
+const { sendTemplateEmail } = require('./utils/emailTemplateHelper');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -1602,56 +1603,28 @@ app.post('/api/send-verification-code', verificationEmailLimiter, validateEmailM
       });
     }
 
-    // Configure nodemailer for local Postfix (no auth needed)
-    const transportConfig = {
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT) || 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    };
-
-    // Only add auth if credentials are provided
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transportConfig.auth = {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      };
-    }
-
-    const transporter = nodemailer.createTransport(transportConfig);
-
-    // Send email
-    const mailOptions = {
-      from: `"Noxtm" <${process.env.EMAIL_FROM}>`,
-      to: email,
-      subject: 'Verify Your Email - Noxtm',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Welcome to Noxtm!</h2>
-          <p>Hi ${fullName},</p>
-          <p>Thank you for signing up. Please use the verification code below to complete your registration:</p>
-          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
-            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${verificationCode}</h1>
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
-        </div>
-      `
-    };
-
     try {
-      // Use sendAndLogEmail instead of transporter.sendMail directly
-      const info = await sendAndLogEmail(transporter, mailOptions, {
-        userId: null, // No user ID yet (signup)
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        type: 'verification'
-      });
-      console.log('✅ Verification email sent successfully:', info.messageId);
+      // Send email using template
+      const result = await sendTemplateEmail(
+        'email-verification',
+        email,
+        {
+          firstName: fullName.split(' ')[0],
+          fullName: fullName,
+          verificationCode: verificationCode,
+          userName: fullName,
+          email: email
+        },
+        {
+          logData: {
+            userId: null,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+            type: 'verification'
+          }
+        }
+      );
+      console.log('✅ Verification email sent successfully:', result.messageId);
 
       res.status(200).json({
         success: true,
@@ -1837,55 +1810,29 @@ app.post('/api/forgot-password', passwordResetLimiter, validateEmailMiddleware('
       });
     }
 
-    // Configure nodemailer
-    const transportConfig = {
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT) || 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    };
-
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transportConfig.auth = {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      };
-    }
-
-    const transporter = nodemailer.createTransport(transportConfig);
-
-    // Send email
-    const mailOptions = {
-      from: `"Noxtm" <${process.env.EMAIL_FROM}>`,
-      to: email,
-      subject: 'Password Reset Code - Noxtm',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Password Reset Request</h2>
-          <p>Hi ${user.fullName},</p>
-          <p>You requested to reset your password. Please use the verification code below:</p>
-          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
-            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${resetCode}</h1>
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
-        </div>
-      `
-    };
-
     try {
-      // Use sendAndLogEmail instead of transporter.sendMail directly
-      const info = await sendAndLogEmail(transporter, mailOptions, {
-        userId: user ? user._id : null,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        type: 'password-reset'
-      });
-      console.log('✅ Password reset email sent:', info.messageId);
+      // Send email using template
+      const result = await sendTemplateEmail(
+        'password-reset',
+        email,
+        {
+          firstName: user.fullName.split(' ')[0],
+          fullName: user.fullName,
+          verificationCode: resetCode,
+          resetCode: resetCode,
+          userName: user.fullName,
+          email: email
+        },
+        {
+          logData: {
+            userId: user ? user._id : null,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+            type: 'password-reset'
+          }
+        }
+      );
+      console.log('✅ Password reset email sent:', result.messageId);
 
       res.status(200).json({
         success: true,
