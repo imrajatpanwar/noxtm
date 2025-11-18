@@ -12,12 +12,45 @@ const emailAccountSchema = new mongoose.Schema({
     match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format']
   },
 
+  // Account type: 'noxtm-hosted' (created on this server) or 'external-imap' (existing email added)
+  accountType: {
+    type: String,
+    enum: ['noxtm-hosted', 'external-imap'],
+    default: 'noxtm-hosted'
+  },
+
   // Account credentials
   password: {
     type: String,
     required: true,
     minlength: 8
   },
+
+  // For external IMAP accounts - encrypted credentials
+  imapSettings: {
+    host: String,
+    port: Number,
+    secure: Boolean, // true for SSL/TLS
+    username: String,
+    encryptedPassword: String // Encrypted IMAP password
+  },
+
+  smtpSettings: {
+    host: String,
+    port: Number,
+    secure: Boolean,
+    username: String,
+    encryptedPassword: String // Encrypted SMTP password
+  },
+
+  // Connection status for external accounts
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  lastConnectionTest: Date,
+  connectionError: String,
 
   // Account settings
   displayName: {
@@ -48,6 +81,19 @@ const emailAccountSchema = new mongoose.Schema({
   usedStorage: {
     type: Number,
     default: 0 // MB
+  },
+
+  // Inbox statistics (for external IMAP accounts)
+  inboxStats: {
+    totalMessages: {
+      type: Number,
+      default: 0
+    },
+    unreadMessages: {
+      type: Number,
+      default: 0
+    },
+    lastSyncedAt: Date
   },
 
   // IMAP/SMTP credentials
