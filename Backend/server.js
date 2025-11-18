@@ -144,8 +144,14 @@ connectWithTimeout().then(() => {
   console.error('Unexpected error in MongoDB connection:', err);
 });
 
-// Import template helper after MongoDB setup
-const { sendTemplateEmail } = require('./utils/emailTemplateHelper');
+// Lazy load template helper to avoid loading models before MongoDB connects
+let sendTemplateEmail;
+const getTemplateHelper = () => {
+  if (!sendTemplateEmail) {
+    sendTemplateEmail = require('./utils/emailTemplateHelper').sendTemplateEmail;
+  }
+  return sendTemplateEmail;
+};
 
 const db = mongoose.connection;
 db.on('error', (err) => {
@@ -1614,6 +1620,7 @@ app.post('/api/send-verification-code', verificationEmailLimiter, validateEmailM
 
     try {
       // Send email using template
+      const sendTemplateEmail = getTemplateHelper();
       const result = await sendTemplateEmail(
         'email-verification',
         email,
@@ -1821,6 +1828,7 @@ app.post('/api/forgot-password', passwordResetLimiter, validateEmailMiddleware('
 
     try {
       // Send email using template
+      const sendTemplateEmail = getTemplateHelper();
       const result = await sendTemplateEmail(
         'password-reset',
         email,
