@@ -8,25 +8,39 @@ function EmailLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, sent, failed, queued
+  const [statusFilter, setStatusFilter] = useState('all'); // all, sent, failed, queued, delivered, bounced
+  const [directionFilter, setDirectionFilter] = useState('all'); // all, sent, received
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedLog, setSelectedLog] = useState(null);
+  const [stats, setStats] = useState({ total: 0, sent: 0, received: 0, failed: 0 });
 
-  const fetchLogs = useCallback(async (currentPage, currentFilter) => {
+  const fetchLogs = useCallback(async (currentPage, currentStatusFilter, currentDirectionFilter) => {
     try {
       setRefreshing(true);
       const params = {
         page: currentPage || 1,
         limit: 20
       };
-      if (currentFilter && currentFilter !== 'all') {
-        params.status = currentFilter;
+      if (currentStatusFilter && currentStatusFilter !== 'all') {
+        params.status = currentStatusFilter;
+      }
+      if (currentDirectionFilter && currentDirectionFilter !== 'all') {
+        params.direction = currentDirectionFilter;
       }
 
       const response = await api.get('/noxtm-mail/logs', { params });
-      setLogs(response.data.logs || []);
-      setTotalPages(response.data.totalPages || 1);
+      const logsData = response.data.logs || [];
+      setLogs(logsData);
+      setTotalPages(response.data.pagination?.totalPages || 1);
+      
+      // Calculate stats
+      const total = response.data.pagination?.totalLogs || 0;
+      const sentCount = logsData.filter(log => log.direction === 'sent').length;
+      const receivedCount = logsData.filter(log => log.direction === 'received').length;
+      const failedCount = logsData.filter(log => log.status === 'failed' || log.status === 'bounced').length;
+      setStats({ total, sent: sentCount, received: receivedCount, failed: failedCount });
+      
       setError('');
     } catch (err) {
       console.error('Failed to fetch email logs:', err);
@@ -38,27 +52,36 @@ function EmailLogs() {
   }, []);
 
   useEffect(() => {
-    fetchLogs(page, filter);
-  }, [page, filter, fetchLogs]);
+    fetchLogs(page, statusFilter, directionFilter);
+  }, [page, statusFilter, directionFilter, fetchLogs]);
 
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
+  const handleStatusFilterChange = (newFilter) => {
+    setStatusFilter(newFilter);
+    setPage(1);
+  };
+
+  const handleDirectionFilterChange = (newFilter) => {
+    setDirectionFilter(newFilter);
     setPage(1);
   };
 
   const handleRefresh = () => {
-    fetchLogs(page, filter);
+    fetchLogs(page, statusFilter, directionFilter);
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'sent':
+      case 'delivered':
         return <FiCheckCircle className="status-icon status-icon-success" />;
       case 'failed':
       case 'bounced':
         return <FiXCircle className="status-icon status-icon-error" />;
       case 'queued':
         return <FiClock className="status-icon status-icon-warning" />;
+      case 'spam':
+      case 'quarantined':
+        return <FiAlertCircle className="status-icon status-icon-warning" />;
       default:
         return <FiAlertCircle className="status-icon status-icon-default" />;
     }
@@ -67,11 +90,15 @@ function EmailLogs() {
   const getStatusClass = (status) => {
     switch (status) {
       case 'sent':
+      case 'delivered':
         return 'status-badge-success';
       case 'failed':
       case 'bounced':
         return 'status-badge-error';
       case 'queued':
+        return 'status-badge-warning';
+      case 'spam':
+      case 'quarantined':
         return 'status-badge-warning';
       default:
         return 'status-badge-default';
@@ -121,32 +148,83 @@ function EmailLogs() {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Stats Summary */}
+      <div className="logs-stats">
+        <div className="stat-card">
+          <span className="stat-label">Total</span>
+          <span className="stat-value">{stats.total}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Sent</span>
+          <span className="stat-value stat-success">{stats.sent}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Received</span>
+          <span className="stat-value stat-info">{stats.received}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Failed</span>
+          <span className="stat-value stat-error">{stats.failed}</span>
+        </div>
+      </div>
+
+      {/* Direction Filters */}
       <div className="logs-filters">
-        <button
-          className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-          onClick={() => handleFilterChange('all')}
-        >
-          All
-        </button>
-        <button
-          className={`filter-btn ${filter === 'sent' ? 'active' : ''}`}
-          onClick={() => handleFilterChange('sent')}
-        >
-          <FiCheckCircle /> Sent
-        </button>
-        <button
-          className={`filter-btn ${filter === 'failed' ? 'active' : ''}`}
-          onClick={() => handleFilterChange('failed')}
-        >
-          <FiXCircle /> Failed
-        </button>
-        <button
-          className={`filter-btn ${filter === 'queued' ? 'active' : ''}`}
-          onClick={() => handleFilterChange('queued')}
-        >
-          <FiClock /> Queued
-        </button>
+        <div className="filter-group">
+          <label className="filter-label">Direction:</label>
+          <button
+            className={`filter-btn ${directionFilter === 'all' ? 'active' : ''}`}
+            onClick={() => handleDirectionFilterChange('all')}
+          >
+            All
+          </button>
+          <button
+            className={`filter-btn ${directionFilter === 'sent' ? 'active' : ''}`}
+            onClick={() => handleDirectionFilterChange('sent')}
+          >
+            <FiMail /> Sent
+          </button>
+          <button
+            className={`filter-btn ${directionFilter === 'received' ? 'active' : ''}`}
+            onClick={() => handleDirectionFilterChange('received')}
+          >
+            <FiMail /> Received
+          </button>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Status:</label>
+          <button
+            className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => handleStatusFilterChange('all')}
+          >
+            All
+          </button>
+          <button
+            className={`filter-btn ${statusFilter === 'sent' ? 'active' : ''}`}
+            onClick={() => handleStatusFilterChange('sent')}
+          >
+            <FiCheckCircle /> Sent
+          </button>
+          <button
+            className={`filter-btn ${statusFilter === 'delivered' ? 'active' : ''}`}
+            onClick={() => handleStatusFilterChange('delivered')}
+          >
+            <FiCheckCircle /> Delivered
+          </button>
+          <button
+            className={`filter-btn ${statusFilter === 'failed' ? 'active' : ''}`}
+            onClick={() => handleStatusFilterChange('failed')}
+          >
+            <FiXCircle /> Failed
+          </button>
+          <button
+            className={`filter-btn ${statusFilter === 'queued' ? 'active' : ''}`}
+            onClick={() => handleStatusFilterChange('queued')}
+          >
+            <FiClock /> Queued
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -169,17 +247,23 @@ function EmailLogs() {
             <table className="logs-table">
               <thead>
                 <tr>
+                  <th>Direction</th>
                   <th>Status</th>
                   <th>From</th>
                   <th>To</th>
                   <th>Subject</th>
-                  <th>Sent At</th>
+                  <th>Date</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
                   <tr key={log._id}>
+                    <td>
+                      <span className={`direction-badge ${log.direction === 'sent' ? 'direction-sent' : 'direction-received'}`}>
+                        {log.direction === 'sent' ? '↑ Sent' : '↓ Received'}
+                      </span>
+                    </td>
                     <td>
                       <div className="status-cell">
                         {getStatusIcon(log.status)}
@@ -189,9 +273,9 @@ function EmailLogs() {
                       </div>
                     </td>
                     <td className="email-cell">{log.from}</td>
-                    <td className="email-cell">{log.to}</td>
+                    <td className="email-cell">{Array.isArray(log.to) ? log.to.join(', ') : log.to}</td>
                     <td className="subject-cell">{log.subject}</td>
-                    <td className="date-cell">{formatDate(log.sentAt)}</td>
+                    <td className="date-cell">{formatDate(log.sentAt || log.createdAt)}</td>
                     <td>
                       <button
                         className="btn-view"
@@ -241,6 +325,12 @@ function EmailLogs() {
             </div>
             <div className="modal-body">
               <div className="detail-row">
+                <span className="detail-label">Direction:</span>
+                <span className={`direction-badge ${selectedLog.direction === 'sent' ? 'direction-sent' : 'direction-received'}`}>
+                  {selectedLog.direction === 'sent' ? '↑ Sent' : '↓ Received'}
+                </span>
+              </div>
+              <div className="detail-row">
                 <span className="detail-label">Status:</span>
                 <div className="status-cell">
                   {getStatusIcon(selectedLog.status)}
@@ -255,16 +345,40 @@ function EmailLogs() {
               </div>
               <div className="detail-row">
                 <span className="detail-label">To:</span>
-                <span className="detail-value">{selectedLog.to}</span>
+                <span className="detail-value">{Array.isArray(selectedLog.to) ? selectedLog.to.join(', ') : selectedLog.to}</span>
               </div>
+              {selectedLog.cc && selectedLog.cc.length > 0 && (
+                <div className="detail-row">
+                  <span className="detail-label">CC:</span>
+                  <span className="detail-value">{Array.isArray(selectedLog.cc) ? selectedLog.cc.join(', ') : selectedLog.cc}</span>
+                </div>
+              )}
+              {selectedLog.bcc && selectedLog.bcc.length > 0 && (
+                <div className="detail-row">
+                  <span className="detail-label">BCC:</span>
+                  <span className="detail-value">{Array.isArray(selectedLog.bcc) ? selectedLog.bcc.join(', ') : selectedLog.bcc}</span>
+                </div>
+              )}
               <div className="detail-row">
                 <span className="detail-label">Subject:</span>
                 <span className="detail-value">{selectedLog.subject}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Sent At:</span>
-                <span className="detail-value">{formatDate(selectedLog.sentAt)}</span>
+                <span className="detail-label">Date:</span>
+                <span className="detail-value">{formatDate(selectedLog.sentAt || selectedLog.createdAt)}</span>
               </div>
+              {selectedLog.size && (
+                <div className="detail-row">
+                  <span className="detail-label">Size:</span>
+                  <span className="detail-value">{(selectedLog.size / 1024).toFixed(2)} KB</span>
+                </div>
+              )}
+              {selectedLog.spamScore !== undefined && (
+                <div className="detail-row">
+                  <span className="detail-label">Spam Score:</span>
+                  <span className="detail-value">{selectedLog.spamScore}</span>
+                </div>
+              )}
               {selectedLog.messageId && (
                 <div className="detail-row">
                   <span className="detail-label">Message ID:</span>
