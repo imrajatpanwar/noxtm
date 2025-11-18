@@ -3620,12 +3620,18 @@ const emailTemplatesRoutes = require('./routes/email-templates');
 const emailLogsRoutes = require('./routes/email-logs');
 const auditLogsRoutes = require('./routes/audit-logs');
 
+// AWS SES User Verified Domains (SaaS "Bring Your Own Domain")
+const userVerifiedDomainsRoutes = require('./routes/user-verified-domains');
+
 // Apply authentication middleware to all email management routes
 app.use('/api/email-accounts', authenticateToken, emailAccountsRoutes);
 app.use('/api/email-domains', authenticateToken, emailDomainsRoutes);
 app.use('/api/email-templates', authenticateToken, emailTemplatesRoutes);
 app.use('/api/email-logs', authenticateToken, emailLogsRoutes);
 app.use('/api/audit-logs', authenticateToken, auditLogsRoutes);
+
+// AWS SES User Domain Management (with built-in rate limiting)
+app.use('/api/user-domains', authenticateToken, userVerifiedDomainsRoutes);
 
 // API-only backend - no frontend serving
 // Frontend is served on a different port

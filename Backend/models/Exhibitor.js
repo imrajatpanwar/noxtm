@@ -21,6 +21,11 @@ const exhibitorSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  companyEmail: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
   website: {
     type: String,
     trim: true
@@ -29,6 +34,37 @@ const exhibitorSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  contacts: [{
+    fullName: {
+      type: String,
+      trim: true
+    },
+    designation: {
+      type: String,
+      trim: true
+    },
+    phone: {
+      type: String,
+      trim: true
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+    socialLinks: [{
+      type: String,
+      trim: true
+    }],
+    location: {
+      type: String,
+      trim: true
+    },
+    sameAsCompany: {
+      type: Boolean,
+      default: false
+    }
+  }],
   extractedAt: {
     type: Date
   },
