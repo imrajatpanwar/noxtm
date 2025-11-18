@@ -8,7 +8,7 @@ const defaultTemplates = [
     name: 'Email Verification',
     slug: 'email-verification',
     type: 'transactional',
-    category: 'verification',
+    category: 'email_verification',
     subject: 'Verify Your Email - Noxtm',
     htmlBody: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -82,7 +82,7 @@ This is an automated message, please do not reply to this email.`,
     name: 'Password Reset',
     slug: 'password-reset',
     type: 'transactional',
-    category: 'password-reset',
+    category: 'password_reset',
     subject: 'Password Reset Code - Noxtm',
     htmlBody: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
