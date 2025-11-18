@@ -357,6 +357,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Email Templates', section: 'noxtm-mail-templates', category: 'Marketing' },
     { name: 'Email Logs', section: 'noxtm-mail-logs', category: 'Marketing' },
     { name: 'Audit Trail', section: 'noxtm-mail-audit', category: 'Marketing' },
+    { name: 'AWS SES Domains', section: 'aws-ses-domains', category: 'Marketing' },
 
     // HR Management
     { name: 'HR Management', section: 'hr-management-sub', category: 'HR Management' },

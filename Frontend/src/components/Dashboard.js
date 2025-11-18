@@ -44,8 +44,6 @@ import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
-import FindrData from './FindrData';
-import FindrSettings from './FindrSettings';
 import ProfileSettings from './ProfileSettings';
 import NoxtmMailDashboard from './NoxtmMailDashboard';
 import EmailAccounts from './EmailAccounts';
@@ -53,9 +51,10 @@ import EmailDomains from './EmailDomains';
 import EmailTemplates from './EmailTemplates';
 import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
+import UserVerifiedDomains from './UserVerifiedDomains';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import Findr from './Findr';
+import Findr from './Findr/Findr';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -201,6 +200,8 @@ function Dashboard({ user, onLogout }) {
         return <EmailLogViewer />;
       case 'noxtm-mail-audit':
         return <AuditLogs />;
+      case 'aws-ses-domains':
+        return <UserVerifiedDomains />;
       // Team Communication
       case 'message':
         return <Messaging />;
@@ -255,9 +256,8 @@ function Dashboard({ user, onLogout }) {
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
       case 'findr-data':
-        return <FindrData />;
       case 'findr-settings':
-        return <FindrSettings />;
+        return <Findr />;
       case 'profile-settings':
         return <ProfileSettings user={user} />;
       default:
