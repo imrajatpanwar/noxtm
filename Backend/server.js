@@ -27,7 +27,6 @@ const {
 } = require('./middleware/emailRateLimit');
 const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
 const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
-const { sendTemplateEmail } = require('./utils/emailTemplateHelper');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -142,6 +141,9 @@ connectWithTimeout().then(() => {
 }).catch((err) => {
   console.error('Unexpected error in MongoDB connection:', err);
 });
+
+// Import template helper after MongoDB setup
+const { sendTemplateEmail } = require('./utils/emailTemplateHelper');
 
 const db = mongoose.connection;
 db.on('error', (err) => {
