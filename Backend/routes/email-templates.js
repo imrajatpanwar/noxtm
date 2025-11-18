@@ -137,8 +137,8 @@ router.post('/', isAuthenticated, async (req, res) => {
       fromName,
       fromEmail,
       replyTo,
-      createdBy: req.user._id,
-      companyId: req.user.companyId
+      createdBy: req.user?._id,
+      companyId: req.user?.companyId
     });
 
     await template.save();

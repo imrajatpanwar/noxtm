@@ -531,3 +531,184 @@
     width: 100%;
   }
 }
+
+/* Template Card Enhancements */
+.template-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.template-card-header h3 {
+  margin: 0;
+  flex: 1;
+}
+
+.template-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.template-card:hover .template-actions {
+  opacity: 1;
+}
+
+.template-subject {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.template-subject strong {
+  color: #333;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  flex-wrap: wrap;
+}
+
+.editor-toolbar small {
+  color: #666;
+  margin-right: 8px;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.btn-small:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Preview Container */
+.preview-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-header {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 14px;
+}
+
+.preview-header strong {
+  color: #333;
+  margin-right: 8px;
+}
+
+.preview-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 16px 0;
+}
+
+.preview-body {
+  padding: 24px;
+  background: white;
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-state h3 {
+  margin: 16px 0 8px;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 0 0 24px;
+  color: #999;
+}
+
+/* Badge Colors */
+.status-badge.general {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.status-badge.welcome {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.verification {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.password-reset {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.invoice {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
+.status-badge.alert {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.promotional {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.status-badge.transactional {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.marketing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.notification {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.status-badge.newsletter {
+  background: #fce7f3;
+  color: #9f1239;
+}
