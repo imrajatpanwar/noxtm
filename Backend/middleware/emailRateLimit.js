@@ -2,8 +2,8 @@ const rateLimit = require('express-rate-limit');
 
 // Rate limiter for email verification codes (signup)
 const verificationEmailLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 requests per hour
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -15,8 +15,8 @@ const verificationEmailLimiter = rateLimit({
 
 // Rate limiter for password reset emails
 const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 requests per hour
   standardHeaders: true,
   legacyHeaders: false,
   message: {
