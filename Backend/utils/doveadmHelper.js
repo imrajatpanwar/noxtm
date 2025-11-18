@@ -31,20 +31,48 @@ async function createMailbox(email, password, quotaMB = 1024) {
   try {
     const username = email;
     
-    // Create the user with doveadm
-    const createUserCmd = `doveadm user ${username} || doveadm pw -s SHA512-CRYPT -p '${password}' | xargs -I {} echo '${username}:{}' >> /etc/dovecot/users`;
-    await execAsync(createUserCmd);
+    // Check if user already exists
+    const checkCmd = `grep -c "^${username}:" /etc/dovecot/users || echo "0"`;
+    const { stdout: checkResult } = await execAsync(checkCmd);
     
-    // Set quota for the user (convert MB to bytes)
-    const quotaBytes = quotaMB * 1024 * 1024;
-    const setQuotaCmd = `doveadm quota set -u ${username} storage ${quotaBytes}`;
-    await execAsync(setQuotaCmd);
+    if (parseInt(checkResult.trim()) > 0) {
+      throw new Error('User already exists in Dovecot');
+    }
     
-    // Create initial mailbox folders
-    const createFoldersCmd = `doveadm mailbox create -u ${username} INBOX Sent Drafts Trash Spam`;
+    // Generate password hash using doveadm
+    const hashCmd = `doveadm pw -s SHA512-CRYPT -p '${password}'`;
+    const { stdout: passwordHash } = await execAsync(hashCmd);
+    const hash = passwordHash.trim();
+    
+    // Get next available UID (find highest current UID and add 1)
+    const getUidCmd = `awk -F: '{print $3}' /etc/dovecot/users | sort -n | tail -1`;
+    const { stdout: maxUid } = await execAsync(getUidCmd);
+    const nextUid = (parseInt(maxUid.trim()) || 5000) + 1;
+    
+    // Create home directory
+    const homeDir = `/home/${username.split('@')[0]}`;
+    await execAsync(`mkdir -p ${homeDir}`);
+    await execAsync(`chown ${nextUid}:${nextUid} ${homeDir}`);
+    
+    // Add user to dovecot users file
+    // Format: username:password:uid:gid::homedir::
+    const userLine = `${username}:${hash}:${nextUid}:${nextUid}::${homeDir}::`;
+    await execAsync(`echo '${userLine}' >> /etc/dovecot/users`);
+    
+    // Set permissions on users file
+    await execAsync(`chown root:dovecot /etc/dovecot/users`);
+    await execAsync(`chmod 640 /etc/dovecot/users`);
+    
+    // Create initial mailbox folders using doveadm
+    const createFoldersCmd = `doveadm mailbox create -u ${username} INBOX Sent Drafts Trash Spam 2>&1 || true`;
     await execAsync(createFoldersCmd);
     
-    console.log(`✅ Mailbox created for ${email} with quota ${quotaMB}MB`);
+    // Set quota for the user
+    const quotaBytes = quotaMB * 1024 * 1024;
+    const setQuotaCmd = `doveadm quota set -u ${username} storage ${quotaBytes} 2>&1 || true`;
+    await execAsync(setQuotaCmd);
+    
+    console.log(`✅ Mailbox created for ${email} with quota ${quotaMB}MB (UID: ${nextUid})`);
     return true;
   } catch (error) {
     console.error('Error creating mailbox:', error);
