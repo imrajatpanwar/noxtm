@@ -153,7 +153,7 @@ async function setupDovecotUsers() {
         const newContent = lines.join('\n') + '\n';
         execSync(`echo '${newContent.replace(/'/g, "'\\''")}' > ${passwdFile}`, { stdio: 'pipe' });
         execSync(`chmod 640 ${passwdFile}`, { stdio: 'pipe' });
-        execSync(`chown vmail:vmail ${passwdFile}`, { stdio: 'pipe' });
+        execSync(`chown dovecot:dovecot ${passwdFile}`, { stdio: 'pipe' });
 
         // Test authentication
         console.log(`   🧪 Testing authentication...`);
