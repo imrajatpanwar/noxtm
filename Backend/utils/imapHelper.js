@@ -358,10 +358,12 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
       });
 
       imap.once('error', (err) => {
+        clearTimeout(timeoutHandle);
         reject(new Error(`IMAP error: ${err.message}`));
       });
 
       imap.once('end', () => {
+        clearTimeout(timeoutHandle);
         // Sort by seqno descending (newest first)
         emails.sort((a, b) => b.seqno - a.seqno);
         resolve({ emails, total: totalMessages });
@@ -370,7 +372,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
       imap.connect();
 
       // Timeout
-      setTimeout(() => {
+      const timeoutHandle = setTimeout(() => {
         try {
           imap.end();
         } catch (e) {
