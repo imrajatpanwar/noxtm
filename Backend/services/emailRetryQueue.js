@@ -8,37 +8,45 @@ const redisConfig = {
   db: parseInt(process.env.REDIS_DB) || 0,
 };
 
-const emailQueue = new Queue('aws-ses-emails', {
-  redis: redisConfig,
-  defaultJobOptions: {
-    attempts: 4,
-    backoff: { type: 'exponential', delay: 60000 },
-    removeOnComplete: 100,
-    removeOnFail: 500
-  }
-});
-
-emailQueue.on('error', (error) => console.error('❌ Email queue error:', error.message));
-emailQueue.on('completed', (job, result) => console.log(`✓ Email sent (Job ${job.id}): ${result.MessageId}`));
-emailQueue.on('failed', (job, error) => console.error(`✗ Email failed (Job ${job.id}):`, error.message));
-
-emailQueue.process(async (job) => {
-  const { from, to, subject, html, text, userId, domain, metadata } = job.data;
-
-  const result = await sendEmailViaSES({
-    from, to, subject, html, text,
-    metadata: { ...metadata, queueJobId: job.id, attempt: job.attemptsMade + 1 }
+let emailQueue;
+try {
+  emailQueue = new Queue('aws-ses-emails', {
+    redis: redisConfig,
+    defaultJobOptions: {
+      attempts: 4,
+      backoff: { type: 'exponential', delay: 60000 },
+      removeOnComplete: 100,
+      removeOnFail: 500
+    }
   });
 
-  return { success: true, MessageId: result.MessageId, attempt: job.attemptsMade + 1 };
-});
+  emailQueue.on('error', (error) => {
+    // Silent - Redis connection error handled
+  });
+  emailQueue.on('completed', (job, result) => console.log(`✓ Email sent (Job ${job.id}): ${result.MessageId}`));
+  emailQueue.on('failed', (job, error) => console.error(`✗ Email failed (Job ${job.id}):`, error.message));
+
+  emailQueue.process(async (job) => {
+    const { from, to, subject, html, text, userId, domain, metadata } = job.data;
+
+    const result = await sendEmailViaSES({
+      from, to, subject, html, text,
+      metadata: { ...metadata, queueJobId: job.id, attempt: job.attemptsMade + 1 }
+    });
+
+    return { success: true, MessageId: result.MessageId, attempt: job.attemptsMade + 1 };
+  });
+} catch (error) {
+  console.warn('⚠️  Email queue initialization failed (Redis not available - optional for local dev)');
+  emailQueue = null;
+}
 
 async function sendEmailWithRetry(emailData) {
   try {
     const result = await sendEmailViaSES(emailData);
     return { success: true, sent: 'immediate', MessageId: result.MessageId };
   } catch (error) {
-    if (isRetryableError(error)) {
+    if (emailQueue && isRetryableError(error)) {
       const job = await emailQueue.add(emailData);
       return { success: true, sent: 'queued', jobId: job.id };
     }
@@ -54,6 +62,10 @@ function isRetryableError(error) {
 }
 
 async function getQueueStats() {
+  if (!emailQueue) {
+    return { waiting: 0, active: 0, completed: 0, failed: 0, total: 0, available: false };
+  }
+
   const [waiting, active, completed, failed] = await Promise.all([
     emailQueue.getWaitingCount(),
     emailQueue.getActiveCount(),
@@ -61,7 +73,7 @@ async function getQueueStats() {
     emailQueue.getFailedCount()
   ]);
 
-  return { waiting, active, completed, failed, total: waiting + active + completed + failed };
+  return { waiting, active, completed, failed, total: waiting + active + completed + failed, available: true };
 }
 
 module.exports = { emailQueue, sendEmailWithRetry, getQueueStats };

@@ -7,11 +7,29 @@ const redisClient = new Redis({
   password: process.env.REDIS_PASSWORD || undefined,
   db: parseInt(process.env.REDIS_DB) || 0,
   enableOfflineQueue: false,
-  retryStrategy: (times) => Math.min(times * 50, 2000)
+  retryStrategy: (times) => {
+    if (times > 3) return null; // Stop retrying after 3 attempts
+    return Math.min(times * 50, 2000);
+  },
+  lazyConnect: true
 });
 
-redisClient.on('error', (err) => console.error('❌ Redis Rate Limiter error:', err.message));
-redisClient.on('connect', () => console.log('✓ Redis connected for AWS SES Rate Limiting'));
+let redisConnected = false;
+redisClient.on('error', (err) => {
+  if (!redisConnected) {
+    console.warn('⚠️  Redis not available for AWS SES rate limiting (optional for local dev)');
+    redisConnected = false;
+  }
+});
+redisClient.on('connect', () => {
+  console.log('✓ Redis connected for AWS SES Rate Limiting');
+  redisConnected = true;
+});
+
+// Try to connect to Redis
+redisClient.connect().catch(() => {
+  console.warn('⚠️  Redis connection failed - AWS SES rate limiting disabled (optional for local dev)');
+});
 
 // Global: 14 emails per second (AWS SES limit)
 const globalSESLimiter = new RateLimiterRedis({
