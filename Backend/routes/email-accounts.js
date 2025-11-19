@@ -133,6 +133,10 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     };
 
     console.log(`Fetching inbox for ${account.email} from ${imapConfig.host}:${imapConfig.port}`);
+    console.log(`DEBUG: Password length: ${password.length}`);
+    console.log(`DEBUG: Password start: ${password.substring(0, 2)}... end: ...${password.substring(password.length - 2)}`);
+    console.log(`DEBUG: Username: ${imapConfig.username}`);
+    console.log(`DEBUG: Secure: ${imapConfig.secure}`);
 
     const result = await fetchEmails(imapConfig, folder, parseInt(page), parseInt(limit));
 
