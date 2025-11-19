@@ -188,14 +188,24 @@ function Dashboard({ user, onLogout }) {
       case 'credentials':
         return <Credentials />;
       // Noxtm Mail - Email Management System
+      case 'noxtm-mail-mainstream':
+        return <EmailAccounts />; // Mainstream inbox view
+      case 'noxtm-mail-sent':
+        return <EmailLogViewer />; // Sent mails view
+      case 'noxtm-mail-spam':
+        return <EmailLogViewer />; // Spam mails view
+      case 'noxtm-mail-trash':
+        return <EmailLogViewer />; // Trash mails view
+      case 'noxtm-mail-templates':
+        return <EmailTemplates />; // Set-up Template
+      case 'noxtm-mail-campaign':
+        return <NoxtmMailDashboard />; // Set-up Campaign
       case 'noxtm-mail-dashboard':
         return <NoxtmMailDashboard />;
       case 'noxtm-mail-accounts':
         return <EmailAccounts />;
       case 'noxtm-mail-domains':
         return <EmailDomains />;
-      case 'noxtm-mail-templates':
-        return <EmailTemplates />;
       case 'noxtm-mail-logs':
         return <EmailLogViewer />;
       case 'noxtm-mail-audit':
