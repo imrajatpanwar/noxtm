@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Import utilities
-const { encrypt, generateSecurePassword } = require('./Backend/utils/encryption');
+const { encrypt, generateSecurePassword } = require('./utils/encryption');
 
 // Define EmailAccount schema (minimal version needed for migration)
 const emailAccountSchema = new mongoose.Schema({
