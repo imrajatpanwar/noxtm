@@ -35,10 +35,16 @@ function MainstreamInbox() {
 
   const fetchHostedAccounts = async () => {
     try {
-      const response = await api.get('/email-accounts');
-      const hostedAccounts = response.data.filter(
+      const response = await api.get('/email-accounts', {
+        params: {
+          limit: 1000 // Fetch all accounts
+        }
+      });
+      const allAccounts = response.data.data || response.data || [];
+      const hostedAccounts = allAccounts.filter(
         account => account.accountType === 'noxtm-hosted'
       );
+      console.log('Hosted accounts found:', hostedAccounts.length, hostedAccounts);
       setAccounts(hostedAccounts);
       if (hostedAccounts.length > 0) {
         setSelectedAccount(hostedAccounts[0]);
