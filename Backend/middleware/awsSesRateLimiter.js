@@ -15,12 +15,12 @@ const redisClient = new Redis({
 });
 
 let redisConnected = false;
+let errorLogged = false;
+
 redisClient.on('error', (err) => {
-  if (!redisConnected) {
-    console.warn('⚠️  Redis not available for AWS SES rate limiting (optional for local dev)');
-    redisConnected = false;
-  }
+  // Silent - only log once on connection attempt
 });
+
 redisClient.on('connect', () => {
   console.log('✓ Redis connected for AWS SES Rate Limiting');
   redisConnected = true;
@@ -28,7 +28,10 @@ redisClient.on('connect', () => {
 
 // Try to connect to Redis
 redisClient.connect().catch(() => {
-  console.warn('⚠️  Redis connection failed - AWS SES rate limiting disabled (optional for local dev)');
+  if (!errorLogged) {
+    console.warn('⚠️  Redis not available - AWS SES rate limiting disabled (optional for local dev)');
+    errorLogged = true;
+  }
 });
 
 // Global: 14 emails per second (AWS SES limit)
