@@ -230,25 +230,12 @@ async function changePassword(email, newPassword) {
   }
 }
 
-/**
- * Test if doveadm is available
- * @returns {Promise<boolean>} - True if doveadm is available
- */
-async function isDoveadmAvailable() {
-  try {
-    await execAsync('which doveadm');
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
 module.exports = {
   createMailbox,
   getQuota,
   updateQuota,
   deleteMailbox,
   changePassword,
-  isDoveadmAvailable,
+  checkDoveadmAvailable,
   executeDoveadmCommand
 };
