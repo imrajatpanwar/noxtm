@@ -10,6 +10,7 @@ function MainstreamInbox() {
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalEmails, setTotalEmails] = useState(0);
@@ -59,8 +60,9 @@ function MainstreamInbox() {
 
   const fetchEmails = async () => {
     if (!selectedAccount) return;
-    
+
     setLoading(true);
+    setError(null);
     try {
       const folder = activeTab === 'mainstream' ? 'INBOX' : 'INBOX'; // Will differentiate later
       const response = await api.get('/email-accounts/fetch-inbox', {
@@ -71,7 +73,7 @@ function MainstreamInbox() {
           limit: emailsPerPage
         }
       });
-      
+
       let fetchedEmails = response.data.emails || [];
 
       // Filter out emails sent by the current user (self-sent emails in Inbox)
@@ -81,11 +83,12 @@ function MainstreamInbox() {
           return fromAddress.toLowerCase() !== selectedAccount.email.toLowerCase();
         });
       }
-      
+
       setEmails(fetchedEmails);
       setTotalEmails(response.data.total || 0);
     } catch (error) {
       console.error('Error fetching emails:', error);
+      setError('Failed to load emails. Please try again.');
       setEmails([]);
     } finally {
       setLoading(false);
@@ -119,7 +122,7 @@ function MainstreamInbox() {
         subject: composeSubject,
         body: composeBody
       });
-      
+
       alert('Email sent successfully!');
       setComposeOpen(false);
       setComposeTo('');
@@ -141,7 +144,7 @@ function MainstreamInbox() {
     if (!date) return '';
     const d = new Date(date);
     const today = new Date();
-    
+
     if (d.toDateString() === today.toDateString()) {
       return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     }
@@ -242,6 +245,11 @@ function MainstreamInbox() {
         <div className="email-list">
           {loading ? (
             <div className="loading-state">Loading emails...</div>
+          ) : error ? (
+            <div className="error-state">
+              <p>{error}</p>
+              <button onClick={fetchEmails} className="retry-btn">Retry</button>
+            </div>
           ) : emails.length === 0 ? (
             <div className="empty-state">
               <p>No emails found</p>
