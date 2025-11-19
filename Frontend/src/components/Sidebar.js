@@ -11,6 +11,7 @@ function Sidebar({ activeSection, onSectionChange }) {
   const { socket } = useContext(MessagingContext);
   const { isModuleInstalled } = useModules();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
+  const [noxtmMailExpanded, setNoxtmMailExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
   const [employeesExpanded, setEmployeesExpanded] = useState(false);
@@ -801,49 +802,65 @@ function Sidebar({ activeSection, onSectionChange }) {
           {hasPermissionForSection('Marketing') && !shouldHideNoxtmMail && (
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">Noxtm Mail</h4>
+              
+              {/* E-mail Submenu */}
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-mainstream' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-mainstream')}
+                className="Dash-noxtm-sidebar-item"
+                onClick={() => setNoxtmMailExpanded(!noxtmMailExpanded)}
               >
                 <FiMail className="sidebar-icon" />
-                <span>Mainstream</span>
-                <span className="sidebar-message-badge">1</span>
+                <span>E-mail</span>
+                {noxtmMailExpanded ? <FiChevronDown className="chevron-icon" /> : <FiChevronRight className="chevron-icon" />}
               </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-sent' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-sent')}
-              >
-                <FiMail className="sidebar-icon" />
-                <span>Sent Mails</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-spam' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-spam')}
-              >
-                <FiShield className="sidebar-icon" />
-                <span>Spam Mails</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-trash' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-trash')}
-              >
-                <FiFileText className="sidebar-icon" />
-                <span>Trash Mails</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-templates')}
-              >
-                <FiFileText className="sidebar-icon" />
-                <span>Set-up Template</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-campaign' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-campaign')}
-              >
-                <FiTarget className="sidebar-icon" />
-                <span>Set-up Campaign</span>
-              </div>
+              
+              {noxtmMailExpanded && (
+                <div className="Dash-noxtm-sidebar-submenu">
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-mainstream' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-mainstream')}
+                  >
+                    <FiMail className="sidebar-icon" />
+                    <span>Mainstream</span>
+                    <span className="sidebar-message-badge">1</span>
+                  </div>
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-sent' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-sent')}
+                  >
+                    <FiMail className="sidebar-icon" />
+                    <span>Sent Mails</span>
+                  </div>
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-spam' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-spam')}
+                  >
+                    <FiShield className="sidebar-icon" />
+                    <span>Spam Mails</span>
+                  </div>
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-trash' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-trash')}
+                  >
+                    <FiFileText className="sidebar-icon" />
+                    <span>Trash Mails</span>
+                  </div>
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-templates')}
+                  >
+                    <FiFileText className="sidebar-icon" />
+                    <span>Set-up Template</span>
+                  </div>
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-campaign' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('noxtm-mail-campaign')}
+                  >
+                    <FiTarget className="sidebar-icon" />
+                    <span>Set-up Campaign</span>
+                  </div>
+                </div>
+              )}
+              
               <div
                 className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-dashboard')}
