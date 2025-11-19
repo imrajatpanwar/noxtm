@@ -398,7 +398,22 @@ router.post('/create-noxtm', isAuthenticated, async (req, res) => {
       isVerified: true, // Hosted accounts are auto-verified
       createdBy: req.user?._id, // Optional
       imapEnabled: true,
-      smtpEnabled: true
+      smtpEnabled: true,
+      // Fix: Populate IMAP/SMTP settings so fetch-inbox works
+      imapSettings: {
+        host: 'mail.noxtm.com',
+        port: 993,
+        secure: true,
+        username: email,
+        encryptedPassword: encrypt(password)
+      },
+      smtpSettings: {
+        host: 'mail.noxtm.com',
+        port: 587,
+        secure: false, // STARTTLS
+        username: email,
+        encryptedPassword: encrypt(password)
+      }
     });
 
     await account.save();
