@@ -108,18 +108,23 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Only hosted accounts support inbox fetching' });
     }
 
+    // Check if IMAP settings exist
+    if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
+      return res.status(400).json({ message: 'IMAP settings not configured for this account' });
+    }
+
     // For hosted accounts, use IMAP to fetch emails
     const { fetchEmails } = require('../utils/imapHelper');
     
-    // Decrypt password
-    const password = decrypt(account.password);
+    // Decrypt password from imapSettings
+    const password = decrypt(account.imapSettings.encryptedPassword);
 
-    // Configure IMAP connection for hosted account - use IP address
+    // Configure IMAP connection for hosted account
     const imapConfig = {
-      host: '185.137.122.61',
-      port: parseInt(process.env.IMAP_PORT || '993'),
-      secure: true,
-      username: account.email,
+      host: account.imapSettings.host || '185.137.122.61',
+      port: account.imapSettings.port || 993,
+      secure: account.imapSettings.secure !== false,
+      username: account.imapSettings.username || account.email,
       password: password
     };
 
@@ -159,16 +164,21 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Email account not found' });
     }
 
-    // Decrypt password
-    const password = decrypt(account.password);
+    // Check if SMTP settings exist
+    if (!account.smtpSettings || !account.smtpSettings.encryptedPassword) {
+      return res.status(400).json({ message: 'SMTP settings not configured for this account' });
+    }
 
-    // Configure SMTP for hosted account - use IP address
+    // Decrypt password from smtpSettings
+    const password = decrypt(account.smtpSettings.encryptedPassword);
+
+    // Configure SMTP for hosted account
     const transporter = nodemailer.createTransporter({
-      host: '185.137.122.61',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
+      host: account.smtpSettings.host || '185.137.122.61',
+      port: account.smtpSettings.port || 587,
+      secure: account.smtpSettings.secure === true,
       auth: {
-        user: account.email,
+        user: account.smtpSettings.username || account.email,
         pass: password
       }
     });
