@@ -78,7 +78,7 @@ async function testImapConnection(config) {
             message: 'IMAP connection timeout'
           });
         }
-      }, 15000);
+      }, 10000);
 
     } catch (error) {
       resolve({
@@ -199,7 +199,7 @@ async function getInboxStats(config) {
           // Ignore
         }
         reject(new Error('Connection timeout'));
-      }, 15000);
+      }, 10000);
 
     } catch (error) {
       reject(error);
@@ -259,8 +259,8 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
         port: config.port || (config.secure ? 993 : 143),
         tls: config.secure !== false,
         tlsOptions: { rejectUnauthorized: false },
-        connTimeout: 15000,
-        authTimeout: 15000
+        connTimeout: 10000,
+        authTimeout: 10000
       });
 
       let emails = [];
@@ -379,7 +379,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout'));
-      }, 60000);
+      }, 10000);
 
     } catch (error) {
       reject(error);

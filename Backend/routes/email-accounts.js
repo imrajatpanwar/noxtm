@@ -119,13 +119,13 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
 
     // For hosted accounts, use IMAP to fetch emails
     const { fetchEmails } = require('../utils/imapHelper');
-    
+
     // Decrypt password from imapSettings
     const password = decrypt(account.imapSettings.encryptedPassword);
 
     // Configure IMAP connection for hosted account
     const imapConfig = {
-      host: account.imapSettings.host || '185.137.122.61',
+      host: account.imapSettings.host || '127.0.0.1',
       port: account.imapSettings.port || 993,
       secure: account.imapSettings.secure !== false,
       username: account.imapSettings.username || account.email,
@@ -147,9 +147,9 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching inbox:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch inbox', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Failed to fetch inbox',
+      error: error.message
     });
   }
 });
@@ -178,7 +178,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
 
     // Configure SMTP for hosted account
     const transporter = nodemailer.createTransporter({
-      host: account.smtpSettings.host || '185.137.122.61',
+      host: account.smtpSettings.host || '127.0.0.1',
       port: account.smtpSettings.port || 587,
       secure: account.smtpSettings.secure === true,
       auth: {
@@ -220,7 +220,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
 
   } catch (error) {
     console.error('Error sending email:', error);
-    
+
     // Log failed email
     try {
       await EmailLog.create({
@@ -237,9 +237,9 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       console.error('Error logging failed email:', logError);
     }
 
-    res.status(500).json({ 
-      message: 'Failed to send email', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Failed to send email',
+      error: error.message
     });
   }
 });
@@ -459,7 +459,7 @@ router.post('/test-connection', isAuthenticated, async (req, res) => {
 
     // Check for presets
     const preset = getEmailProviderPreset(email);
-    
+
     const imapConfig = {
       host: imapHost || preset?.imap?.host,
       port: imapPort || preset?.imap?.port || 993,
@@ -492,19 +492,19 @@ router.post('/test-connection', isAuthenticated, async (req, res) => {
 // Add existing external email account
 router.post('/add-external', isAuthenticated, async (req, res) => {
   try {
-    const { 
-      email, 
+    const {
+      email,
       displayName,
-      imapHost, 
-      imapPort, 
-      imapSecure, 
-      imapUsername, 
+      imapHost,
+      imapPort,
+      imapSecure,
+      imapUsername,
       imapPassword,
-      smtpHost, 
-      smtpPort, 
-      smtpSecure, 
-      smtpUsername, 
-      smtpPassword 
+      smtpHost,
+      smtpPort,
+      smtpSecure,
+      smtpUsername,
+      smtpPassword
     } = req.body;
 
     if (!email || !imapPassword) {
@@ -532,9 +532,9 @@ router.post('/add-external', isAuthenticated, async (req, res) => {
     const testResult = await testEmailAccount(imapConfig, null);
 
     if (!testResult.imap?.success) {
-      return res.status(400).json({ 
-        message: 'IMAP connection failed', 
-        error: testResult.imap?.message 
+      return res.status(400).json({
+        message: 'IMAP connection failed',
+        error: testResult.imap?.message
       });
     }
 
@@ -642,7 +642,7 @@ router.get('/:id/quota', isAuthenticated, async (req, res) => {
     if (account.accountType === 'noxtm-hosted') {
       try {
         const doveadmQuota = await getQuota(account.email);
-        
+
         // Only update if we got real data (not default fallback)
         if (doveadmQuota.limit > 0) {
           account.usedStorage = doveadmQuota.used;
@@ -691,7 +691,7 @@ router.post('/:id/sync-inbox', isAuthenticated, async (req, res) => {
 
     // Decrypt password and test connection
     const imapPassword = decrypt(account.imapSettings.encryptedPassword);
-    
+
     const stats = await getInboxStats({
       host: account.imapSettings.host,
       port: account.imapSettings.port,
@@ -722,7 +722,7 @@ router.post('/:id/sync-inbox', isAuthenticated, async (req, res) => {
     });
   } catch (error) {
     console.error('Error syncing inbox:', error);
-    
+
     // Update connection error
     const account = await EmailAccount.findById(req.params.id);
     if (account) {
@@ -960,7 +960,7 @@ router.get('/:id/credentials', isAuthenticated, async (req, res) => {
 // Get account email logs
 router.get('/:id/logs', isAuthenticated, async (req, res) => {
   try {
-    const {page = 1, limit = 50, direction, status} = req.query;
+    const { page = 1, limit = 50, direction, status } = req.query;
 
     const account = await EmailAccount.findById(req.params.id);
     if (!account) {
