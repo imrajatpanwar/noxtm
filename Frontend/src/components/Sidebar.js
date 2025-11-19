@@ -844,6 +844,48 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <FiTarget className="sidebar-icon" />
                 <span>Set-up Campaign</span>
               </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-dashboard')}
+              >
+                <FiGrid className="sidebar-icon" />
+                <span>Dashboard</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-accounts' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-accounts')}
+              >
+                <FiUsers className="sidebar-icon" />
+                <span>Email Accounts</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-domains' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-domains')}
+              >
+                <FiGlobe className="sidebar-icon" />
+                <span>Domains</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-logs')}
+              >
+                <FiActivity className="sidebar-icon" />
+                <span>Email Logs</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-audit' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-audit')}
+              >
+                <FiShield className="sidebar-icon" />
+                <span>Audit Trail</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'aws-ses-domains' ? 'active' : ''}`}
+                onClick={() => onSectionChange('aws-ses-domains')}
+              >
+                <FiGlobe className="sidebar-icon" />
+                <span>AWS SES Domains</span>
+              </div>
             </div>
           )}
 
