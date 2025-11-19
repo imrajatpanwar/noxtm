@@ -377,7 +377,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout'));
-      }, 30000);
+      }, 60000);
 
     } catch (error) {
       reject(error);
