@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
-import { FiFileText, FiPlus, FiEdit2, FiTrash2, FiSend, FiX, FiCheck, FiCopy, FiEye } from 'react-icons/fi';
+import { FiFileText, FiPlus, FiEdit2, FiTrash2, FiX, FiCopy, FiEye } from 'react-icons/fi';
 import './EmailManagement.css';
 
 function EmailTemplates() {

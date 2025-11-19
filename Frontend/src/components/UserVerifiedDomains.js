@@ -201,7 +201,7 @@ function UserVerifiedDomains() {
     return new Date(date).toLocaleString();
   };
 
-  const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Business Admin';
+  // const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Business Admin';
 
   if (loading) {
     return (

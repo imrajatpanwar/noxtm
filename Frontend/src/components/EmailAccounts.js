@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
-import { FiUsers, FiPlus, FiEdit2, FiTrash2, FiKey, FiMail, FiRefreshCw, FiServer, FiCloud, FiX, FiCheck, FiAlertCircle, FiCopy, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUsers, FiPlus, FiTrash2, FiKey, FiMail, FiRefreshCw, FiServer, FiCloud, FiX, FiCheck, FiAlertCircle, FiCopy, FiEye, FiEyeOff } from 'react-icons/fi';
 import './EmailManagement.css';
 
 function EmailAccounts() {
@@ -37,6 +37,7 @@ function EmailAccounts() {
 
   useEffect(() => {
     fetchAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAccounts = async () => {
