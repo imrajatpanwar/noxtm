@@ -72,7 +72,17 @@ function MainstreamInbox() {
         }
       });
       
-      setEmails(response.data.emails || []);
+      let fetchedEmails = response.data.emails || [];
+
+      // Filter out emails sent by the current user (self-sent emails in Inbox)
+      if (activeTab === 'mainstream') {
+        fetchedEmails = fetchedEmails.filter(email => {
+          const fromAddress = email.from?.address || '';
+          return fromAddress.toLowerCase() !== selectedAccount.email.toLowerCase();
+        });
+      }
+      
+      setEmails(fetchedEmails);
       setTotalEmails(response.data.total || 0);
     } catch (error) {
       console.error('Error fetching emails:', error);
