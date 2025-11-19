@@ -60,8 +60,9 @@ async function sendTemplateEmail(slug, to, variables = {}, options = {}) {
     if (options.logData) {
       try {
         await EmailLog.create({
+          direction: 'sent',
           from: rendered.from,
-          to,
+          to: Array.isArray(to) ? to : [to],
           subject: rendered.subject,
           body: rendered.html,
           status: 'sent',
@@ -70,6 +71,7 @@ async function sendTemplateEmail(slug, to, variables = {}, options = {}) {
           ip: options.logData.ip,
           userAgent: options.logData.userAgent,
           type: options.logData.type || 'transactional',
+          sentAt: new Date(),
           metadata: {
             templateSlug: slug,
             variables: Object.keys(variables)
