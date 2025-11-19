@@ -95,21 +95,25 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     const { accountId, folder = 'INBOX', page = 1, limit = 50 } = req.query;
 
     if (!accountId) {
+      console.warn('fetch-inbox rejected: missing accountId');
       return res.status(400).json({ message: 'Account ID is required' });
     }
 
     const account = await EmailAccount.findById(accountId);
     if (!account) {
+      console.warn(`fetch-inbox rejected: account not found (${accountId})`);
       return res.status(404).json({ message: 'Email account not found' });
     }
 
     // Only fetch for hosted accounts
     if (account.accountType !== 'noxtm-hosted') {
+      console.warn(`fetch-inbox rejected: accountType=${account.accountType} for ${account.email}`);
       return res.status(400).json({ message: 'Only hosted accounts support inbox fetching' });
     }
 
     // Check if IMAP settings exist
     if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
+      console.warn(`fetch-inbox rejected: missing IMAP settings for ${account.email}`);
       return res.status(400).json({ message: 'IMAP settings not configured for this account' });
     }
 
