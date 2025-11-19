@@ -67,7 +67,7 @@ router.get('/', isAuthenticated, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .populate('emailAccount', 'email displayName'),
+        .lean(),
       EmailLog.countDocuments(query)
     ]);
 
@@ -91,7 +91,7 @@ router.get('/', isAuthenticated, async (req, res) => {
 router.get('/:id', isAuthenticated, async (req, res) => {
   try {
     const log = await EmailLog.findById(req.params.id)
-      .populate('emailAccount', 'email displayName');
+      .lean();
 
     if (!log) {
       return res.status(404).json({ message: 'Email log not found' });
@@ -205,7 +205,7 @@ router.get('/spam/quarantine', isAuthenticated, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .populate('emailAccount', 'email displayName'),
+        .lean(),
       EmailLog.countDocuments(query)
     ]);
 
