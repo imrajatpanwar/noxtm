@@ -105,9 +105,17 @@ async function setupDovecotUsers() {
           encoding: 'utf8' 
         }).trim();
 
+        // Check where Postfix delivers emails
+        const postfixMailDir = `/home/${username}/Maildir`;
+        const actualMailDir = execSync(`test -d ${postfixMailDir} && echo "${postfixMailDir}" || echo "${mailDir}"`, { 
+          encoding: 'utf8' 
+        }).trim();
+        
+        console.log(`   📬 Mail directory: ${actualMailDir}`);
+
         // Add user to Dovecot passwd file
         const passwdFile = '/etc/dovecot/users';
-        const userLine = `${account.email}:${passwordHash}:5000:5000::${mailDir}::`;
+        const userLine = `${account.email}:${passwordHash}:5000:5000::${actualMailDir}::`;
         
         console.log(`   📝 Adding to Dovecot passwd file...`);
         
