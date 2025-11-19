@@ -2,12 +2,41 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 
+// Check if doveadm is available (production server)
+let isDoveadmAvailable = null;
+
+/**
+ * Check if doveadm command is available
+ * @returns {Promise<boolean>}
+ */
+async function checkDoveadmAvailable() {
+  if (isDoveadmAvailable !== null) {
+    return isDoveadmAvailable;
+  }
+  
+  try {
+    await execAsync('doveadm help');
+    isDoveadmAvailable = true;
+    console.log('✅ Doveadm is available');
+  } catch (error) {
+    isDoveadmAvailable = false;
+    console.log('⚠️ Doveadm not available - mail server features will be limited (local dev mode)');
+  }
+  
+  return isDoveadmAvailable;
+}
+
 /**
  * Execute a doveadm command
  * @param {string} command - The doveadm command to execute
  * @returns {Promise<string>} - Command output
  */
 async function executeDoveadmCommand(command) {
+  const available = await checkDoveadmAvailable();
+  if (!available) {
+    throw new Error('Doveadm not available (local development mode)');
+  }
+  
   try {
     const { stdout, stderr } = await execAsync(command);
     if (stderr && !stderr.includes('Warning')) {
@@ -87,6 +116,13 @@ async function createMailbox(email, password, quotaMB = 1024) {
  */
 async function getQuota(email) {
   try {
+    // Check if doveadm is available (don't spam logs)
+    const available = await checkDoveadmAvailable();
+    if (!available) {
+      // Return default quota for local dev
+      return { used: 0, limit: 1024, percentage: 0 };
+    }
+    
     const cmd = `doveadm quota get -u ${email}`;
     const output = await executeDoveadmCommand(cmd);
     
@@ -118,9 +154,12 @@ async function getQuota(email) {
     
     return { used: 0, limit: 0, percentage: 0 };
   } catch (error) {
-    console.error('Error getting quota:', error);
+    // Only log if it's not the "not available" error
+    if (!error.message.includes('not available')) {
+      console.error('Error getting quota:', error);
+    }
     // Return default values instead of throwing
-    return { used: 0, limit: 0, percentage: 0 };
+    return { used: 0, limit: 1024, percentage: 0 };
   }
 }
 

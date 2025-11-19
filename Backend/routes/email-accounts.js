@@ -484,10 +484,12 @@ router.get('/:id/quota', isAuthenticated, async (req, res) => {
       try {
         const doveadmQuota = await getQuota(account.email);
         
-        // Update account with real quota data
-        account.usedStorage = doveadmQuota.used;
-        account.quota = doveadmQuota.limit;
-        await account.save();
+        // Only update if we got real data (not default fallback)
+        if (doveadmQuota.limit > 0) {
+          account.usedStorage = doveadmQuota.used;
+          account.quota = doveadmQuota.limit;
+          await account.save();
+        }
 
         quotaData = {
           email: account.email,
@@ -497,7 +499,10 @@ router.get('/:id/quota', isAuthenticated, async (req, res) => {
           percentage: doveadmQuota.percentage
         };
       } catch (error) {
-        console.error('Error fetching doveadm quota:', error);
+        // Only log if it's not the "not available" error (local dev)
+        if (!error.message.includes('not available')) {
+          console.error('Error fetching doveadm quota:', error);
+        }
         // Fall back to database values
       }
     }
