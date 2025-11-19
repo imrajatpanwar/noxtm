@@ -30,6 +30,7 @@ function MainstreamInbox() {
     if (selectedAccount) {
       fetchEmails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount, activeTab, currentPage]);
 
   const fetchHostedAccounts = async () => {
