@@ -52,6 +52,7 @@ import EmailTemplates from './EmailTemplates';
 import EmailLogViewer from './EmailLogViewer';
 import AuditLogs from './AuditLogs';
 import UserVerifiedDomains from './UserVerifiedDomains';
+import MainstreamInbox from './MainstreamInbox';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
 import Findr from './Findr/Findr';
@@ -189,7 +190,7 @@ function Dashboard({ user, onLogout }) {
         return <Credentials />;
       // Noxtm Mail - Email Management System
       case 'noxtm-mail-mainstream':
-        return <EmailAccounts />; // Mainstream inbox view
+        return <MainstreamInbox />; // Mainstream inbox view
       case 'noxtm-mail-sent':
         return <EmailLogViewer />; // Sent mails view
       case 'noxtm-mail-spam':

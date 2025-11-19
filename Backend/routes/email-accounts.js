@@ -839,4 +839,147 @@ router.get('/:id/logs', isAuthenticated, async (req, res) => {
   }
 });
 
+// ==========================================
+// FETCH INBOX EMAILS VIA IMAP
+// ==========================================
+
+// Fetch emails from hosted account inbox
+router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
+  try {
+    const { accountId, folder = 'INBOX', page = 1, limit = 50 } = req.query;
+
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+
+    const account = await EmailAccount.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Only fetch for hosted accounts
+    if (account.accountType !== 'noxtm-hosted') {
+      return res.status(400).json({ message: 'Only hosted accounts support inbox fetching' });
+    }
+
+    // For hosted accounts, use IMAP to fetch emails
+    const { fetchEmails } = require('../utils/imapHelper');
+    
+    // Decrypt password
+    const password = decrypt(account.password);
+
+    // Configure IMAP connection for hosted account
+    const imapConfig = {
+      host: process.env.IMAP_HOST || 'mail.noxtm.com',
+      port: parseInt(process.env.IMAP_PORT || '993'),
+      secure: true,
+      username: account.email,
+      password: password
+    };
+
+    const result = await fetchEmails(imapConfig, folder, parseInt(page), parseInt(limit));
+
+    res.json({
+      success: true,
+      emails: result.emails,
+      total: result.total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(result.total / limit)
+    });
+
+  } catch (error) {
+    console.error('Error fetching inbox:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch inbox', 
+      error: error.message 
+    });
+  }
+});
+
+// Send email from hosted account
+router.post('/send-email', isAuthenticated, async (req, res) => {
+  try {
+    const { accountId, to, subject, body, cc, bcc } = req.body;
+
+    if (!accountId || !to || !subject) {
+      return res.status(400).json({ message: 'Account ID, recipient, and subject are required' });
+    }
+
+    const account = await EmailAccount.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Decrypt password
+    const password = decrypt(account.password);
+
+    // Configure SMTP for hosted account
+    const transporter = nodemailer.createTransporter({
+      host: process.env.SMTP_HOST || 'mail.noxtm.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: account.email,
+        pass: password
+      }
+    });
+
+    const mailOptions = {
+      from: `${account.displayName || account.email} <${account.email}>`,
+      to: to,
+      subject: subject,
+      html: body,
+      cc: cc,
+      bcc: bcc
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    // Log the sent email
+    await EmailLog.create({
+      direction: 'sent',
+      status: 'sent',
+      from: account.email,
+      to: Array.isArray(to) ? to : [to],
+      cc: cc ? (Array.isArray(cc) ? cc : [cc]) : [],
+      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [],
+      subject: subject,
+      body: body,
+      sentAt: new Date(),
+      messageId: info.messageId
+    });
+
+    res.json({
+      success: true,
+      message: 'Email sent successfully',
+      messageId: info.messageId
+    });
+
+  } catch (error) {
+    console.error('Error sending email:', error);
+    
+    // Log failed email
+    try {
+      await EmailLog.create({
+        direction: 'sent',
+        status: 'failed',
+        from: req.body.accountId,
+        to: Array.isArray(req.body.to) ? req.body.to : [req.body.to],
+        subject: req.body.subject,
+        body: req.body.body,
+        errorMessage: error.message,
+        sentAt: new Date()
+      });
+    } catch (logError) {
+      console.error('Error logging failed email:', logError);
+    }
+
+    res.status(500).json({ 
+      message: 'Failed to send email', 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
