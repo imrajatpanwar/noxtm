@@ -5,7 +5,7 @@ import { FiGlobe, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiCopy, FiCheck, FiAler
 import './EmailManagement.css';
 
 function UserVerifiedDomains() {
-  // const { currentUser } = useRole();
+  useRole(); // Keep hook call to maintain context
   const [domains, setDomains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
