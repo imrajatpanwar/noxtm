@@ -351,10 +351,15 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Referral Client', section: 'referral-client', category: 'Marketing' },
 
     // Noxtm Mail
+    { name: 'Mainstream', section: 'noxtm-mail-mainstream', category: 'Marketing' },
+    { name: 'Sent Mails', section: 'noxtm-mail-sent', category: 'Marketing' },
+    { name: 'Spam Mails', section: 'noxtm-mail-spam', category: 'Marketing' },
+    { name: 'Trash Mails', section: 'noxtm-mail-trash', category: 'Marketing' },
+    { name: 'Set-up Template', section: 'noxtm-mail-templates', category: 'Marketing' },
+    { name: 'Set-up Campaign', section: 'noxtm-mail-campaign', category: 'Marketing' },
     { name: 'Mail Dashboard', section: 'noxtm-mail-dashboard', category: 'Marketing' },
     { name: 'Email Accounts', section: 'noxtm-mail-accounts', category: 'Marketing' },
     { name: 'Domains', section: 'noxtm-mail-domains', category: 'Marketing' },
-    { name: 'Email Templates', section: 'noxtm-mail-templates', category: 'Marketing' },
     { name: 'Email Logs', section: 'noxtm-mail-logs', category: 'Marketing' },
     { name: 'Audit Trail', section: 'noxtm-mail-audit', category: 'Marketing' },
     { name: 'AWS SES Domains', section: 'aws-ses-domains', category: 'Marketing' },
@@ -409,7 +414,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       return false;
     }
     // Hide NOXTM MAIL items for active Noxtm subscribers
-    if (shouldHideNoxtmMail && ['Mail Dashboard', 'Email Accounts', 'Domains', 'Email Templates', 'Email Logs', 'Audit Trail'].includes(item.name)) {
+    if (shouldHideNoxtmMail && ['Mail Dashboard', 'Email Accounts', 'Domains', 'Set-up Template', 'Email Logs', 'Audit Trail', 'Mainstream', 'Sent Mails', 'Spam Mails', 'Trash Mails', 'Set-up Campaign'].includes(item.name)) {
       return false;
     }
     return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -795,55 +800,49 @@ function Sidebar({ activeSection, onSectionChange }) {
           {/* Noxtm Mail Section - Hidden for active Noxtm subscribers */}
           {hasPermissionForSection('Marketing') && !shouldHideNoxtmMail && (
             <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">NOXTM MAIL</h4>
+              <h4 className="Dash-noxtm-sidebar-section-title">Noxtm Mail</h4>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-dashboard')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-mainstream' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-mainstream')}
               >
-                <FiGrid className="sidebar-icon" />
-                <span>Dashboard</span>
+                <FiMail className="sidebar-icon" />
+                <span>Mainstream</span>
+                <span className="sidebar-message-badge">1</span>
               </div>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-accounts' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-accounts')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-sent' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-sent')}
               >
-                <FiUsers className="sidebar-icon" />
-                <span>Email Accounts</span>
+                <FiMail className="sidebar-icon" />
+                <span>Sent Mails</span>
               </div>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-domains' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-domains')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-spam' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-spam')}
               >
-                <FiGlobe className="sidebar-icon" />
-                <span>Domains</span>
+                <FiShield className="sidebar-icon" />
+                <span>Spam Mails</span>
+              </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-trash' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-trash')}
+              >
+                <FiFileText className="sidebar-icon" />
+                <span>Trash Mails</span>
               </div>
               <div
                 className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
                 onClick={() => onSectionChange('noxtm-mail-templates')}
               >
                 <FiFileText className="sidebar-icon" />
-                <span>Email Templates</span>
+                <span>Set-up Template</span>
               </div>
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-logs')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-campaign' ? 'active' : ''}`}
+                onClick={() => onSectionChange('noxtm-mail-campaign')}
               >
-                <FiActivity className="sidebar-icon" />
-                <span>Email Logs</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-audit' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-audit')}
-              >
-                <FiShield className="sidebar-icon" />
-                <span>Audit Trail</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'aws-ses-domains' ? 'active' : ''}`}
-                onClick={() => onSectionChange('aws-ses-domains')}
-              >
-                <FiGlobe className="sidebar-icon" />
-                <span>AWS SES Domains</span>
+                <FiTarget className="sidebar-icon" />
+                <span>Set-up Campaign</span>
               </div>
             </div>
           )}
