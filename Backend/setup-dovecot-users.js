@@ -107,11 +107,18 @@ async function setupDovecotUsers() {
 
         // Check where Postfix delivers emails
         const postfixMailDir = `/home/${username}/Maildir`;
-        const actualMailDir = execSync(`test -d ${postfixMailDir} && echo "${postfixMailDir}" || echo "${mailDir}"`, { 
-          encoding: 'utf8' 
-        }).trim();
+        let actualMailDir;
         
-        console.log(`   📬 Mail directory: ${actualMailDir}`);
+        if (execSync(`test -d ${postfixMailDir} && echo "exists" || echo "not_exists"`, { 
+          encoding: 'utf8' 
+        }).trim() === 'exists') {
+          // Postfix maildir exists, use /home/username as home (Dovecot will append Maildir)
+          actualMailDir = `/home/${username}`;
+        } else {
+          actualMailDir = mailDir;
+        }
+        
+        console.log(`   📬 Home directory: ${actualMailDir}`);
 
         // Add user to Dovecot passwd file
         const passwdFile = '/etc/dovecot/users';
