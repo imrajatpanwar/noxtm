@@ -41,9 +41,12 @@ function MainstreamInbox() {
         }
       });
       const allAccounts = response.data.data || response.data || [];
-      const hostedAccounts = allAccounts.filter(
-        account => account.accountType === 'noxtm-hosted'
-      );
+      const hostedAccounts = allAccounts.filter(account => {
+        if (account.accountType !== 'noxtm-hosted') {
+          return false;
+        }
+        return Boolean(account.imapSettings && account.imapSettings.encryptedPassword);
+      });
       console.log('Hosted accounts found:', hostedAccounts.length, hostedAccounts);
       setAccounts(hostedAccounts);
       if (hostedAccounts.length > 0) {
