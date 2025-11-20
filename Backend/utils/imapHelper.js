@@ -450,7 +450,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout - mailbox may be too large or slow'));
-      }, 50000); // 50 seconds timeout for large mailboxes (8000+ emails)
+      }, 75000); // 75 seconds timeout for large mailboxes
 
       imap.connect();
 
