@@ -3560,14 +3560,6 @@ const noxtmMail = noxtmMailRoutes.initializeRoutes({
 });
 app.use('/api/noxtm-mail', noxtmMail);
 
-// ===== WEBMAIL ROUTES =====
-// Initialize Webmail routes with dependencies
-const webmailRoutes = require('./routes/webmail');
-const webmail = webmailRoutes.initializeRoutes({
-  authenticateToken
-});
-app.use('/api/webmail', webmail);
-
 // ===== MESSAGING ROUTES =====
 // Initialize Messaging routes with dependencies
 const messagingRoutes = require('./routes/messaging');
