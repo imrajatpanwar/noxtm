@@ -97,6 +97,18 @@ app.use('/api/modules', modulesRoutes);
 const tradeShowsRoutes = require('./routes/trade-shows');
 app.use('/api/trade-shows', tradeShowsRoutes);
 
+// Client Management routes
+const clientsRoutes = require('./routes/clients');
+app.use('/api/clients', clientsRoutes);
+
+// Invoice Management routes
+const invoicesRoutes = require('./routes/invoices');
+app.use('/api/invoices', invoicesRoutes);
+
+// Leads Directory routes
+const leadsRoutes = require('./routes/leads');
+app.use('/api/leads', leadsRoutes);
+
 // Exhibitors routes
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);

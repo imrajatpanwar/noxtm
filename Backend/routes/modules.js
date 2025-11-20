@@ -33,7 +33,7 @@ router.post('/install', auth, async (req, res) => {
     const { moduleId } = req.body;
 
     // Validate moduleId
-    if (!moduleId || !['BotGit', 'ExhibitOS'].includes(moduleId)) {
+    if (!moduleId || !['BotGit', 'ExhibitOS', 'findr'].includes(moduleId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid module ID',

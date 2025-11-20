@@ -659,7 +659,7 @@ function Findr() {
     <div className="findr-wrapper">
       <div className="findr-main-header">
         <h1 className="findr-main-title">findr</h1>
-        <p className="findr-main-subtitle">Configure extraction settings for the Chrome extension</p>
+        <p className="findr-main-subtitle">Collector of data and Leads - Extract and manage your business intelligence</p>
       </div>
       
       <div className="findr-tabs">
