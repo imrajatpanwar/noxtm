@@ -7,7 +7,6 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
-const emailRoutes = require('./routes/email');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
@@ -81,9 +80,6 @@ app.use(cors({
 // Body parsing middleware with size limits
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Email routes
-app.use('/api/email', emailRoutes);
 
 // Extension authentication routes
 const extensionAuthRoutes = require('./routes/extension-auth');
