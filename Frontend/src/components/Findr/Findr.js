@@ -18,9 +18,7 @@ function Findr() {
   const [tradeShows, setTradeShows] = useState([]);
   const [selectedTradeShow, setSelectedTradeShow] = useState('');
   const [extractionType, setExtractionType] = useState('');
-  const [loading, setLoading] = useState(false);
   const [loadingTradeShows, setLoadingTradeShows] = useState(true);
-  const [successMessage, setSuccessMessage] = useState('');
   const [useCase, setUseCase] = useState(''); // 'leads' or 'tradeshow'
   const [fullDetails, setFullDetails] = useState(''); // 'yes' or 'no'
 
@@ -54,6 +52,7 @@ function Findr() {
       fetchTradeShows();
       fetchCurrentSettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView]);
 
   // Fetch data when switching to data view
@@ -63,6 +62,7 @@ function Findr() {
     } else if (activeView === 'user-report') {
       fetchUserReports();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView]);
 
   // Fetch user reports when date filter changes
@@ -70,7 +70,8 @@ function Findr() {
     if (activeView === 'user-report') {
       fetchUserReports();
     }
-  }, [reportDateFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportDateFilter, activeView]);
 
   const fetchCurrentSettings = async () => {
     try {
@@ -83,11 +84,12 @@ function Findr() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched settings:', data);
         if (data.settings) {
-          setSelectedTradeShow(data.settings.selectedTradeShowId || '');
-          setExtractionType(data.settings.extractionType || '');
-          setUseCase(data.settings.useCase || '');
-          setFullDetails(data.settings.fullDetails || '');
+          if (data.settings.selectedTradeShowId) setSelectedTradeShow(data.settings.selectedTradeShowId);
+          if (data.settings.extractionType) setExtractionType(data.settings.extractionType);
+          if (data.settings.useCase) setUseCase(data.settings.useCase);
+          if (data.settings.fullDetails) setFullDetails(data.settings.fullDetails);
         }
       }
     } catch (error) {
@@ -128,7 +130,7 @@ function Findr() {
   const autoSaveSettings = async (settings) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch('/api/findr/settings', {
+      const response = await fetch('/api/findr/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,53 +138,12 @@ function Findr() {
         },
         body: JSON.stringify(settings)
       });
-    } catch (error) {
-      console.error('Error auto-saving settings:', error);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    if (!selectedTradeShow || !extractionType) {
-      alert('Please select both a trade show and extraction type');
-      return;
-    }
-
-    setLoading(true);
-    setSuccessMessage('');
-
-    try {
-      const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/findr/settings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          selectedTradeShowId: selectedTradeShow,
-          extractionType: extractionType,
-          useCase,
-          fullDetails
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSuccessMessage('Settings updated successfully! Now use the Chrome extension to add exhibitor data.');
-        
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 5000);
-      } else {
-        alert('Error: ' + data.message);
+      if (!response.ok) {
+        console.error('Failed to save settings:', await response.text());
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      alert('Failed to save settings');
-    } finally {
-      setLoading(false);
+      console.error('Error auto-saving settings:', error);
     }
   };
 
@@ -326,13 +287,6 @@ function Findr() {
     <div className="findr-container">
       <div className="findr-content">
         <div className="findr-card">
-          {successMessage && (
-            <div className="success-banner">
-              <span className="success-icon">✓</span>
-              {successMessage}
-            </div>
-          )}
-
           <div className="findr-field">
             <label className="findr-label">Use case of findr ?</label>
             <select

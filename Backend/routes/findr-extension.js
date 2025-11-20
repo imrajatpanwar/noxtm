@@ -29,13 +29,13 @@ router.post('/settings', auth, async (req, res) => {
 
     // Update user with findr settings
     const updateData = {
-      'findrSettings.updatedAt': new Date()
+      'findrSettings.updatedAt': new Date(),
+      'findrSettings.useCase': useCase || '',
+      'findrSettings.fullDetails': fullDetails || ''
     };
 
-    if (selectedTradeShowId) updateData['findrSettings.selectedTradeShowId'] = selectedTradeShowId;
-    if (extractionType) updateData['findrSettings.extractionType'] = extractionType;
-    if (useCase) updateData['findrSettings.useCase'] = useCase;
-    if (fullDetails) updateData['findrSettings.fullDetails'] = fullDetails;
+    if (selectedTradeShowId !== undefined) updateData['findrSettings.selectedTradeShowId'] = selectedTradeShowId;
+    if (extractionType !== undefined) updateData['findrSettings.extractionType'] = extractionType;
 
     const user = await User.findByIdAndUpdate(
       req.user.userId,
@@ -79,30 +79,29 @@ router.get('/settings', auth, async (req, res) => {
       });
     }
 
-    // If settings exist, populate trade show info
-    if (user.findrSettings && user.findrSettings.selectedTradeShowId) {
+    // Build response settings
+    const responseSettings = {
+      selectedTradeShowId: user.findrSettings?.selectedTradeShowId || '',
+      extractionType: user.findrSettings?.extractionType || '',
+      useCase: user.findrSettings?.useCase || '',
+      fullDetails: user.findrSettings?.fullDetails || '',
+      updatedAt: user.findrSettings?.updatedAt
+    };
+
+    // If trade show exists, populate trade show info
+    if (user.findrSettings?.selectedTradeShowId) {
       const tradeShow = await TradeShow.findById(user.findrSettings.selectedTradeShowId)
         .select('shortName fullName location');
       
       if (tradeShow) {
-        return res.json({
-          success: true,
-          settings: {
-            selectedTradeShowId: user.findrSettings.selectedTradeShowId,
-            tradeShowName: tradeShow.shortName,
-            tradeShowLocation: tradeShow.location,
-            extractionType: user.findrSettings.extractionType,
-            useCase: user.findrSettings.useCase,
-            fullDetails: user.findrSettings.fullDetails,
-            updatedAt: user.findrSettings.updatedAt
-          }
-        });
+        responseSettings.tradeShowName = tradeShow.shortName;
+        responseSettings.tradeShowLocation = tradeShow.location;
       }
     }
 
     res.json({
       success: true,
-      settings: user.findrSettings || null
+      settings: responseSettings
     });
   } catch (error) {
     console.error('Error fetching findr settings:', error);
