@@ -326,76 +326,106 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             return false;
           }
 
-          const range = `${start}:${end}`;
+          // For large mailboxes, use UID-based fetching which is much faster
+          // First, search for all UIDs, then fetch the range we need
+          console.log(`🔍 Searching for UIDs in range ${start}:${end} of ${totalMessages} messages...`);
+          
+          imap.search(['ALL'], (err, uids) => {
+            if (err) {
+              console.error(`❌ Search failed:`, err.message);
+              imap.end();
+              return reject(new Error(`Search failed: ${err.message}`));
+            }
+            
+            if (!uids || uids.length === 0) {
+              console.log(`📭 No UIDs found`);
+              imap.end();
+              return resolve({ emails: [], total: totalMessages });
+            }
+            
+            // UIDs are already sorted, get the range we need (newest emails)
+            const uidStart = Math.max(0, uids.length - (page * limit));
+            const uidEnd = Math.max(0, uids.length - ((page - 1) * limit));
+            const targetUIDs = uids.slice(uidStart, uidEnd).reverse(); // Newest first
+            
+            if (targetUIDs.length === 0) {
+              console.log(`📭 No UIDs in requested page`);
+              imap.end();
+              return resolve({ emails: [], total: totalMessages });
+            }
+            
+            console.log(`📨 Fetching ${targetUIDs.length} emails by UID...`);
+            
+            // Fetch by UID instead of sequence number
+            const fetch = imap.fetch(targetUIDs, {
+              bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],
+              struct: true
+            });
 
-          // Fetch only headers and body structure (no full body) for performance
-          const fetch = imap.seq.fetch(range, {
-            bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],
-            struct: true // For BODYSTRUCTURE to generate preview
-          });
+            fetch.on('message', (msg, seqno) => {
+              let emailData = {
+                uid: null,
+                seqno: seqno,
+                seen: false,
+                from: null,
+                to: null,
+                subject: null,
+                date: null,
+                preview: '',
+                hasAttachments: false
+              };
 
-          fetch.on('message', (msg, seqno) => {
-            let emailData = {
-              uid: null,
-              seqno: seqno,
-              seen: false,
-              from: null,
-              to: null,
-              subject: null,
-              date: null,
-              preview: '',
-              hasAttachments: false
-            };
-
-            msg.on('body', (stream, info) => {
-              let buffer = '';
-              stream.on('data', (chunk) => {
-                buffer += chunk.toString('utf8');
+              msg.on('body', (stream, info) => {
+                let buffer = '';
+                stream.on('data', (chunk) => {
+                  buffer += chunk.toString('utf8');
+                });
+                stream.once('end', () => {
+                  // Parse only essential header fields
+                  const header = Imap.parseHeader(buffer);
+                  emailData.from = header.from ? header.from[0] : null;
+                  emailData.to = header.to || [];
+                  emailData.subject = header.subject ? header.subject[0] : '';
+                  emailData.date = header.date ? header.date[0] : null;
+                });
               });
-              stream.once('end', () => {
-                // Parse only essential header fields
-                const header = Imap.parseHeader(buffer);
-                emailData.from = header.from ? header.from[0] : null;
-                emailData.to = header.to || [];
-                emailData.subject = header.subject ? header.subject[0] : '';
-                emailData.date = header.date ? header.date[0] : null;
+
+              msg.once('attributes', (attrs) => {
+                emailData.uid = attrs.uid;
+                emailData.seen = attrs.flags.includes('\\Seen');
+                
+                // Generate preview from BODYSTRUCTURE
+                if (attrs.struct) {
+                  emailData.preview = extractPreviewFromStructure(attrs.struct);
+                  emailData.hasAttachments = checkForAttachments(attrs.struct);
+                }
+              });
+
+              msg.once('end', () => {
+                // Parse from/to addresses
+                if (emailData.from) {
+                  const fromMatch = emailData.from.match(/(.*?)\s*<(.+?)>/) || [];
+                  emailData.from = {
+                    name: fromMatch[1] ? fromMatch[1].trim().replace(/"/g, '') : emailData.from,
+                    address: fromMatch[2] || emailData.from
+                  };
+                }
+
+                emails.push(emailData);
               });
             });
 
-            msg.once('attributes', (attrs) => {
-              emailData.uid = attrs.uid;
-              emailData.seen = attrs.flags.includes('\\Seen');
-              
-              // Generate preview from BODYSTRUCTURE
-              if (attrs.struct) {
-                emailData.preview = extractPreviewFromStructure(attrs.struct);
-                emailData.hasAttachments = checkForAttachments(attrs.struct);
-              }
+            fetch.once('error', (err) => {
+              console.error('Fetch error:', err);
+              imap.end();
+              reject(err);
             });
 
-            msg.once('end', () => {
-              // Parse from/to addresses
-              if (emailData.from) {
-                const fromMatch = emailData.from.match(/(.*?)\s*<(.+?)>/) || [];
-                emailData.from = {
-                  name: fromMatch[1] ? fromMatch[1].trim().replace(/"/g, '') : emailData.from,
-                  address: fromMatch[2] || emailData.from
-                };
-              }
-
-              emails.push(emailData);
+            fetch.once('end', () => {
+              console.log(`✅ Fetched ${emails.length} emails successfully`);
+              imap.end();
             });
-          });
-
-          fetch.once('error', (err) => {
-            console.error('Fetch error:', err);
-            imap.end();
-            reject(err);
-          });
-
-          fetch.once('end', () => {
-            imap.end();
-          });
+          }); // End of search callback
         });
       });
 
