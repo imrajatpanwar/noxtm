@@ -98,8 +98,38 @@ function MainstreamInbox() {
 
   const handleEmailClick = async (email) => {
     setSelectedEmail(email);
-    // Mark as read if needed
-    // TODO: Implement mark as read functionality
+    
+    // Fetch full email body only when clicked (if not already loaded)
+    if (!email.bodyLoaded && email.uid) {
+      try {
+        setLoading(true);
+        const response = await api.get('/email-accounts/fetch-email-body', {
+          params: {
+            accountId: selectedAccount._id,
+            uid: email.uid
+          }
+        });
+        
+        // Update the email with full body data
+        const fullEmail = {
+          ...email,
+          ...response.data.email,
+          bodyLoaded: true
+        };
+        
+        setSelectedEmail(fullEmail);
+        
+        // Update the email in the list as well
+        setEmails(prevEmails => 
+          prevEmails.map(e => e.uid === email.uid ? fullEmail : e)
+        );
+      } catch (error) {
+        console.error('Error fetching email body:', error);
+        setError('Failed to load email content');
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const handleCompose = () => {
@@ -135,8 +165,14 @@ function MainstreamInbox() {
     }
   };
 
-  const getEmailPreview = (body) => {
-    if (!body) return '';
+  const getEmailPreview = (email) => {
+    // Use preview from backend if available
+    if (email.preview) return email.preview;
+    
+    // Fallback to text/html if body was loaded
+    const body = email.text || email.html || '';
+    if (!body) return 'No preview available';
+    
     const text = body.replace(/<[^>]*>/g, ''); // Strip HTML tags
     return text.substring(0, 100) + (text.length > 100 ? '...' : '');
   };
@@ -270,8 +306,11 @@ function MainstreamInbox() {
                     <span className="email-sender">{email.from?.name || email.from?.address}</span>
                     <span className="email-time">{formatDate(email.date)}</span>
                   </div>
-                  <div className="email-subject">{email.subject || '(No Subject)'}</div>
-                  <div className="email-preview">{getEmailPreview(email.text || email.html)}</div>
+                  <div className="email-subject">
+                    {email.subject || '(No Subject)'}
+                    {email.hasAttachments && <span className="attachment-icon"> 📎</span>}
+                  </div>
+                  <div className="email-preview">{getEmailPreview(email)}</div>
                 </div>
               </div>
             ))

@@ -144,6 +144,19 @@ connectWithTimeout().then(() => {
   console.error('Unexpected error in MongoDB connection:', err);
 });
 
+// Initialize Redis cache
+const { initializeRedis } = require('./utils/emailCache');
+console.log('Initializing Redis cache...');
+initializeRedis().then((success) => {
+  if (success) {
+    console.log('✅ Redis cache initialized successfully');
+  } else {
+    console.warn('⚠️  Redis cache not available - running without cache');
+  }
+}).catch((err) => {
+  console.error('Redis initialization error:', err);
+});
+
 // Lazy load template helper to avoid loading models before MongoDB connects
 let sendTemplateEmail;
 const getTemplateHelper = () => {

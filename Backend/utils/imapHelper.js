@@ -1,5 +1,6 @@
 const Imap = require('imap');
 const nodemailer = require('nodemailer');
+const { simpleParser } = require('mailparser');
 
 /**
  * Test IMAP connection
@@ -289,23 +290,57 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             return resolve({ emails: [], total: totalMessages });
           }
 
+          // Helper function to extract preview from BODYSTRUCTURE
+          function extractPreviewFromStructure(struct) {
+            // Look for text/plain or text/html parts
+            if (Array.isArray(struct)) {
+              for (let part of struct) {
+                if (Array.isArray(part)) {
+                  const preview = extractPreviewFromStructure(part);
+                  if (preview) return preview;
+                } else if (part && part.type === 'text') {
+                  return `[${part.subtype || 'text'} content]`;
+                }
+              }
+            } else if (struct && struct.type === 'text') {
+              return `[${struct.subtype || 'text'} content]`;
+            }
+            return '';
+          }
+
+          // Helper function to check for attachments
+          function checkForAttachments(struct) {
+            if (Array.isArray(struct)) {
+              for (let part of struct) {
+                if (Array.isArray(part)) {
+                  if (checkForAttachments(part)) return true;
+                } else if (part && part.disposition && part.disposition.type === 'ATTACHMENT') {
+                  return true;
+                }
+              }
+            }
+            return false;
+          }
+
           const range = `${start}:${end}`;
 
+          // Fetch only headers and body structure (no full body) for performance
           const fetch = imap.seq.fetch(range, {
-            bodies: ['HEADER', 'TEXT'],
-            struct: true
+            bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],
+            struct: true // For BODYSTRUCTURE to generate preview
           });
 
           fetch.on('message', (msg, seqno) => {
             let emailData = {
+              uid: null,
               seqno: seqno,
               seen: false,
               from: null,
               to: null,
               subject: null,
               date: null,
-              text: '',
-              html: ''
+              preview: '',
+              hasAttachments: false
             };
 
             msg.on('body', (stream, info) => {
@@ -314,21 +349,24 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                 buffer += chunk.toString('utf8');
               });
               stream.once('end', () => {
-                if (info.which === 'HEADER') {
-                  const header = Imap.parseHeader(buffer);
-                  emailData.from = header.from ? header.from[0] : null;
-                  emailData.to = header.to || [];
-                  emailData.subject = header.subject ? header.subject[0] : '';
-                  emailData.date = header.date ? header.date[0] : null;
-                } else if (info.which === 'TEXT') {
-                  emailData.text = buffer.substring(0, 500); // Preview only
-                  emailData.html = buffer;
-                }
+                // Parse only essential header fields
+                const header = Imap.parseHeader(buffer);
+                emailData.from = header.from ? header.from[0] : null;
+                emailData.to = header.to || [];
+                emailData.subject = header.subject ? header.subject[0] : '';
+                emailData.date = header.date ? header.date[0] : null;
               });
             });
 
             msg.once('attributes', (attrs) => {
+              emailData.uid = attrs.uid;
               emailData.seen = attrs.flags.includes('\\Seen');
+              
+              // Generate preview from BODYSTRUCTURE
+              if (attrs.struct) {
+                emailData.preview = extractPreviewFromStructure(attrs.struct);
+                emailData.hasAttachments = checkForAttachments(attrs.struct);
+              }
             });
 
             msg.once('end', () => {
@@ -377,7 +415,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout'));
-      }, 60000); // 60 seconds timeout
+      }, 15000); // 15 seconds timeout (reduced from 60s)
 
       imap.connect();
 
@@ -387,11 +425,123 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
   });
 }
 
+/**
+ * Fetch single email body by UID
+ * @param {Object} config - IMAP configuration
+ * @param {number} uid - Email UID
+ * @param {string} folder - Folder name
+ * @returns {Promise<Object>} Email data with full body
+ */
+async function fetchSingleEmail(config, uid, folder = 'INBOX') {
+  return new Promise((resolve, reject) => {
+    const imap = new Imap({
+      user: config.username,
+      password: config.password,
+      host: config.host,
+      port: config.port || 993,
+      tls: config.secure !== false,
+      tlsOptions: { rejectUnauthorized: false },
+      connTimeout: 10000,
+      authTimeout: 10000
+    });
+    
+    let emailData = null;
+    
+    imap.once('ready', () => {
+      imap.openBox(folder, true, (err) => {
+        if (err) {
+          imap.end();
+          return reject(new Error(`Failed to open ${folder}: ${err.message}`));
+        }
+        
+        const fetch = imap.fetch([uid], { 
+          bodies: '', // Fetch full message
+          struct: true 
+        });
+        
+        fetch.on('message', (msg) => {
+          msg.on('body', (stream) => {
+            simpleParser(stream, (err, parsed) => {
+              if (err) {
+                return reject(err);
+              }
+              
+              emailData = {
+                uid: uid,
+                from: parsed.from ? {
+                  name: parsed.from.value[0].name || '',
+                  address: parsed.from.value[0].address || ''
+                } : null,
+                to: parsed.to ? parsed.to.value.map(t => ({
+                  name: t.name || '',
+                  address: t.address || ''
+                })) : [],
+                cc: parsed.cc ? parsed.cc.value : [],
+                bcc: parsed.bcc ? parsed.bcc.value : [],
+                subject: parsed.subject || '',
+                date: parsed.date || null,
+                text: parsed.text || '',
+                html: parsed.html || '',
+                attachments: parsed.attachments ? parsed.attachments.map(att => ({
+                  filename: att.filename,
+                  contentType: att.contentType,
+                  size: att.size
+                })) : []
+              };
+            });
+          });
+          
+          msg.once('attributes', (attrs) => {
+            if (emailData) {
+              emailData.seen = attrs.flags.includes('\\Seen');
+            }
+          });
+          
+          msg.once('end', () => {
+            imap.end();
+          });
+        });
+        
+        fetch.once('error', (err) => {
+          imap.end();
+          reject(err);
+        });
+      });
+    });
+    
+    imap.once('error', (err) => {
+      clearTimeout(timeoutHandle);
+      reject(new Error(`IMAP error: ${err.message}`));
+    });
+    
+    imap.once('end', () => {
+      clearTimeout(timeoutHandle);
+      if (emailData) {
+        resolve(emailData);
+      } else {
+        reject(new Error('Email not found'));
+      }
+    });
+    
+    const timeoutHandle = setTimeout(() => {
+      try {
+        imap.end();
+      } catch (e) {
+        // Ignore
+      }
+      reject(new Error('IMAP fetch timeout'));
+    }, 20000); // 20 seconds for single email
+    
+    imap.connect();
+  });
+}
+
 module.exports = {
   testImapConnection,
   testSmtpConnection,
   testEmailAccount,
   getInboxStats,
   getEmailProviderPreset,
-  fetchEmails
+  fetchEmails,
+  fetchSingleEmail
 };
