@@ -9,6 +9,8 @@ const nodemailer = require('nodemailer');
 const { encrypt, decrypt, generateSecurePassword } = require('../utils/encryption');
 const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../utils/imapHelper');
 const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable } = require('../utils/doveadmHelper');
+const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody } = require('../utils/emailCache');
+const { scheduleSyncJob, syncMultiplePages } = require('../utils/emailSyncWorker');
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
@@ -134,13 +136,49 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
       password: password
     };
 
-    console.log(`Fetching inbox for ${account.email} from ${imapConfig.host}:${imapConfig.port}`);
-    console.log(`DEBUG: Password length: ${password.length}`);
-    console.log(`DEBUG: Password start: ${password.substring(0, 2)}... end: ...${password.substring(password.length - 2)}`);
-    console.log(`DEBUG: Username: ${imapConfig.username}`);
-    console.log(`DEBUG: Secure: ${imapConfig.secure}`);
+    const startTime = Date.now();
+    
+    // Try to get from cache first
+    const cached = await getCachedEmailList(accountId, folder, parseInt(page));
+    
+    if (cached) {
+      console.log(`📦 Serving ${cached.emails.length} emails from cache (${Date.now() - startTime}ms)`);
+      
+      // Schedule background refresh for next pages
+      if (parseInt(page) === 1) {
+        syncMultiplePages(accountId, folder, 3).catch(err => 
+          console.error('Background sync scheduling failed:', err)
+        );
+      }
+      
+      return res.json({
+        success: true,
+        emails: cached.emails,
+        total: cached.total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(cached.total / limit),
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache MISS - Fetching inbox for ${account.email} from ${imapConfig.host}:${imapConfig.port}`);
 
     const result = await fetchEmails(imapConfig, folder, parseInt(page), parseInt(limit));
+    
+    const duration = Date.now() - startTime;
+    console.log(`✅ Fetched ${result.emails.length} emails in ${duration}ms`);
+    
+    // Cache the result
+    await cacheEmailList(accountId, folder, parseInt(page), result.emails, result.total);
+    
+    // Schedule background sync for next pages
+    if (parseInt(page) === 1 && result.total > parseInt(limit)) {
+      const totalPages = Math.min(3, Math.ceil(result.total / parseInt(limit)));
+      syncMultiplePages(accountId, folder, totalPages).catch(err => 
+        console.error('Background sync scheduling failed:', err)
+      );
+    }
 
     res.json({
       success: true,
@@ -148,13 +186,75 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
       total: result.total,
       page: parseInt(page),
       limit: parseInt(limit),
-      pages: Math.ceil(result.total / limit)
+      pages: Math.ceil(result.total / limit),
+      cached: false
     });
 
   } catch (error) {
     console.error('Error fetching inbox:', error);
     res.status(500).json({
       message: 'Failed to fetch inbox',
+      error: error.message
+    });
+  }
+});
+
+// Fetch single email body by UID
+router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
+  try {
+    const { accountId, uid } = req.query;
+    
+    if (!accountId || !uid) {
+      return res.status(400).json({ message: 'Account ID and UID are required' });
+    }
+    
+    // Check cache first
+    const cached = await getCachedEmailBody(accountId, uid);
+    if (cached) {
+      return res.json({ success: true, email: cached, cached: true });
+    }
+    
+    const account = await EmailAccount.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    
+    if (account.accountType !== 'noxtm-hosted') {
+      return res.status(400).json({ message: 'Only hosted accounts support this feature' });
+    }
+    
+    if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
+      return res.status(400).json({ message: 'IMAP settings not configured' });
+    }
+    
+    const { fetchSingleEmail } = require('../utils/imapHelper');
+    const password = decrypt(account.imapSettings.encryptedPassword);
+    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    
+    const imapConfig = {
+      host: host,
+      port: account.imapSettings.port || 993,
+      secure: account.imapSettings.secure !== false,
+      username: account.imapSettings.username || account.email,
+      password: password
+    };
+    
+    console.log(`📧 Fetching email body for UID ${uid} from ${account.email}`);
+    const startTime = Date.now();
+    
+    const email = await fetchSingleEmail(imapConfig, parseInt(uid));
+    
+    console.log(`✅ Fetched email body in ${Date.now() - startTime}ms`);
+    
+    // Cache the email body
+    await cacheEmailBody(accountId, uid, email);
+    
+    res.json({ success: true, email, cached: false });
+    
+  } catch (error) {
+    console.error('Error fetching email body:', error);
+    res.status(500).json({
+      message: 'Failed to fetch email body',
       error: error.message
     });
   }
