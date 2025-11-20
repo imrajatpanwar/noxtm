@@ -19,7 +19,7 @@ function MainstreamInbox() {
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
-  const emailsPerPage = 10;
+  const emailsPerPage = 5;
 
   // Fetch hosted email accounts
   useEffect(() => {
