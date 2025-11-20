@@ -369,9 +369,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
         resolve({ emails, total: totalMessages });
       });
 
-      imap.connect();
-
-      // Timeout
+      // Timeout - must be declared before imap.connect()
       const timeoutHandle = setTimeout(() => {
         try {
           imap.end();
@@ -379,7 +377,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout'));
-      }, 10000);
+      }, 60000); // 60 seconds timeout
+
+      imap.connect();
 
     } catch (error) {
       reject(error);
