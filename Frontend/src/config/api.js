@@ -7,7 +7,7 @@ const BACKEND_URL = isDevelopment ? 'http://localhost:5000/api' : '/api';
 
 const api = axios.create({
   baseURL: BACKEND_URL,
-  timeout: 60000, // 60 seconds - for large mailboxes with caching
+  timeout: 90000, // 90 seconds - for large mailboxes with UID-based fetching
   headers: {
     'Content-Type': 'application/json',
   },
