@@ -124,8 +124,10 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     const password = decrypt(account.imapSettings.encryptedPassword);
 
     // Configure IMAP connection for hosted account
+    // Use localhost since Dovecot is on the same server
+    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
     const imapConfig = {
-      host: account.imapSettings.host || '127.0.0.1',
+      host: host,
       port: account.imapSettings.port || 993,
       secure: account.imapSettings.secure !== false,
       username: account.imapSettings.username || account.email,
