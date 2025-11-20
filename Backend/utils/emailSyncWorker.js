@@ -4,22 +4,46 @@ const { fetchEmails } = require('../utils/imapHelper');
 const { cacheEmailList, invalidateFolderCache } = require('../utils/emailCache');
 const { decrypt } = require('../utils/encryption');
 
-// Create email sync queue
-const emailSyncQueue = new Bull('email-sync', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
-    password: process.env.REDIS_PASSWORD || undefined
-  }
-});
+// Create email sync queue (will be null if Redis unavailable)
+let emailSyncQueue = null;
+let isQueueAvailable = false;
+
+try {
+  emailSyncQueue = new Bull('email-sync', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD || undefined
+    },
+    settings: {
+      maxRetriesPerRequest: 1 // Fail fast if Redis unavailable
+    }
+  });
+  
+  emailSyncQueue.on('error', (error) => {
+    console.warn('⚠️  Bull Queue Error:', error.message);
+    isQueueAvailable = false;
+  });
+  
+  emailSyncQueue.on('ready', () => {
+    console.log('✅ Email sync queue ready');
+    isQueueAvailable = true;
+  });
+  
+  isQueueAvailable = true;
+} catch (error) {
+  console.warn('⚠️  Background email sync disabled (Redis not available):', error.message);
+  isQueueAvailable = false;
+}
 
 /**
  * Process email sync jobs
  */
-emailSyncQueue.process(async (job) => {
-  const { accountId, folder = 'INBOX', page = 1, limit = 50 } = job.data;
-  
-  console.log(`🔄 Background sync started for account ${accountId}, folder ${folder}, page ${page}`);
+if (emailSyncQueue) {
+  emailSyncQueue.process(async (job) => {
+    const { accountId, folder = 'INBOX', page = 1, limit = 50 } = job.data;
+    
+    console.log(`🔄 Background sync started for account ${accountId}, folder ${folder}, page ${page}`);
   
   try {
     const account = await EmailAccount.findById(accountId);
@@ -56,12 +80,17 @@ emailSyncQueue.process(async (job) => {
     console.error(`❌ Background sync failed for account ${accountId}:`, error.message);
     throw error;
   }
-});
+  });
+} // End if (emailSyncQueue)
 
 /**
  * Schedule background sync for an account
  */
 async function scheduleSyncJob(accountId, folder = 'INBOX', page = 1, limit = 50, priority = 'normal') {
+  if (!emailSyncQueue || !isQueueAvailable) {
+    console.log('⚠️  Background sync skipped (queue not available)');
+    return null;
+  }
   const priorityMap = {
     high: 1,
     normal: 2,
@@ -101,6 +130,11 @@ async function scheduleSyncJob(accountId, folder = 'INBOX', page = 1, limit = 50
  * Sync multiple pages in the background
  */
 async function syncMultiplePages(accountId, folder = 'INBOX', totalPages = 3) {
+  if (!emailSyncQueue || !isQueueAvailable) {
+    console.log('⚠️  Background sync skipped (queue not available)');
+    return [];
+  }
+  
   const jobIds = [];
   
   for (let page = 1; page <= totalPages; page++) {
@@ -135,6 +169,10 @@ async function invalidateAndResync(accountId, folder = 'INBOX') {
  * Get queue stats
  */
 async function getQueueStats() {
+  if (!emailSyncQueue || !isQueueAvailable) {
+    return { waiting: 0, active: 0, completed: 0, failed: 0, total: 0 };
+  }
+  
   try {
     const [waiting, active, completed, failed] = await Promise.all([
       emailSyncQueue.getWaitingCount(),
@@ -156,18 +194,20 @@ async function getQueueStats() {
   }
 }
 
-// Event handlers
-emailSyncQueue.on('completed', (job, result) => {
-  console.log(`✅ Job ${job.id} completed:`, result);
-});
+// Event handlers (only if queue available)
+if (emailSyncQueue) {
+  emailSyncQueue.on('completed', (job, result) => {
+    console.log(`✅ Job ${job.id} completed:`, result);
+  });
 
-emailSyncQueue.on('failed', (job, err) => {
-  console.error(`❌ Job ${job.id} failed:`, err.message);
-});
+  emailSyncQueue.on('failed', (job, err) => {
+    console.error(`❌ Job ${job.id} failed:`, err.message);
+  });
 
-emailSyncQueue.on('stalled', (job) => {
-  console.warn(`⏸️  Job ${job.id} stalled`);
-});
+  emailSyncQueue.on('stalled', (job) => {
+    console.warn(`⏸️  Job ${job.id} stalled`);
+  });
+}
 
 module.exports = {
   emailSyncQueue,
