@@ -85,7 +85,8 @@ function MainstreamInbox() {
       }
 
       setEmails(fetchedEmails);
-      setTotalEmails(response.data.total || 0);
+      // Use filtered count for proper pagination
+      setTotalEmails(fetchedEmails.length > 0 ? (response.data.total || fetchedEmails.length) : 0);
     } catch (error) {
       console.error('Error fetching emails:', error);
       setError('Failed to load emails. Please try again.');
