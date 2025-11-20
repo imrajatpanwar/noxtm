@@ -8,33 +8,43 @@ const { decrypt } = require('../utils/encryption');
 let emailSyncQueue = null;
 let isQueueAvailable = false;
 
-try {
-  emailSyncQueue = new Bull('email-sync', {
+// Check if Redis is disabled
+if (process.env.REDIS_ENABLED === 'false') {
+  console.warn('⚠️  Background email sync disabled (REDIS_ENABLED=false)');
+} else {
+  try {
+    emailSyncQueue = new Bull('email-sync', {
     redis: {
       host: process.env.REDIS_HOST || 'localhost',
       port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD || undefined
+      password: process.env.REDIS_PASSWORD || undefined,
+      maxRetriesPerRequest: 0, // Don't retry on connection failure
+      enableReadyCheck: false,
+      lazyConnect: true // Don't connect immediately
     },
     settings: {
-      maxRetriesPerRequest: 1 // Fail fast if Redis unavailable
+      lockDuration: 30000,
+      stalledInterval: 30000,
+      maxStalledCount: 1
     }
   });
   
-  emailSyncQueue.on('error', (error) => {
-    console.warn('⚠️  Bull Queue Error:', error.message);
-    isQueueAvailable = false;
-  });
-  
-  emailSyncQueue.on('ready', () => {
+  // Try to connect, but don't crash if it fails
+  emailSyncQueue.isReady().then(() => {
     console.log('✅ Email sync queue ready');
     isQueueAvailable = true;
+  }).catch((error) => {
+    console.warn('⚠️  Background email sync disabled (Redis not available)');
+    isQueueAvailable = false;
+    emailSyncQueue = null; // Disable queue
   });
   
-  isQueueAvailable = true;
-} catch (error) {
-  console.warn('⚠️  Background email sync disabled (Redis not available):', error.message);
-  isQueueAvailable = false;
-}
+  } catch (error) {
+    console.warn('⚠️  Background email sync disabled (Redis not available)');
+    isQueueAvailable = false;
+    emailSyncQueue = null;
+  }
+} // End if REDIS_ENABLED check
 
 /**
  * Process email sync jobs
