@@ -240,6 +240,8 @@ const userSchema = new mongoose.Schema({
   findrSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
+    useCase: { type: String, enum: ['leads', 'tradeshow'] },
+    fullDetails: { type: String, enum: ['yes', 'no'] },
     updatedAt: { type: Date }
   },
   createdAt: { type: Date, default: Date.now },
@@ -332,6 +334,8 @@ const companySchema = new mongoose.Schema({
   findrSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
+    useCase: { type: String, enum: ['leads', 'tradeshow'] },
+    fullDetails: { type: String, enum: ['yes', 'no'] },
     updatedAt: { type: Date }
   },
   createdAt: { type: Date, default: Date.now },
@@ -463,6 +467,8 @@ const emailVerificationSchema = new mongoose.Schema({
   findrSettings: {
     selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
     extractionType: { type: String, enum: ['exhibitors', 'companies'] },
+    useCase: { type: String, enum: ['leads', 'tradeshow'] },
+    fullDetails: { type: String, enum: ['yes', 'no'] },
     updatedAt: { type: Date }
   },
   createdAt: { type: Date, default: Date.now },

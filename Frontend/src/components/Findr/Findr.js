@@ -21,6 +21,8 @@ function Findr() {
   const [loading, setLoading] = useState(false);
   const [loadingTradeShows, setLoadingTradeShows] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
+  const [useCase, setUseCase] = useState(''); // 'leads' or 'tradeshow'
+  const [fullDetails, setFullDetails] = useState(''); // 'yes' or 'no'
 
   // User Report state
   const [userReports, setUserReports] = useState([]);
@@ -84,6 +86,8 @@ function Findr() {
         if (data.settings) {
           setSelectedTradeShow(data.settings.selectedTradeShowId || '');
           setExtractionType(data.settings.extractionType || '');
+          setUseCase(data.settings.useCase || '');
+          setFullDetails(data.settings.fullDetails || '');
         }
       }
     } catch (error) {
@@ -120,6 +124,23 @@ function Findr() {
     }
   };
 
+  // Auto-save function
+  const autoSaveSettings = async (settings) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/findr/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settings)
+      });
+    } catch (error) {
+      console.error('Error auto-saving settings:', error);
+    }
+  };
+
   const handleSaveSettings = async () => {
     if (!selectedTradeShow || !extractionType) {
       alert('Please select both a trade show and extraction type');
@@ -140,7 +161,9 @@ function Findr() {
         },
         body: JSON.stringify({
           selectedTradeShowId: selectedTradeShow,
-          extractionType: extractionType
+          extractionType: extractionType,
+          useCase,
+          fullDetails
         })
       });
 
@@ -311,70 +334,144 @@ function Findr() {
           )}
 
           <div className="findr-field">
-            <label className="findr-label">Choose Trade Show</label>
+            <label className="findr-label">Use case of findr ?</label>
             <select
-              value={selectedTradeShow}
-              onChange={(e) => setSelectedTradeShow(e.target.value)}
+              value={useCase}
+              onChange={(e) => {
+                const value = e.target.value;
+                setUseCase(value);
+                // Auto-save
+                autoSaveSettings({
+                  selectedTradeShowId: selectedTradeShow,
+                  extractionType,
+                  useCase: value,
+                  fullDetails
+                });
+              }}
               className="findr-select"
-              disabled={loadingTradeShows}
             >
-              <option value="">
-                {loadingTradeShows ? 'Loading trade shows...' : 
-                 tradeShows.length === 0 ? 'No trade shows available - Create one first' : 
-                 'Select a trade show...'}
-              </option>
-              {tradeShows.map((show) => (
-                <option key={show._id} value={show._id}>
-                  {show.showName || show.shortName || 'Unnamed Show'} {show.showLocation ? `- ${show.showLocation}` : ''}
-                </option>
-              ))}
+              <option value="">Choose Option</option>
+              <option value="leads">Leads Directory</option>
+              <option value="tradeshow">Trade Show Data</option>
             </select>
-            {tradeShows.length === 0 && !loadingTradeShows && (
-              <p className="helper-text">
-                No trade shows found. Please create a trade show from the Trade Shows menu first.
-              </p>
-            )}
           </div>
 
-          <div className="findr-field">
-            <label className="findr-label">Extract Data of?</label>
-            <div className="findr-radio-group">
-              <label className="findr-radio-label">
-                <input
-                  type="radio"
-                  name="extractionType"
-                  value="exhibitors"
-                  checked={extractionType === 'exhibitors'}
-                  onChange={(e) => setExtractionType(e.target.value)}
-                  className="findr-radio"
-                />
-                <span>
-                  <strong>Exhibitor's Data</strong> <span className="badge-active">Active</span>
-                </span>
-              </label>
-              <label className="findr-radio-label">
-                <input
-                  type="radio"
-                  name="extractionType"
-                  value="companies"
-                  checked={extractionType === 'companies'}
-                  onChange={(e) => setExtractionType(e.target.value)}
-                  className="findr-radio"
-                />
-                <span>
-                  <strong>Exhibitors Company Data</strong> <span className="badge-active">Active</span>
-                </span>
-              </label>
+          {useCase === 'leads' && (
+            <div className="findr-field">
+              <label className="findr-label">Full Details of Company ?</label>
+              <select
+                value={fullDetails}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFullDetails(value);
+                  // Auto-save
+                  autoSaveSettings({
+                    selectedTradeShowId: selectedTradeShow,
+                    extractionType,
+                    useCase,
+                    fullDetails: value
+                  });
+                }}
+                className="findr-select"
+              >
+                <option value="">Choose Option</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
             </div>
-          </div>
+          )}
 
-          <button
-            onClick={handleSaveSettings}
-            disabled={loading || !selectedTradeShow || !extractionType}
-            className="findr-extract-btn"
-          >
-            {loading ? 'Updating...' : 'Update Settings'}
-          </button>
+          {useCase === 'tradeshow' && (
+            <>
+              <div className="findr-field">
+                <label className="findr-label">Choose Trade Show</label>
+                <select
+                  value={selectedTradeShow}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedTradeShow(value);
+                    // Auto-save
+                    autoSaveSettings({
+                      selectedTradeShowId: value,
+                      extractionType,
+                      useCase,
+                      fullDetails
+                    });
+                  }}
+                  className="findr-select"
+                  disabled={loadingTradeShows}
+                >
+                  <option value="">
+                    {loadingTradeShows ? 'Loading trade shows...' : 
+                     tradeShows.length === 0 ? 'No trade shows available - Create one first' : 
+                     'Select a trade show...'}
+                  </option>
+                  {tradeShows.map((show) => (
+                    <option key={show._id} value={show._id}>
+                      {show.showName || show.shortName || 'Unnamed Show'} {show.showLocation ? `- ${show.showLocation}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {tradeShows.length === 0 && !loadingTradeShows && (
+                  <p className="helper-text">
+                    No trade shows found. Please create a trade show from the Trade Shows menu first.
+                  </p>
+                )}
+              </div>
+
+              <div className="findr-field">
+                <label className="findr-label">Extract Data of?</label>
+                <div className="findr-radio-group">
+                  <label className="findr-radio-label">
+                    <input
+                      type="radio"
+                      name="extractionType"
+                      value="exhibitors"
+                      checked={extractionType === 'exhibitors'}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setExtractionType(value);
+                        // Auto-save
+                        autoSaveSettings({
+                          selectedTradeShowId: selectedTradeShow,
+                          extractionType: value,
+                          useCase,
+                          fullDetails
+                        });
+                      }}
+                      className="findr-radio"
+                    />
+                    <span>
+                      <strong>Exhibitor's Data</strong> <span className="badge-active">Active</span>
+                    </span>
+                  </label>
+                  <label className="findr-radio-label">
+                    <input
+                      type="radio"
+                      name="extractionType"
+                      value="companies"
+                      checked={extractionType === 'companies'}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setExtractionType(value);
+                        // Auto-save
+                        autoSaveSettings({
+                          selectedTradeShowId: selectedTradeShow,
+                          extractionType: value,
+                          useCase,
+                          fullDetails
+                        });
+                      }}
+                      className="findr-radio"
+                    />
+                    <span>
+                      <strong>Exhibitors Company Data</strong> <span className="badge-active">Active</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -13,28 +13,33 @@ const Exhibitor = require('../models/Exhibitor');
 // Save user's findr settings
 router.post('/settings', auth, async (req, res) => {
   try {
-    const { selectedTradeShowId, extractionType } = req.body;
+    const { selectedTradeShowId, extractionType, useCase, fullDetails } = req.body;
     const User = getUser();
     
-    // Verify trade show exists
-    const tradeShow = await TradeShow.findById(selectedTradeShowId);
-    if (!tradeShow) {
-      return res.status(404).json({
-        success: false,
-        message: 'Trade show not found'
-      });
+    // Verify trade show exists only if tradeshow use case
+    if (useCase === 'tradeshow' && selectedTradeShowId) {
+      const tradeShow = await TradeShow.findById(selectedTradeShowId);
+      if (!tradeShow) {
+        return res.status(404).json({
+          success: false,
+          message: 'Trade show not found'
+        });
+      }
     }
 
     // Update user with findr settings
+    const updateData = {
+      'findrSettings.updatedAt': new Date()
+    };
+
+    if (selectedTradeShowId) updateData['findrSettings.selectedTradeShowId'] = selectedTradeShowId;
+    if (extractionType) updateData['findrSettings.extractionType'] = extractionType;
+    if (useCase) updateData['findrSettings.useCase'] = useCase;
+    if (fullDetails) updateData['findrSettings.fullDetails'] = fullDetails;
+
     const user = await User.findByIdAndUpdate(
       req.user.userId,
-      {
-        $set: {
-          'findrSettings.selectedTradeShowId': selectedTradeShowId,
-          'findrSettings.extractionType': extractionType,
-          'findrSettings.updatedAt': new Date()
-        }
-      },
+      { $set: updateData },
       { new: true }
     );
 
@@ -87,6 +92,8 @@ router.get('/settings', auth, async (req, res) => {
             tradeShowName: tradeShow.shortName,
             tradeShowLocation: tradeShow.location,
             extractionType: user.findrSettings.extractionType,
+            useCase: user.findrSettings.useCase,
+            fullDetails: user.findrSettings.fullDetails,
             updatedAt: user.findrSettings.updatedAt
           }
         });
@@ -95,7 +102,7 @@ router.get('/settings', auth, async (req, res) => {
 
     res.json({
       success: true,
-      settings: null
+      settings: user.findrSettings || null
     });
   } catch (error) {
     console.error('Error fetching findr settings:', error);
