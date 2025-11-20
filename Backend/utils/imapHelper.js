@@ -423,6 +423,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
 
             fetch.once('end', () => {
               console.log(`✅ Fetched ${emails.length} emails successfully`);
+              clearTimeout(timeoutHandle); // Clear timeout immediately on successful fetch
               imap.end();
             });
           }); // End of search callback
