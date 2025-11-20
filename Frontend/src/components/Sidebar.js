@@ -20,6 +20,7 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
   const [leadMetricsExpanded, setLeadMetricsExpanded] = useState(false);
+  const [clientsExpanded, setClientsExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -302,6 +303,10 @@ function Sidebar({ activeSection, onSectionChange }) {
     setLeadMetricsExpanded(!leadMetricsExpanded);
   };
 
+  const toggleClients = () => {
+    setClientsExpanded(!clientsExpanded);
+  };
+
   const toggleSocialMedia = () => {
     setSocialMediaExpanded(!socialMediaExpanded);
   };
@@ -315,14 +320,19 @@ function Sidebar({ activeSection, onSectionChange }) {
     // Dashboard
     { name: 'Overview', section: 'overview', category: 'Dashboard' },
     
+    // Data Center
+    { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
+    { name: 'findr', section: 'findr', category: 'Data Center' },
+    { name: 'Client Management', section: 'client-management', category: 'Data Center' },
+    { name: 'Client Leads', section: 'client-leads', category: 'Data Center' },
+    { name: 'Our Clients', section: 'our-clients', category: 'Data Center' },
+    
     // Lead Management
     { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
-    { name: 'Client Leads', section: 'client-leads', category: 'Lead Management' },
+    { name: 'Leads Directory', section: 'leads-directory', category: 'Lead Management' },
     { name: 'Lead Metrics', section: 'lead-metrics', category: 'Lead Management' },
     { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
     { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
-    { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'findr', section: 'findr', category: 'Data Center' },
     
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -378,8 +388,8 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Incentives', section: 'incentives', category: 'HR Management' },
     
     // Finance Management
+    { name: 'Invoice Management', section: 'invoice-management', category: 'Finance Management' },
     { name: 'Billing & Payments', section: 'billing-payments', category: 'Finance Management' },
-    { name: 'Invoice Generation', section: 'invoice-generation', category: 'Finance Management' },
     { name: 'Payment Records', section: 'payment-records', category: 'Finance Management' },
     { name: 'Expense Management', section: 'expense-management', category: 'Finance Management' },
     
@@ -507,8 +517,8 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
-              {/* findr Section - Only show if ExhibitOS module is installed */}
-              {isModuleInstalled('ExhibitOS') && (
+              {/* findr Section - Only show if findr module is installed */}
+              {isModuleInstalled('findr') && (
                 <div className="sidebar-item-container">
                   <div
                     className={`Dash-noxtm-sidebar-item ${activeSection === 'findr' ? 'active' : ''}`}
@@ -520,6 +530,52 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
+              {/* Client Management Section */}
+              <div className="sidebar-item-container">
+                <div
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'client-management' ? 'active' : ''}`}
+                  onClick={() => onSectionChange('client-management')}
+                >
+                  <FiUsers className="sidebar-icon" />
+                  <span>Client Management</span>
+                </div>
+              </div>
+
+              {/* Clients Section */}
+              <div className="sidebar-item-container">
+                <div 
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'clients' ? 'active' : ''}`}
+                  onClick={toggleClients}
+                >
+                  <FiUsers className="sidebar-icon" />
+                  <span>Clients</span>
+                  {clientsExpanded ? 
+                    <FiChevronDown className="sidebar-chevron" /> : 
+                    <FiChevronRight className="sidebar-chevron" />
+                  }
+                </div>
+                
+                {clientsExpanded && (
+                  <div className="sidebar-submenu">
+                    <div 
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('client-leads')}
+                    >
+                      <FiUserCheck className="sidebar-icon" />
+                      <span>Client Leads</span>
+                    </div>
+                    <div 
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'our-clients' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('our-clients')}
+                    >
+                      <FiUsers className="sidebar-icon" />
+                      <span>Our Clients</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Lead Management Section */}
               <div className="sidebar-item-container">
                 <div 
                   className={`Dash-noxtm-sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
@@ -543,11 +599,11 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <span>Leads Flow</span>
                     </div>
                     <div 
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('client-leads')}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'leads-directory' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('leads-directory')}
                     >
-                      <FiUsers className="sidebar-icon" />
-                      <span>Client Leads</span>
+                      <FiFolder className="sidebar-icon" />
+                      <span>Leads Directory</span>
                     </div>
                   </div>
                 )}
@@ -1027,18 +1083,18 @@ function Sidebar({ activeSection, onSectionChange }) {
                 // SOLOHQ users see only specific items directly (no expandable menu)
                 <>
                   <div 
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'invoice-management' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('invoice-management')}
+                  >
+                    <FiFileText className="sidebar-icon" />
+                    <span>Invoice Management</span>
+                  </div>
+                  <div 
                     className={`Dash-noxtm-sidebar-item ${activeSection === 'billing-payments' ? 'active' : ''}`}
                     onClick={() => onSectionChange('billing-payments')}
                   >
                     <FiDollarSign className="sidebar-icon" />
                     <span>Billing & Payments</span>
-                  </div>
-                  <div 
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'invoice-generation' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('invoice-generation')}
-                  >
-                    <FiFileText className="sidebar-icon" />
-                    <span>Invoice Generation</span>
                   </div>
                 </>
               ) : (
@@ -1059,16 +1115,16 @@ function Sidebar({ activeSection, onSectionChange }) {
                   {financeManagementExpanded && (
                     <div className="sidebar-submenu">
                       <div 
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'invoice-management' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('invoice-management')}
+                      >
+                        <span>Invoice Management</span>
+                      </div>
+                      <div 
                         className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
                         onClick={() => onSectionChange('billing-payments')}
                       >
                         <span>Billing & Payments</span>
-                      </div>
-                      <div 
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'invoice-generation' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('invoice-generation')}
-                      >
-                        <span>Invoice Generation</span>
                       </div>
                       <div 
                         className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}

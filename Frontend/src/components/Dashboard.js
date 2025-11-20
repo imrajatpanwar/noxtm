@@ -32,7 +32,6 @@ import AttendanceSummary from './AttendanceSummary';
 import HolidayCalendar from './HolidayCalendar';
 import Incentives from './Incentives';
 import BillingPayments from './BillingPayments';
-import InvoiceGeneration from './InvoiceGeneration';
 import PaymentRecords from './PaymentRecords';
 import ExpenseManagement from './ExpenseManagement';
 import CompanyPolicies from './CompanyPolicies';
@@ -56,6 +55,10 @@ import MainstreamInbox from './MainstreamInbox';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
 import Findr from './Findr/Findr';
+import OurClients from './OurClients';
+import LeadsDirectory from './LeadsDirectory';
+import ClientManagement from './ClientManagement';
+import InvoiceManagement from './InvoiceManagement';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -152,8 +155,14 @@ function Dashboard({ user, onLogout }) {
         return <Overview user={user} dashboardData={dashboardData} error={error} />;
       case 'leads-flow':
         return <LeadsFlow />;
+      case 'client-management':
+        return <ClientManagement />;
       case 'client-leads':
         return <ClientLeads />;
+      case 'our-clients':
+        return <OurClients />;
+      case 'leads-directory':
+        return <LeadsDirectory />;
       case 'campaign-metrics':
         return <CampaignMetrics />;
       case 'conversion-tracking':
@@ -238,10 +247,10 @@ function Dashboard({ user, onLogout }) {
       case 'incentives':
         return <Incentives />;
       // Finance Management
+      case 'invoice-management':
+        return <InvoiceManagement />;
       case 'billing-payments':
         return <BillingPayments />;
-      case 'invoice-generation':
-        return <InvoiceGeneration />;
       case 'payment-records':
         return <PaymentRecords />;
       case 'expense-management':
