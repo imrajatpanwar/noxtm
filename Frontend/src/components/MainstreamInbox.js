@@ -59,12 +59,16 @@ function MainstreamInbox() {
   };
 
   const fetchEmails = async () => {
-    if (!selectedAccount) return;
+    if (!selectedAccount) {
+      console.log('No account selected');
+      return;
+    }
 
+    console.log('Fetching emails for:', selectedAccount.email, 'Page:', currentPage);
     setLoading(true);
     setError(null);
     try {
-      const folder = activeTab === 'mainstream' ? 'INBOX' : 'INBOX'; // Will differentiate later
+      const folder = activeTab === 'mainstream' ? 'INBOX' : 'INBOX';
       const response = await api.get('/email-accounts/fetch-inbox', {
         params: {
           accountId: selectedAccount._id,
@@ -74,22 +78,31 @@ function MainstreamInbox() {
         }
       });
 
+      console.log('Response received:', response.data);
+
       let fetchedEmails = response.data.emails || [];
+      const total = response.data.total || 0;
+
+      console.log(`Fetched ${fetchedEmails.length} emails out of ${total} total`);
 
       // Filter out emails sent by the current user (self-sent emails in Inbox)
       if (activeTab === 'mainstream') {
+        const originalLength = fetchedEmails.length;
         fetchedEmails = fetchedEmails.filter(email => {
           const fromAddress = email.from?.address || '';
           return fromAddress.toLowerCase() !== selectedAccount.email.toLowerCase();
         });
+        console.log(`Filtered ${originalLength - fetchedEmails.length} self-sent emails`);
       }
 
       setEmails(fetchedEmails);
-      // Use filtered count for proper pagination
-      setTotalEmails(fetchedEmails.length > 0 ? (response.data.total || fetchedEmails.length) : 0);
+      setTotalEmails(total);
+      
+      console.log('Set emails state with', fetchedEmails.length, 'emails');
     } catch (error) {
       console.error('Error fetching emails:', error);
-      setError('Failed to load emails. Please try again.');
+      console.error('Error response:', error.response?.data);
+      setError(error.response?.data?.message || 'Failed to load emails. Please try again.');
       setEmails([]);
     } finally {
       setLoading(false);
@@ -280,16 +293,24 @@ function MainstreamInbox() {
       <div className="inbox-content">
         {/* Email List */}
         <div className="email-list">
-          {loading ? (
-            <div className="loading-state">Loading emails...</div>
+          {loading && emails.length === 0 ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading emails...</p>
+            </div>
           ) : error ? (
             <div className="error-state">
               <p>{error}</p>
               <button onClick={fetchEmails} className="retry-btn">Retry</button>
             </div>
+          ) : !selectedAccount ? (
+            <div className="empty-state">
+              <p>No email account selected</p>
+            </div>
           ) : emails.length === 0 ? (
             <div className="empty-state">
-              <p>No emails found</p>
+              <p>No emails found in {activeTab === 'mainstream' ? 'Mainstream' : 'Team'}</p>
+              <small>Try refreshing or selecting a different account</small>
             </div>
           ) : (
             emails.map((email, index) => (
