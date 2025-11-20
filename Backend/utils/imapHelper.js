@@ -268,13 +268,16 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
       let totalMessages = 0;
 
       imap.once('ready', () => {
+        console.log(`📬 IMAP connected for ${config.username}`);
         imap.openBox(folder, true, (err, box) => {
           if (err) {
+            console.error(`❌ Failed to open ${folder} for ${config.username}:`, err.message);
             imap.end();
             return reject(new Error(`Failed to open ${folder}: ${err.message}`));
           }
 
           totalMessages = box.messages.total;
+          console.log(`📊 ${config.username} has ${totalMessages} total messages in ${folder}`);
 
           if (totalMessages === 0) {
             imap.end();
@@ -415,7 +418,7 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
           // Ignore
         }
         reject(new Error('IMAP fetch timeout'));
-      }, 15000); // 15 seconds timeout (reduced from 60s)
+      }, 30000); // 30 seconds timeout for large mailboxes
 
       imap.connect();
 
