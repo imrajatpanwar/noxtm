@@ -260,8 +260,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
         port: config.port || (config.secure ? 993 : 143),
         tls: config.secure !== false,
         tlsOptions: { rejectUnauthorized: false },
-        connTimeout: 10000,
-        authTimeout: 10000
+        connTimeout: 20000,  // 20 seconds for connection
+        authTimeout: 20000,  // 20 seconds for authentication
+        keepalive: true      // Keep connection alive for large fetches
       });
 
       let emails = [];
@@ -417,8 +418,8 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
         } catch (e) {
           // Ignore
         }
-        reject(new Error('IMAP fetch timeout'));
-      }, 30000); // 30 seconds timeout for large mailboxes
+        reject(new Error('IMAP fetch timeout - mailbox may be too large or slow'));
+      }, 50000); // 50 seconds timeout for large mailboxes (8000+ emails)
 
       imap.connect();
 
