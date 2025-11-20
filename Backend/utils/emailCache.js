@@ -5,6 +5,12 @@ let redisClient = null;
 let isRedisAvailable = false;
 
 async function initializeRedis() {
+  // Check if Redis is disabled in environment
+  if (process.env.REDIS_ENABLED === 'false') {
+    console.warn('⚠️  Redis disabled by REDIS_ENABLED=false in .env');
+    return false;
+  }
+  
   try {
     redisClient = redis.createClient({
       host: process.env.REDIS_HOST || 'localhost',
