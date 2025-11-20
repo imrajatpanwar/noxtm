@@ -260,9 +260,14 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
         port: config.port || (config.secure ? 993 : 143),
         tls: config.secure !== false,
         tlsOptions: { rejectUnauthorized: false },
-        connTimeout: 20000,  // 20 seconds for connection
-        authTimeout: 20000,  // 20 seconds for authentication
-        keepalive: true      // Keep connection alive for large fetches
+        connTimeout: 10000,
+        authTimeout: 10000,
+        socketTimeout: 30000,
+        keepalive: {
+          interval: 10000,
+          idleInterval: 300000,
+          forceNoop: true
+        }
       });
 
       let emails = [];
@@ -354,7 +359,11 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
               return resolve({ emails: [], total: totalMessages });
             }
             
-            console.log(`📨 Fetching ${targetUIDs.length} emails by UID...`);
+            console.log(`📨 Fetching ${targetUIDs.length} emails by UID: [${targetUIDs.slice(0,5).join(',')}...]`);
+            
+            let messagesReceived = 0;
+            let messagesCompleted = 0;
+            const startTime = Date.now();
             
             // Fetch by UID instead of sequence number
             const fetch = imap.fetch(targetUIDs, {
@@ -363,6 +372,8 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             });
 
             fetch.on('message', (msg, seqno) => {
+              messagesReceived++;
+              console.log(`  📬 Message ${messagesReceived}/${targetUIDs.length} started (seqno: ${seqno})`);
               let emailData = {
                 uid: null,
                 seqno: seqno,
@@ -402,6 +413,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
               });
 
               msg.once('end', () => {
+                messagesCompleted++;
+                console.log(`  ✓ Message ${messagesCompleted}/${targetUIDs.length} completed`);
+                
                 // Parse from/to addresses
                 if (emailData.from) {
                   const fromMatch = emailData.from.match(/(.*?)\s*<(.+?)>/) || [];
@@ -416,14 +430,18 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             });
 
             fetch.once('error', (err) => {
-              console.error('Fetch error:', err);
+              const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+              console.error(`❌ Fetch error after ${elapsed}s: ${err.message}`);
+              console.error(`   Received: ${messagesReceived}, Completed: ${messagesCompleted}`);
+              clearTimeout(timeoutHandle);
               imap.end();
               reject(err);
             });
 
             fetch.once('end', () => {
-              console.log(`✅ Fetched ${emails.length} emails successfully`);
-              clearTimeout(timeoutHandle); // Clear timeout immediately on successful fetch
+              const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+              console.log(`✅ Fetch completed: ${emails.length} emails in ${elapsed}s (${messagesReceived} received, ${messagesCompleted} completed)`);
+              clearTimeout(timeoutHandle);
               imap.end();
             });
           }); // End of search callback
