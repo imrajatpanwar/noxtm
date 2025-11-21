@@ -25,10 +25,7 @@ function Footer() {
           <div className="footer-section">
             <h4>Legal</h4>
             <ul>
-              <li><Link to="/terms" className="footer-link">Terms & Conditions</Link></li>
-              <li><Link to="/privacy" className="footer-link">Privacy Policy</Link></li>
-              <li><Link to="/cancellation-refunds" className="footer-link">Cancellation & Refunds</Link></li>
-              <li><Link to="/shipping" className="footer-link">Shipping</Link></li>
+              <li><Link to="/legal" className="footer-link">Terms & Conditions</Link></li>
             </ul>
           </div>
           

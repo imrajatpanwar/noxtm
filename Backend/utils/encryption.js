@@ -52,12 +52,16 @@ function encrypt(text) {
  */
 function decrypt(encryptedText) {
   try {
-    if (!encryptedText) return '';
+    if (!encryptedText) {
+      console.warn('Attempted to decrypt empty or null value');
+      return '';
+    }
     
     const key = getEncryptionKey();
     const parts = encryptedText.split(':');
     
     if (parts.length !== 2) {
+      console.error(`Invalid encrypted data format: expected "iv:data", got ${parts.length} parts`);
       throw new Error('Invalid encrypted data format');
     }
     
@@ -71,8 +75,11 @@ function decrypt(encryptedText) {
     
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
-    throw new Error('Failed to decrypt data');
+    console.error('Decryption error:', error.message);
+    if (error.code === 'ERR_OSSL_BAD_DECRYPT') {
+      throw new Error('Failed to decrypt data - possibly wrong encryption key or corrupted data');
+    }
+    throw new Error(`Failed to decrypt data: ${error.message}`);
   }
 }
 

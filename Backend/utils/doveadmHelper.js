@@ -237,5 +237,6 @@ module.exports = {
   deleteMailbox,
   changePassword,
   checkDoveadmAvailable,
+  isDoveadmAvailable: checkDoveadmAvailable, // Alias for backward compatibility
   executeDoveadmCommand
 };
