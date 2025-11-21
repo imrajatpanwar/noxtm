@@ -416,7 +416,26 @@ router.post('/', isAuthenticated, async (req, res) => {
       quota: quota || emailDomain.defaultQuota,
       aliases: aliases || [],
       forwardTo: forwardTo || [],
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      accountType: 'noxtm-hosted',
+      isVerified: true,
+      imapEnabled: true,
+      smtpEnabled: true,
+      // Populate IMAP/SMTP settings for inbox fetching
+      imapSettings: {
+        host: 'mail.noxtm.com',
+        port: 993,
+        secure: true,
+        username: email.toLowerCase(),
+        encryptedPassword: encrypt(password)
+      },
+      smtpSettings: {
+        host: 'mail.noxtm.com',
+        port: 587,
+        secure: false, // STARTTLS
+        username: email.toLowerCase(),
+        encryptedPassword: encrypt(password)
+      }
     });
 
     await account.save();
@@ -1116,6 +1135,93 @@ router.get('/:id/logs', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error fetching email logs:', error);
     res.status(500).json({ message: 'Failed to fetch email logs', error: error.message });
+  }
+});
+
+// Reset/Update email account password
+router.put('/:id/reset-password', isAuthenticated, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Update password
+    account.password = newPassword; // Will be hashed by pre-save hook
+
+    // Update or create IMAP/SMTP settings with encrypted password
+    if (account.accountType === 'noxtm-hosted' || !account.accountType) {
+      account.accountType = 'noxtm-hosted';
+      account.imapEnabled = true;
+      account.smtpEnabled = true;
+      account.isVerified = true;
+
+      // Encrypt the plain password for IMAP/SMTP use
+      const encryptedPassword = encrypt(newPassword);
+
+      account.imapSettings = {
+        host: account.imapSettings?.host || 'mail.noxtm.com',
+        port: account.imapSettings?.port || 993,
+        secure: account.imapSettings?.secure !== false,
+        username: account.imapSettings?.username || account.email,
+        encryptedPassword: encryptedPassword
+      };
+
+      account.smtpSettings = {
+        host: account.smtpSettings?.host || 'mail.noxtm.com',
+        port: account.smtpSettings?.port || 587,
+        secure: account.smtpSettings?.secure === true,
+        username: account.smtpSettings?.username || account.email,
+        encryptedPassword: encryptedPassword
+      };
+    }
+
+    account.lastModifiedBy = req.user._id;
+    await account.save();
+
+    // Update password on mail server if it's a hosted account
+    if (account.accountType === 'noxtm-hosted') {
+      try {
+        const doveadmAvailable = await isDoveadmAvailable();
+        if (doveadmAvailable) {
+          const { changePassword: changeMailboxPassword } = require('../utils/doveadmHelper');
+          await changeMailboxPassword(account.email, newPassword);
+          console.log(`✅ Updated password on mail server for ${account.email}`);
+        }
+      } catch (mailServerError) {
+        console.error('Failed to update password on mail server:', mailServerError.message);
+        // Don't fail the request, password is updated in database
+      }
+    }
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'password_reset',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Reset password for email account: ${account.email}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully. IMAP/SMTP settings configured.'
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Failed to reset password', error: error.message });
   }
 });
 
