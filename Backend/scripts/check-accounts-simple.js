@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const EmailAccount = require('./models/EmailAccount');
+const EmailAccount = require('../models/EmailAccount');
 require('dotenv').config();
 
 (async () => {
