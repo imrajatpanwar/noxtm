@@ -101,6 +101,14 @@ async function createMailbox(email, password, quotaMB = 1024) {
     const setQuotaCmd = `doveadm quota set -u ${username} storage ${quotaBytes} 2>&1 || true`;
     await execAsync(setQuotaCmd);
     
+    // Update Postfix recipient map
+    try {
+      await updatePostfixRecipientMap();
+    } catch (mapError) {
+      console.warn('Failed to update Postfix recipient map:', mapError.message);
+      // Don't fail the whole operation if map update fails
+    }
+    
     console.log(`✅ Mailbox created for ${email} with quota ${quotaMB}MB (UID: ${nextUid})`);
     return true;
   } catch (error) {
@@ -198,6 +206,14 @@ async function deleteMailbox(email) {
     const removeUserCmd = `sed -i '/^${email}:/d' /etc/dovecot/users`;
     await execAsync(removeUserCmd);
     
+    // Update Postfix recipient map
+    try {
+      await updatePostfixRecipientMap();
+    } catch (mapError) {
+      console.warn('Failed to update Postfix recipient map:', mapError.message);
+      // Don't fail the whole operation if map update fails
+    }
+    
     console.log(`✅ Mailbox deleted for ${email}`);
     return true;
   } catch (error) {
@@ -230,12 +246,44 @@ async function changePassword(email, newPassword) {
   }
 }
 
+/**
+ * Update Postfix recipient map from Dovecot users
+ * This ensures Postfix recognizes all Dovecot users as valid local recipients
+ * @returns {Promise<boolean>} - Success status
+ */
+async function updatePostfixRecipientMap() {
+  try {
+    const available = await checkDoveadmAvailable();
+    if (!available) {
+      // Skip in local dev environment
+      return false;
+    }
+    
+    // Extract email addresses from Dovecot users file and create Postfix map
+    const createMapCmd = `cut -d: -f1 /etc/dovecot/users | while read email; do echo "$email OK"; done > /etc/postfix/dovecot_recipients`;
+    await execAsync(createMapCmd);
+    
+    // Generate hash database
+    await execAsync('postmap /etc/postfix/dovecot_recipients');
+    
+    // Reload Postfix
+    await execAsync('postfix reload');
+    
+    console.log('✅ Postfix recipient map updated');
+    return true;
+  } catch (error) {
+    console.error('Error updating Postfix recipient map:', error);
+    throw new Error(`Failed to update Postfix recipient map: ${error.message}`);
+  }
+}
+
 module.exports = {
   createMailbox,
   getQuota,
   updateQuota,
   deleteMailbox,
   changePassword,
+  updatePostfixRecipientMap,
   checkDoveadmAvailable,
   isDoveadmAvailable: checkDoveadmAvailable, // Alias for backward compatibility
   executeDoveadmCommand
