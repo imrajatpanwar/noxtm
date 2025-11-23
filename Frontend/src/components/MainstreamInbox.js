@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend, FiPaperclip } from 'react-icons/fi';
+import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend, FiPaperclip, FiUserPlus } from 'react-icons/fi';
 import api from '../config/api';
+import CreateEmailModal from './CreateEmailModal';
 import './MainstreamInbox.css';
 
 function MainstreamInbox() {
@@ -19,6 +20,7 @@ function MainstreamInbox() {
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
+  const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
   const emailsPerPage = 5;
 
   // Fetch hosted email accounts
@@ -210,6 +212,14 @@ function MainstreamInbox() {
     return name[0].toUpperCase();
   };
 
+  const handleCreateEmailSuccess = (data) => {
+    console.log('Email account created successfully:', data);
+    // Refresh the accounts list
+    fetchHostedAccounts();
+    // Show success message
+    alert(`Email account ${data.email} created successfully!`);
+  };
+
   return (
     <div className="mainstream-inbox">
       {/* Header */}
@@ -222,6 +232,9 @@ function MainstreamInbox() {
         </div>
 
         <div className="inbox-actions">
+          <button className="create-account-btn" onClick={() => setCreateEmailModalOpen(true)}>
+            <FiUserPlus /> Create Email Account
+          </button>
           <button className="compose-btn" onClick={handleCompose}>
             + Compose E-mail
           </button>
@@ -243,6 +256,9 @@ function MainstreamInbox() {
                 setSelectedEmail(null);
               }}
             >
+              {accounts.length === 0 && (
+                <option value="">No accounts available</option>
+              )}
               {accounts.map(account => (
                 <option key={account._id} value={account._id}>
                   {account.email}
@@ -441,6 +457,13 @@ function MainstreamInbox() {
           )}
         </div>
       )}
+
+      {/* Create Email Account Modal */}
+      <CreateEmailModal
+        isOpen={createEmailModalOpen}
+        onClose={() => setCreateEmailModalOpen(false)}
+        onSuccess={handleCreateEmailSuccess}
+      />
     </div>
   );
 }
