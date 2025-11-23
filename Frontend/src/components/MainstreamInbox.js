@@ -222,9 +222,11 @@ function MainstreamInbox() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const imageUrl = response.data?.imageUrl;
-      if (imageUrl) {
-        setCurrentUser(prev => (prev ? { ...prev, profileImage: imageUrl } : prev));
+      const { imageUrl, user } = response.data || {};
+      if (user) {
+        setCurrentUser(user);
+      } else if (imageUrl) {
+        setCurrentUser(prev => (prev ? { ...prev, emailAvatar: imageUrl } : prev));
       }
 
       setAvatarUploadState({ uploading: false, error: null, success: 'Avatar updated successfully!' });

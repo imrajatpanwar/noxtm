@@ -369,7 +369,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       try {
         senderProfile = await mongoose.connection.collection('users').findOne(
           { _id: new mongoose.Types.ObjectId(req.user.userId) },
-          { projection: { fullName: 1, profileImage: 1 } }
+          { projection: { fullName: 1, profileImage: 1, emailAvatar: 1 } }
         );
       } catch (profileError) {
         console.warn('Unable to load sender profile for avatar rendering:', profileError.message);
@@ -377,7 +377,11 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
     }
 
     const senderName = senderProfile?.fullName || account.displayName || account.email;
-    const avatarUrl = senderProfile?.profileImage || process.env.DEFAULT_AVATAR_URL || fallbackAvatarFor(senderName, account.email);
+    const avatarUrl =
+      senderProfile?.emailAvatar ||
+      senderProfile?.profileImage ||
+      process.env.DEFAULT_AVATAR_URL ||
+      fallbackAvatarFor(senderName, account.email);
     const originalBody = body || '';
     const bodyHtml = plainTextToHtml(originalBody);
     const wrappedHtml = buildEmailEnvelope({
