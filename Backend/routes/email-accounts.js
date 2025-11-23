@@ -624,18 +624,10 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Email account already exists' });
     }
 
-    // Try to create mailbox on mail server via SSH
-    const { createMailboxOnServer } = require('../utils/mailServerManager');
-    
-    try {
-      await createMailboxOnServer(email, password);
-      console.log(`✅ Mailbox created on server for ${email}`);
-    } catch (mailServerError) {
-      console.error(`❌ Failed to create mailbox on server:`, mailServerError);
-      // Don't fail completely - just log the error and continue
-      // The database entry will still be created for tracking purposes
-      console.warn(`⚠️  Continuing with database entry despite mail server error`);
-    }
+    // Note: For now, mailboxes must be created manually on the mail server
+    // or through a separate admin tool. This endpoint only creates the database entry.
+    console.log(`📝 Creating database entry for ${email} (mailbox must exist on server)`);
+    console.warn(`⚠️  Make sure the mailbox ${email} exists on the mail server before using it`);
 
     // Create email account in database
     const account = new EmailAccount({
