@@ -1947,10 +1947,16 @@ app.post('/api/reset-password', async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update user password
-    user.password = hashedPassword;
-    user.updatedAt = Date.now();
-    await user.save();
+    // Update user password directly without triggering full validation
+    await User.updateOne(
+      { _id: user._id },
+      { 
+        $set: { 
+          password: hashedPassword,
+          updatedAt: Date.now()
+        }
+      }
+    );
 
     // Delete reset record
     await PasswordReset.findByIdAndDelete(resetRecord._id);
