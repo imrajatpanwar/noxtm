@@ -272,6 +272,32 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
 
       let emails = [];
       let totalMessages = 0;
+      let finished = false;
+      let timeoutHandle;
+
+      const safeEnd = () => {
+        try {
+          imap.end();
+        } catch (e) {
+          // Ignore end errors
+        }
+      };
+
+      const resolveOnce = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeoutHandle);
+        // Sort by seqno descending (newest first)
+        emails.sort((a, b) => b.seqno - a.seqno);
+        resolve({ emails, total: totalMessages });
+      };
+
+      const rejectOnce = (err) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeoutHandle);
+        reject(err);
+      };
 
       imap.once('ready', () => {
         console.log(`📬 IMAP connected for ${config.username}`);
@@ -433,41 +459,33 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
               const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
               console.error(`❌ Fetch error after ${elapsed}s: ${err.message}`);
               console.error(`   Received: ${messagesReceived}, Completed: ${messagesCompleted}`);
-              clearTimeout(timeoutHandle);
-              imap.end();
-              reject(err);
+              safeEnd();
+              rejectOnce(err);
             });
 
             fetch.once('end', () => {
               const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
               console.log(`✅ Fetch completed: ${emails.length} emails in ${elapsed}s (${messagesReceived} received, ${messagesCompleted} completed)`);
-              clearTimeout(timeoutHandle);
-              imap.end();
+              safeEnd();
+              resolveOnce();
             });
           }); // End of search callback
         });
       });
 
       imap.once('error', (err) => {
-        clearTimeout(timeoutHandle);
-        reject(new Error(`IMAP error: ${err.message}`));
+        safeEnd();
+        rejectOnce(new Error(`IMAP error: ${err.message}`));
       });
 
       imap.once('end', () => {
-        clearTimeout(timeoutHandle);
-        // Sort by seqno descending (newest first)
-        emails.sort((a, b) => b.seqno - a.seqno);
-        resolve({ emails, total: totalMessages });
+        resolveOnce();
       });
 
       // Timeout - must be declared before imap.connect()
-      const timeoutHandle = setTimeout(() => {
-        try {
-          imap.end();
-        } catch (e) {
-          // Ignore
-        }
-        reject(new Error('IMAP fetch timeout - mailbox may be too large or slow'));
+      timeoutHandle = setTimeout(() => {
+        safeEnd();
+        rejectOnce(new Error('IMAP fetch timeout - mailbox may be too large or slow'));
       }, 75000); // 75 seconds timeout for large mailboxes
 
       imap.connect();
@@ -499,90 +517,144 @@ async function fetchSingleEmail(config, uid, folder = 'INBOX') {
     });
     
     let emailData = null;
-    
-    imap.once('ready', () => {
-      imap.openBox(folder, true, (err) => {
-        if (err) {
-          imap.end();
-          return reject(new Error(`Failed to open ${folder}: ${err.message}`));
-        }
-        
-        const fetch = imap.fetch([uid], { 
-          bodies: '', // Fetch full message
-          struct: true 
-        });
-        
-        fetch.on('message', (msg) => {
-          msg.on('body', (stream) => {
-            simpleParser(stream, (err, parsed) => {
-              if (err) {
-                return reject(err);
-              }
-              
-              emailData = {
-                uid: uid,
-                from: parsed.from ? {
-                  name: parsed.from.value[0].name || '',
-                  address: parsed.from.value[0].address || ''
-                } : null,
-                to: parsed.to ? parsed.to.value.map(t => ({
-                  name: t.name || '',
-                  address: t.address || ''
-                })) : [],
-                cc: parsed.cc ? parsed.cc.value : [],
-                bcc: parsed.bcc ? parsed.bcc.value : [],
-                subject: parsed.subject || '',
-                date: parsed.date || null,
-                text: parsed.text || '',
-                html: parsed.html || '',
-                attachments: parsed.attachments ? parsed.attachments.map(att => ({
-                  filename: att.filename,
-                  contentType: att.contentType,
-                  size: att.size
-                })) : []
-              };
-            });
-          });
-          
-          msg.once('attributes', (attrs) => {
-            if (emailData) {
-              emailData.seen = attrs.flags.includes('\\Seen');
-            }
-          });
-          
-          msg.once('end', () => {
-            imap.end();
-          });
-        });
-        
-        fetch.once('error', (err) => {
-          imap.end();
-          reject(err);
-        });
-      });
-    });
-    
-    imap.once('error', (err) => {
+    let finished = false;
+    let connectionClosed = false;
+    let timeoutHandle;
+    let parsePromise = null;
+    let messageFlags = null;
+
+    const finish = (err) => {
+      if (finished) return;
+      finished = true;
       clearTimeout(timeoutHandle);
-      reject(new Error(`IMAP error: ${err.message}`));
-    });
-    
-    imap.once('end', () => {
-      clearTimeout(timeoutHandle);
-      if (emailData) {
-        resolve(emailData);
-      } else {
-        reject(new Error('Email not found'));
+      if (err) {
+        return reject(err);
       }
-    });
-    
-    const timeoutHandle = setTimeout(() => {
+      resolve(emailData);
+    };
+
+    const closeConnection = () => {
+      if (connectionClosed) return;
+      connectionClosed = true;
       try {
         imap.end();
       } catch (e) {
         // Ignore
       }
-      reject(new Error('IMAP fetch timeout'));
+    };
+    
+    imap.once('ready', () => {
+      console.log(`📥 [IMAP] Connected for ${config.username}, fetching UID ${uid}`);
+      imap.openBox(folder, true, (err) => {
+        if (err) {
+          closeConnection();
+          return reject(new Error(`Failed to open ${folder}: ${err.message}`));
+        }
+        console.log(`📥 [IMAP] ${config.username} opened ${folder}, requesting UID ${uid}`);
+        
+        const fetch = imap.fetch([uid], { 
+          bodies: '', // Fetch full message
+          struct: true,
+          uid: true
+        });
+        
+        fetch.on('message', (msg) => {
+          console.log(`📥 [IMAP] Message stream started for UID ${uid}`);
+          msg.on('body', (stream) => {
+            parsePromise = simpleParser(stream)
+              .then((parsed) => {
+                emailData = {
+                  uid: uid,
+                  from: parsed.from ? {
+                    name: parsed.from.value[0].name || '',
+                    address: parsed.from.value[0].address || ''
+                  } : null,
+                  to: parsed.to ? parsed.to.value.map(t => ({
+                    name: t.name || '',
+                    address: t.address || ''
+                  })) : [],
+                  cc: parsed.cc ? parsed.cc.value : [],
+                  bcc: parsed.bcc ? parsed.bcc.value : [],
+                  subject: parsed.subject || '',
+                  date: parsed.date || null,
+                  text: parsed.text || '',
+                  html: parsed.html || '',
+                  attachments: parsed.attachments ? parsed.attachments.map(att => ({
+                    filename: att.filename,
+                    contentType: att.contentType,
+                    size: att.size
+                  })) : []
+                };
+
+                if (messageFlags) {
+                  emailData.seen = messageFlags.includes('\\Seen');
+                }
+              })
+              .catch((err) => {
+                closeConnection();
+                finish(err);
+              });
+          });
+          
+          msg.once('attributes', (attrs) => {
+            messageFlags = attrs.flags || [];
+
+            if (emailData) {
+              emailData.seen = messageFlags.includes('\\Seen');
+            }
+          });
+          
+          msg.once('end', () => {
+            console.log(`📥 [IMAP] Message stream ended for UID ${uid}`);
+
+            const finalize = () => {
+              closeConnection();
+              if (emailData) {
+                finish();
+              } else {
+                finish(new Error('Email not parsed'));
+              }
+            };
+
+            if (parsePromise && typeof parsePromise.then === 'function') {
+              parsePromise.then(finalize).catch((err) => {
+                closeConnection();
+                finish(err);
+              });
+            } else {
+              finalize();
+            }
+          });
+        });
+        
+        fetch.once('error', (err) => {
+          closeConnection();
+          finish(err);
+        });
+
+        fetch.once('end', () => {
+          console.log(`📥 [IMAP] Fetch completed for UID ${uid}`);
+          // Ensures the connection closes even if no message was delivered
+          closeConnection();
+        });
+      });
+    });
+    
+    imap.once('error', (err) => {
+      finish(new Error(`IMAP error: ${err.message}`));
+    });
+    
+    imap.once('end', () => {
+      if (emailData) {
+        finish();
+      } else {
+        finish(new Error('Email not found'));
+      }
+    });
+    
+    timeoutHandle = setTimeout(() => {
+      closeConnection();
+      finish(new Error('IMAP fetch timeout'));
     }, 20000); // 20 seconds for single email
     
     imap.connect();
