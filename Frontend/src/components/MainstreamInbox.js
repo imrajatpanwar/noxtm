@@ -104,7 +104,20 @@ function MainstreamInbox() {
     } catch (error) {
       console.error('Error fetching emails:', error);
       console.error('Error response:', error.response?.data);
-      setError(error.response?.data?.message || 'Failed to load emails. Please try again.');
+
+      const status = error.response?.status;
+      const serverMessage = error.response?.data?.message;
+
+      if (status === 404) {
+        // Account was deleted or recreated on the server. Refresh list so we pick the new ID.
+        setError('Email account was refreshed. Reloading account list...');
+        await fetchHostedAccounts();
+      } else if (status === 500 && serverMessage?.toLowerCase().includes('decrypt')) {
+        setError('Stored mailbox credentials are invalid. Please recreate this email account.');
+      } else {
+        setError(serverMessage || 'Failed to load emails. Please try again.');
+      }
+
       setEmails([]);
     } finally {
       setLoading(false);
