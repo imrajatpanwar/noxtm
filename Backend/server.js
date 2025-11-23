@@ -893,22 +893,22 @@ const avatarUpload = multer({
 });
 
 const avatarBucket = process.env.AVATAR_S3_BUCKET || 'email-profile-avatar';
-const avatarRegion = process.env.AVATAR_S3_REGION || process.env.AWS_REGION || 'eu-north-1';
-const avatarAccessKey = process.env.AWS_ACCESS_KEY_ID || process.env.EMAIL_USER;
-const avatarSecretKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.EMAIL_PASS;
-const avatarBucketBaseUrl = process.env.AVATAR_S3_PUBLIC_URL || `https://${avatarBucket}.s3.${avatarRegion}.amazonaws.com`;
+const avatarRegion = 'eu-north-1';
+const avatarAccessKey = process.env.AWS_ACCESS_KEY_ID;
+const avatarSecretKey = process.env.AWS_SECRET_ACCESS_KEY;
+const getAvatarPublicUrl = key => `https://${avatarBucket}.s3.${avatarRegion}.amazonaws.com/${key}`;
 
 if (!avatarAccessKey || !avatarSecretKey) {
-  console.warn('⚠️  Avatar upload credentials are not fully configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or EMAIL_USER/EMAIL_PASS) to enable S3 uploads.');
+  console.warn('⚠️  Avatar upload credentials are not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to enable S3 uploads.');
 }
 
-const s3Client = new S3Client({
+const s3Client = avatarAccessKey && avatarSecretKey ? new S3Client({
   region: avatarRegion,
-  credentials: avatarAccessKey && avatarSecretKey ? {
+  credentials: {
     accessKeyId: avatarAccessKey,
     secretAccessKey: avatarSecretKey
-  } : undefined
-});
+  }
+}) : null;
 
 // Trade Show file upload configuration
 const tradeShowStorage = multer.diskStorage({
@@ -3462,14 +3462,9 @@ app.post('/api/upload/avatar', authenticateToken, avatarUpload.single('avatar'),
       ContentType: req.file.mimetype
     };
 
-    // Buckets with a PublicRead policy do not strictly need ACL, but allow opt-in via env flag.
-    if (process.env.AVATAR_S3_PUBLIC_ACL === 'true') {
-      uploadParams.ACL = 'public-read';
-    }
-
     await s3Client.send(new PutObjectCommand(uploadParams));
 
-    const imageUrl = `${avatarBucketBaseUrl}/${objectKey}`;
+    const imageUrl = getAvatarPublicUrl(objectKey);
 
     const user = await User.findByIdAndUpdate(
       req.user.userId,
