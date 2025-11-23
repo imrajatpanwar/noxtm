@@ -9,7 +9,7 @@ const buildFallbackAvatar = (name, email) => {
 const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError, uploadSuccess }) => {
   const fileInputRef = useRef(null);
   const displayName = user?.fullName || account?.displayName || account?.email || 'Mailbox User';
-  const avatarSrc = user?.profileImage || buildFallbackAvatar(displayName, account?.email || user?.email);
+  const avatarSrc = user?.emailAvatar || user?.profileImage || buildFallbackAvatar(displayName, account?.email || user?.email);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];

@@ -194,6 +194,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true, default: 'User' },
   // Profile fields
   profileImage: { type: String }, // Base64 or URL to profile image
+  emailAvatar: { type: String }, // Outbound email avatar stored separately from dashboard profile image
   phoneNumber: { type: String },
   bio: { type: String, maxLength: 500 },
   lastLogin: { type: Date },
@@ -894,12 +895,20 @@ const avatarUpload = multer({
 
 const avatarBucket = process.env.AVATAR_S3_BUCKET || 'email-profile-avatar';
 const avatarRegion = 'eu-north-1';
-const avatarAccessKey = process.env.AWS_ACCESS_KEY_ID;
-const avatarSecretKey = process.env.AWS_SECRET_ACCESS_KEY;
+const avatarAccessKey =
+  process.env.AWS_ACCESS_KEY_ID ||
+  process.env.AVATAR_S3_ACCESS_KEY_ID ||
+  process.env.AVATAR_ACCESS_KEY_ID ||
+  process.env.EMAIL_USER;
+const avatarSecretKey =
+  process.env.AWS_SECRET_ACCESS_KEY ||
+  process.env.AVATAR_S3_SECRET_ACCESS_KEY ||
+  process.env.AVATAR_SECRET_ACCESS_KEY ||
+  process.env.EMAIL_PASS;
 const getAvatarPublicUrl = key => `https://${avatarBucket}.s3.${avatarRegion}.amazonaws.com/${key}`;
 
 if (!avatarAccessKey || !avatarSecretKey) {
-  console.warn('⚠️  Avatar upload credentials are not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to enable S3 uploads.');
+  console.warn('⚠️  Avatar upload credentials are not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or AVATAR_S3_ACCESS_KEY_ID / AVATAR_S3_SECRET_ACCESS_KEY) to enable S3 uploads.');
 }
 
 const s3Client = avatarAccessKey && avatarSecretKey ? new S3Client({
@@ -3469,7 +3478,7 @@ app.post('/api/upload/avatar', authenticateToken, avatarUpload.single('avatar'),
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       {
-        profileImage: imageUrl,
+        emailAvatar: imageUrl,
         updatedAt: new Date()
       },
       { new: true, runValidators: true }
