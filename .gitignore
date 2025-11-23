@@ -24,6 +24,11 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+Backend/.env
+Backend/.env.local
+Backend/.env.development.local
+Backend/.env.test.local
+Backend/.env.production.local
 
 # Logs
 logs/

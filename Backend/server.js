@@ -7,6 +7,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
@@ -874,6 +875,39 @@ const upload = multer({
       cb(new Error('Only image files are allowed!'), false);
     }
   }
+});
+
+// Avatar uploads go to S3 so we keep them in memory until they are forwarded.
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+const avatarBucket = process.env.AVATAR_S3_BUCKET || 'email-profile-avatar';
+const avatarRegion = process.env.AVATAR_S3_REGION || process.env.AWS_REGION || 'eu-north-1';
+const avatarAccessKey = process.env.AWS_ACCESS_KEY_ID || process.env.EMAIL_USER;
+const avatarSecretKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.EMAIL_PASS;
+const avatarBucketBaseUrl = process.env.AVATAR_S3_PUBLIC_URL || `https://${avatarBucket}.s3.${avatarRegion}.amazonaws.com`;
+
+if (!avatarAccessKey || !avatarSecretKey) {
+  console.warn('⚠️  Avatar upload credentials are not fully configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or EMAIL_USER/EMAIL_PASS) to enable S3 uploads.');
+}
+
+const s3Client = new S3Client({
+  region: avatarRegion,
+  credentials: avatarAccessKey && avatarSecretKey ? {
+    accessKeyId: avatarAccessKey,
+    secretAccessKey: avatarSecretKey
+  } : undefined
 });
 
 // Trade Show file upload configuration
@@ -3387,6 +3421,90 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 });
 
 // Upload profile image (file upload)
+app.post('/api/upload/avatar', authenticateToken, avatarUpload.single('avatar'), async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+
+    if (!s3Client) {
+      return res.status(500).json({
+        success: false,
+        message: 'Avatar storage is not configured'
+      });
+    }
+
+    if (!avatarAccessKey || !avatarSecretKey) {
+      return res.status(500).json({
+        success: false,
+        message: 'Missing avatar storage credentials'
+      });
+    }
+
+    const extension = path.extname(req.file.originalname || '').toLowerCase();
+    const safeExtension = extension && extension.length <= 5 ? extension : '.jpg';
+    const objectKey = `avatars/${req.user.userId}-${Date.now()}${safeExtension}`;
+
+    const uploadParams = {
+      Bucket: avatarBucket,
+      Key: objectKey,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype
+    };
+
+    // Buckets with a PublicRead policy do not strictly need ACL, but allow opt-in via env flag.
+    if (process.env.AVATAR_S3_PUBLIC_ACL === 'true') {
+      uploadParams.ACL = 'public-read';
+    }
+
+    await s3Client.send(new PutObjectCommand(uploadParams));
+
+    const imageUrl = `${avatarBucketBaseUrl}/${objectKey}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        profileImage: imageUrl,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('companyId', 'companyName')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      imageUrl,
+      user
+    });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while uploading avatar',
+      error: error.message
+    });
+  }
+});
+
 app.post('/api/profile/upload-image', authenticateToken, upload.single('profileImage'), async (req, res) => {
   try {
     if (!mongoConnected) {

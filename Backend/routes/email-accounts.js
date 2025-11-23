@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const EmailAccount = require('../models/EmailAccount');
 const EmailDomain = require('../models/EmailDomain');
 const EmailLog = require('../models/EmailLog');
@@ -11,6 +12,65 @@ const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../
 const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable } = require('../utils/doveadmHelper');
 const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody } = require('../utils/emailCache');
 const { scheduleSyncJob, syncMultiplePages } = require('../utils/emailSyncWorker');
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const plainTextToHtml = (content = '') => {
+  if (!content) return '<p></p>';
+  const containsHtmlTags = /<[^>]+>/i.test(content);
+  if (containsHtmlTags) {
+    return content;
+  }
+
+  return content
+    .split(/\n/)
+    .map(line => line.trim() ? `<p>${escapeHtml(line)}</p>` : '<br />')
+    .join('');
+};
+
+const stripHtml = (content = '') => content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const fallbackAvatarFor = (name = '', email = '') => {
+  const label = name || email || 'User';
+  return `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(label)}`;
+};
+
+const buildEmailEnvelope = ({ senderName, senderEmail, avatarUrl, bodyHtml }) => `
+  <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#f9fafb; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; box-shadow:0 10px 35px rgba(15, 23, 42, 0.08); overflow:hidden;">
+          <tr>
+            <td style="padding:24px; border-bottom:1px solid #edf2f7;">
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td width="64" valign="top">
+                    <img src="${avatarUrl}" width="50" height="50" style="border-radius:50%; object-fit:cover; display:block;" alt="${senderName} avatar" />
+                  </td>
+                  <td valign="middle">
+                    <div style="font-size:16px; font-weight:600; color:#111827;">${senderName}</div>
+                    <div style="font-size:13px; color:#6b7280;">${senderEmail}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 24px 32px; color:#1f2937; font-size:15px; line-height:1.7;">
+              ${bodyHtml}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+`;
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
@@ -142,6 +202,7 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     const startTime = Date.now();
     
     // Try to get from cache first
+    console.log(`🧠 Checking cache for ${account.email} page ${page}`);
     const cached = await getCachedEmailList(accountId, folder, parseInt(page));
     
     if (cached) {
@@ -154,6 +215,7 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
         );
       }
       
+      console.log(`📤 Responding with cached inbox for ${account.email} (page ${page})`);
       return res.json({
         success: true,
         emails: cached.emails,
@@ -173,7 +235,9 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     console.log(`✅ Fetched ${result.emails.length} emails in ${duration}ms`);
     
     // Cache the result
+    console.log(`🧠 Caching ${result.emails.length} emails for ${account.email} page ${page}`);
     await cacheEmailList(accountId, folder, parseInt(page), result.emails, result.total);
+    console.log(`🧠 Cache write complete for ${account.email} page ${page}`);
     
     // Schedule background sync for next pages
     if (parseInt(page) === 1 && result.total > parseInt(limit)) {
@@ -183,6 +247,7 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
       );
     }
 
+    console.log(`📤 Responding with fresh inbox for ${account.email} (page ${page})`);
     res.json({
       success: true,
       emails: result.emails,
@@ -195,6 +260,9 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching inbox:', error);
+    if (res.headersSent) {
+      console.error('⚠️  fetch-inbox error after headers sent, request may hang');
+    }
     res.status(500).json({
       message: 'Failed to fetch inbox',
       error: error.message
@@ -296,11 +364,36 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       }
     });
 
+    let senderProfile = null;
+    if (mongoose.Types.ObjectId.isValid(req.user.userId)) {
+      try {
+        senderProfile = await mongoose.connection.collection('users').findOne(
+          { _id: new mongoose.Types.ObjectId(req.user.userId) },
+          { projection: { fullName: 1, profileImage: 1 } }
+        );
+      } catch (profileError) {
+        console.warn('Unable to load sender profile for avatar rendering:', profileError.message);
+      }
+    }
+
+    const senderName = senderProfile?.fullName || account.displayName || account.email;
+    const avatarUrl = senderProfile?.profileImage || process.env.DEFAULT_AVATAR_URL || fallbackAvatarFor(senderName, account.email);
+    const originalBody = body || '';
+    const bodyHtml = plainTextToHtml(originalBody);
+    const wrappedHtml = buildEmailEnvelope({
+      senderName,
+      senderEmail: account.email,
+      avatarUrl,
+      bodyHtml
+    });
+    const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
+
     const mailOptions = {
       from: `${account.displayName || account.email} <${account.email}>`,
       to: to,
       subject: subject,
-      html: body,
+      html: wrappedHtml,
+      text: plainTextVariant,
       cc: cc,
       bcc: bcc
     };
@@ -316,7 +409,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       cc: cc ? (Array.isArray(cc) ? cc : [cc]) : [],
       bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [],
       subject: subject,
-      body: body,
+      body: wrappedHtml,
       sentAt: new Date(),
       messageId: info.messageId
     });

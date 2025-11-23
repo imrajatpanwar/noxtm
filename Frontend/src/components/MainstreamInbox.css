@@ -462,6 +462,144 @@
   color: #374151;
 }
 
+/* Settings tab */
+.settings-placeholder {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #6b7280;
+}
+
+.settings-placeholder h4 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.mailbox-profile-settings {
+  flex: 1;
+  padding: 24px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.mailbox-settings-heading h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.mailbox-settings-heading p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.mailbox-avatar-section {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.mailbox-settings-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+}
+
+.mailbox-avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mailbox-avatar-text strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.mailbox-avatar-text span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.mailbox-avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mailbox-upload-btn {
+  background: #111827;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+  width: fit-content;
+}
+
+.mailbox-upload-btn:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.mailbox-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mailbox-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.mailbox-settings-row {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mailbox-settings-row .label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.mailbox-settings-row strong {
+  font-size: 15px;
+  color: #111827;
+}
+
+.mailbox-settings-footer-note {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.mailbox-settings-error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.mailbox-settings-success {
+  font-size: 12px;
+  color: #059669;
+}
+
 /* Compose Popup */
 .compose-popup {
   position: fixed;

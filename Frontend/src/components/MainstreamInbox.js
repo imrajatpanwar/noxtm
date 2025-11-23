@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend, FiPaperclip, FiUserPlus } from 'react-icons/fi';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
+import ProfileSettings from './mailbox/ProfileSettings';
 import './MainstreamInbox.css';
 
 function MainstreamInbox() {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' or 'team'
+  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'team' | 'settings'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -21,6 +22,9 @@ function MainstreamInbox() {
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
   const emailsPerPage = 5;
 
   // Fetch hosted email accounts
@@ -30,11 +34,26 @@ function MainstreamInbox() {
 
   // Fetch emails when account or tab changes
   useEffect(() => {
-    if (selectedAccount) {
+    if (selectedAccount && activeTab !== 'settings') {
       fetchEmails();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount, activeTab, currentPage]);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await api.get('/profile');
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   const fetchHostedAccounts = async () => {
     try {
@@ -61,7 +80,7 @@ function MainstreamInbox() {
   };
 
   const fetchEmails = async () => {
-    if (!selectedAccount) {
+    if (!selectedAccount || activeTab === 'settings') {
       console.log('No account selected');
       return;
     }
@@ -193,6 +212,45 @@ function MainstreamInbox() {
     }
   };
 
+  const handleAvatarUpload = async (file) => {
+    try {
+      setAvatarUploadState({ uploading: true, error: null, success: null });
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await api.post('/upload/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const imageUrl = response.data?.imageUrl;
+      if (imageUrl) {
+        setCurrentUser(prev => (prev ? { ...prev, profileImage: imageUrl } : prev));
+      }
+
+      setAvatarUploadState({ uploading: false, error: null, success: 'Avatar updated successfully!' });
+    } catch (uploadError) {
+      console.error('Avatar upload failed:', uploadError);
+      const message = uploadError.response?.data?.message || 'Failed to upload avatar';
+      setAvatarUploadState({ uploading: false, error: message, success: null });
+    }
+  };
+
+  useEffect(() => {
+    if (avatarUploadState.success || avatarUploadState.error) {
+      const timer = setTimeout(() => {
+        setAvatarUploadState(prev => ({ ...prev, error: null, success: null }));
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [avatarUploadState.success, avatarUploadState.error]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'settings') {
+      setSelectedEmail(null);
+    }
+  };
+
   const getEmailPreview = (email) => {
     // Use preview from backend if available
     if (email.preview) return email.preview;
@@ -287,42 +345,55 @@ function MainstreamInbox() {
       <div className="inbox-tabs">
         <button
           className={`tab ${activeTab === 'mainstream' ? 'active' : ''}`}
-          onClick={() => setActiveTab('mainstream')}
+          onClick={() => handleTabChange('mainstream')}
         >
           Mainstream
         </button>
         <button
           className={`tab ${activeTab === 'team' ? 'active' : ''}`}
-          onClick={() => setActiveTab('team')}
+          onClick={() => handleTabChange('team')}
         >
           Team
         </button>
-        <div className="tab-pagination">
-          {totalEmails > 0 && (
-            <>
-              {((currentPage - 1) * emailsPerPage) + 1} - {Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => p - 1)}
-              >
-                ‹
-              </button>
-              <button
-                disabled={currentPage * emailsPerPage >= totalEmails}
-                onClick={() => setCurrentPage(p => p + 1)}
-              >
-                ›
-              </button>
-            </>
-          )}
-        </div>
+        <button
+          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => handleTabChange('settings')}
+        >
+          Settings
+        </button>
+        {activeTab !== 'settings' && (
+          <div className="tab-pagination">
+            {totalEmails > 0 && (
+              <>
+                {((currentPage - 1) * emailsPerPage) + 1} - {Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  ‹
+                </button>
+                <button
+                  disabled={currentPage * emailsPerPage >= totalEmails}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  ›
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
       <div className="inbox-content">
         {/* Email List */}
         <div className="email-list">
-          {loading && emails.length === 0 ? (
+          {activeTab === 'settings' ? (
+            <div className="settings-placeholder">
+              <h4>Mailbox settings</h4>
+              <p>Select a hosted mailbox on the right to update its display avatar and review connection details.</p>
+            </div>
+          ) : loading && emails.length === 0 ? (
             <div className="loading-state">
               <div className="spinner"></div>
               <p>Loading emails...</p>
@@ -369,7 +440,23 @@ function MainstreamInbox() {
 
         {/* Email Detail View */}
         <div className="email-detail">
-          {selectedEmail ? (
+          {activeTab === 'settings' ? (
+            profileLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading settings...</p>
+              </div>
+            ) : (
+              <ProfileSettings
+                account={selectedAccount}
+                user={currentUser}
+                onAvatarUpload={handleAvatarUpload}
+                uploading={avatarUploadState.uploading}
+                uploadError={avatarUploadState.error}
+                uploadSuccess={avatarUploadState.success}
+              />
+            )
+          ) : selectedEmail ? (
             <>
               <div className="detail-header">
                 <h3>{selectedEmail.subject || '(No Subject)'}</h3>
