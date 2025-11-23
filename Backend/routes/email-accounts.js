@@ -354,7 +354,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
     const password = decrypt(account.smtpSettings.encryptedPassword);
 
     // Configure SMTP for hosted account
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: account.smtpSettings.host || '127.0.0.1',
       port: account.smtpSettings.port || 587,
       secure: account.smtpSettings.secure === true,
