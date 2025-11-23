@@ -125,9 +125,12 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     // Decrypt password from imapSettings
     const password = decrypt(account.imapSettings.encryptedPassword);
 
+    // If decryption fails, it will throw an error, which is caught by the catch block
+    // No need to add extra checks here, as the error is already descriptive
+
     // Configure IMAP connection for hosted account
     // Use localhost since Dovecot is on the same server
-    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    const host = account.imapSettings.host || '127.0.0.1';
     const imapConfig = {
       host: host,
       port: account.imapSettings.port || 993,
@@ -581,6 +584,139 @@ router.post('/create-noxtm', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error creating @noxtm.com account:', error);
     res.status(500).json({ message: 'Failed to create email account', error: error.message });
+  }
+});
+
+// ==========================================
+// CREATE HOSTED EMAIL ACCOUNT (NEW SIMPLIFIED VERSION)
+// ==========================================
+router.post('/create-hosted', isAuthenticated, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validation
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    // Validate username format (lowercase letters, numbers, dots, hyphens, underscores)
+    if (!/^[a-z0-9._-]+$/.test(username)) {
+      return res.status(400).json({ 
+        message: 'Invalid username format. Use only lowercase letters, numbers, dots, hyphens, and underscores.' 
+      });
+    }
+
+    // Validate username length
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({ message: 'Username must be between 3 and 30 characters' });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const email = `${username}@noxtm.com`;
+
+    // Check if email already exists
+    const existingAccount = await EmailAccount.findOne({ email: email.toLowerCase() });
+    if (existingAccount) {
+      return res.status(400).json({ message: 'Email account already exists' });
+    }
+
+    // Try to create mailbox on mail server via SSH
+    const { createMailboxOnServer } = require('../utils/mailServerManager');
+    
+    try {
+      await createMailboxOnServer(email, password);
+      console.log(`✅ Mailbox created on server for ${email}`);
+    } catch (mailServerError) {
+      console.error(`❌ Failed to create mailbox on server:`, mailServerError);
+      // Don't fail completely - just log the error and continue
+      // The database entry will still be created for tracking purposes
+      console.warn(`⚠️  Continuing with database entry despite mail server error`);
+    }
+
+    // Create email account in database
+    const account = new EmailAccount({
+      email: email.toLowerCase(),
+      password, // Will be hashed by pre-save hook
+      accountType: 'noxtm-hosted',
+      displayName: username,
+      domain: 'noxtm.com',
+      quota: 1024, // Default 1GB
+      isVerified: true,
+      createdBy: req.user?._id,
+      imapEnabled: true,
+      smtpEnabled: true,
+      imapSettings: {
+        host: process.env.IMAP_HOST || 'mail.noxtm.com',
+        port: parseInt(process.env.IMAP_PORT) || 993,
+        secure: true,
+        username: email,
+        encryptedPassword: encrypt(password)
+      },
+      smtpSettings: {
+        host: process.env.SMTP_HOST || 'mail.noxtm.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: false, // STARTTLS
+        username: email,
+        encryptedPassword: encrypt(password)
+      }
+    });
+
+    await account.save();
+
+    // Create audit log
+    if (req.user?._id) {
+      try {
+        await EmailAuditLog.log({
+          action: 'hosted_account_created',
+          resourceType: 'email_account',
+          resourceId: account._id,
+          resourceIdentifier: account.email,
+          performedBy: req.user._id,
+          performedByEmail: req.user.email,
+          performedByName: req.user.fullName,
+          description: `Created hosted email account: ${account.email}`,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          companyId: req.user.companyId
+        });
+      } catch (auditError) {
+        console.error('Failed to create audit log:', auditError.message);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Email account ${email} created successfully`,
+      email: account.email,
+      data: {
+        _id: account._id,
+        email: account.email,
+        displayName: account.displayName,
+        accountType: account.accountType,
+        domain: account.domain,
+        quota: account.quota,
+        imapSettings: {
+          host: account.imapSettings.host,
+          port: account.imapSettings.port,
+          secure: account.imapSettings.secure
+        },
+        smtpSettings: {
+          host: account.smtpSettings.host,
+          port: account.smtpSettings.port,
+          secure: account.smtpSettings.secure
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error creating hosted email account:', error);
+    res.status(500).json({ 
+      message: 'Failed to create email account', 
+      error: error.message 
+    });
   }
 });
 
