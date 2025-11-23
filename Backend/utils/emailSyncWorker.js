@@ -67,7 +67,7 @@ if (emailSyncQueue) {
     }
     
     const password = decrypt(account.imapSettings.encryptedPassword);
-    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    const host = account.imapSettings.host || '127.0.0.1';
     
     const imapConfig = {
       host: host,
