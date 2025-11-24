@@ -894,7 +894,12 @@ const avatarUpload = multer({
 });
 
 const avatarBucket = process.env.AVATAR_S3_BUCKET || 'email-profile-avatar';
-const avatarRegion = 'eu-north-1';
+const avatarRegion = process.env.AVATAR_S3_REGION || process.env.AWS_REGION || 'eu-north-1';
+const avatarStorageMode = (process.env.AVATAR_STORAGE_MODE || 'auto').toLowerCase();
+const avatarLocalDirName = (process.env.AVATAR_LOCAL_DIR || 'email-avatars')
+  .replace(/^\/+/, '')
+  .replace(/\/+$/, '') || 'email-avatars';
+const avatarLocalBasePath = path.join(__dirname, 'uploads', avatarLocalDirName);
 const avatarAccessKey =
   process.env.AWS_ACCESS_KEY_ID ||
   process.env.AVATAR_S3_ACCESS_KEY_ID ||
@@ -906,9 +911,10 @@ const avatarSecretKey =
   process.env.AVATAR_SECRET_ACCESS_KEY ||
   process.env.EMAIL_PASS;
 const getAvatarPublicUrl = key => `https://${avatarBucket}.s3.${avatarRegion}.amazonaws.com/${key}`;
+const getLocalAvatarPublicUrl = key => `/uploads/${key.replace(/\\/g, '/')}`;
 
 if (!avatarAccessKey || !avatarSecretKey) {
-  console.warn('⚠️  Avatar upload credentials are not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or AVATAR_S3_ACCESS_KEY_ID / AVATAR_S3_SECRET_ACCESS_KEY) to enable S3 uploads.');
+  console.warn('⚠️  Avatar upload credentials are not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or AVATAR_S3_ACCESS_KEY_ID / AVATAR_S3_SECRET_ACCESS_KEY) to enable fully managed S3 uploads. Falling back to local disk storage.');
 }
 
 const s3Client = avatarAccessKey && avatarSecretKey ? new S3Client({
@@ -918,6 +924,17 @@ const s3Client = avatarAccessKey && avatarSecretKey ? new S3Client({
     secretAccessKey: avatarSecretKey
   }
 }) : null;
+
+const shouldUseS3ForAvatars = !!s3Client && avatarStorageMode !== 'local';
+const allowLocalAvatarFallback = avatarStorageMode !== 's3';
+
+async function saveAvatarLocally(relativeKey, buffer) {
+  await fs.promises.mkdir(avatarLocalBasePath, { recursive: true });
+  const absolutePath = path.join(__dirname, 'uploads', relativeKey);
+  await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+  await fs.promises.writeFile(absolutePath, buffer);
+  return getLocalAvatarPublicUrl(relativeKey);
+}
 
 // Trade Show file upload configuration
 const tradeShowStorage = multer.diskStorage({
@@ -3446,34 +3463,59 @@ app.post('/api/upload/avatar', authenticateToken, avatarUpload.single('avatar'),
       });
     }
 
-    if (!s3Client) {
+    const hasAnyStorage = shouldUseS3ForAvatars || allowLocalAvatarFallback;
+    if (!hasAnyStorage) {
       return res.status(500).json({
         success: false,
-        message: 'Avatar storage is not configured'
-      });
-    }
-
-    if (!avatarAccessKey || !avatarSecretKey) {
-      return res.status(500).json({
-        success: false,
-        message: 'Missing avatar storage credentials'
+        message: 'Avatar storage is not configured. Enable S3 credentials or local storage.'
       });
     }
 
     const extension = path.extname(req.file.originalname || '').toLowerCase();
     const safeExtension = extension && extension.length <= 5 ? extension : '.jpg';
-    const objectKey = `avatars/${req.user.userId}-${Date.now()}${safeExtension}`;
+    const fileSuffix = `${req.user.userId}-${Date.now()}${safeExtension}`;
+    const s3ObjectKey = `avatars/${fileSuffix}`;
+    const localRelativeKey = `${avatarLocalDirName}/${fileSuffix}`;
 
-    const uploadParams = {
-      Bucket: avatarBucket,
-      Key: objectKey,
-      Body: req.file.buffer,
-      ContentType: req.file.mimetype
-    };
+    let imageUrl = null;
+    let storageBackend = null;
+    const storageErrors = [];
 
-    await s3Client.send(new PutObjectCommand(uploadParams));
+    if (shouldUseS3ForAvatars) {
+      try {
+        const uploadParams = {
+          Bucket: avatarBucket,
+          Key: s3ObjectKey,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype
+        };
 
-    const imageUrl = getAvatarPublicUrl(objectKey);
+        await s3Client.send(new PutObjectCommand(uploadParams));
+        imageUrl = getAvatarPublicUrl(s3ObjectKey);
+        storageBackend = 's3';
+      } catch (s3Error) {
+        storageErrors.push({ backend: 's3', error: s3Error.message });
+        console.error('Avatar upload S3 error:', s3Error);
+      }
+    }
+
+    if (!imageUrl && allowLocalAvatarFallback) {
+      try {
+        imageUrl = await saveAvatarLocally(localRelativeKey, req.file.buffer);
+        storageBackend = 'local';
+      } catch (localError) {
+        storageErrors.push({ backend: 'local', error: localError.message });
+        console.error('Avatar upload local error:', localError);
+      }
+    }
+
+    if (!imageUrl) {
+      return res.status(500).json({
+        success: false,
+        message: 'Unable to store avatar image',
+        attempts: storageErrors
+      });
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.userId,
@@ -3497,7 +3539,8 @@ app.post('/api/upload/avatar', authenticateToken, avatarUpload.single('avatar'),
       success: true,
       message: 'Avatar uploaded successfully',
       imageUrl,
-      user
+      user,
+      storage: storageBackend
     });
   } catch (error) {
     console.error('Avatar upload error:', error);
