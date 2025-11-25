@@ -12,7 +12,11 @@
       "Bash(git commit:*)",
       "Bash(nslookup:*)",
       "Bash(pkill:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(taskkill //F //PID 17400)",
+      "Bash(npm start)",
+      "Bash(timeout /t 3)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

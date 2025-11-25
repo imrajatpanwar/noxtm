@@ -114,6 +114,13 @@ app.use('/api/leads', leadsRoutes);
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);
 
+// Crawler routes
+const crawlersRoutes = require('./routes/crawlers');
+app.use('/api', crawlersRoutes);
+
+// Make Socket.IO available to routes
+app.set('io', io);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));

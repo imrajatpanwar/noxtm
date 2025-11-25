@@ -67,6 +67,12 @@ function initializeRoutes(dependencies) {
         console.log(`👋 User ${socket.id} left conversation: ${conversationId}`);
       });
 
+      // Join crawler job room for real-time updates
+      socket.on('join', (jobId) => {
+        socket.join(jobId);
+        console.log(`🔍 Socket ${socket.id} joined crawler job room: ${jobId}`);
+      });
+
       // Typing indicator - start typing
       socket.on('typing-start', (data) => {
         const { conversationId, userId, userName } = data;

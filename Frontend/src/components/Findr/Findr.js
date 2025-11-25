@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Alert, Spinner } from 'react-bootstrap';
 import { BiSearch, BiExport } from 'react-icons/bi';
-import { FiFilter } from 'react-icons/fi';
+import { FiFilter, FiPlay, FiPause, FiSquare, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { BsCalendar4 } from 'react-icons/bs';
 import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 import { DateRange } from 'react-date-range';
@@ -10,9 +10,10 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import './Findr.css';
 import { API_BASE_URL } from '../../config/apiConfig';
+import io from 'socket.io-client';
 
 function Findr() {
-  const [activeView, setActiveView] = useState('settings'); // 'settings', 'data', or 'user-report'
+  const [activeView, setActiveView] = useState('settings'); // 'settings', 'crawler', or 'user-report'
   
   // Settings state
   const [tradeShows, setTradeShows] = useState([]);
@@ -26,6 +27,19 @@ function Findr() {
   const [userReports, setUserReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [reportDateFilter, setReportDateFilter] = useState('today');
+
+  // Crawler state
+  const [crawlers, setCrawlers] = useState([]);
+  const [selectedCrawler, setSelectedCrawler] = useState('');
+  const [crawlerTradeShowName, setCrawlerTradeShowName] = useState('');
+  const [loadingCrawlers, setLoadingCrawlers] = useState(true);
+  const [runningJob, setRunningJob] = useState(null);
+  const [jobProgress, setJobProgress] = useState(null);
+  const [crawlerLogs, setCrawlerLogs] = useState([]);
+  const [jobHistory, setJobHistory] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [useCustomUrl, setUseCustomUrl] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
 
   // Data view state
   const [data, setData] = useState([]);
@@ -55,11 +69,9 @@ function Findr() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView]);
 
-  // Fetch data when switching to data view
+  // Fetch data when switching views
   useEffect(() => {
-    if (activeView === 'data') {
-      fetchScrapedData();
-    } else if (activeView === 'user-report') {
+    if (activeView === 'user-report') {
       fetchUserReports();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,6 +294,156 @@ function Findr() {
   const endIdx = Math.min(startIdx + pageSize, totalCount);
   const paginatedData = filteredData.slice(startIdx, endIdx);
 
+  // Crawler functions
+  useEffect(() => {
+    if (activeView === 'crawler') {
+      fetchCrawlers();
+      fetchCrawlerHistory();
+      fetchTradeShows(); // Fetch trade shows for dropdown
+    }
+  }, [activeView]);
+
+  // Setup Socket.IO for real-time updates
+  useEffect(() => {
+    if (activeView === 'crawler' && runningJob) {
+      const socketInstance = io(API_BASE_URL, {
+        transports: ['websocket', 'polling']
+      });
+
+      socketInstance.on('connect', () => {
+        console.log('Connected to crawler socket');
+        socketInstance.emit('join', runningJob);
+      });
+
+      socketInstance.on('crawler:progress', (data) => {
+        setJobProgress(data);
+        if (data.logs) {
+          setCrawlerLogs(prev => [...prev, ...data.logs]);
+        }
+      });
+
+      socketInstance.on('disconnect', () => {
+        console.log('Disconnected from crawler socket');
+      });
+
+      setSocket(socketInstance);
+
+      return () => {
+        socketInstance.disconnect();
+      };
+    }
+  }, [activeView, runningJob]);
+
+  const fetchCrawlers = async () => {
+    setLoadingCrawlers(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/findr/crawlers/list', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCrawlers(data.crawlers || []);
+      }
+    } catch (error) {
+      console.error('Error fetching crawlers:', error);
+    } finally {
+      setLoadingCrawlers(false);
+    }
+  };
+
+  const fetchCrawlerHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/findr/crawlers/history', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setJobHistory(data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching crawler history:', error);
+    }
+  };
+
+  const handleRunCrawler = async () => {
+    if (!selectedCrawler) {
+      alert('Please select a crawler');
+      return;
+    }
+
+    if (!selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim())) {
+      alert('Please select a trade show or enter a name for new trade show');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const requestBody = {
+        crawlerId: selectedCrawler,
+        tradeShowName: crawlerTradeShowName
+      };
+
+      // Add customUrl if enabled
+      if (useCustomUrl && customUrl.trim()) {
+        requestBody.customUrl = customUrl.trim();
+      }
+
+      const response = await fetch('/api/findr/crawlers/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRunningJob(data.jobId);
+        setCrawlerLogs([]);
+        setJobProgress({ progress: 0, status: 'starting' });
+        alert('Crawler started successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to start crawler: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error starting crawler:', error);
+      alert('Failed to start crawler');
+    }
+  };
+
+  const handleStopCrawler = async () => {
+    if (!runningJob) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/findr/crawlers/stop/${runningJob}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('Crawler stopped');
+        setRunningJob(null);
+        setJobProgress(null);
+        fetchCrawlerHistory();
+      }
+    } catch (error) {
+      console.error('Error stopping crawler:', error);
+    }
+  };
+
   // Render Settings View
   const renderSettingsView = () => (
     <div className="findr-container">
@@ -430,6 +592,245 @@ function Findr() {
       </div>
     </div>
   );
+
+  // Render Crawler View
+  const renderCrawlerView = () => {
+    const selectedCrawlerInfo = crawlers.find(c => c.id === selectedCrawler);
+
+    return (
+      <div className="findr-crawler-view">
+        <div className="crawler-header">
+          <h2 className="crawler-title">Findr Crawler</h2>
+          <p className="crawler-subtitle">Automate data extraction from trade show websites</p>
+        </div>
+
+        <div className="crawler-controls-card">
+          <div className="crawler-form">
+            <div className="findr-field">
+              <label className="findr-label">Select Crawler Script</label>
+              <select
+                value={selectedCrawler}
+                onChange={(e) => setSelectedCrawler(e.target.value)}
+                className="findr-select"
+                disabled={loadingCrawlers || runningJob}
+              >
+                <option value="">
+                  {loadingCrawlers ? 'Loading crawlers...' : 'Choose a crawler...'}
+                </option>
+                {crawlers.map((crawler) => (
+                  <option key={crawler.id} value={crawler.id}>
+                    {crawler.displayName}
+                  </option>
+                ))}
+              </select>
+              {selectedCrawlerInfo && (
+                <p className="helper-text" style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                  {selectedCrawlerInfo.description}
+                </p>
+              )}
+            </div>
+
+            <div className="findr-field">
+              <label className="findr-label">Trade Show</label>
+              <select
+                value={selectedTradeShow}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedTradeShow(value);
+                  if (value === '__new__') {
+                    setCrawlerTradeShowName('');
+                  } else {
+                    const show = tradeShows.find(ts => ts._id === value);
+                    setCrawlerTradeShowName(show ? show.name : '');
+                  }
+                }}
+                className="findr-select"
+                disabled={loadingTradeShows || runningJob}
+              >
+                <option value="">
+                  {loadingTradeShows ? 'Loading trade shows...' : 'Select existing or create new...'}
+                </option>
+                <option value="__new__">➕ Create New Trade Show</option>
+                {tradeShows.map((show) => (
+                  <option key={show._id} value={show._id}>
+                    {show.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedTradeShow === '__new__' && (
+              <div className="findr-field">
+                <label className="findr-label">New Trade Show Name</label>
+                <input
+                  type="text"
+                  value={crawlerTradeShowName}
+                  onChange={(e) => setCrawlerTradeShowName(e.target.value)}
+                  className="findr-select"
+                  placeholder="Enter trade show name (e.g., Eurobike 2025)"
+                  disabled={runningJob}
+                  style={{ padding: '10px 12px' }}
+                />
+                <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#999' }}>
+                  A new trade show will be created with this name
+                </p>
+              </div>
+            )}
+
+            <div className="findr-field">
+              <label className="findr-radio-label" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={useCustomUrl}
+                  onChange={(e) => {
+                    setUseCustomUrl(e.target.checked);
+                    if (!e.target.checked) {
+                      setCustomUrl('');
+                    }
+                  }}
+                  disabled={runningJob}
+                  style={{ width: 'auto', cursor: 'pointer' }}
+                />
+                <span>Use Custom URL (for any trade show website)</span>
+              </label>
+              <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                Enable this to scrape exhibitor data from any trade show website URL
+              </p>
+            </div>
+
+            {useCustomUrl && (
+              <div className="findr-field">
+                <label className="findr-label">Custom Exhibitor List URL</label>
+                <input
+                  type="url"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  className="findr-select"
+                  placeholder="https://example.com/exhibitors"
+                  disabled={runningJob}
+                  style={{ padding: '10px 12px' }}
+                />
+                <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#ff9800' }}>
+                  ⚠️ Warning: Real scraping may encounter bot protection, CAPTCHAs, or authentication requirements
+                </p>
+              </div>
+            )}
+
+            <div className="crawler-actions">
+              {!runningJob ? (
+                <button
+                  onClick={handleRunCrawler}
+                  disabled={!selectedCrawler || !selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim()) || (useCustomUrl && !customUrl.trim())}
+                  className="crawler-btn crawler-btn-primary"
+                >
+                  <FiPlay /> Run Crawler
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleStopCrawler}
+                    className="crawler-btn crawler-btn-danger"
+                  >
+                    <FiSquare /> Stop Crawler
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {runningJob && jobProgress && (
+          <div className="crawler-progress-card">
+            <div className="progress-header">
+              <h3>Crawler Progress</h3>
+              <span className={`status-badge status-${jobProgress.status}`}>
+                {jobProgress.status === 'running' && <FiPlay />}
+                {jobProgress.status === 'completed' && <FiCheck />}
+                {jobProgress.status === 'failed' && <FiAlertCircle />}
+                {jobProgress.status}
+              </span>
+            </div>
+
+            <div className="progress-bar-container">
+              <div className="progress-bar" style={{ width: `${jobProgress.progress || 0}%` }}></div>
+              <span className="progress-text">{jobProgress.progress || 0}%</span>
+            </div>
+
+            <div className="progress-stats">
+              <div className="stat-item">
+                <span className="stat-label">Current Page:</span>
+                <span className="stat-value">{jobProgress.currentPage || 0} / {jobProgress.totalPages || 0}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Extracted:</span>
+                <span className="stat-value">{jobProgress.recordsExtracted || 0}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Saved:</span>
+                <span className="stat-value">{jobProgress.recordsSaved || 0}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Merged:</span>
+                <span className="stat-value">{jobProgress.recordsMerged || 0}</span>
+              </div>
+            </div>
+
+            {crawlerLogs.length > 0 && (
+              <div className="crawler-logs">
+                <h4>Logs</h4>
+                <div className="logs-container">
+                  {crawlerLogs.slice(-20).map((log, index) => (
+                    <div key={index} className={`log-entry log-${log.level || 'info'}`}>
+                      <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      <span className="log-message">{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {jobHistory.length > 0 && (
+          <div className="crawler-history-card">
+            <h3>Recent Crawler Jobs</h3>
+            <div className="history-table-container">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Script</th>
+                    <th>Trade Show</th>
+                    <th>Status</th>
+                    <th>Extracted</th>
+                    <th>Saved</th>
+                    <th>Merged</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobHistory.map((job) => (
+                    <tr key={job.jobId}>
+                      <td>{job.scriptName}</td>
+                      <td>{job.tradeShowName}</td>
+                      <td>
+                        <span className={`status-badge status-${job.status}`}>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td>{job.recordsExtracted || 0}</td>
+                      <td>{job.recordsSaved || 0}</td>
+                      <td>{job.recordsMerged || 0}</td>
+                      <td>{new Date(job.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Data View
   const renderDataView = () => (
@@ -720,11 +1121,11 @@ function Findr() {
         >
           Settings
         </button>
-        <button 
-          className={`findr-tab ${activeView === 'data' ? 'active' : ''}`}
-          onClick={() => setActiveView('data')}
+        <button
+          className={`findr-tab ${activeView === 'crawler' ? 'active' : ''}`}
+          onClick={() => setActiveView('crawler')}
         >
-          Data
+          Crawler
         </button>
         <button 
           className={`findr-tab ${activeView === 'user-report' ? 'active' : ''}`}
@@ -735,7 +1136,7 @@ function Findr() {
       </div>
       
       {activeView === 'settings' && renderSettingsView()}
-      {activeView === 'data' && renderDataView()}
+      {activeView === 'crawler' && renderCrawlerView()}
       {activeView === 'user-report' && renderUserReportView()}
     </div>
   );
