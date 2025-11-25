@@ -957,6 +957,22 @@ svg {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.crawler-form .findr-select option {
+  background: #3d3d3d;
+  color: #ffffff;
+  padding: 12px 18px;
+  font-size: 15px;
+}
+
+.crawler-form .findr-select option:hover {
+  background: #4d4d4d;
+}
+
+.crawler-form .findr-select option:checked {
+  background: #ffffff;
+  color: #3d3d3d;
+}
+
 .crawler-form .findr-select:focus,
 .crawler-form input[type="text"]:focus,
 .crawler-form input[type="url"]:focus {
