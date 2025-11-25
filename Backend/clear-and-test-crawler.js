@@ -16,7 +16,7 @@ async function clearAndCheck() {
     const tradeShowDeleteResult = await TradeShow.deleteMany({});
     console.log(`Deleted ${tradeShowDeleteResult.deletedCount} trade shows\n`);
 
-    console.log('✅ Database cleared! Now run the Eurobike crawler from the dashboard.\n');
+    console.log('✅ Database cleared! Now run the exhibitor crawler from the dashboard.\n');
     console.log('After running the crawler, use "node check-crawler-data.js" to verify real exhibitor data.\n');
 
     process.exit(0);

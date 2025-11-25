@@ -30,7 +30,7 @@ function Findr() {
 
   // Crawler state
   const [crawlers, setCrawlers] = useState([]);
-  const [selectedCrawler, setSelectedCrawler] = useState('');
+  const [selectedCrawler] = useState('noxtmExhibitor'); // Auto-select the single crawler
   const [crawlerTradeShowName, setCrawlerTradeShowName] = useState('');
   const [loadingCrawlers, setLoadingCrawlers] = useState(true);
   const [runningJob, setRunningJob] = useState(null);
@@ -38,7 +38,6 @@ function Findr() {
   const [crawlerLogs, setCrawlerLogs] = useState([]);
   const [jobHistory, setJobHistory] = useState([]);
   const [socket, setSocket] = useState(null);
-  const [useCustomUrl, setUseCustomUrl] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
 
   // Data view state
@@ -374,13 +373,13 @@ function Findr() {
   };
 
   const handleRunCrawler = async () => {
-    if (!selectedCrawler) {
-      alert('Please select a crawler');
+    if (!selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim())) {
+      alert('Please select a trade show or enter a name for new trade show');
       return;
     }
 
-    if (!selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim())) {
-      alert('Please select a trade show or enter a name for new trade show');
+    if (!customUrl.trim()) {
+      alert('Please enter a URL to scrape');
       return;
     }
 
@@ -388,13 +387,9 @@ function Findr() {
       const token = localStorage.getItem('token');
       const requestBody = {
         crawlerId: selectedCrawler,
-        tradeShowName: crawlerTradeShowName
+        tradeShowName: crawlerTradeShowName,
+        customUrl: customUrl.trim()
       };
-
-      // Add customUrl if enabled
-      if (useCustomUrl && customUrl.trim()) {
-        requestBody.customUrl = customUrl.trim();
-      }
 
       const response = await fetch('/api/findr/crawlers/run', {
         method: 'POST',
@@ -595,41 +590,15 @@ function Findr() {
 
   // Render Crawler View
   const renderCrawlerView = () => {
-    const selectedCrawlerInfo = crawlers.find(c => c.id === selectedCrawler);
-
     return (
       <div className="findr-crawler-view">
         <div className="crawler-header">
-          <h2 className="crawler-title">Findr Crawler</h2>
+          <h2 className="crawler-title">noxtm-Exhibitor-Crawler</h2>
           <p className="crawler-subtitle">Automate data extraction from trade show websites</p>
         </div>
 
         <div className="crawler-controls-card">
           <div className="crawler-form">
-            <div className="findr-field">
-              <label className="findr-label">Select Crawler Script</label>
-              <select
-                value={selectedCrawler}
-                onChange={(e) => setSelectedCrawler(e.target.value)}
-                className="findr-select"
-                disabled={loadingCrawlers || runningJob}
-              >
-                <option value="">
-                  {loadingCrawlers ? 'Loading crawlers...' : 'Choose a crawler...'}
-                </option>
-                {crawlers.map((crawler) => (
-                  <option key={crawler.id} value={crawler.id}>
-                    {crawler.displayName}
-                  </option>
-                ))}
-              </select>
-              {selectedCrawlerInfo && (
-                <p className="helper-text" style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
-                  {selectedCrawlerInfo.description}
-                </p>
-              )}
-            </div>
-
             <div className="findr-field">
               <label className="findr-label">Trade Show</label>
               <select
@@ -667,60 +636,37 @@ function Findr() {
                   value={crawlerTradeShowName}
                   onChange={(e) => setCrawlerTradeShowName(e.target.value)}
                   className="findr-select"
-                  placeholder="Enter trade show name (e.g., Eurobike 2025)"
+                  placeholder="Enter trade show name (e.g., Ambiente 2025)"
                   disabled={runningJob}
                   style={{ padding: '10px 12px' }}
                 />
-                <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#999' }}>
+                <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.9)' }}>
                   A new trade show will be created with this name
                 </p>
               </div>
             )}
 
             <div className="findr-field">
-              <label className="findr-radio-label" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={useCustomUrl}
-                  onChange={(e) => {
-                    setUseCustomUrl(e.target.checked);
-                    if (!e.target.checked) {
-                      setCustomUrl('');
-                    }
-                  }}
-                  disabled={runningJob}
-                  style={{ width: 'auto', cursor: 'pointer' }}
-                />
-                <span>Use Custom URL (for any trade show website)</span>
-              </label>
-              <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
-                Enable this to scrape exhibitor data from any trade show website URL
+              <label className="findr-label">Exhibitor List URL</label>
+              <input
+                type="url"
+                value={customUrl}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                className="findr-select"
+                placeholder="https://example.com/exhibitors"
+                disabled={runningJob}
+                style={{ padding: '10px 12px' }}
+              />
+              <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.9)' }}>
+                Enter the URL of the trade show exhibitor list page
               </p>
             </div>
-
-            {useCustomUrl && (
-              <div className="findr-field">
-                <label className="findr-label">Custom Exhibitor List URL</label>
-                <input
-                  type="url"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  className="findr-select"
-                  placeholder="https://example.com/exhibitors"
-                  disabled={runningJob}
-                  style={{ padding: '10px 12px' }}
-                />
-                <p className="helper-text" style={{ marginTop: '4px', fontSize: '12px', color: '#ff9800' }}>
-                  ⚠️ Warning: Real scraping may encounter bot protection, CAPTCHAs, or authentication requirements
-                </p>
-              </div>
-            )}
 
             <div className="crawler-actions">
               {!runningJob ? (
                 <button
                   onClick={handleRunCrawler}
-                  disabled={!selectedCrawler || !selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim()) || (useCustomUrl && !customUrl.trim())}
+                  disabled={!selectedTradeShow || (selectedTradeShow === '__new__' && !crawlerTradeShowName.trim()) || !customUrl.trim()}
                   className="crawler-btn crawler-btn-primary"
                 >
                   <FiPlay /> Run Crawler
