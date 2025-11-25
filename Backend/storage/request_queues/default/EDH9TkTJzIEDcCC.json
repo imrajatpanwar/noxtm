@@ -1,0 +1,9 @@
+{
+	"id": "EDH9TkTJzIEDcCC",
+	"json": "{\"id\":\"EDH9TkTJzIEDcCC\",\"url\":\"https://ambiente.messefrankfurt.com/frankfurt/en/exhibitor-search.html?page=1&pagesize=30\",\"loadedUrl\":\"https://ambiente.messefrankfurt.com/frankfurt/en/exhibitor-search.html?page=1&pagesize=30\",\"uniqueKey\":\"https://ambiente.messefrankfurt.com/frankfurt/en/exhibitor-search.html?page=1&pagesize=30\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"pageNumber\":1,\"__crawlee\":{\"state\":4}},\"handledAt\":\"2025-11-25T15:24:00.345Z\"}",
+	"method": "GET",
+	"orderNo": null,
+	"retryCount": 0,
+	"uniqueKey": "https://ambiente.messefrankfurt.com/frankfurt/en/exhibitor-search.html?page=1&pagesize=30",
+	"url": "https://ambiente.messefrankfurt.com/frankfurt/en/exhibitor-search.html?page=1&pagesize=30"
+}
