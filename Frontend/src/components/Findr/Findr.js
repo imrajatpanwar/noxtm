@@ -617,7 +617,7 @@ function Findr() {
                 disabled={loadingTradeShows || runningJob}
               >
                 <option value="">
-                  {loadingTradeShows ? 'Loading trade shows...' : 'Select existing or create new...'}
+                  {loadingTradeShows ? 'Loading trade shows...' : '-- Choose Trade Show --'}
                 </option>
                 <option value="__new__">➕ Create New Trade Show</option>
                 {tradeShows.map((show) => (
