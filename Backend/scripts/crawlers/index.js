@@ -1,30 +1,15 @@
-const EurobikeCrawler = require('./eurobike');
-const CESCrawler = require('./ces');
+const NoxtmExhibitorCrawler = require('./noxtm-Exhibitor-Crawler');
 
 // Registry of all available crawlers
 const crawlers = {
-  eurobike: {
-    class: EurobikeCrawler,
-    name: 'Eurobike',
-    displayName: 'Eurobike Trade Show',
-    description: 'Extract exhibitor data from Eurobike trade show website',
+  noxtmExhibitor: {
+    class: NoxtmExhibitorCrawler,
+    name: 'NoxtmExhibitor',
+    displayName: 'noxtm-Exhibitor-Crawler',
+    description: 'Extract exhibitor data from trade show websites',
     metadata: {
-      fullName: 'Eurobike Frankfurt',
-      location: 'Frankfurt, Germany',
-      date: '2025-07-13',
-      website: 'https://eurobike.com'
-    }
-  },
-  ces: {
-    class: CESCrawler,
-    name: 'CES',
-    displayName: 'CES (Consumer Electronics Show)',
-    description: 'Extract exhibitor data from CES trade show',
-    metadata: {
-      fullName: 'Consumer Electronics Show (CES)',
-      location: 'Las Vegas, USA',
-      date: '2026-01-07',
-      website: 'https://ces.tech'
+      fullName: 'Exhibitor Data Crawler',
+      industry: 'Trade Shows'
     }
   }
 };
