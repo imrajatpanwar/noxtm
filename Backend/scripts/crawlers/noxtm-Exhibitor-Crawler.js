@@ -9,7 +9,7 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
       displayName: 'noxtm-Exhibitor-Crawler',
       description: 'Extract exhibitor data from trade show websites',
       baseUrl: 'https://webscraper.io/test-sites/e-commerce/static/computers/laptops',
-      maxPages: 2,
+      maxPages: 10,  // Increased to 10 pages for multi-page crawling
       pageSize: 50,
       metadata: {
         fullName: 'Exhibitor Data Crawler',
@@ -335,7 +335,21 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
             // Wait for page to load
             await page.waitForSelector('body', { timeout: 15000 });
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for JavaScript
+
+            // Wait longer for JavaScript-heavy sites (like Ambiente Frankfurt)
+            await job.addLog('Waiting for dynamic content to load...', 'info');
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Extended wait
+
+            // Try to detect when content is loaded by waiting for common exhibitor containers
+            try {
+              await page.waitForSelector(
+                '.exhibitor, .company, article, .result, .listing, [class*="exhibitor"], [class*="result"]',
+                { timeout: 10000 }
+              );
+              await job.addLog('Dynamic content detected!', 'info');
+            } catch (e) {
+              await job.addLog('No specific exhibitor containers found, proceeding with extraction...', 'info');
+            }
 
             await job.addLog('Page loaded, extracting exhibitor data...', 'info');
 
@@ -673,26 +687,115 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
             await job.addLog(`Error on page ${pageNumber}: ${e.message}`, 'error');
           }
 
-          // Queue next page (if pagination exists)
+          // Handle pagination - CLICK to next page
           const nextPageNumber = pageNumber + 1;
           if (nextPageNumber <= this.config.maxPages && !this.shouldStop) {
-            // Try to find next page link
+            await job.addLog(`Checking for next page (page ${nextPageNumber})...`, 'info');
+
             try {
-              const hasNextPage = await page.evaluate(() => {
-                const nextBtn = document.querySelector('.next, .pagination-next, [rel="next"], a[href*="page=2"]');
-                return !!nextBtn;
+              // Try to find and CLICK the next page button with multiple selectors
+              const nextPageInfo = await page.evaluate(() => {
+                // Comprehensive list of next button selectors
+                const selectors = [
+                  'button.next',
+                  'a.next',
+                  'button.pagination-next',
+                  'a.pagination-next',
+                  '[rel="next"]',
+                  '[aria-label="Next"]',
+                  '[aria-label="Next page"]',
+                  'a[href*="page="]',
+                  'button[aria-label*="next" i]',
+                  'a[aria-label*="next" i]',
+                  '.pagination .next',
+                  '.pagination a:last-child',
+                  'button:has-text("Next")',
+                  'a:has-text("Next")',
+                  '[class*="next"]',
+                  '[class*="pagination"] button:last-child',
+                  '[class*="pagination"] a:last-child',
+                  'nav[role="navigation"] button:last-child',
+                  'nav[role="navigation"] a:last-child'
+                ];
+
+                for (const selector of selectors) {
+                  try {
+                    const btn = document.querySelector(selector);
+                    if (btn && !btn.disabled && !btn.classList.contains('disabled')) {
+                      // Check if it's actually a "next" button (not "previous")
+                      const text = btn.textContent?.toLowerCase() || '';
+                      const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
+
+                      if (
+                        text.includes('next') ||
+                        text.includes('→') ||
+                        text.includes('›') ||
+                        text.includes('»') ||
+                        ariaLabel.includes('next') ||
+                        selector.includes('next')
+                      ) {
+                        return {
+                          found: true,
+                          selector: selector,
+                          text: btn.textContent?.trim(),
+                          isLink: btn.tagName === 'A',
+                          href: btn.href || null
+                        };
+                      }
+                    }
+                  } catch (e) {
+                    continue;
+                  }
+                }
+                return { found: false };
               });
 
-              if (hasNextPage) {
-                const nextUrl = `${this.getTargetUrl()}?page=${nextPageNumber}`;
-                await crawler.addRequests([{
-                  url: nextUrl,
-                  userData: { pageNumber: nextPageNumber }
-                }]);
+              if (nextPageInfo.found) {
+                await job.addLog(`Found next page button: "${nextPageInfo.text}" (${nextPageInfo.selector})`, 'success');
+
+                // Method 1: If it's a link with href, navigate directly
+                if (nextPageInfo.isLink && nextPageInfo.href) {
+                  await job.addLog(`Navigating to next page via link: ${nextPageInfo.href}`, 'info');
+                  await crawler.addRequests([{
+                    url: nextPageInfo.href,
+                    userData: { pageNumber: nextPageNumber }
+                  }]);
+                } else {
+                  // Method 2: Click the button and wait for navigation/content update
+                  await job.addLog(`Clicking next page button...`, 'info');
+
+                  const clicked = await page.evaluate((selector) => {
+                    const btn = document.querySelector(selector);
+                    if (btn) {
+                      btn.click();
+                      return true;
+                    }
+                    return false;
+                  }, nextPageInfo.selector);
+
+                  if (clicked) {
+                    // Wait for either navigation or new content to load
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+
+                    // Get the new URL after click
+                    const newUrl = page.url();
+                    await job.addLog(`After click, current URL: ${newUrl}`, 'info');
+
+                    // Queue the new page
+                    await crawler.addRequests([{
+                      url: newUrl,
+                      userData: { pageNumber: nextPageNumber }
+                    }]);
+                  }
+                }
+              } else {
+                await job.addLog('No next page button found - reached last page', 'info');
               }
             } catch (e) {
-              await job.addLog('No pagination found', 'info');
+              await job.addLog(`Pagination error: ${e.message}`, 'warning');
             }
+          } else if (nextPageNumber > this.config.maxPages) {
+            await job.addLog(`Reached maximum pages limit (${this.config.maxPages})`, 'info');
           }
         }
       });
