@@ -7,9 +7,9 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
     super({
       name: 'NoxtmExhibitor',
       displayName: 'noxtm-Exhibitor-Crawler',
-      description: 'Extract exhibitor data from trade show websites',
+      description: 'Simple exhibitor data extraction: Company Name, Booth No, Website only',
       baseUrl: 'https://webscraper.io/test-sites/e-commerce/static/computers/laptops',
-      maxPages: 10,  // Increased to 10 pages for multi-page crawling
+      maxPages: 999,  // High limit - will extract all pages until no more pagination found
       pageSize: 50,
       metadata: {
         fullName: 'Exhibitor Data Crawler',
@@ -298,9 +298,9 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
       // Configure Puppeteer crawler
       const crawler = new PuppeteerCrawler({
-        maxRequestsPerCrawl: this.config.maxPages + 500, // Allow more for detail pages
+        maxRequestsPerCrawl: 9999, // Allow unlimited pages for complete trade show extraction
         requestHandlerTimeoutSecs: 90,
-        maxConcurrency: 3, // Run 3 browsers in parallel for detail pages
+        maxConcurrency: 1, // Sequential processing - one page at a time
         launchContext: {
           launchOptions: {
             headless: true,
@@ -325,99 +325,11 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
 
-          // Determine if this is a list page or detail page
-          const level = request.userData.level || 'list';
+          // Get page number from request
           const pageNumber = request.userData.pageNumber || 1;
 
-          if (level === 'detail') {
-            // DETAIL PAGE EXTRACTION
-            const exhibitorName = request.userData.exhibitorName || 'Unknown';
-            await job.addLog(`Extracting detail page for: ${exhibitorName}`, 'info');
-
-            try {
-              // Set extra headers
-              await page.setExtraHTTPHeaders({
-                'Accept-Language': 'en-US,en;q=0.9'
-              });
-
-              await page.waitForSelector('body', { timeout: 15000 });
-              await new Promise(resolve => setTimeout(resolve, 3000));
-
-              // Extract detailed data from exhibitor detail page
-              const detailData = await page.evaluate(() => {
-                const data = {
-                  contacts: [],
-                  socialLinks: [],
-                  hallNumber: '',
-                  address: ''
-                };
-
-                // Extract contacts with roles
-                const contactElements = document.querySelectorAll(
-                  '.contact, .person, .staff, [class*="contact"], [class*="person"], [class*="employee"]'
-                );
-
-                contactElements.forEach(el => {
-                  const name = el.querySelector('.name, [class*="name"], strong, h3, h4')?.textContent?.trim() || '';
-                  const designation = el.querySelector('.title, .role, .position, [class*="title"], [class*="role"]')?.textContent?.trim() || '';
-                  const emailEl = el.querySelector('a[href^="mailto:"]');
-                  const email = emailEl ? emailEl.href.replace('mailto:', '') : el.querySelector('.email, [class*="email"]')?.textContent?.trim() || '';
-                  const phone = el.querySelector('.phone, .tel, [class*="phone"], [class*="tel"]')?.textContent?.trim() || '';
-
-                  // Extract social links for this contact
-                  const contactSocial = [];
-                  el.querySelectorAll('a[href*="linkedin"], a[href*="facebook"], a[href*="twitter"], a[href*="instagram"]').forEach(link => {
-                    if (link.href) contactSocial.push(link.href);
-                  });
-
-                  if (name || email || phone) {
-                    data.contacts.push({
-                      fullName: name || '',
-                      designation: designation || '',
-                      email: email || '',
-                      phone: phone || '',
-                      socialLinks: contactSocial,
-                      location: '',
-                      sameAsCompany: false
-                    });
-                  }
-                });
-
-                // Extract company-level social links
-                document.querySelectorAll('a[href*="linkedin"], a[href*="facebook"], a[href*="twitter"], a[href*="instagram"]').forEach(link => {
-                  if (link.href && !data.socialLinks.includes(link.href)) {
-                    data.socialLinks.push(link.href);
-                  }
-                });
-
-                // Extract hall/booth if on detail page
-                const hallEl = document.querySelector('.hall, .booth, [class*="hall"], [class*="booth"], [class*="stand"]');
-                if (hallEl) data.hallNumber = hallEl.textContent?.trim() || '';
-
-                // Extract address
-                const addressEl = document.querySelector('.address, [class*="address"], [class*="location"]');
-                if (addressEl) data.address = addressEl.textContent?.trim() || '';
-
-                return data;
-              });
-
-              // Merge with existing exhibitor
-              await this.mergeDetailData(exhibitorName, detailData, tradeShow._id, userId, companyId);
-
-              job.recordsExtracted += 1;
-              await job.save();
-
-              await job.addLog(`✓ Detail page processed: ${exhibitorName} | Contacts: ${detailData.contacts.length}`, 'success');
-
-            } catch (e) {
-              await job.addLog(`Error extracting detail page for ${exhibitorName}: ${e.message}`, 'error');
-            }
-
-            return; // Exit handler for detail pages
-          }
-
-          // LIST PAGE EXTRACTION (existing logic)
-          await job.addLog(`Processing List Page ${pageNumber} with Puppeteer...`, 'info');
+          // LIST PAGE EXTRACTION - Simple mode: Company Name, Booth No, Hall No, Website only
+          await job.addLog(`Processing Page ${pageNumber}...`, 'info');
 
           try {
             // Set extra headers to avoid detection
@@ -445,40 +357,22 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
             await job.addLog('Page loaded, extracting exhibitor data...', 'info');
 
-            // Extract REAL exhibitor data with enhanced extraction
+            // Extract exhibitor data - SIMPLE MODE: Company Name, Booth No, Hall No, Website ONLY
             let exhibitorData = await page.evaluate(() => {
               const items = [];
 
-              // Helper function to extract email from text using regex
-              const extractEmailFromText = (text) => {
+              // Helper function to clean booth/hall number
+              const cleanBoothNumber = (text) => {
                 if (!text) return '';
-                const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-                const match = text.match(emailRegex);
-                return match ? match[0] : '';
+                return text.replace(/^(booth|stand|hall|pavilion)[:\s]*/gi, '').trim();
               };
 
-              // Helper function to extract phone from text
-              const extractPhoneFromText = (text) => {
-                if (!text) return '';
-                // Matches formats: +1234567890, (123) 456-7890, 123-456-7890, etc.
-                const phoneRegex = /[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}/g;
-                const match = text.match(phoneRegex);
-                return match ? match[0].trim() : '';
-              };
-
-              // Helper function to extract URL from text
+              // Helper function to extract URL
               const extractUrlFromText = (text) => {
                 if (!text) return '';
                 const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/gi;
                 const match = text.match(urlRegex);
                 return match ? match[0] : '';
-              };
-
-              // Helper function to clean and validate booth number
-              const cleanBoothNumber = (text) => {
-                if (!text) return '';
-                // Remove common labels and extract just the number/code
-                return text.replace(/^(booth|stand|hall|pavilion)[:\s]*/gi, '').trim();
               };
 
               // Try multiple selectors for exhibitor listings
@@ -490,10 +384,9 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
               exhibitorCards.forEach((card, index) => {
                 try {
-                  // Get all text content for fallback pattern matching
                   const cardText = card.textContent || '';
 
-                  // Extract company name - try multiple selectors
+                  // Extract company name
                   const name =
                     card.querySelector('.company-name')?.textContent?.trim() ||
                     card.querySelector('.exhibitor-name')?.textContent?.trim() ||
@@ -502,32 +395,29 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                     card.querySelector('h3')?.textContent?.trim() ||
                     card.querySelector('h4')?.textContent?.trim() ||
                     card.querySelector('.name')?.textContent?.trim() ||
-                    card.querySelector('[class*="company"]')?.textContent?.trim() ||
                     card.querySelector('[class*="name"]')?.textContent?.trim() ||
                     card.querySelector('strong')?.textContent?.trim() ||
-                    card.querySelector('b')?.textContent?.trim() ||
                     '';
 
-                  // Extract booth/stand number with enhanced selectors
-                  let booth =
+                  // Extract booth/hall number
+                  let boothNo =
                     card.querySelector('.booth')?.textContent?.trim() ||
                     card.querySelector('.stand')?.textContent?.trim() ||
                     card.querySelector('.hall')?.textContent?.trim() ||
                     card.querySelector('[class*="booth"]')?.textContent?.trim() ||
                     card.querySelector('[class*="stand"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="hall"]')?.textContent?.trim() ||
                     card.querySelector('[data-booth]')?.getAttribute('data-booth')?.trim() ||
                     card.querySelector('[data-stand]')?.getAttribute('data-stand')?.trim() ||
                     '';
-                  booth = cleanBoothNumber(booth);
+                  boothNo = cleanBoothNumber(boothNo);
 
-                  // Extract website with enhanced selectors
+                  // Extract website
                   let website =
                     card.querySelector('a.website')?.href ||
                     card.querySelector('a[class*="website"]')?.href ||
                     card.querySelector('a[href*="www"]')?.href ||
                     card.querySelector('a[href^="http"]')?.href ||
-                    card.querySelector('.website')?.textContent?.trim() ||
-                    card.querySelector('[class*="website"]')?.textContent?.trim() ||
                     extractUrlFromText(cardText) ||
                     '';
 
@@ -536,104 +426,12 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                     website = 'https://' + website.replace(/^www\./, '');
                   }
 
-                  // Extract email with enhanced selectors and pattern matching
-                  let email =
-                    card.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') ||
-                    card.querySelector('.email')?.textContent?.trim() ||
-                    card.querySelector('[class*="email"]')?.textContent?.trim() ||
-                    card.querySelector('[class*="mail"]')?.textContent?.trim() ||
-                    extractEmailFromText(cardText) ||
-                    '';
-
-                  // Extract location/country with enhanced selectors
-                  let country =
-                    card.querySelector('.country')?.textContent?.trim() ||
-                    card.querySelector('.location')?.textContent?.trim() ||
-                    card.querySelector('.address')?.textContent?.trim() ||
-                    card.querySelector('[class*="country"]')?.textContent?.trim() ||
-                    card.querySelector('[class*="location"]')?.textContent?.trim() ||
-                    card.querySelector('[class*="address"]')?.textContent?.trim() ||
-                    card.querySelector('[class*="city"]')?.textContent?.trim() ||
-                    '';
-
-                  // Extract contacts (people)
-                  const contacts = [];
-                  const contactElements = card.querySelectorAll('.contact, .contact-person, [class*="contact"], .person, [class*="person"]');
-
-                  contactElements.forEach(contactEl => {
-                    const contactText = contactEl.textContent || '';
-                    const contactName =
-                      contactEl.querySelector('.name')?.textContent?.trim() ||
-                      contactEl.querySelector('[class*="name"]')?.textContent?.trim() ||
-                      contactEl.querySelector('strong')?.textContent?.trim() ||
-                      '';
-
-                    const contactPhone =
-                      contactEl.querySelector('.phone')?.textContent?.trim() ||
-                      contactEl.querySelector('[class*="phone"]')?.textContent?.trim() ||
-                      contactEl.querySelector('[class*="tel"]')?.textContent?.trim() ||
-                      extractPhoneFromText(contactText) ||
-                      '';
-
-                    const contactEmail =
-                      contactEl.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') ||
-                      contactEl.querySelector('.email')?.textContent?.trim() ||
-                      extractEmailFromText(contactText) ||
-                      '';
-
-                    const contactDesignation =
-                      contactEl.querySelector('.title')?.textContent?.trim() ||
-                      contactEl.querySelector('.designation')?.textContent?.trim() ||
-                      contactEl.querySelector('[class*="title"]')?.textContent?.trim() ||
-                      contactEl.querySelector('[class*="position"]')?.textContent?.trim() ||
-                      '';
-
-                    // Extract social links
-                    const socialLinks = [];
-                    const socialElements = contactEl.querySelectorAll('a[href*="linkedin"], a[href*="twitter"], a[href*="facebook"]');
-                    socialElements.forEach(link => {
-                      if (link.href) socialLinks.push(link.href);
-                    });
-
-                    if (contactName || contactEmail || contactPhone) {
-                      contacts.push({
-                        fullName: contactName,
-                        designation: contactDesignation,
-                        phone: contactPhone,
-                        email: contactEmail,
-                        socialLinks: socialLinks,
-                        location: '',
-                        sameAsCompany: contactEmail === email
-                      });
-                    }
-                  });
-
-                  // If no specific contact elements, try to extract from card text
-                  if (contacts.length === 0) {
-                    const cardEmail = email || extractEmailFromText(cardText);
-                    const cardPhone = extractPhoneFromText(cardText);
-
-                    if (cardEmail || cardPhone) {
-                      contacts.push({
-                        fullName: '',
-                        designation: '',
-                        phone: cardPhone,
-                        email: cardEmail,
-                        socialLinks: [],
-                        location: '',
-                        sameAsCompany: true
-                      });
-                    }
-                  }
-
+                  // Only push if we have at least a company name
                   if (name && name.length > 2) {
                     items.push({
                       name: name,
-                      boothNo: booth,
-                      website: website,
-                      email: email,
-                      location: country,
-                      contacts: contacts
+                      boothNo: boothNo,
+                      website: website
                     });
                   }
                 } catch (e) {
@@ -651,32 +449,13 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                     const name = cells[0]?.textContent?.trim() || cells[1]?.textContent?.trim();
 
                     if (name && name.length > 2 && !name.toLowerCase().includes('company') && !name.toLowerCase().includes('exhibitor')) {
-                      const booth = cleanBoothNumber(cells[1]?.textContent?.trim() || '');
+                      const boothNo = cleanBoothNumber(cells[1]?.textContent?.trim() || cells[2]?.textContent?.trim() || '');
                       const website = row.querySelector('a[href^="http"]')?.href || extractUrlFromText(rowText) || '';
-                      const email = row.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') || extractEmailFromText(rowText) || '';
-                      const country = cells[2]?.textContent?.trim() || cells[3]?.textContent?.trim() || '';
-                      const phone = extractPhoneFromText(rowText);
-
-                      const contacts = [];
-                      if (email || phone) {
-                        contacts.push({
-                          fullName: '',
-                          designation: '',
-                          phone: phone,
-                          email: email,
-                          socialLinks: [],
-                          location: '',
-                          sameAsCompany: true
-                        });
-                      }
 
                       items.push({
                         name: name,
-                        boothNo: booth,
-                        website: website,
-                        email: email,
-                        location: country,
-                        contacts: contacts
+                        boothNo: boothNo,
+                        website: website
                       });
                     }
                   }
@@ -715,9 +494,9 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                     companyName: item.name || 'N/A',
                     boothNo: item.boothNo || '',
                     website: item.website || '',
-                    companyEmail: item.email || '',
-                    location: item.location || '',
-                    contacts: item.contacts || []
+                    companyEmail: '',
+                    location: '',
+                    contacts: []
                   };
 
                   // Save or merge exhibitor
@@ -730,78 +509,24 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
                   job.recordsExtracted += 1;
 
-                  // Create detailed log message showing extracted data
+                  // Create log message
                   const dataDetails = [];
                   if (exhibitor.boothNo) dataDetails.push(`Booth: ${exhibitor.boothNo}`);
-                  if (exhibitor.location) dataDetails.push(`Location: ${exhibitor.location}`);
-                  if (exhibitor.companyEmail) dataDetails.push(`Email: ${exhibitor.companyEmail}`);
                   if (exhibitor.website) dataDetails.push(`Website: ${exhibitor.website}`);
-                  if (exhibitor.contacts && exhibitor.contacts.length > 0) {
-                    dataDetails.push(`Contacts: ${exhibitor.contacts.length}`);
-                  }
                   const detailsStr = dataDetails.length > 0 ? ` | ${dataDetails.join(' | ')}` : '';
 
                   if (result === 'created') {
                     job.recordsSaved += 1;
-                    await job.addLog(`✓ Created: ${exhibitor.companyName}${detailsStr}`, 'success');
+                    await job.addLog(`✓ ${exhibitor.companyName}${detailsStr}`, 'success');
                   } else if (result === 'merged') {
                     job.recordsMerged += 1;
-                    await job.addLog(`⟲ Merged: ${exhibitor.companyName}${detailsStr}`, 'info');
-                  } else {
-                    await job.addLog(`→ Skipped: ${exhibitor.companyName} (duplicate)`, 'info');
+                    await job.addLog(`⟲ ${exhibitor.companyName}${detailsStr}`, 'info');
                   }
 
                   await job.save();
                 } catch (error) {
                   await job.addError(`Error processing exhibitor: ${error.message}`, pageNumber);
                 }
-              }
-
-              // Extract detail page URLs for deep scraping
-              await job.addLog('Extracting detail page URLs...', 'info');
-              const detailUrls = await page.evaluate(() => {
-                const urls = [];
-                const cards = document.querySelectorAll(
-                  '.exhibitor-card, .company-card, [data-exhibitor], .exhibitor-item, article.exhibitor, div.exhibitor, [class*="exhibitor"]'
-                );
-
-                cards.forEach(card => {
-                  const link = card.querySelector('a[href]');
-                  const nameEl = card.querySelector('h1, h2, h3, h4, .company-name, .exhibitor-name, [class*="name"]');
-
-                  if (link && nameEl) {
-                    const href = link.href;
-                    const name = nameEl.textContent?.trim() || '';
-
-                    // Only add if it looks like a detail page URL (not external links)
-                    if (href && name && !href.includes('mailto:') && !href.includes('tel:')) {
-                      urls.push({
-                        url: href,
-                        exhibitorName: name
-                      });
-                    }
-                  }
-                });
-
-                return urls;
-              });
-
-              // Queue detail pages for extraction
-              if (detailUrls.length > 0) {
-                await job.addLog(`Found ${detailUrls.length} detail page URLs, queueing for deep scraping...`, 'success');
-
-                await crawler.addRequests(
-                  detailUrls.map(item => ({
-                    url: item.url,
-                    userData: {
-                      level: 'detail',
-                      exhibitorName: item.exhibitorName,
-                      parentPage: pageNumber
-                    }
-                  }))
-                );
-              } else {
-                await job.addLog('No detail page URLs found - exhibitors may not have individual pages', 'info');
               }
 
               // Update progress
@@ -978,88 +703,6 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
     }
   }
 
-  // Merge detail page data with existing exhibitor record
-  async mergeDetailData(exhibitorName, detailData, tradeShowId, userId, companyId) {
-    const Exhibitor = require('../../models/Exhibitor');
-    const job = await CrawlerJob.findOne({ jobId: this.jobId });
-
-    try {
-      // Find exhibitor by name
-      let exhibitor = await Exhibitor.findOne({
-        tradeShowId: tradeShowId,
-        companyName: { $regex: new RegExp(`^${exhibitorName}$`, 'i') },
-        companyId: companyId
-      });
-
-      if (!exhibitor) {
-        await job.addLog(`⚠ Exhibitor "${exhibitorName}" not found for detail merge, skipping`, 'warning');
-        return;
-      }
-
-      let updated = false;
-
-      // Merge contacts with deduplication by email
-      if (detailData.contacts && detailData.contacts.length > 0) {
-        const existingEmails = new Set(
-          exhibitor.contacts.filter(c => c.email).map(c => c.email.toLowerCase())
-        );
-
-        const newContacts = detailData.contacts.filter(c =>
-          !c.email || !existingEmails.has(c.email.toLowerCase())
-        );
-
-        if (newContacts.length > 0) {
-          exhibitor.contacts.push(...newContacts);
-          updated = true;
-          await job.addLog(`  Added ${newContacts.length} new contacts to ${exhibitorName}`, 'info');
-        }
-      }
-
-      // Update fields if they're empty or if detail data is more complete
-      if (detailData.hallNumber && !exhibitor.boothNo) {
-        exhibitor.boothNo = detailData.hallNumber;
-        updated = true;
-      }
-
-      if (detailData.address && !exhibitor.location) {
-        exhibitor.location = detailData.address;
-        updated = true;
-      }
-
-      // Store social links in the first contact or create a company contact
-      if (detailData.socialLinks && detailData.socialLinks.length > 0) {
-        if (exhibitor.contacts.length > 0) {
-          // Add to first contact's social links
-          exhibitor.contacts[0].socialLinks = [
-            ...(exhibitor.contacts[0].socialLinks || []),
-            ...detailData.socialLinks
-          ];
-          updated = true;
-        } else {
-          // Create a company-level contact with social links
-          exhibitor.contacts.push({
-            fullName: '',
-            designation: '',
-            email: '',
-            phone: '',
-            socialLinks: detailData.socialLinks,
-            location: '',
-            sameAsCompany: true
-          });
-          updated = true;
-        }
-      }
-
-      if (updated) {
-        await exhibitor.save();
-        job.recordsMerged += 1;
-        await job.save();
-      }
-
-    } catch (error) {
-      await job.addError(`Failed to merge detail data for "${exhibitorName}": ${error.message}`);
-    }
-  }
 }
 
 module.exports = NoxtmExhibitorCrawler;
