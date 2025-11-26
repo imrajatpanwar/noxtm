@@ -52,6 +52,21 @@ const io = new Server(server, {
   httpCompression: false        // Disable HTTP compression for speed
 });
 
+// Socket.IO connection handler for crawler progress updates
+io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+
+  // Handle client joining crawler progress room
+  socket.on('join', (jobId) => {
+    console.log(`Socket ${socket.id} joining crawler room: ${jobId}`);
+    socket.join(jobId);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
