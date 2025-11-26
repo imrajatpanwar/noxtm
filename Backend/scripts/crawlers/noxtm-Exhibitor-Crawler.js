@@ -339,51 +339,186 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
             await job.addLog('Page loaded, extracting exhibitor data...', 'info');
 
-            // Extract REAL exhibitor data
+            // Extract REAL exhibitor data with enhanced extraction
             let exhibitorData = await page.evaluate(() => {
               const items = [];
 
+              // Helper function to extract email from text using regex
+              const extractEmailFromText = (text) => {
+                if (!text) return '';
+                const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+                const match = text.match(emailRegex);
+                return match ? match[0] : '';
+              };
+
+              // Helper function to extract phone from text
+              const extractPhoneFromText = (text) => {
+                if (!text) return '';
+                // Matches formats: +1234567890, (123) 456-7890, 123-456-7890, etc.
+                const phoneRegex = /[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}/g;
+                const match = text.match(phoneRegex);
+                return match ? match[0].trim() : '';
+              };
+
+              // Helper function to extract URL from text
+              const extractUrlFromText = (text) => {
+                if (!text) return '';
+                const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/gi;
+                const match = text.match(urlRegex);
+                return match ? match[0] : '';
+              };
+
+              // Helper function to clean and validate booth number
+              const cleanBoothNumber = (text) => {
+                if (!text) return '';
+                // Remove common labels and extract just the number/code
+                return text.replace(/^(booth|stand|hall|pavilion)[:\s]*/gi, '').trim();
+              };
+
               // Try multiple selectors for exhibitor listings
               const exhibitorCards = document.querySelectorAll(
-                '.exhibitor-card, .company-card, [data-exhibitor], .exhibitor-item, .listing-card, .company-listing, .exhibitor, [class*="exhibitor"]'
+                '.exhibitor-card, .company-card, [data-exhibitor], .exhibitor-item, .listing-card, .company-listing, .exhibitor, [class*="exhibitor"], .company-item, [class*="company"], article.exhibitor, div.exhibitor'
               );
 
               console.log('Found exhibitor cards:', exhibitorCards.length);
 
               exhibitorCards.forEach((card, index) => {
                 try {
+                  // Get all text content for fallback pattern matching
+                  const cardText = card.textContent || '';
+
                   // Extract company name - try multiple selectors
                   const name =
                     card.querySelector('.company-name')?.textContent?.trim() ||
                     card.querySelector('.exhibitor-name')?.textContent?.trim() ||
+                    card.querySelector('h1')?.textContent?.trim() ||
+                    card.querySelector('h2')?.textContent?.trim() ||
                     card.querySelector('h3')?.textContent?.trim() ||
                     card.querySelector('h4')?.textContent?.trim() ||
                     card.querySelector('.name')?.textContent?.trim() ||
+                    card.querySelector('[class*="company"]')?.textContent?.trim() ||
                     card.querySelector('[class*="name"]')?.textContent?.trim() ||
+                    card.querySelector('strong')?.textContent?.trim() ||
+                    card.querySelector('b')?.textContent?.trim() ||
                     '';
 
-                  // Extract other details
-                  const booth =
+                  // Extract booth/stand number with enhanced selectors
+                  let booth =
                     card.querySelector('.booth')?.textContent?.trim() ||
                     card.querySelector('.stand')?.textContent?.trim() ||
+                    card.querySelector('.hall')?.textContent?.trim() ||
                     card.querySelector('[class*="booth"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="stand"]')?.textContent?.trim() ||
+                    card.querySelector('[data-booth]')?.getAttribute('data-booth')?.trim() ||
+                    card.querySelector('[data-stand]')?.getAttribute('data-stand')?.trim() ||
                     '';
+                  booth = cleanBoothNumber(booth);
 
-                  const website =
-                    card.querySelector('a[href*="http"]')?.href ||
+                  // Extract website with enhanced selectors
+                  let website =
+                    card.querySelector('a.website')?.href ||
+                    card.querySelector('a[class*="website"]')?.href ||
+                    card.querySelector('a[href*="www"]')?.href ||
+                    card.querySelector('a[href^="http"]')?.href ||
                     card.querySelector('.website')?.textContent?.trim() ||
+                    card.querySelector('[class*="website"]')?.textContent?.trim() ||
+                    extractUrlFromText(cardText) ||
                     '';
 
-                  const email =
+                  // Clean website URL
+                  if (website && !website.startsWith('http')) {
+                    website = 'https://' + website.replace(/^www\./, '');
+                  }
+
+                  // Extract email with enhanced selectors and pattern matching
+                  let email =
                     card.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') ||
                     card.querySelector('.email')?.textContent?.trim() ||
+                    card.querySelector('[class*="email"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="mail"]')?.textContent?.trim() ||
+                    extractEmailFromText(cardText) ||
                     '';
 
-                  const country =
+                  // Extract location/country with enhanced selectors
+                  let country =
                     card.querySelector('.country')?.textContent?.trim() ||
                     card.querySelector('.location')?.textContent?.trim() ||
+                    card.querySelector('.address')?.textContent?.trim() ||
                     card.querySelector('[class*="country"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="location"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="address"]')?.textContent?.trim() ||
+                    card.querySelector('[class*="city"]')?.textContent?.trim() ||
                     '';
+
+                  // Extract contacts (people)
+                  const contacts = [];
+                  const contactElements = card.querySelectorAll('.contact, .contact-person, [class*="contact"], .person, [class*="person"]');
+
+                  contactElements.forEach(contactEl => {
+                    const contactText = contactEl.textContent || '';
+                    const contactName =
+                      contactEl.querySelector('.name')?.textContent?.trim() ||
+                      contactEl.querySelector('[class*="name"]')?.textContent?.trim() ||
+                      contactEl.querySelector('strong')?.textContent?.trim() ||
+                      '';
+
+                    const contactPhone =
+                      contactEl.querySelector('.phone')?.textContent?.trim() ||
+                      contactEl.querySelector('[class*="phone"]')?.textContent?.trim() ||
+                      contactEl.querySelector('[class*="tel"]')?.textContent?.trim() ||
+                      extractPhoneFromText(contactText) ||
+                      '';
+
+                    const contactEmail =
+                      contactEl.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') ||
+                      contactEl.querySelector('.email')?.textContent?.trim() ||
+                      extractEmailFromText(contactText) ||
+                      '';
+
+                    const contactDesignation =
+                      contactEl.querySelector('.title')?.textContent?.trim() ||
+                      contactEl.querySelector('.designation')?.textContent?.trim() ||
+                      contactEl.querySelector('[class*="title"]')?.textContent?.trim() ||
+                      contactEl.querySelector('[class*="position"]')?.textContent?.trim() ||
+                      '';
+
+                    // Extract social links
+                    const socialLinks = [];
+                    const socialElements = contactEl.querySelectorAll('a[href*="linkedin"], a[href*="twitter"], a[href*="facebook"]');
+                    socialElements.forEach(link => {
+                      if (link.href) socialLinks.push(link.href);
+                    });
+
+                    if (contactName || contactEmail || contactPhone) {
+                      contacts.push({
+                        fullName: contactName,
+                        designation: contactDesignation,
+                        phone: contactPhone,
+                        email: contactEmail,
+                        socialLinks: socialLinks,
+                        location: '',
+                        sameAsCompany: contactEmail === email
+                      });
+                    }
+                  });
+
+                  // If no specific contact elements, try to extract from card text
+                  if (contacts.length === 0) {
+                    const cardEmail = email || extractEmailFromText(cardText);
+                    const cardPhone = extractPhoneFromText(cardText);
+
+                    if (cardEmail || cardPhone) {
+                      contacts.push({
+                        fullName: '',
+                        designation: '',
+                        phone: cardPhone,
+                        email: cardEmail,
+                        socialLinks: [],
+                        location: '',
+                        sameAsCompany: true
+                      });
+                    }
+                  }
 
                   if (name && name.length > 2) {
                     items.push({
@@ -391,7 +526,8 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                       standNo: booth,
                       website: website,
                       email: email,
-                      country: country
+                      country: country,
+                      contacts: contacts
                     });
                   }
                 } catch (e) {
@@ -405,14 +541,36 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                 rows.forEach(row => {
                   const cells = row.querySelectorAll('td, .cell, [class*="cell"]');
                   if (cells.length >= 2) {
+                    const rowText = row.textContent || '';
                     const name = cells[0]?.textContent?.trim() || cells[1]?.textContent?.trim();
+
                     if (name && name.length > 2 && !name.toLowerCase().includes('company') && !name.toLowerCase().includes('exhibitor')) {
+                      const booth = cleanBoothNumber(cells[1]?.textContent?.trim() || '');
+                      const website = row.querySelector('a[href^="http"]')?.href || extractUrlFromText(rowText) || '';
+                      const email = row.querySelector('a[href^="mailto:"]')?.href?.replace('mailto:', '') || extractEmailFromText(rowText) || '';
+                      const country = cells[2]?.textContent?.trim() || cells[3]?.textContent?.trim() || '';
+                      const phone = extractPhoneFromText(rowText);
+
+                      const contacts = [];
+                      if (email || phone) {
+                        contacts.push({
+                          fullName: '',
+                          designation: '',
+                          phone: phone,
+                          email: email,
+                          socialLinks: [],
+                          location: '',
+                          sameAsCompany: true
+                        });
+                      }
+
                       items.push({
                         name: name,
-                        standNo: cells[1]?.textContent?.trim() || '',
-                        website: row.querySelector('a')?.href || '',
-                        email: '',
-                        country: cells[2]?.textContent?.trim() || ''
+                        standNo: booth,
+                        website: website,
+                        email: email,
+                        country: country,
+                        contacts: contacts
                       });
                     }
                   }
@@ -453,7 +611,7 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
                     website: item.website || '',
                     companyEmail: item.email || '',
                     location: item.country || '',
-                    contacts: []
+                    contacts: item.contacts || []
                   };
 
                   // Save or merge exhibitor
@@ -466,12 +624,23 @@ class NoxtmExhibitorCrawler extends BaseCrawler {
 
                   job.recordsExtracted += 1;
 
+                  // Create detailed log message showing extracted data
+                  const dataDetails = [];
+                  if (exhibitor.boothNo) dataDetails.push(`Booth: ${exhibitor.boothNo}`);
+                  if (exhibitor.location) dataDetails.push(`Location: ${exhibitor.location}`);
+                  if (exhibitor.companyEmail) dataDetails.push(`Email: ${exhibitor.companyEmail}`);
+                  if (exhibitor.website) dataDetails.push(`Website: ${exhibitor.website}`);
+                  if (exhibitor.contacts && exhibitor.contacts.length > 0) {
+                    dataDetails.push(`Contacts: ${exhibitor.contacts.length}`);
+                  }
+                  const detailsStr = dataDetails.length > 0 ? ` | ${dataDetails.join(' | ')}` : '';
+
                   if (result === 'created') {
                     job.recordsSaved += 1;
-                    await job.addLog(`✓ Created: ${exhibitor.companyName}`, 'success');
+                    await job.addLog(`✓ Created: ${exhibitor.companyName}${detailsStr}`, 'success');
                   } else if (result === 'merged') {
                     job.recordsMerged += 1;
-                    await job.addLog(`⟲ Merged: ${exhibitor.companyName}`, 'info');
+                    await job.addLog(`⟲ Merged: ${exhibitor.companyName}${detailsStr}`, 'info');
                   } else {
                     await job.addLog(`→ Skipped: ${exhibitor.companyName} (duplicate)`, 'info');
                   }
