@@ -21,7 +21,6 @@ import WhatsAppMarketing from './WhatsAppMarketing';
 import ReferralClient from './ReferralClient';
 import Credentials from './Credentials';
 import Messaging from './Messaging';
-import TeamEmail from './TeamEmail';
 import Meeting from './Meeting';
 import HrOverview from './HrOverview';
 import InterviewManagement from './InterviewManagement';
@@ -44,17 +43,8 @@ import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
 import ProfileSettings from './ProfileSettings';
-import NoxtmMailDashboard from './NoxtmMailDashboard';
-import EmailAccounts from './EmailAccounts';
-import EmailDomains from './EmailDomains';
-import EmailTemplates from './EmailTemplates';
-import EmailLogViewer from './EmailLogViewer';
-import AuditLogs from './AuditLogs';
-import UserVerifiedDomains from './UserVerifiedDomains';
-import MainstreamInbox from './MainstreamInbox';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import Findr from './Findr/Findr';
 import OurClients from './OurClients';
 import LeadsDirectory from './LeadsDirectory';
 import ClientManagement from './ClientManagement';
@@ -169,8 +159,6 @@ function Dashboard({ user, onLogout }) {
         return <ConversionTracking />;
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
-      case 'findr':
-        return <Findr />;
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
@@ -197,36 +185,9 @@ function Dashboard({ user, onLogout }) {
         return <ReferralClient />;
       case 'credentials':
         return <Credentials />;
-      // Noxtm Mail - Email Management System
-      case 'noxtm-mail-mainstream':
-        return <MainstreamInbox />; // Mainstream inbox view
-      case 'noxtm-mail-sent':
-        return <EmailLogViewer />; // Sent mails view
-      case 'noxtm-mail-spam':
-        return <EmailLogViewer />; // Spam mails view
-      case 'noxtm-mail-trash':
-        return <EmailLogViewer />; // Trash mails view
-      case 'noxtm-mail-templates':
-        return <EmailTemplates />; // Set-up Template
-      case 'noxtm-mail-campaign':
-        return <NoxtmMailDashboard />; // Set-up Campaign
-      case 'noxtm-mail-dashboard':
-        return <NoxtmMailDashboard />;
-      case 'noxtm-mail-accounts':
-        return <EmailAccounts />;
-      case 'noxtm-mail-domains':
-        return <EmailDomains />;
-      case 'noxtm-mail-logs':
-        return <EmailLogViewer />;
-      case 'noxtm-mail-audit':
-        return <AuditLogs />;
-      case 'aws-ses-domains':
-        return <UserVerifiedDomains />;
       // Team Communication
       case 'message':
         return <Messaging />;
-      case 'team-email':
-        return <TeamEmail />;
       case 'meeting':
         return <Meeting />;
       // HR Management
@@ -275,9 +236,6 @@ function Dashboard({ user, onLogout }) {
         return <SeoInsights />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
-      case 'findr-data':
-      case 'findr-settings':
-        return <Findr />;
       case 'profile-settings':
         return <ProfileSettings user={user} />;
       default:

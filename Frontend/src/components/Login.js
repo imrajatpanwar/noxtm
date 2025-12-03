@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
-import poweredByNoxtm from './image/powered_by_noxtm.svg';
+import dayHero from '../assets/day-time-login-signup.webp';
+import nightHero from '../assets/night-time-login-signup.webp';
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -29,6 +30,16 @@ function Login({ onLogin }) {
     const result = await onLogin(formData.email, formData.password);
 
     if (result.success) {
+      // Check for redirect parameter (for cross-app navigation)
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectParam = urlParams.get('redirect');
+
+      // If redirect=mail, send user to mail app
+      if (redirectParam === 'mail') {
+        window.location.href = 'https://mail.noxtm.com';
+        return;
+      }
+
       // Normal login flow
       // Admin users always go directly to dashboard (bypass subscription checks)
       if (result.user.role === 'Admin' || result.user.role === 'Lord') {
@@ -62,21 +73,16 @@ function Login({ onLogin }) {
     setLoading(false);
   };
 
+  const currentHour = new Date().getHours();
+  const isDayTime = currentHour >= 6 && currentHour < 18;
+  const heroImage = isDayTime ? dayHero : nightHero;
+  const heroAlt = isDayTime ? 'Daytime Noxtm illustration' : 'Nighttime Noxtm illustration';
+
   return (
     <div className="login-page">
       <div className="login-split-container">
-        {/* Left Side - Welcome Content */}
         <div className="login-left-side">
-          <div className="powered-by-logo">
-            <img src={poweredByNoxtm} alt="Powered by Noxtm" />
-          </div>
-          <div className="welcome-content">
-            <h1 className="welcome-title">Discover Noxtm</h1>
-            <p className="welcome-description">
-              At Noxtm, we don't just market, we create experiences 
-              that connect, inspire, and convert.
-            </p>
-          </div>
+          <img src={heroImage} alt={heroAlt} className="login-hero-image" />
         </div>
 
         {/* Right Side - Login Form */}

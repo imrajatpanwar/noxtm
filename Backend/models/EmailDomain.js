@@ -190,6 +190,28 @@ const emailDomainSchema = new mongoose.Schema({
     ref: 'Company'
   },
 
+  // NEW: Default permissions for new team accounts
+  defaultRolePermissions: {
+    Owner: {
+      canRead: { type: Boolean, default: true },
+      canSend: { type: Boolean, default: true },
+      canDelete: { type: Boolean, default: true },
+      canManage: { type: Boolean, default: true }
+    },
+    Manager: {
+      canRead: { type: Boolean, default: true },
+      canSend: { type: Boolean, default: true },
+      canDelete: { type: Boolean, default: false },
+      canManage: { type: Boolean, default: false }
+    },
+    Employee: {
+      canRead: { type: Boolean, default: true },
+      canSend: { type: Boolean, default: false },
+      canDelete: { type: Boolean, default: false },
+      canManage: { type: Boolean, default: false }
+    }
+  },
+
   // Stats
   totalEmailsSent: {
     type: Number,
@@ -264,5 +286,51 @@ emailDomainSchema.virtual('storagePercentage').get(function() {
   if (this.totalQuota === 0) return 0;
   return Math.round((this.usedStorage / this.totalQuota) * 100);
 });
+
+// NEW: Calculate total quota used across all accounts
+emailDomainSchema.methods.calculateQuotaUsage = async function() {
+  const EmailAccount = mongoose.model('EmailAccount');
+  const accounts = await EmailAccount.find({
+    domain: this.domain,
+    companyId: this.companyId
+  });
+
+  let totalUsed = 0;
+  for (const account of accounts) {
+    if (account.usedStorage) {
+      totalUsed += account.usedStorage;
+    }
+  }
+
+  this.usedStorage = totalUsed;
+  this.accountCount = accounts.length;
+
+  return this.save();
+};
+
+// NEW: Check if company can create new account
+emailDomainSchema.methods.canCreateAccount = function(quotaMB = 1024) {
+  // Check account limit
+  if (this.accountCount >= this.maxAccounts) {
+    return {
+      allowed: false,
+      reason: 'Account limit reached',
+      maxAccounts: this.maxAccounts
+    };
+  }
+
+  // Check quota limit
+  const projectedUsage = this.usedStorage + quotaMB;
+  if (projectedUsage > this.totalQuota) {
+    return {
+      allowed: false,
+      reason: 'Company quota exceeded',
+      available: this.totalQuota - this.usedStorage,
+      requested: quotaMB
+    };
+  }
+
+  return { allowed: true };
+};
 
 module.exports = mongoose.model('EmailDomain', emailDomainSchema);

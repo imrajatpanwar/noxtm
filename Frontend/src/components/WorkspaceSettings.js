@@ -825,15 +825,6 @@ function WorkspaceSettings({ user, onLogout }) {
     // Define all modules
     const allModules = [
       {
-        id: 'findr',
-        name: 'findr',
-        company: 'Data Intelligence Platform',
-        description: 'Collector of data and Leads. Extract valuable business intelligence from websites, manage leads, and convert prospects into clients. Your all-in-one data collection and lead management solution.',
-        require: 'N/A',
-        lastUpdate: '21 Nov 2025',
-        logo: <FiDatabase className="module-logo-icon" size={40} />
-      },
-      {
         id: 'ExhibitOS',
         name: 'Exhibit OS',
         company: 'Exhibition Contractors Company',

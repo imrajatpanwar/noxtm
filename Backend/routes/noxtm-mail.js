@@ -97,7 +97,7 @@ function initializeRoutes(dependencies) {
         server: {
           hostname: 'mail.noxtm.com',
           ip: '185.137.122.61',
-          from: process.env.EMAIL_FROM || 'noreply@noxtm.com'
+          from: process.env.EMAIL_FROM || 'rajat@mail.noxtm.com'
         }
       });
     } catch (error) {
@@ -189,12 +189,18 @@ function initializeRoutes(dependencies) {
   
       const testSubject = subject || 'Test Email from Noxtm Mail Server';
       const testBody = body || 'This is a test email sent from Noxtm Mail dashboard.';
-      const from = process.env.EMAIL_FROM || 'noreply@noxtm.com';
-  
-      // Send email via mail server
-      const emailCmd = `echo '${testBody}' | mail -r '${from}' -s '${testSubject}' '${to}'`;
-      await execOnMailServer(emailCmd);
-  
+      const from = process.env.EMAIL_FROM || 'rajat@mail.noxtm.com';
+
+      // Send email via AWS SES
+      const { sendEmailViaSES } = require('../utils/awsSesHelper');
+      await sendEmailViaSES({
+        from,
+        to,
+        subject: testSubject,
+        text: testBody,
+        html: `<p>${testBody}</p>`
+      });
+
       // Log the email
       const emailLog = new EmailLog({
         from,
@@ -204,7 +210,7 @@ function initializeRoutes(dependencies) {
         status: 'sent'
       });
       await emailLog.save();
-  
+
       res.json({
         success: true,
         message: 'Test email sent successfully',
@@ -212,11 +218,11 @@ function initializeRoutes(dependencies) {
       });
     } catch (error) {
       console.error('Send test email error:', error);
-  
+
       // Log failed email
       try {
         const emailLog = new EmailLog({
-          from: process.env.EMAIL_FROM || 'noreply@noxtm.com',
+          from: process.env.EMAIL_FROM || 'rajat@mail.noxtm.com',
           to: req.body.to,
           subject: req.body.subject || 'Test Email',
           body: req.body.body || '',
@@ -239,22 +245,30 @@ function initializeRoutes(dependencies) {
   // Send email (general purpose)
   router.post('/send', authenticateToken, async (req, res) => {
     try {
-      const { to, subject, body, htmlBody } = req.body;
-  
+      const { to, subject, body, htmlBody, from: customFrom } = req.body;
+
       if (!to || !subject) {
         return res.status(400).json({
           success: false,
           message: 'Recipient and subject are required'
         });
       }
-  
-      const from = process.env.EMAIL_FROM || 'noreply@noxtm.com';
+
+      // Use custom from if provided, otherwise default to rajat@mail.noxtm.com
+      const from = customFrom || 'rajat@mail.noxtm.com';
       const emailBody = htmlBody || body || '';
-  
-      // Send email via mail server
-      const emailCmd = `echo '${emailBody.replace(/'/g, "'\\''")}' | mail -r '${from}' -s '${subject.replace(/'/g, "'\\''")}' '${to}'`;
-      await execOnMailServer(emailCmd);
-  
+
+      // Send email via AWS SES
+      const { sendEmailViaSES } = require('../utils/awsSesHelper');
+      await sendEmailViaSES({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html: htmlBody,
+        text: body || htmlBody?.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        replyTo: from
+      });
+
       // Log the email
       const emailLog = new EmailLog({
         from,
@@ -265,7 +279,7 @@ function initializeRoutes(dependencies) {
         status: 'sent'
       });
       await emailLog.save();
-  
+
       res.json({
         success: true,
         message: 'Email sent successfully',
@@ -280,11 +294,11 @@ function initializeRoutes(dependencies) {
       });
     } catch (error) {
       console.error('Send email error:', error);
-  
+
       // Log failed email
       try {
         const emailLog = new EmailLog({
-          from: process.env.EMAIL_FROM || 'noreply@noxtm.com',
+          from: req.body.from || 'rajat@mail.noxtm.com',
           to: req.body.to,
           subject: req.body.subject,
           body: req.body.body,
@@ -296,7 +310,7 @@ function initializeRoutes(dependencies) {
       } catch (logError) {
         console.error('Failed to log email error:', logError);
       }
-  
+
       res.status(500).json({
         success: false,
         message: 'Failed to send email',

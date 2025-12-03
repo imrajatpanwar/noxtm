@@ -12,6 +12,7 @@ const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../
 const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable } = require('../utils/doveadmHelper');
 const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody } = require('../utils/emailCache');
 const { scheduleSyncJob, syncMultiplePages } = require('../utils/emailSyncWorker');
+const { requireCompanyOwner, requireEmailAccess, requireCompanyAccess } = require('../middleware/emailAuth');
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -336,33 +337,12 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
   try {
     const { accountId, to, subject, body, cc, bcc } = req.body;
 
-    if (!accountId || !to || !subject) {
-      return res.status(400).json({ message: 'Account ID, recipient, and subject are required' });
+    if (!to || !subject) {
+      return res.status(400).json({ message: 'Recipient and subject are required' });
     }
 
-    const account = await EmailAccount.findById(accountId);
-    if (!account) {
-      return res.status(404).json({ message: 'Email account not found' });
-    }
-
-    // Check if SMTP settings exist
-    if (!account.smtpSettings || !account.smtpSettings.encryptedPassword) {
-      return res.status(400).json({ message: 'SMTP settings not configured for this account' });
-    }
-
-    // Decrypt password from smtpSettings
-    const password = decrypt(account.smtpSettings.encryptedPassword);
-
-    // Configure SMTP for hosted account
-    const transporter = nodemailer.createTransport({
-      host: account.smtpSettings.host || '127.0.0.1',
-      port: account.smtpSettings.port || 587,
-      secure: account.smtpSettings.secure === true,
-      auth: {
-        user: account.smtpSettings.username || account.email,
-        pass: password
-      }
-    });
+    // Use AWS SES for sending - no account needed
+    const { sendEmailViaSES } = require('../utils/awsSesHelper');
 
     let senderProfile = null;
     if (mongoose.Types.ObjectId.isValid(req.user.userId)) {
@@ -376,72 +356,56 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       }
     }
 
-    const senderName = senderProfile?.fullName || account.displayName || account.email;
+    const fromEmail = process.env.EMAIL_FROM || 'rajat@mail.noxtm.com';
+    const senderName = senderProfile?.fullName || 'Rajat';
     const avatarUrl =
       senderProfile?.emailAvatar ||
       senderProfile?.profileImage ||
       process.env.DEFAULT_AVATAR_URL ||
-      fallbackAvatarFor(senderName, account.email);
+      fallbackAvatarFor(senderName, fromEmail);
+
     const originalBody = body || '';
     const bodyHtml = plainTextToHtml(originalBody);
     const wrappedHtml = buildEmailEnvelope({
       senderName,
-      senderEmail: account.email,
+      senderEmail: fromEmail,
       avatarUrl,
       bodyHtml
     });
     const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
 
-    const mailOptions = {
-      from: `${account.displayName || account.email} <${account.email}>`,
-      to: to,
+    // Build recipients array
+    const recipients = Array.isArray(to) ? to : [to];
+    if (cc) {
+      const ccArray = Array.isArray(cc) ? cc : [cc];
+      recipients.push(...ccArray);
+    }
+    if (bcc) {
+      const bccArray = Array.isArray(bcc) ? bcc : [bcc];
+      recipients.push(...bccArray);
+    }
+
+    // Send via AWS SES
+    const info = await sendEmailViaSES({
+      from: fromEmail,
+      to: recipients,
       subject: subject,
       html: wrappedHtml,
       text: plainTextVariant,
-      cc: cc,
-      bcc: bcc
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-
-    // Log the sent email
-    await EmailLog.create({
-      direction: 'sent',
-      status: 'sent',
-      from: account.email,
-      to: Array.isArray(to) ? to : [to],
-      cc: cc ? (Array.isArray(cc) ? cc : [cc]) : [],
-      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [],
-      subject: subject,
-      body: wrappedHtml,
-      sentAt: new Date(),
-      messageId: info.messageId
+      replyTo: fromEmail
     });
+
+    // Skip logging - EmailLog requires emailAccount and domain fields we don't have
+    // Email was sent successfully via AWS SES
 
     res.json({
       success: true,
       message: 'Email sent successfully',
-      messageId: info.messageId
+      messageId: info.MessageId
     });
 
   } catch (error) {
     console.error('Error sending email:', error);
-
-    // Log failed email
-    try {
-      await EmailLog.create({
-        direction: 'sent',
-        status: 'failed',
-        from: req.body.accountId,
-        to: Array.isArray(req.body.to) ? req.body.to : [req.body.to],
-        subject: req.body.subject,
-        body: req.body.body,
-        errorMessage: error.message,
-        sentAt: new Date()
-      });
-    } catch (logError) {
-      console.error('Error logging failed email:', logError);
-    }
 
     res.status(500).json({
       message: 'Failed to send email',
@@ -1447,6 +1411,398 @@ router.put('/:id/reset-password', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error resetting password:', error);
     res.status(500).json({ message: 'Failed to reset password', error: error.message });
+  }
+});
+
+// =====================================================
+// TEAM EMAIL ENDPOINTS (Phase 1 Implementation)
+// =====================================================
+
+/**
+ * Create Team Email Account (Owner Only)
+ * POST /api/email-accounts/create-team
+ */
+router.post('/create-team', requireCompanyOwner, async (req, res) => {
+  try {
+    const {
+      username,
+      domain,
+      displayName,
+      description,
+      purpose,
+      quotaMB,
+      roleAccess,
+      departmentAccess
+    } = req.body;
+
+    const companyId = req.user.companyId;
+
+    // Validate required fields
+    if (!username || !domain) {
+      return res.status(400).json({
+        error: 'Username and domain are required'
+      });
+    }
+
+    // Validate domain ownership and verification
+    const emailDomain = await EmailDomain.findOne({
+      domain,
+      companyId,
+      verified: true
+    });
+
+    if (!emailDomain) {
+      return res.status(403).json({
+        error: 'Domain not found or not verified for your company. Please add and verify the domain first.'
+      });
+    }
+
+    // Check quota limits
+    const quotaCheck = emailDomain.canCreateAccount(quotaMB || 2048);
+    if (!quotaCheck.allowed) {
+      return res.status(400).json({
+        error: quotaCheck.reason,
+        available: quotaCheck.available,
+        maxAccounts: quotaCheck.maxAccounts
+      });
+    }
+
+    // Validate username format
+    const usernameRegex = /^[a-z0-9._-]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        error: 'Username must contain only lowercase letters, numbers, dots, hyphens, and underscores'
+      });
+    }
+
+    // Generate secure password
+    const password = generateSecurePassword(16);
+    const email = `${username}@${domain}`;
+
+    // Check if email already exists
+    const existingAccount = await EmailAccount.findOne({ email });
+    if (existingAccount) {
+      return res.status(409).json({
+        error: `Email account ${email} already exists`
+      });
+    }
+
+    // Create mailbox on server using doveadm
+    const doveadmAvailable = await isDoveadmAvailable();
+    if (doveadmAvailable) {
+      const mailboxResult = await createMailbox(email, password, quotaMB || 2048);
+
+      if (!mailboxResult.success) {
+        return res.status(500).json({
+          error: 'Failed to create mailbox on server',
+          details: mailboxResult.error
+        });
+      }
+    } else {
+      console.warn('⚠️  doveadm not available - creating database entry only');
+    }
+
+    // Create email account in database
+    const emailAccount = new EmailAccount({
+      email,
+      displayName: displayName || email,
+      description: description || '',
+      purpose: purpose || 'shared',
+      domain,
+      companyId,
+      accountType: 'noxtm-hosted',
+      password, // Will be hashed by pre-save hook
+
+      imapSettings: {
+        host: 'mail.noxtm.com',
+        port: 993,
+        secure: true,
+        username: email,
+        encryptedPassword: encrypt(password)
+      },
+
+      smtpSettings: {
+        host: 'mail.noxtm.com',
+        port: 587,
+        secure: false,
+        username: email,
+        encryptedPassword: encrypt(password)
+      },
+
+      quota: quotaMB || 2048,
+      usedStorage: 0,
+
+      roleAccess: roleAccess || [
+        {
+          role: 'Owner',
+          permissions: { canRead: true, canSend: true, canDelete: true, canManage: true }
+        },
+        {
+          role: 'Manager',
+          permissions: { canRead: true, canSend: true, canDelete: false, canManage: false }
+        },
+        {
+          role: 'Employee',
+          permissions: { canRead: false, canSend: false, canDelete: false, canManage: false }
+        }
+      ],
+
+      departmentAccess: departmentAccess || [],
+
+      enabled: true,
+      createdBy: req.user._id
+    });
+
+    await emailAccount.save();
+
+    // Update domain quota usage
+    await emailDomain.calculateQuotaUsage();
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'create_team_account',
+      resourceType: 'email_account',
+      resourceId: emailAccount._id,
+      resourceIdentifier: email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Created team email account: ${email}`,
+      metadata: {
+        purpose,
+        roleAccess: roleAccess ? roleAccess.map(r => r.role) : ['Owner', 'Manager', 'Employee']
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId
+    });
+
+    res.json({
+      success: true,
+      account: {
+        _id: emailAccount._id,
+        email: emailAccount.email,
+        displayName: emailAccount.displayName,
+        description: emailAccount.description,
+        purpose: emailAccount.purpose,
+        domain: emailAccount.domain,
+        companyId: emailAccount.companyId,
+        roleAccess: emailAccount.roleAccess,
+        departmentAccess: emailAccount.departmentAccess,
+        quota: emailAccount.quota,
+        usedStorage: emailAccount.usedStorage,
+        enabled: emailAccount.enabled,
+        createdAt: emailAccount.createdAt
+      },
+      credentials: {
+        imap: {
+          host: emailAccount.imapSettings.host,
+          port: emailAccount.imapSettings.port,
+          username: emailAccount.imapSettings.username,
+          password: '***' // Masked for security
+        },
+        smtp: {
+          host: emailAccount.smtpSettings.host,
+          port: emailAccount.smtpSettings.port,
+          username: emailAccount.smtpSettings.username
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating team account:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * List Team Email Accounts
+ * GET /api/email-accounts/team
+ */
+router.get('/team', requireCompanyAccess, async (req, res) => {
+  try {
+    const { purpose, domain } = req.query;
+    const companyId = req.user.companyId;
+
+    // Build query
+    const query = { companyId, enabled: true };
+    if (purpose) query.purpose = purpose;
+    if (domain) query.domain = domain;
+
+    // Fetch accounts (exclude sensitive fields)
+    const accounts = await EmailAccount.find(query)
+      .select('-password -imapSettings.encryptedPassword -smtpSettings.encryptedPassword')
+      .sort({ createdAt: -1 });
+
+    // Calculate summary
+    const summary = {
+      totalAccounts: accounts.length,
+      totalQuotaMB: accounts.reduce((sum, acc) => sum + (acc.quota || 0), 0),
+      usedQuotaMB: accounts.reduce((sum, acc) => sum + (acc.usedStorage || 0), 0)
+    };
+    summary.availableQuotaMB = summary.totalQuotaMB - summary.usedQuotaMB;
+
+    res.json({ accounts, summary });
+
+  } catch (error) {
+    console.error('Error fetching team accounts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get My Accessible Team Accounts
+ * GET /api/email-accounts/my-team-accounts
+ */
+router.get('/my-team-accounts', requireCompanyAccess, async (req, res) => {
+  try {
+    const user = req.user;
+    const companyId = user.companyId;
+
+    // Get all team accounts for user's company
+    const allAccounts = await EmailAccount.find({
+      companyId,
+      enabled: true
+    });
+
+    // Filter by access and get permissions
+    const accessibleAccounts = [];
+
+    for (const account of allAccounts) {
+      const hasAccess = await account.hasAccess(user);
+
+      if (hasAccess) {
+        const permissions = await account.getPermissions(user);
+
+        // Skip IMAP unread count check - not using IMAP anymore
+        const unreadCount = 0;
+
+        accessibleAccounts.push({
+          _id: account._id,
+          email: account.email,
+          displayName: account.displayName,
+          description: account.description,
+          purpose: account.purpose,
+          domain: account.domain,
+          permissions,
+          unreadCount,
+          quota: account.quota,
+          usedStorage: account.usedStorage,
+          storagePercentage: account.storagePercentage
+        });
+      }
+    }
+
+    res.json({ accounts: accessibleAccounts });
+
+  } catch (error) {
+    console.error('Error fetching my team accounts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Fetch Team Inbox Emails
+ * GET /api/email-accounts/team-inbox/:accountId
+ */
+router.get('/team-inbox/:accountId', requireEmailAccess('canRead'), async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { page = 1, limit = 50, folder = 'INBOX' } = req.query;
+
+    const emailAccount = req.emailAccount;
+
+    // Use existing fetchEmails logic from imapHelper
+    const { fetchEmails } = require('../utils/imapHelper');
+
+    const result = await fetchEmails(
+      emailAccount.imapSettings.host,
+      emailAccount.imapSettings.port,
+      emailAccount.imapSettings.username,
+      decrypt(emailAccount.imapSettings.encryptedPassword),
+      folder,
+      parseInt(page),
+      parseInt(limit)
+    );
+
+    res.json({
+      ...result,
+      account: {
+        email: emailAccount.email,
+        displayName: emailAccount.displayName
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching team inbox:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Send Email from Team Account
+ * POST /api/email-accounts/team-send/:accountId
+ */
+router.post('/team-send/:accountId', requireEmailAccess('canSend'), async (req, res) => {
+  try {
+    const { to, cc, bcc, subject, body } = req.body;
+    const emailAccount = req.emailAccount;
+    const user = req.user;
+
+    if (!to || !subject || !body) {
+      return res.status(400).json({
+        error: 'To, subject, and body are required'
+      });
+    }
+
+    // Create SMTP transport
+    const transporter = nodemailer.createTransport({
+      host: emailAccount.smtpSettings.host,
+      port: emailAccount.smtpSettings.port,
+      secure: emailAccount.smtpSettings.secure,
+      auth: {
+        user: emailAccount.smtpSettings.username,
+        pass: decrypt(emailAccount.smtpSettings.encryptedPassword)
+      }
+    });
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: `${emailAccount.displayName} <${emailAccount.email}>`,
+      to,
+      cc,
+      bcc,
+      subject,
+      html: body,
+      text: stripHtml(body) // Strip HTML for plain text
+    });
+
+    // Log in EmailLog
+    await EmailLog.create({
+      accountId: emailAccount._id,
+      companyId: emailAccount.companyId,
+      messageId: info.messageId,
+      direction: 'sent',
+      from: emailAccount.email,
+      to: Array.isArray(to) ? to : [to],
+      cc: cc || [],
+      bcc: bcc || [],
+      subject,
+      status: 'sent',
+      size: Buffer.byteLength(body),
+      sentBy: user._id,
+      sentAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      messageId: info.messageId,
+      sentAt: new Date()
+    });
+
+  } catch (error) {
+    console.error('Error sending team email:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

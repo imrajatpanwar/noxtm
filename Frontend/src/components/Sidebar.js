@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useContext } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiDatabase, FiSliders } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiExternalLink } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { useModules } from '../contexts/ModuleContext';
@@ -11,7 +11,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const { socket } = useContext(MessagingContext);
   const { isModuleInstalled } = useModules();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
-  const [noxtmMailExpanded, setNoxtmMailExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
   const [employeesExpanded, setEmployeesExpanded] = useState(false);
@@ -28,33 +27,9 @@ function Sidebar({ activeSection, onSectionChange }) {
 
   // Get current user from RoleContext (always up-to-date)
   const { currentUser: contextCurrentUser } = useRole();
-  const [subscription, setSubscription] = useState(null);
 
   // Use context's currentUser as the source of truth
   const currentUser = contextCurrentUser;
-
-  useEffect(() => {
-    // Fetch subscription status
-    const fetchSubscription = async () => {
-      try {
-        const response = await fetch('/api/subscription/status', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const data = await response.json();
-        if (data.subscription) {
-          setSubscription(data.subscription);
-        }
-      } catch (error) {
-        console.error('Error fetching subscription:', error);
-      }
-    };
-
-    if (currentUser && localStorage.getItem('token')) {
-      fetchSubscription();
-    }
-  }, [currentUser]);
 
   // Fetch total unread count from conversations API
   const fetchTotalUnreadCount = async () => {
@@ -141,20 +116,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
 
-  // Check if NOXTM MAIL should be hidden (for active Noxtm subscription users)
-  const shouldHideNoxtmMail = subscription?.plan === 'Noxtm' && subscription?.status === 'active';
-
-  // Check if user has findr subscription access
-  const hasfindrSubscription = useMemo(() => {
-    const userSubscription = currentUser?.subscription?.plan;
-    const subscriptionStatus = currentUser?.subscription?.status;
-    
-    // findr is available for these subscription plans
-    const findrEnabledPlans = ['findr', 'Enterprise', 'Noxtm'];
-    
-    return subscriptionStatus === 'active' && findrEnabledPlans.includes(userSubscription);
-  }, [currentUser?.subscription]);
-
   // Memoized permission checking to prevent unnecessary re-renders and glitches
   const sectionPermissions = useMemo(() => {
     // For Admin users, grant access to all sections (super-admin)
@@ -172,7 +133,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': true,
         'Workspace Settings': true,
-        'findr': hasfindrSubscription, // Require subscription even for Admin
         'Profile': true
       };
     }
@@ -192,7 +152,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': true,
         'Settings & Configuration': false,
         'Workspace Settings': true,
-        'findr': hasfindrSubscription, // Require subscription
         'Profile': true
       };
     }
@@ -212,7 +171,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': false,
         'Settings & Configuration': false,
         'Workspace Settings': false,
-        'findr': false, // SOLOHQ users don't get findr (free plan)
         'Profile': true
       };
     }
@@ -232,7 +190,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
         'Workspace Settings': false, // Team Members don't get workspace settings
-        'findr': hasPermission(MODULES.PROJECTS) && hasfindrSubscription, // Require both permission and subscription
         'Profile': true // Profile is available to all users
       };
     }
@@ -251,10 +208,9 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
-      'findr': hasfindrSubscription, // findr requires active subscription
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role, hasfindrSubscription]); // Add hasfindrSubscription dependency
+  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role]);
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -322,7 +278,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     
     // Data Center
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'findr', section: 'findr', category: 'Data Center' },
     { name: 'Client Management', section: 'client-management', category: 'Data Center' },
     { name: 'Client Leads', section: 'client-leads', category: 'Data Center' },
     { name: 'Our Clients', section: 'our-clients', category: 'Data Center' },
@@ -348,7 +303,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     
     // Team Communication
     { name: 'Message', section: 'message', category: 'Team Communication' },
-    { name: 'E-mail', section: 'team-email', category: 'Team Communication' },
     { name: 'Meeting', section: 'meeting', category: 'Team Communication' },
     { name: 'Services', section: 'services', category: 'Team Communication' },
     
@@ -360,20 +314,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Analytics & Reporting', section: 'email-analytics', category: 'Marketing' },
     { name: 'WhatsApp Marketing', section: 'whatsapp-marketing', category: 'Marketing' },
     { name: 'Referral Client', section: 'referral-client', category: 'Marketing' },
-
-    // Noxtm Mail
-    { name: 'Mainstream', section: 'noxtm-mail-mainstream', category: 'Marketing' },
-    { name: 'Sent Mails', section: 'noxtm-mail-sent', category: 'Marketing' },
-    { name: 'Spam Mails', section: 'noxtm-mail-spam', category: 'Marketing' },
-    { name: 'Trash Mails', section: 'noxtm-mail-trash', category: 'Marketing' },
-    { name: 'Set-up Template', section: 'noxtm-mail-templates', category: 'Marketing' },
-    { name: 'Set-up Campaign', section: 'noxtm-mail-campaign', category: 'Marketing' },
-    { name: 'Mail Dashboard', section: 'noxtm-mail-dashboard', category: 'Marketing' },
-    { name: 'Email Accounts', section: 'noxtm-mail-accounts', category: 'Marketing' },
-    { name: 'Domains', section: 'noxtm-mail-domains', category: 'Marketing' },
-    { name: 'Email Logs', section: 'noxtm-mail-logs', category: 'Marketing' },
-    { name: 'Audit Trail', section: 'noxtm-mail-audit', category: 'Marketing' },
-    { name: 'AWS SES Domains', section: 'aws-ses-domains', category: 'Marketing' },
 
     // HR Management
     { name: 'HR Management', section: 'hr-management-sub', category: 'HR Management' },
@@ -408,10 +348,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
     
-    // findr
-    { name: 'Scraped Data', section: 'findr-data', category: 'findr' },
-    { name: 'findr Settings', section: 'findr-settings', category: 'findr' },
-    
     // Profile
     { name: 'Profile Settings', section: 'profile-settings', category: 'Profile' },
     
@@ -422,10 +358,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Filter items based on search query and permissions
   const filteredItems = searchQuery.trim() === "" ? [] : allSidebarItems.filter(item => {
     if (!hasPermissionForSection(item.category)) {
-      return false;
-    }
-    // Hide NOXTM MAIL items for active Noxtm subscribers
-    if (shouldHideNoxtmMail && ['Mail Dashboard', 'Email Accounts', 'Domains', 'Set-up Template', 'Email Logs', 'Audit Trail', 'Mainstream', 'Sent Mails', 'Spam Mails', 'Trash Mails', 'Set-up Campaign'].includes(item.name)) {
       return false;
     }
     return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -513,19 +445,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                   >
                     <FiGlobe className="sidebar-icon" />
                     <span>Global Trade Shows</span>
-                  </div>
-                </div>
-              )}
-
-              {/* findr Section - Only show if findr module is installed */}
-              {isModuleInstalled('findr') && (
-                <div className="sidebar-item-container">
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'findr' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('findr')}
-                  >
-                    <FiDatabase className="sidebar-icon" />
-                    <span>findr</span>
                   </div>
                 </div>
               )}
@@ -684,13 +603,20 @@ function Sidebar({ activeSection, onSectionChange }) {
                   </div>
                 </>
               )}
-              <div 
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'team-email' ? 'active' : ''}`}
-                onClick={() => onSectionChange('team-email')}
+
+              {/* Open Mail App - Redirects to mail.noxtm.com */}
+              <a
+                href="https://mail.noxtm.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="Dash-noxtm-sidebar-item"
+                style={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <FiMail className="sidebar-icon" />
-                <span>E-mail</span>
-              </div>
+                <span>Open Mail App</span>
+                <FiExternalLink className="sidebar-icon" style={{ marginLeft: 'auto', fontSize: '14px' }} />
+              </a>
+
               {!isSOLOHQUser && (
                 <>
                   <div 
@@ -854,112 +780,6 @@ function Sidebar({ activeSection, onSectionChange }) {
             </div>
           )}
 
-          {/* Noxtm Mail Section - Hidden for active Noxtm subscribers */}
-          {hasPermissionForSection('Marketing') && !shouldHideNoxtmMail && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">Noxtm Mail</h4>
-              
-              {/* E-mail Submenu */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail' ? 'active' : ''}`}
-                  onClick={() => setNoxtmMailExpanded(!noxtmMailExpanded)}
-                >
-                  <FiMail className="sidebar-icon" />
-                  <span>E-mail</span>
-                  {noxtmMailExpanded ? 
-                    <FiChevronDown className="sidebar-chevron" /> : 
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-                
-                {noxtmMailExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-mainstream' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-mainstream')}
-                    >
-                      <span>Mainstream</span>
-                      <span className="sidebar-message-badge">1</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-sent' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-sent')}
-                    >
-                      <span>Sent Mails</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-spam' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-spam')}
-                    >
-                      <span>Spam Mails</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-trash' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-trash')}
-                    >
-                      <span>Trash Mails</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-templates' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-templates')}
-                    >
-                      <span>Set-up Template</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-mail-campaign' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('noxtm-mail-campaign')}
-                    >
-                      <span>Set-up Campaign</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-dashboard' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-dashboard')}
-              >
-                <FiGrid className="sidebar-icon" />
-                <span>Dashboard</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-accounts' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-accounts')}
-              >
-                <FiUsers className="sidebar-icon" />
-                <span>Email Accounts</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-domains' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-domains')}
-              >
-                <FiGlobe className="sidebar-icon" />
-                <span>Domains</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-logs' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-logs')}
-              >
-                <FiActivity className="sidebar-icon" />
-                <span>Email Logs</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-mail-audit' ? 'active' : ''}`}
-                onClick={() => onSectionChange('noxtm-mail-audit')}
-              >
-                <FiShield className="sidebar-icon" />
-                <span>Audit Trail</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'aws-ses-domains' ? 'active' : ''}`}
-                onClick={() => onSectionChange('aws-ses-domains')}
-              >
-                <FiGlobe className="sidebar-icon" />
-                <span>AWS SES Domains</span>
-              </div>
-            </div>
-          )}
 
           {/* HR Management Section */}
           {hasPermissionForSection('HR Management') && (
@@ -1273,27 +1093,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* findr Section */}
-          {hasPermissionForSection('findr') && isModuleInstalled('findr') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">findr</h4>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'findr-data' ? 'active' : ''}`}
-                onClick={() => onSectionChange('findr-data')}
-              >
-                <FiDatabase className="sidebar-icon" />
-                <span>Scraped Data</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'findr-settings' ? 'active' : ''}`}
-                onClick={() => onSectionChange('findr-settings')}
-              >
-                <FiSliders className="sidebar-icon" />
-                <span>findr Settings</span>
               </div>
             </div>
           )}

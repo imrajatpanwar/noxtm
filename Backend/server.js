@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
@@ -33,6 +34,8 @@ const io = new Server(server, {
     origin: [
       'http://noxtm.com',
       'https://noxtm.com',
+      'http://mail.noxtm.com',     // Mail subdomain
+      'https://mail.noxtm.com',    // Mail subdomain (HTTPS)
       'http://localhost:3000',
       'http://localhost:3001'
     ],
@@ -52,20 +55,6 @@ const io = new Server(server, {
   httpCompression: false        // Disable HTTP compression for speed
 });
 
-// Socket.IO connection handler for crawler progress updates
-io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-
-  // Handle client joining crawler progress room
-  socket.on('join', (jobId) => {
-    console.log(`Socket ${socket.id} joining crawler room: ${jobId}`);
-    socket.join(jobId);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
-  });
-});
 
 const PORT = process.env.PORT || 5000;
 
@@ -84,14 +73,20 @@ app.use(cors({
   origin: [
     'http://noxtm.com',
     'https://noxtm.com',
+    'http://mail.noxtm.com',     // Mail subdomain
+    'https://mail.noxtm.com',    // Mail subdomain (HTTPS)
     'chrome-extension://*', // Allow Chrome extension requests
-    'http://localhost:3000', // Keep for local development if needed
-    'http://localhost:3001'
+    'http://localhost:3000', // Main app local development
+    'http://localhost:3001'  // Mail app local development
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Size']
 }));
+
+// Cookie parser middleware for cross-subdomain authentication
+app.use(cookieParser());
 
 // Body parsing middleware with size limits
 app.use(express.json({ limit: '10mb' }));
@@ -100,10 +95,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Extension authentication routes
 const extensionAuthRoutes = require('./routes/extension-auth');
 app.use('/api/extension-auth', extensionAuthRoutes);
-
-// findr Extension routes (optimized endpoints)
-const findrExtensionRoutes = require('./routes/findr-extension');
-app.use('/api/findr', findrExtensionRoutes);
 
 // Modules routes
 const modulesRoutes = require('./routes/modules');
@@ -128,13 +119,6 @@ app.use('/api/leads', leadsRoutes);
 // Exhibitors routes
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);
-
-// Crawler routes
-const crawlersRoutes = require('./routes/crawlers');
-app.use('/api', crawlersRoutes);
-
-// Make Socket.IO available to routes
-app.set('io', io);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
@@ -260,14 +244,6 @@ const userSchema = new mongoose.Schema({
     default: 'Active',
     enum: ['Active', 'Inactive', 'Terminated', 'In Review']
   },
-  // findr Chrome Extension Settings
-  findrSettings: {
-    selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
-    extractionType: { type: String, enum: ['exhibitors', 'companies'] },
-    useCase: { type: String, enum: ['leads', 'tradeshow'] },
-    fullDetails: { type: String, enum: ['yes', 'no'] },
-    updatedAt: { type: Date }
-  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -354,13 +330,14 @@ const companySchema = new mongoose.Schema({
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date }
   },
-  // findr Chrome Extension Settings
-  findrSettings: {
-    selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
-    extractionType: { type: String, enum: ['exhibitors', 'companies'] },
-    useCase: { type: String, enum: ['leads', 'tradeshow'] },
-    fullDetails: { type: String, enum: ['yes', 'no'] },
-    updatedAt: { type: Date }
+  // NEW: Email configuration for team email
+  emailSettings: {
+    primaryDomain: { type: String },
+    defaultSignature: { type: String },
+    emailQuota: {
+      totalMB: { type: Number, default: 10240 },
+      usedMB: { type: Number, default: 0 }
+    }
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
@@ -430,21 +407,6 @@ blogSchema.pre('save', function(next) {
 
 const Blog = mongoose.model('Blog', blogSchema);
 
-// Scraped Data Schema (findr integration)
-const scrapedDataSchema = new mongoose.Schema({
-  name: { type: String, trim: true },
-  location: { type: String, trim: true },
-  profileUrl: { type: String, required: true, unique: true, index: true },
-  email: { type: String, trim: true },
-  phone: { type: String, trim: true },
-  role: { type: String, trim: true },
-  timestamp: { type: Date, default: Date.now }
-}, { timestamps: true });
-
-scrapedDataSchema.index({ profileUrl: 1 }, { unique: true });
-
-const ScrapedData = mongoose.model('ScrapedData', scrapedDataSchema);
-
 // Lead Schema (Miner Extension integration)
 const leadSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -486,14 +448,6 @@ const emailVerificationSchema = new mongoose.Schema({
     email: String,
     password: String,
     role: String
-  },
-  // findr Chrome Extension Settings
-  findrSettings: {
-    selectedTradeShowId: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow' },
-    extractionType: { type: String, enum: ['exhibitors', 'companies'] },
-    useCase: { type: String, enum: ['leads', 'tradeshow'] },
-    fullDetails: { type: String, enum: ['yes', 'no'] },
-    updatedAt: { type: Date }
   },
   createdAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 10 * 60 * 1000), index: true }
@@ -639,8 +593,14 @@ if (!process.env.JWT_SECRET) {
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
+  // Check for token in Authorization header first, then fall back to cookie
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // If no token in header, check cookie (for mail.noxtm.com SSO)
+  if (!token) {
+    token = req.cookies.auth_token;
+  }
 
   if (!token) {
     return res.status(401).json({ message: 'Access token required' });
@@ -813,7 +773,7 @@ function getDefaultPermissions(planOrRole) {
       settingsConfiguration: true
     };
   }
-  // SoloHQ subscription plan: Only findr (projects), PROJECTS, and PROFILE access
+  // SoloHQ subscription plan: Projects access only
   else if (planOrRole === 'SoloHQ') {
     return {
       dashboard: false,
@@ -1362,120 +1322,6 @@ app.get('/api/blogs/analytics/stats', authenticateToken, async (req, res) => {
       recentBlogs
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// ===== SCRAPED DATA (findr) API ROUTES =====
-
-// Create or upsert scraped profile
-app.post('/api/scraped-data', async (req, res) => {
-  try {
-    if (!mongoConnected) {
-      return res.status(503).json({ message: 'Database unavailable' });
-    }
-
-    const payload = req.body;
-
-    // Support single object or array batch
-    const records = Array.isArray(payload) ? payload : [payload];
-
-    if (!records.length) {
-      return res.status(400).json({ message: 'No data provided' });
-    }
-
-    const results = { inserted: 0, duplicates: 0, errors: 0, details: [] };
-
-    for (const rec of records) {
-      const { profileUrl, name, location, email, phone, role, timestamp } = rec || {};
-      if (!profileUrl || typeof profileUrl !== 'string') {
-        results.errors++;
-        results.details.push({ profileUrl, status: 'error', reason: 'profileUrl required' });
-        continue;
-      }
-      try {
-        // Check if profile already exists
-        const existing = await ScrapedData.findOne({ profileUrl });
-        if (existing) {
-          // Update existing record ONLY with NEW non-empty data
-          let updated = false;
-          if (name && name.trim() && !existing.name) {
-            existing.name = name.trim();
-            updated = true;
-          }
-          if (email && email.trim() && !existing.email) {
-            existing.email = email.trim();
-            updated = true;
-          }
-          if (phone && phone.trim() && !existing.phone) {
-            existing.phone = phone.trim();
-            updated = true;
-          }
-          if (role && role.trim() && !existing.role) {
-            existing.role = role.trim();
-            updated = true;
-          }
-          if (location && location.trim() && !existing.location) {
-            existing.location = location.trim();
-            updated = true;
-          }
-
-          if (updated) {
-            await existing.save();
-            results.inserted++; // Count as inserted since we updated it
-            results.details.push({ profileUrl, status: 'updated' });
-          } else {
-            results.duplicates++;
-            results.details.push({ profileUrl, status: 'duplicate' });
-          }
-          continue;
-        }
-
-        // Create new record
-        const doc = new ScrapedData({
-          profileUrl: profileUrl.trim(),
-          name: name || '',
-          location: location || '',
-          email: email || '',
-          phone: phone || '',
-          role: role || '',
-          timestamp: timestamp ? new Date(timestamp) : new Date()
-        });
-        await doc.save();
-        results.inserted++;
-        results.details.push({ profileUrl, status: 'inserted' });
-      } catch (err) {
-        if (err.code === 11000) {
-          results.duplicates++;
-          results.details.push({ profileUrl, status: 'duplicate' });
-        } else {
-          results.errors++;
-          results.details.push({ profileUrl, status: 'error', reason: err.message });
-        }
-      }
-    }
-
-    res.status(201).json({ message: 'Processed scraped data', ...results });
-  } catch (error) {
-    console.error('Scraped data POST error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Get all scraped data (basic pagination optional)
-app.get('/api/scraped-data', async (req, res) => {
-  try {
-    if (!mongoConnected) {
-      return res.status(503).json({ message: 'Database unavailable' });
-    }
-    const total = await ScrapedData.countDocuments();
-    const data = await ScrapedData.find().sort({ createdAt: -1 }).lean();
-    res.json({
-      data,
-      total
-    });
-  } catch (error) {
-    console.error('Scraped data GET error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -3063,6 +2909,15 @@ app.post('/api/login', async (req, res) => {
       expiresIn: '24h'
     });
 
+    // Set cookie for cross-subdomain authentication (mail.noxtm.com)
+    res.cookie('auth_token', token, {
+      domain: '.noxtm.com',  // Shares between noxtm.com and mail.noxtm.com
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Only HTTPS in production
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Always normalize permissions and access before sending
     const normalizedPermissions = normalizePermissions(user.permissions);
     const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
@@ -3088,6 +2943,22 @@ app.post('/api/login', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Logout endpoint - clears authentication cookie
+app.post('/api/logout', (req, res) => {
+  try {
+    // Clear the auth cookie for cross-subdomain logout
+    res.clearCookie('auth_token', {
+      domain: '.noxtm.com',
+      path: '/'
+    });
+
+    res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Server error during logout' });
   }
 });
 
@@ -3796,6 +3667,18 @@ const emailTemplatesRoutes = require('./routes/email-templates');
 const emailLogsRoutes = require('./routes/email-logs');
 const auditLogsRoutes = require('./routes/audit-logs');
 
+// Team Email - Phase 2: Assignment & Collaboration
+const emailAssignmentsRoutes = require('./routes/email-assignments');
+const emailNotesRoutes = require('./routes/email-notes');
+const emailActivityRoutes = require('./routes/email-activity');
+
+// Team Email - Phase 3 Week 1: Auto-Assignment Rules
+const assignmentRulesRoutes = require('./routes/assignment-rules');
+
+// Team Email - Phase 3 Week 2: Analytics & SLA
+const analyticsRoutes = require('./routes/analytics');
+const slaPoliciesRoutes = require('./routes/sla-policies');
+
 // AWS SES User Verified Domains (SaaS "Bring Your Own Domain")
 const userVerifiedDomainsRoutes = require('./routes/user-verified-domains');
 
@@ -3805,6 +3688,18 @@ app.use('/api/email-domains', authenticateToken, emailDomainsRoutes);
 app.use('/api/email-templates', authenticateToken, emailTemplatesRoutes);
 app.use('/api/email-logs', authenticateToken, emailLogsRoutes);
 app.use('/api/audit-logs', authenticateToken, auditLogsRoutes);
+
+// Team Email - Phase 2: Assignment & Collaboration routes
+app.use('/api/email-assignments', emailAssignmentsRoutes);
+app.use('/api/email-notes', emailNotesRoutes);
+app.use('/api/email-activity', emailActivityRoutes);
+
+// Team Email - Phase 3 Week 1: Auto-Assignment Rules
+app.use('/api/assignment-rules', assignmentRulesRoutes);
+
+// Team Email - Phase 3 Week 2: Analytics & SLA
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/sla-policies', slaPoliciesRoutes);
 
 // AWS SES User Domain Management (with built-in rate limiting)
 app.use('/api/user-domains', authenticateToken, userVerifiedDomainsRoutes);
