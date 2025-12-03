@@ -58,10 +58,12 @@ Backend/uploads/
 Backend/test-*.js
 Backend/check-*.js
 Backend/cleanup-*.js
+test-*.js
+simple-*.js
+verify-*.bat
 
 # Scripts (temporary)
 Backend/scripts/
-!Backend/scripts/crawlers/
 
 # Documentation (temporary)
 Backend/*.md

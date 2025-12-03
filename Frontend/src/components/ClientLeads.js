@@ -159,10 +159,7 @@ function ClientLeads() {
     } catch (error) {
       console.error('Error fetching leads:', error);
       // Keep mock data on error, don't show error toast on initial load
-      if (leads.length === 0) {
-        // If there are no leads at all, it might be the first time
-        console.log('Using mock data as fallback');
-      }
+      console.log('Using mock data as fallback');
     } finally {
       setIsLoading(false);
     }

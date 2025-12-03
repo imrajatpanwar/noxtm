@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './ExhibitorsList.css';
 import Breadcrumb from './Breadcrumb';
-import { FiX, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiX, FiPlus } from 'react-icons/fi';
 
 function ExhibitorsList({ tradeShow, onNavigate }) {
   const [exhibitors, setExhibitors] = useState([]);
@@ -67,42 +67,6 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
     } catch (error) {
       console.error('Error saving exhibitor:', error);
       alert('Error saving exhibitor. Please try again.');
-    }
-  };
-
-  const handleEdit = (exhibitor) => {
-    setFormData({
-      companyName: exhibitor.companyName,
-      boothNo: exhibitor.boothNo,
-      location: exhibitor.location
-    });
-    setEditingId(exhibitor._id);
-    setShowAddModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this exhibitor?')) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/exhibitors/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        await fetchExhibitors();
-      } else {
-        const data = await response.json();
-        alert(data.message || 'Error deleting exhibitor');
-      }
-    } catch (error) {
-      console.error('Error deleting exhibitor:', error);
-      alert('Error deleting exhibitor. Please try again.');
     }
   };
 

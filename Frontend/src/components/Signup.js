@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../config/api';
 import './Signup.css';
+import dayHero from '../assets/day-time-login-signup.webp';
+import nightHero from '../assets/night-time-login-signup.webp';
 
 function Signup({ onSignup }) {
   const [step, setStep] = useState(1); // 1 = form, 2 = verification
@@ -148,19 +150,16 @@ function Signup({ onSignup }) {
     setLoading(false);
   };
 
+  const currentHour = new Date().getHours();
+  const isDayTime = currentHour >= 6 && currentHour < 18;
+  const heroImage = isDayTime ? dayHero : nightHero;
+  const heroAlt = isDayTime ? 'Daytime Noxtm illustration' : 'Nighttime Noxtm illustration';
+
   return (
     <div className="signup-page">
       <div className="signup-split-container">
-        {/* Left Side - Welcome Content at Bottom */}
         <div className="signup-left-side">
-          <div className="welcome-content">
-            <h1 className="welcome-title">Create your Noxtm Account</h1>
-            <p className="welcome-description">
-              Start your journey with Noxtm and discover how we create 
-              experiences that connect, inspire, and convert.
-            </p>
-            {/* Left-side terms removed - terms remain on the form (right side) */}
-          </div>
+          <img src={heroImage} alt={heroAlt} className="signup-hero-image" />
         </div>
 
         {/* Right Side - Signup Form */}
