@@ -9,8 +9,18 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public home page */}
-        <Route path="/" element={<Home />} />
+        {/* Root path - Mail Dashboard (Protected) */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Inbox />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public home/landing page */}
+        <Route path="/home" element={<Home />} />
 
         {/* Redirect /login to main app login with mail redirect */}
         <Route
@@ -18,14 +28,10 @@ function App() {
           element={<Navigate to="https://noxtm.com/login?redirect=mail" replace />}
         />
 
-        {/* Protected inbox - requires authentication */}
+        {/* Legacy /inbox route - redirect to root */}
         <Route
           path="/inbox"
-          element={
-            <ProtectedRoute>
-              <Inbox />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </Router>
