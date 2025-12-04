@@ -1,13 +1,14 @@
 import React from 'react';
 import './Home.css';
+import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 
 const Home = () => {
   const handleGetStarted = () => {
-    window.location.href = 'https://noxtm.com/login?redirect=mail';
+    window.location.href = MAIL_LOGIN_URL;
   };
 
   const handleSignIn = () => {
-    window.location.href = 'https://noxtm.com/login?redirect=mail';
+    window.location.href = MAIL_LOGIN_URL;
   };
 
   return (
@@ -41,7 +42,7 @@ const Home = () => {
               <button onClick={handleGetStarted} className="btn-get-started">
                 Get Started
               </button>
-              <a href="https://noxtm.com" className="btn-learn-more">
+              <a href={getMainAppUrl()} className="btn-learn-more">
                 Learn More
               </a>
             </div>
@@ -171,16 +172,16 @@ const Home = () => {
             <div className="footer-section">
               <h4>Product</h4>
               <ul>
-                <li><a href="https://noxtm.com">Main Platform</a></li>
-                <li><a href="https://noxtm.com/pricing">Pricing</a></li>
+                <li><a href={getMainAppUrl()}>Main Platform</a></li>
+                <li><a href={getMainAppUrl('/pricing')}>Pricing</a></li>
               </ul>
             </div>
             <div className="footer-section">
               <h4>Company</h4>
               <ul>
-                <li><a href="https://noxtm.com/blog">Blog</a></li>
-                <li><a href="https://noxtm.com/legal/privacy">Privacy</a></li>
-                <li><a href="https://noxtm.com/legal/terms">Terms</a></li>
+                <li><a href={getMainAppUrl('/blog')}>Blog</a></li>
+                <li><a href={getMainAppUrl('/legal/privacy')}>Privacy</a></li>
+                <li><a href={getMainAppUrl('/legal/terms')}>Terms</a></li>
               </ul>
             </div>
           </div>

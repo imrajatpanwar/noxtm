@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
+import { getMainAppUrl } from '../config/authConfig';
 import './Login.css';
 
 function Login() {
@@ -98,7 +99,7 @@ function Login() {
           <p>
             Using your NOXTM account credentials
           </p>
-          <a href="https://noxtm.com" target="_blank" rel="noopener noreferrer">
+          <a href={getMainAppUrl()} target="_blank" rel="noopener noreferrer">
             Go to main dashboard
           </a>
         </div>

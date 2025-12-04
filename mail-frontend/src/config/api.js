@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { MAIL_LOGIN_URL } from './authConfig';
 
 // Create axios instance with proper configuration for mail.noxtm.com
 // Use environment-based URL configuration
@@ -38,16 +39,22 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid: clear local auth state
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Check if this is a true authentication failure
+      // Only redirect if user has no valid token/cookie
+      const hasToken = localStorage.getItem('token');
+      const hasCookie = document.cookie.includes('token') || document.cookie.includes('auth');
 
-      // Attach a flag so callers can detect auth failures and redirect if needed
-      error.isAuthError = true;
-
-      // For mail app, redirect to login page
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // If no auth credentials exist at all, redirect to login
+      if (!hasToken && !hasCookie && window.location.pathname !== '/login') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        console.log('No authentication found, redirecting to login');
+        window.location.href = MAIL_LOGIN_URL;
+      } else {
+        // User has credentials but got 401 - likely endpoint issue or permission denied
+        // Log it but don't redirect - let component handle the error
+        console.error('API 401 error (not redirecting):', error.config?.url);
+        error.isAuthError = true;
       }
     }
 

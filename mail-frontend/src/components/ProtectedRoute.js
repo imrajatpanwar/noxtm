@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
+import { MAIL_LOGIN_URL } from '../config/authConfig';
 
 const ProtectedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -16,8 +17,8 @@ const ProtectedRoute = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(response.data));
         }
       } catch (err) {
-        // Not authenticated, redirect to main app login
-        window.location.href = 'https://noxtm.com/login?redirect=mail';
+        // Not authenticated, redirect to main app login with mail redirect
+        window.location.href = MAIL_LOGIN_URL;
       } finally {
         setLoading(false);
       }

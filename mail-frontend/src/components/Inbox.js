@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMail, FiSend, FiTrash2, FiArchive, FiStar, FiClock, FiUsers, FiSettings, FiLogOut, FiBarChart2 } from 'react-icons/fi';
+import { FiMail, FiSend, FiTrash2, FiArchive, FiStar, FiClock, FiUsers, FiSettings, FiLogOut, FiBarChart2, FiUpload } from 'react-icons/fi';
 import MainstreamInbox from './MainstreamInbox';
 import TeamInbox from './email/TeamInbox';
 import AnalyticsDashboard from './email/AnalyticsDashboard';
@@ -8,7 +8,11 @@ import SLAMonitor from './email/SLAMonitor';
 import TemplateManager from './email/TemplateManager';
 import RulesManager from './email/RulesManager';
 import DomainManagement from './email/DomainManagement';
+import CreateCampaign from './campaign/CreateCampaign';
+import ImportMail from './campaign/ImportMail';
+import CampaignAnalytics from './campaign/CampaignAnalytics';
 import api from '../config/api';
+import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 import './Inbox.css';
 
 function Inbox() {
@@ -26,7 +30,7 @@ function Inbox() {
         localStorage.setItem('user', JSON.stringify(response.data));
       } catch (err) {
         // No SSO session, redirect to main app login with redirect parameter
-        window.location.href = 'https://noxtm.com/login?redirect=mail';
+        window.location.href = MAIL_LOGIN_URL;
       }
     };
 
@@ -120,13 +124,36 @@ function Inbox() {
 
           <div className="nav-divider"></div>
 
+          <button
+            className={`nav-item ${activeView === 'create-campaign' ? 'active' : ''}`}
+            onClick={() => setActiveView('create-campaign')}
+          >
+            <FiSend /> Create Campaign Email
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'import-mail' ? 'active' : ''}`}
+            onClick={() => setActiveView('import-mail')}
+          >
+            <FiUpload /> Import Mail
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'campaign-analytics' ? 'active' : ''}`}
+            onClick={() => setActiveView('campaign-analytics')}
+          >
+            <FiBarChart2 /> Campaign Analytics
+          </button>
+
+          <div className="nav-divider"></div>
+
           <button className="nav-item logout-btn" onClick={handleLogout}>
             <FiLogOut /> Sign Out
           </button>
         </nav>
 
         <div className="sidebar-footer">
-          <a href="https://noxtm.com" target="_blank" rel="noopener noreferrer">
+          <a href={getMainAppUrl()} target="_blank" rel="noopener noreferrer">
             Back to Dashboard
           </a>
         </div>
@@ -141,6 +168,9 @@ function Inbox() {
         {activeView === 'templates' && <TemplateManager />}
         {activeView === 'rules' && <RulesManager />}
         {activeView === 'domains' && <DomainManagement />}
+        {activeView === 'create-campaign' && <CreateCampaign />}
+        {activeView === 'import-mail' && <ImportMail />}
+        {activeView === 'campaign-analytics' && <CampaignAnalytics />}
       </div>
     </div>
   );
