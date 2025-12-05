@@ -120,6 +120,14 @@ app.use('/api/leads', leadsRoutes);
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);
 
+// Campaign routes
+const campaignsRoutes = require('./routes/campaigns');
+app.use('/api/campaigns', campaignsRoutes);
+
+// Contact List routes
+const contactListsRoutes = require('./routes/contact-lists');
+app.use('/api/contact-lists', contactListsRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));

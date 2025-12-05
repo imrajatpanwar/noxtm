@@ -23,6 +23,10 @@ import Legal from './components/Legal/Legal';
 import InviteAccept from './components/InviteAccept';
 import ExtensionLogin from './components/ExtensionLogin';
 import ExtensionAuthCallback from './components/ExtensionAuthCallback';
+import CampaignDashboard from './components/CampaignDashboard';
+import CampaignWizard from './components/CampaignWizard';
+import CampaignDetails from './components/CampaignDetails';
+import ContactListManager from './components/ContactListManager';
 
 // API configuration is now handled in config/api.js
 
@@ -334,6 +338,76 @@ function App() {
             <Route
               path="/access-restricted"
               element={<AccessRestricted />}
+            />
+            <Route
+              path="/campaigns"
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <CampaignDashboard />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/campaign/wizard"
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <CampaignWizard />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/campaign/wizard/:id"
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <CampaignWizard />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/campaign/:id"
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <CampaignDetails />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            <Route
+              path="/contact-lists"
+              element={
+                user ? (
+                  isUserRestricted(user) ? (
+                    <AccessRestricted />
+                  ) : (
+                    <ContactListManager />
+                  )
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
             />
             <Route path="/blog" element={<PublicBlogList />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
