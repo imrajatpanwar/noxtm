@@ -1,0 +1,11 @@
+email,name,company,phone,designation,location
+john.doe@example.com,John Doe,Tech Corp,+1-555-0101,CEO,San Francisco
+jane.smith@example.com,Jane Smith,Innovation Labs,+1-555-0102,CTO,New York
+bob.johnson@example.com,Bob Johnson,Startup Inc,+1-555-0103,Product Manager,Austin
+alice.williams@example.com,Alice Williams,Digital Solutions,+1-555-0104,Marketing Director,Seattle
+charlie.brown@example.com,Charlie Brown,Cloud Systems,+1-555-0105,VP Sales,Boston
+diana.davis@example.com,Diana Davis,Data Analytics Co,+1-555-0106,Lead Developer,Denver
+edward.miller@example.com,Edward Miller,AI Ventures,+1-555-0107,Business Analyst,Chicago
+fiona.wilson@example.com,Fiona Wilson,Mobile Apps Ltd,+1-555-0108,UX Designer,Portland
+george.moore@example.com,George Moore,Enterprise Tech,+1-555-0109,Solutions Architect,Miami
+hannah.taylor@example.com,Hannah Taylor,SaaS Platform,+1-555-0110,Customer Success,Los Angeles

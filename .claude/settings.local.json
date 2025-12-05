@@ -42,7 +42,8 @@
       "Bash(chmod:*)",
       "Bash(./deploy-mail-frontend.sh:*)",
       "Bash(scp:*)",
-      "Bash(tar:*)"
+      "Bash(tar:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
