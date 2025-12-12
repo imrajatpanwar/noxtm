@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Exhibitor = require('../models/Exhibitor');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const auth = authenticateToken;
 
 // Simpler POST endpoint for Chrome extension
 router.post('/exhibitors', auth, async (req, res) => {

@@ -3,7 +3,8 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const LeadDirectory = require('../models/Lead');
 const Client = require('../models/Client');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const auth = authenticateToken;
 
 // Get all leads for current user
 router.get('/', auth, async (req, res) => {
