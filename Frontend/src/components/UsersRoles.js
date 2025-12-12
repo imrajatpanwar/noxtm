@@ -42,7 +42,7 @@ function UsersRoles() {
   };
 
   // Filter users based on search term
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -106,9 +106,8 @@ function UsersRoles() {
               value={selectedUser.role}
               onChange={(e) => handleRoleUpdate(selectedUser._id, e.target.value)}
             >
-              <option value="USER">User</option>
-              <option value="SOLOHQ">Solo HQ</option>
-              <option value="ADMIN">Admin</option>
+              <option value="User">User</option>
+              <option value="Admin">Admin</option>
             </select>
             <div className="modal-actions">
               <button onClick={() => setSelectedUser(null)}>Close</button>

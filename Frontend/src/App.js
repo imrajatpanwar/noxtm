@@ -70,13 +70,13 @@ function App() {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    
+
     if (token && storedUser) {
       // Load user from localStorage first for immediate display
       const userData = JSON.parse(storedUser);
       setUser(userData);
       setLoading(false);
-      
+
       // Then verify with backend
       checkAuthStatus();
     } else if (token) {
@@ -86,6 +86,28 @@ function App() {
       setLoading(false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for user updates from other components (e.g., after trial starts)
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      const updatedUser = localStorage.getItem('user');
+      if (updatedUser) {
+        try {
+          const parsed = JSON.parse(updatedUser);
+          setUser(parsed);
+          console.log('[APP] User state updated from localStorage:', parsed.email);
+        } catch (error) {
+          console.error('[APP] Error parsing updated user:', error);
+        }
+      }
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdate);
+
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdate);
+    };
+  }, []);
 
   const checkAuthStatus = async () => {
     try {
@@ -99,7 +121,7 @@ function App() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
-      
+
       // Only set error for network issues, not auth failures
       if (error.code === 'NETWORK_ERROR' || !error.response) {
         setError('Unable to connect to server. Please check your connection.');
@@ -150,14 +172,14 @@ function App() {
         status: error.response?.status,
         url: error.config?.url
       });
-      
+
       let errorMessage = 'Login failed. Please try again.';
-      
+
       if (error.response) {
         // Server responded with error status
         const status = error.response.status;
         const serverMessage = error.response.data?.message;
-        
+
         if (status === 400) {
           errorMessage = serverMessage || 'Invalid email or password.';
         } else if (status === 500) {
@@ -174,9 +196,9 @@ function App() {
         // Other error
         errorMessage = error.message || 'An unexpected error occurred.';
       }
-      
-      return { 
-        success: false, 
+
+      return {
+        success: false,
         message: errorMessage
       };
     }
@@ -191,19 +213,19 @@ function App() {
         role,
         ...additionalData
       };
-      
+
       const response = await api.post('/register', signupData);
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
-      
+
       return { success: true, user };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registration failed' 
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Registration failed'
       };
     }
   };
@@ -233,12 +255,14 @@ function App() {
       return false; // Allow access for company members
     }
 
-    // Check if user has active subscription
-    const hasActiveSubscription = user.subscription &&
-                                   user.subscription.status === 'active' &&
-                                   user.subscription.plan !== 'None';
+    // Check if user has active subscription or valid trial
+    const subscription = user.subscription;
+    const hasActiveSubscription = subscription && (
+      subscription.status === 'active' ||
+      (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
+    );
 
-    console.log(`User: ${user.email}, Subscription: ${user.subscription?.plan}, Status: ${user.subscription?.status}, Has Access: ${hasActiveSubscription}`);
+    console.log(`User: ${user.email}, Subscription: ${subscription?.plan}, Status: ${subscription?.status}, Has Access: ${hasActiveSubscription}`);
 
     // Restrict access if no active subscription and not a company member
     return !hasActiveSubscription;
@@ -248,11 +272,11 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center', 
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         fontSize: '1.2rem',
         color: '#666',
@@ -260,8 +284,8 @@ function App() {
       }}>
         <div>Loading...</div>
         {error && (
-          <div style={{ 
-            color: '#ef4444', 
+          <div style={{
+            color: '#ef4444',
             fontSize: '1rem',
             textAlign: 'center',
             maxWidth: '400px'
@@ -278,146 +302,146 @@ function App() {
       <ModuleProvider>
         <MessagingProvider>
           <Router>
-          <div className="App">
-          <Toaster 
-            position="top-right" 
-            richColors 
-            toastOptions={{ 
-              style: { zIndex: 10000 },
-              className: 'toast-notification'
-            }} 
-            style={{ zIndex: 10000 }}
-          />
-          <Header user={user} onLogout={logout} />
-          <Routes>
-            <Route path="/" element={<Home user={user} />} />
-            <Route
-              path="/login"
-              element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />}
-            />
-            <Route
-              path="/signup"
-              element={<Signup onSignup={signup} />}
-            />
-            <Route
-              path="/forgot-password"
-              element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
-            />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route
-              path="/company-setup"
-              element={
-                user ? (
-                  <CompanySetup />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/join-company"
-              element={<JoinCompany onSignup={signup} />}
-            />
-            <Route
-              path="/dashboard"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    // No active subscription - redirect to pricing via AccessRestricted
-                    <AccessRestricted />
-                  ) : (
-                    // Has active subscription - allow access
-                    <Dashboard user={user} onLogout={logout} />
-                  )
-                ) : (
-                  // No user logged in - redirect to login
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/access-restricted"
-              element={<AccessRestricted />}
-            />
-            <Route
-              path="/campaigns"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    <AccessRestricted />
-                  ) : (
-                    <CampaignDashboard />
-                  )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/campaign/wizard"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    <AccessRestricted />
-                  ) : (
-                    <CampaignWizard />
-                  )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/campaign/wizard/:id"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    <AccessRestricted />
-                  ) : (
-                    <CampaignWizard />
-                  )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/campaign/:id"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    <AccessRestricted />
-                  ) : (
-                    <CampaignDetails />
-                  )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/contact-lists"
-              element={
-                user ? (
-                  isUserRestricted(user) ? (
-                    <AccessRestricted />
-                  ) : (
-                    <ContactListManager />
-                  )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route path="/blog" element={<PublicBlogList />} />
-            <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/legal/*" element={<Legal />} />
-            <Route path="/invite/:token" element={<InviteAccept />} />
-            <Route path="/extension-login" element={<ExtensionLogin />} />
-            <Route path="/extension-auth-callback" element={<ExtensionAuthCallback />} />
-          </Routes>
-          <ConditionalFooter />
-        </div>
+            <div className="App">
+              <Toaster
+                position="top-right"
+                richColors
+                toastOptions={{
+                  style: { zIndex: 10000 },
+                  className: 'toast-notification'
+                }}
+                style={{ zIndex: 10000 }}
+              />
+              <Header user={user} onLogout={logout} />
+              <Routes>
+                <Route path="/" element={<Home user={user} />} />
+                <Route
+                  path="/login"
+                  element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />}
+                />
+                <Route
+                  path="/signup"
+                  element={<Signup onSignup={signup} />}
+                />
+                <Route
+                  path="/forgot-password"
+                  element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
+                />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route
+                  path="/company-setup"
+                  element={
+                    user ? (
+                      <CompanySetup />
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/join-company"
+                  element={<JoinCompany onSignup={signup} />}
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        // No active subscription - redirect to pricing via AccessRestricted
+                        <AccessRestricted />
+                      ) : (
+                        // Has active subscription - allow access
+                        <Dashboard user={user} onLogout={logout} />
+                      )
+                    ) : (
+                      // No user logged in - redirect to login
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/access-restricted"
+                  element={<AccessRestricted />}
+                />
+                <Route
+                  path="/campaigns"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        <AccessRestricted />
+                      ) : (
+                        <CampaignDashboard />
+                      )
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/campaign/wizard"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        <AccessRestricted />
+                      ) : (
+                        <CampaignWizard />
+                      )
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/campaign/wizard/:id"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        <AccessRestricted />
+                      ) : (
+                        <CampaignWizard />
+                      )
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/campaign/:id"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        <AccessRestricted />
+                      ) : (
+                        <CampaignDetails />
+                      )
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/contact-lists"
+                  element={
+                    user ? (
+                      isUserRestricted(user) ? (
+                        <AccessRestricted />
+                      ) : (
+                        <ContactListManager />
+                      )
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route path="/blog" element={<PublicBlogList />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/legal/*" element={<Legal />} />
+                <Route path="/invite/:token" element={<InviteAccept />} />
+                <Route path="/extension-login" element={<ExtensionLogin />} />
+                <Route path="/extension-auth-callback" element={<ExtensionAuthCallback />} />
+              </Routes>
+              <ConditionalFooter />
+            </div>
           </Router>
         </MessagingProvider>
       </ModuleProvider>

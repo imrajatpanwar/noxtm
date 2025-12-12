@@ -419,7 +419,9 @@ function initializeRoutes(dependencies) {
         plan: company.subscription.plan,
         status: company.subscription.status,
         startDate: company.subscription.startDate,
-        endDate: company.subscription.endDate
+        endDate: company.subscription.endDate,
+        billingCycle: company.subscription.billingCycle || 'Monthly',
+        trialUsed: user.subscription?.trialUsed || false  // Preserve user's trial history
       };
 
       // Give user full Noxtm permissions (matching company plan)
@@ -556,7 +558,9 @@ function initializeRoutes(dependencies) {
         plan: company.subscription.plan,
         status: company.subscription.status,
         startDate: company.subscription.startDate,
-        endDate: company.subscription.endDate
+        endDate: company.subscription.endDate,
+        billingCycle: company.subscription.billingCycle || 'Monthly',
+        trialUsed: user.subscription?.trialUsed || false  // Preserve user's trial history
       };
 
       // Give user full Noxtm permissions (matching company plan)

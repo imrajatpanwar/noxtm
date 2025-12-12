@@ -4,13 +4,33 @@ import { IoMdCheckmark } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { useRole } from '../contexts/RoleContext';
 import { toast } from 'sonner';
+import api from '../config/api';
 import './Pricing.css';
 
 const Pricing = () => {
   const navigate = useNavigate();
   const [billingType, setBillingType] = useState('Monthly');
-  // eslint-disable-next-line no-unused-vars
-  const { currentUser, upgradeToSoloHQ } = useRole();
+  const [loading, setLoading] = useState(false);
+  const { currentUser } = useRole();
+
+  // Check if trial is unavailable (already used or expired)
+  const hasUsedTrial = currentUser?.subscription?.trialUsed === true;
+  const isTrialExpired = currentUser?.subscription?.plan === 'Trial' &&
+    currentUser?.subscription?.endDate &&
+    new Date(currentUser.subscription.endDate) < new Date();
+  const isTrialUnavailable = hasUsedTrial || isTrialExpired;
+
+  // Debug logging
+  React.useEffect(() => {
+    if (currentUser) {
+      console.log('[PRICING] Current user:', currentUser.email);
+      console.log('[PRICING] Subscription:', currentUser.subscription);
+      console.log('[PRICING] trialUsed value:', currentUser?.subscription?.trialUsed);
+      console.log('[PRICING] hasUsedTrial:', hasUsedTrial);
+      console.log('[PRICING] isTrialExpired:', isTrialExpired);
+      console.log('[PRICING] isTrialUnavailable:', isTrialUnavailable);
+    }
+  }, [currentUser, hasUsedTrial, isTrialExpired, isTrialUnavailable]);
 
   // Check if user is a company member and redirect to dashboard automatically
   React.useEffect(() => {
@@ -29,112 +49,157 @@ const Pricing = () => {
     }
   }, [navigate]);
 
+  // Start 7-day free trial
+  const startTrial = async () => {
+    if (!currentUser) {
+      console.log('[TRIAL] No current user, redirecting to signup');
+      navigate('/signup');
+      return;
+    }
+
+    console.log('[TRIAL] Starting trial for user:', currentUser.email);
+    setLoading(true);
+    try {
+      const response = await api.post('/subscription/start-trial');
+      console.log('[TRIAL] Backend response:', response.data);
+
+      if (response.data.success) {
+        // Use the full user object from backend response
+        const updatedUser = response.data.user;
+        console.log('[TRIAL] Updated user from backend:', updatedUser);
+
+        // Update localStorage with the complete user object
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('[TRIAL] LocalStorage updated with full user object');
+
+        // Dispatch event to update RoleContext
+        window.dispatchEvent(new Event('userUpdated'));
+        console.log('[TRIAL] userUpdated event dispatched');
+
+        toast.success('Your 7-day free trial has started!');
+
+        console.log('[TRIAL] Redirecting to company setup...');
+        // Force immediate redirect to company setup page
+        // Using replace() instead of href to avoid timing issues
+        window.location.replace('/company-setup');
+      } else {
+        console.error('[TRIAL] Backend returned success=false');
+      }
+    } catch (error) {
+      console.error('[TRIAL] Error:', error);
+      console.error('[TRIAL] Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Failed to start trial');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const features = [
     {
       name: 'Client Leads',
-      soloHQ: true,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Conversion Tracking',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Project Management',
-      soloHQ: '5 Projects',
+      trial: 'Limited',
       noxtm: 'Unlimited',
       enterprise: 'Unlimited'
     },
     {
       name: 'Email Marketing',
-      soloHQ: false,
+      trial: 'Limited',
       noxtm: 'Unlimited',
       enterprise: 'Unlimited'
     },
     {
       name: 'WhatsApp Marketing',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Social Media Scheduler',
-      soloHQ: false,
+      trial: 'Limited',
       noxtm: 'Unlimited Instagram | LinkedIn',
       enterprise: 'Unlimited Instagram | LinkedIn'
     },
     {
       name: 'Internal Messages',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Employee can be Add',
-      soloHQ: '10 Employees',
+      trial: '5 Employees',
       noxtm: '500 Employees',
       enterprise: 'Unlimited Employees'
     },
     {
       name: 'HR Management',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Financial Management',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Internal Policies',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'Video Meeting',
-      soloHQ: false,
+      trial: false,
       noxtm: true,
       enterprise: false
     },
     {
       name: 'Quick Tools',
-      soloHQ: false,
+      trial: true,
       noxtm: true,
       enterprise: true
     },
     {
       name: 'SEO & Content',
-      soloHQ: false,
+      trial: false,
       noxtm: true,
       enterprise: false
     },
     {
       name: 'Storage',
-      soloHQ: '500 MB',
+      trial: '1 GB storage',
       noxtm: 'Unlimited storage',
       enterprise: 'Unlimited storage'
     },
     {
       name: 'Up Time',
-      soloHQ: '-',
+      trial: '99% uptime',
       noxtm: '99.9% uptime SLA',
       enterprise: '99.99% uptime SLA'
     },
     {
       name: 'Email notifications',
-      soloHQ: '100 emails per day',
+      trial: 'Limited',
       noxtm: 'Unlimited',
       enterprise: 'Unlimited'
     },
     {
       name: 'Support',
-      soloHQ: 'Community Support',
+      trial: 'Email Support',
       noxtm: '24/7 Premium Support',
       enterprise: '24/7 Premium Support'
     }
@@ -142,15 +207,16 @@ const Pricing = () => {
 
   const plans = [
     {
-      name: 'Solo HQ Dashboard',
+      name: '7-Day Free Trial',
       price: 'Free',
-      buttonText: 'Get Started',
-      buttonClass: 'btn-outline'
+      buttonText: 'Start Trial',
+      buttonClass: 'btn-trial',
+      isTrial: true
     },
     {
       name: 'Noxtm Dashboard',
       price: billingType === 'Annual' ? '₹10,399' : '₹12,999',
-      buttonText: 'Upgrade Now',
+      buttonText: 'Get Started',
       buttonClass: 'btn-outline'
     },
     {
@@ -173,49 +239,13 @@ const Pricing = () => {
       return;
     }
 
-    if (plan.name === 'Solo HQ Dashboard') {
-      try {
-        // Call the backend to set up subscription
-        const response = await fetch('/api/subscribe/solohq', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+    // Handle trial plan
+    if (plan.isTrial) {
+      startTrial();
+      return;
+    }
 
-        // Check if response is ok and is JSON
-        const contentType = response.headers.get('content-type');
-        if (!response.ok) {
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Subscription failed');
-          } else {
-            throw new Error('Server error. Please try again later.');
-          }
-        }
-
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response from server');
-        }
-
-        const data = await response.json();
-        
-        if (data.success) {
-          // Update local user data
-          localStorage.setItem('user', JSON.stringify(data.user));
-          // Dispatch event to notify App.js of user update
-          window.dispatchEvent(new Event('userUpdated'));
-          toast.success('Successfully subscribed to SOLOHQ plan!');
-          navigate('/dashboard');
-        } else {
-          toast.error(data.message || 'Failed to subscribe to SOLOHQ plan');
-        }
-      } catch (error) {
-        console.error('Subscription error:', error);
-        toast.error(error.message || 'Failed to process subscription. Please try again.');
-      }
-    } else if (plan.name === 'Noxtm Dashboard') {
+    if (plan.name === 'Noxtm Dashboard') {
       try {
         // Call the backend to set up Noxtm subscription
         const response = await fetch('/api/subscribe/noxtm', {
@@ -280,7 +310,7 @@ const Pricing = () => {
     <div className="pricing-container">
       <div className="pricing-header">
         <h1>Upgrade your plan</h1>
-        
+
         <div className="toggle-wrapper">
           <div className={`toggle-pill ${billingType.toLowerCase()}`} role="group" aria-label="Billing period selection">
             <button
@@ -303,7 +333,7 @@ const Pricing = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="pricing-table">
         <div className="price-section-header">
           <div className="feature-column"></div>
@@ -311,22 +341,23 @@ const Pricing = () => {
             <div key={index} className="plan-column">
               <h3>{plan.name}</h3>
               <div className="plan-price">{plan.price}</div>
-              <button 
-                className={`plan-btn ${plan.buttonClass}`}
+              <button
+                className={`plan-btn ${plan.buttonClass}${plan.isTrial && isTrialUnavailable ? ' btn-disabled' : ''}`}
                 onClick={() => handlePlanSelect(plan)}
+                disabled={plan.isTrial && isTrialUnavailable}
               >
-                {plan.buttonText}
+                {plan.isTrial && isTrialUnavailable ? 'Trial Used' : plan.buttonText}
               </button>
             </div>
           ))}
         </div>
-        
+
         <div className="table-body">
           {features.map((feature, index) => (
             <div key={index} className="feature-row">
               <div className="feature-name">{feature.name}</div>
               <div className="feature-value">
-                {renderFeatureValue(feature.soloHQ)}
+                {renderFeatureValue(feature.trial)}
               </div>
               <div className="feature-value">
                 {renderFeatureValue(feature.noxtm)}
