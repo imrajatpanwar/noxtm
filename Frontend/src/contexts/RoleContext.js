@@ -34,7 +34,6 @@ export const RoleProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [permissionUpdateTrigger, setPermissionUpdateTrigger] = useState(0);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
-  const permissionCheckInterval = useRef(null);
   const lastPermissionHash = useRef(null);
 
   // Fetch users from backend
@@ -42,18 +41,18 @@ export const RoleProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return null;
-      
+
       const response = await api.get('/users');
-      
+
       // Transform backend data to match frontend format
       const transformedUsers = response.data.users.map(user => {
         // Get default permissions for the user's role
         const roleDefaultPermissions = [user.role] || {};
-        
+
         // Merge backend permissions with role defaults
         // Backend permissions override role defaults
         const mergedPermissions = { ...roleDefaultPermissions };
-        
+
         // Apply user-specific permissions from backend
         if (user.permissions) {
           Object.keys(user.permissions).forEach(key => {
@@ -63,7 +62,7 @@ export const RoleProvider = ({ children }) => {
             }
           });
         }
-        
+
         return {
           id: user._id,
           name: user.username,
@@ -74,7 +73,7 @@ export const RoleProvider = ({ children }) => {
           permissions: mergedPermissions
         };
       });
-      
+
       return transformedUsers;
     } catch (error) {
       console.error('Error fetching users from backend:', error);
@@ -92,32 +91,32 @@ export const RoleProvider = ({ children }) => {
   // Check current user permissions from backend
   const checkCurrentUserPermissions = useCallback(async () => {
     if (!currentUser || isCheckingPermissions) return;
-    
+
     setIsCheckingPermissions(true);
     try {
       // Only fetch profile and check for permission changes
       const response = await api.get('/profile');
       const updatedUser = response.data;
-      
+
       // Check if permissions actually changed before updating
       const newHash = generatePermissionHash(updatedUser);
       const oldHash = lastPermissionHash.current;
-      
+
       if (oldHash && newHash && oldHash !== newHash) {
         // Permissions changed - trigger re-render without notification
         setPermissionUpdateTrigger(prev => prev + 1);
-        
+
         // Only update state if permissions changed
         setCurrentUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        
+
         // Fetch updated users list
         const backendUsers = await fetchUsersFromBackend();
         if (backendUsers) {
           setUsers(backendUsers);
           localStorage.setItem('usersData', JSON.stringify(backendUsers));
         }
-        
+
         lastPermissionHash.current = newHash;
       }
     } catch (error) {
@@ -183,24 +182,42 @@ export const RoleProvider = ({ children }) => {
     if (!currentUser) return false;
     // Admin and Lord always have access
     if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
-    // Check if subscription is active
-    return currentUser.subscription?.status === 'active' && currentUser.subscription?.plan !== 'None';
+    // Check if subscription is active (Noxtm or Enterprise plans only)
+    return currentUser.subscription?.status === 'active';
   }, [currentUser]);
 
-  // Set up real-time permission checking
+  // Event-based permission updates (replaces 30-second polling)
   useEffect(() => {
     if (!currentUser) return;
 
-    // Start permission checking interval (every 30 seconds)
-    permissionCheckInterval.current = setInterval(() => {
-      checkCurrentUserPermissions();
-    }, 30000);
-
-    // Cleanup interval on unmount or user change
-    return () => {
-      if (permissionCheckInterval.current) {
-        clearInterval(permissionCheckInterval.current);
+    // Listen for permission changes from other tabs via localStorage
+    const handleStorageChange = (event) => {
+      if (event.key === 'permissionUpdate' || event.key === 'user') {
+        checkCurrentUserPermissions();
       }
+    };
+
+    // Check permissions when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkCurrentUserPermissions();
+      }
+    };
+
+    // Listen for custom permission update events (from same tab)
+    const handlePermissionUpdate = () => {
+      checkCurrentUserPermissions();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('permissionUpdated', handlePermissionUpdate);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('permissionUpdated', handlePermissionUpdate);
     };
   }, [currentUser, checkCurrentUserPermissions]);
 
@@ -231,12 +248,12 @@ export const RoleProvider = ({ children }) => {
   const updateUserPermissions = async (userId, permissions) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       if (token) {
         // Update on backend - send permissions directly
         await api.put(`/users/${userId}/permissions`, permissions);
       }
-      
+
       // Update local state
       const updatedUsers = users.map(user => {
         if ((user._id || user.id) === userId) {
@@ -244,16 +261,16 @@ export const RoleProvider = ({ children }) => {
         }
         return user;
       });
-      
+
       setUsers(updatedUsers);
       localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-      
+
       return { success: true };
     } catch (error) {
       console.error('Error updating user permissions:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message 
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
       };
     }
   };
@@ -269,10 +286,10 @@ export const RoleProvider = ({ children }) => {
   const updateUserRole = async (userId, newRole, newStatus = null) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Check if we're using demo data (string IDs) vs real backend data (ObjectIds)
       const isDemoData = typeof userId === 'string' && /^[0-9]+$/.test(userId);
-      
+
       if (token && !isDemoData) {
         // Try to update on backend first (only for real backend data)
         try {
@@ -291,7 +308,7 @@ export const RoleProvider = ({ children }) => {
           }
         }
       }
-      
+
       // Update local state
       const updatedUsers = users.map(user => {
         if (user.id === userId) {
@@ -303,14 +320,14 @@ export const RoleProvider = ({ children }) => {
         }
         return user;
       });
-      
+
       setUsers(updatedUsers);
       localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-      
+
       return { success: true };
     } catch (error) {
       console.error('Error updating user role:', error);
-      
+
       // Still update locally as fallback
       const updatedUsers = users.map(user => {
         if (user.id === userId) {
@@ -322,13 +339,13 @@ export const RoleProvider = ({ children }) => {
         }
         return user;
       });
-      
+
       setUsers(updatedUsers);
       localStorage.setItem('usersData', JSON.stringify(updatedUsers));
-      
-      return { 
-        success: false, 
-        error: error.response?.data?.message || error.message 
+
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
       };
     }
   };

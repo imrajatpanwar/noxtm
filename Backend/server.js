@@ -142,7 +142,7 @@ const connectWithTimeout = async () => {
     console.log('Step 1: Getting MongoDB URI...');
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
     console.log('Step 2: Attempting to connect to MongoDB...');
-    
+
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000, // 10 second timeout
       connectTimeoutMS: 10000,
@@ -199,164 +199,9 @@ db.once('open', () => {
   mongoConnected = true;
 });
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  fullName: { type: String, required: true },
-  username: { type: String }, // Optional username
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, required: true, default: 'User' },
-  // Profile fields
-  profileImage: { type: String }, // Base64 or URL to profile image
-  emailAvatar: { type: String }, // Outbound email avatar stored separately from dashboard profile image
-  phoneNumber: { type: String },
-  bio: { type: String, maxLength: 500 },
-  lastLogin: { type: Date },
-  // Company ID for multi-tenancy (Noxtm users only)
-  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
-  subscription: {
-    plan: {
-      type: String,
-      enum: ['None', 'SoloHQ', 'Noxtm', 'Enterprise'],
-      default: 'None'
-    },
-    status: {
-      type: String,
-      enum: ['active', 'inactive', 'pending'],
-      default: 'inactive'
-    },
-    startDate: { type: Date },
-    endDate: { type: Date }
-  },
-  // Custom permissions that override role defaults
-  permissions: {
-    dashboard: { type: Boolean, default: true },
-    dataCenter: { type: Boolean },
-    projects: { type: Boolean },
-    teamCommunication: { type: Boolean },
-    digitalMediaManagement: { type: Boolean },
-    marketing: { type: Boolean },
-    hrManagement: { type: Boolean },
-    financeManagement: { type: Boolean },
-    seoManagement: { type: Boolean },
-    internalPolicies: { type: Boolean },
-    settingsConfiguration: { type: Boolean }
-  },
-  access: [{
-    type: String,
-    enum: ['Dashboard', 'Data Center', 'Projects', 'Team Communication', 'Digital Media Management', 'Marketing', 'HR Management', 'Finance Management', 'SEO Management', 'Internal Policies', 'Settings & Configuration']
-  }],
-  status: {
-    type: String,
-    required: true,
-    default: 'Active',
-    enum: ['Active', 'Inactive', 'Terminated', 'In Review']
-  },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-// Update the updatedAt field before saving
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-const User = mongoose.model('User', userSchema);
-
-// Company Schema (for Noxtm multi-tenancy)
-const companySchema = new mongoose.Schema({
-  companyName: { type: String, required: true },
-  industry: { type: String },
-  size: { type: String, enum: ['1-10', '11-50', '51-200', '201-500', '500+'] },
-  address: { type: String },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // User who created the company
-  members: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    roleInCompany: { type: String, enum: ['Owner', 'Manager', 'Employee'], default: 'Employee' },
-    department: {
-      type: String,
-      enum: [
-        'Management Team',
-        'Digital Team',
-        'SEO Team',
-        'Graphic Design Team',
-        'Marketing Team',
-        'Sales Team',
-        'Development Team',
-        'HR Team',
-        'Finance Team',
-        'Support Team',
-        'Operations Team'
-      ]
-    },
-    invitedAt: { type: Date, default: Date.now },
-    joinedAt: { type: Date }
-  }],
-  invitations: [{
-    email: { type: String, required: true },
-    token: { type: String, required: true, unique: true },
-    roleInCompany: { type: String, enum: ['Manager', 'Employee'], default: 'Employee' },
-    department: {
-      type: String,
-      required: true,
-      enum: [
-        'Management Team',
-        'Digital Team',
-        'SEO Team',
-        'Graphic Design Team',
-        'Marketing Team',
-        'Sales Team',
-        'Development Team',
-        'HR Team',
-        'Finance Team',
-        'Support Team',
-        'Operations Team'
-      ]
-    },
-    customPermissions: {
-      dashboard: { type: Boolean },
-      dataCenter: { type: Boolean },
-      projects: { type: Boolean },
-      teamCommunication: { type: Boolean },
-      digitalMediaManagement: { type: Boolean },
-      marketing: { type: Boolean },
-      hrManagement: { type: Boolean },
-      financeManagement: { type: Boolean },
-      seoManagement: { type: Boolean },
-      internalPolicies: { type: Boolean },
-      settingsConfiguration: { type: Boolean }
-    },
-    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    createdAt: { type: Date, default: Date.now },
-    expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }, // 7 days
-    status: { type: String, enum: ['pending', 'accepted', 'expired'], default: 'pending' }
-  }],
-  subscription: {
-    plan: { type: String, enum: ['Noxtm', 'Enterprise'], default: 'Noxtm' },
-    status: { type: String, enum: ['active', 'inactive', 'cancelled'], default: 'active' },
-    startDate: { type: Date, default: Date.now },
-    endDate: { type: Date }
-  },
-  // NEW: Email configuration for team email
-  emailSettings: {
-    primaryDomain: { type: String },
-    defaultSignature: { type: String },
-    emailQuota: {
-      totalMB: { type: Number, default: 10240 },
-      usedMB: { type: Number, default: 0 }
-    }
-  },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-companySchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-const Company = mongoose.model('Company', companySchema);
+// Import User and Company models from separate files
+const User = require('./models/User');
+const Company = require('./models/Company');
 
 // Blog Category Schema
 const categorySchema = new mongoose.Schema({
@@ -367,7 +212,7 @@ const categorySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-categorySchema.pre('save', function(next) {
+categorySchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   if (!this.slug) {
     this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -391,10 +236,10 @@ const blogSchema = new mongoose.Schema({
     path: String
   },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { 
-    type: String, 
-    enum: ['draft', 'published', 'archived'], 
-    default: 'draft' 
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'archived'],
+    default: 'draft'
   },
   publishedAt: { type: Date },
   views: { type: Number, default: 0 },
@@ -402,7 +247,7 @@ const blogSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-blogSchema.pre('save', function(next) {
+blogSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   if (!this.slug) {
     this.slug = this.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -415,37 +260,8 @@ blogSchema.pre('save', function(next) {
 
 const Blog = mongoose.model('Blog', blogSchema);
 
-// Lead Schema (Miner Extension integration)
-const leadSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  email: { type: String, required: true, trim: true },
-  phone: { type: String, trim: true },
-  company: { type: String, trim: true },
-  source: {
-    type: String,
-    enum: ['Website', 'Referral', 'Social Media', 'Email Campaign', 'LinkedIn', 'Miner Extension', 'Other'],
-    default: 'Miner Extension'
-  },
-  status: {
-    type: String,
-    enum: ['New', 'In Progress', 'Qualified', 'Converted', 'Lost'],
-    default: 'New'
-  },
-  notes: { type: String, trim: true },
-  priority: {
-    type: String,
-    enum: ['High', 'Medium', 'Low'],
-    default: 'Medium'
-  },
-  lastContact: { type: Date },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' }
-}, { timestamps: true });
-
-// Index for faster queries by user
-leadSchema.index({ userId: 1, createdAt: -1 });
-
-const Lead = mongoose.model('Lead', leadSchema);
+// Import Lead model from separate file
+const Lead = require('./models/Lead');
 
 // Email Verification Schema
 const emailVerificationSchema = new mongoose.Schema({
@@ -479,36 +295,8 @@ passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
 
-// Email Log Schema (for Noxtm Mail dashboard)
-const emailLogSchema = new mongoose.Schema({
-  from: { type: String, required: true },
-  to: { type: String, required: true },
-  subject: { type: String, required: true },
-  body: String,
-  htmlBody: String,
-  status: {
-    type: String,
-    enum: ['queued', 'sent', 'failed', 'bounced'],
-    default: 'queued',
-    index: true
-  },
-  messageId: String,
-  error: String,
-  deliveryInfo: {
-    relay: String,
-    delay: String,
-    dsnStatus: String
-  },
-  sentAt: { type: Date, default: Date.now, index: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
-// Add indexes for common queries
-emailLogSchema.index({ status: 1, sentAt: -1 });
-emailLogSchema.index({ to: 1 });
-emailLogSchema.index({ from: 1 });
-
-const EmailLog = mongoose.model('EmailLog', emailLogSchema);
+// Import EmailLog model from separate file
+const EmailLog = require('./models/EmailLog');
 
 // Initialize email logger with EmailLog model
 initializeEmailLogger(EmailLog);
@@ -539,7 +327,7 @@ conversationSchema.index({ companyId: 1, type: 1 });
 conversationSchema.index({ 'participants.user': 1 });
 conversationSchema.index({ updatedAt: -1 });
 
-conversationSchema.pre('save', function(next) {
+conversationSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
@@ -585,7 +373,7 @@ messageSchema.index({ conversationId: 1, createdAt: -1 });
 messageSchema.index({ companyId: 1, createdAt: -1 });
 messageSchema.index({ sender: 1 });
 
-messageSchema.pre('save', function(next) {
+messageSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
@@ -624,51 +412,26 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Middleware to check SoloHQ subscription status
-const checkSOLOHQSubscription = async (req, res, next) => {
-  // Skip check for non-SoloHQ endpoints
-  if (!req.path.startsWith('/api/solohq/')) {
-    return next();
-  }
-
-  try {
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if user has active SoloHQ subscription
-    if (!user.subscription ||
-        user.subscription.plan !== 'SoloHQ' ||
-        user.subscription.status !== 'active') {
-      return res.status(302).json({
-        redirect: '/pricing',
-        message: 'SoloHQ subscription required'
-      });
-    }
-
-    next();
-  } catch (error) {
-    console.error('Subscription check error:', error);
-    res.status(500).json({ message: 'Server error during subscription check' });
-  }
-};
+// Removed SoloHQ subscription middleware - no longer used
 
 // Middleware to check for active plan
 const checkActivePlan = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has any active subscription plan
-    if (!user.subscription || 
-        user.subscription.status !== 'active' || 
-        user.subscription.plan === 'None') {
-      return res.status(302).json({ 
+    // Check if user has any active subscription plan or valid trial
+    if (!user.subscription ||
+      user.subscription.plan === 'None' ||
+      (user.subscription.status !== 'active' &&
+        user.subscription.status !== 'trial') ||
+      (user.subscription.status === 'trial' &&
+        user.subscription.endDate &&
+        new Date(user.subscription.endDate) < new Date())) {
+      return res.status(302).json({
         redirect: '/pricing'
       });
     }
@@ -841,7 +604,7 @@ const storage = multer.diskStorage({
     } else {
       uploadDir = path.join(__dirname, 'uploads', 'blog-images');
     }
-    
+
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -1026,8 +789,8 @@ app.get('/api', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     mongodb: mongoConnected ? 'connected' : 'disconnected'
@@ -1050,7 +813,7 @@ app.get('/api/categories', async (req, res) => {
 app.post('/api/categories', authenticateToken, async (req, res) => {
   try {
     const { name, description } = req.body;
-    
+
     if (!name) {
       return res.status(400).json({ message: 'Category name is required' });
     }
@@ -1096,9 +859,9 @@ app.get('/api/blogs', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const status = req.query.status;
     const category = req.query.category;
-    
+
     const skip = (page - 1) * limit;
-    
+
     // Build filter object
     const filter = {};
     if (status && status !== 'all') {
@@ -1139,14 +902,14 @@ app.get('/api/blogs/:slug', async (req, res) => {
     const blog = await Blog.findOne({ slug: req.params.slug })
       .populate('category', 'name slug')
       .populate('author', 'fullName');
-    
+
     if (!blog) {
       return res.status(404).json({ message: 'Blog not found' });
     }
 
     // Increment views count
     await Blog.findByIdAndUpdate(blog._id, { $inc: { views: 1 } });
-    
+
     res.json(blog);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -1157,7 +920,7 @@ app.get('/api/blogs/:slug', async (req, res) => {
 app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async (req, res) => {
   try {
     const { title, metaDescription, keywords, category, content, status, altText } = req.body;
-    
+
     // Validation
     if (!title || title.length > 60) {
       return res.status(400).json({ message: 'Title is required and must be 60 characters or less' });
@@ -1174,7 +937,7 @@ app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async 
 
     // Generate slug from title
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    
+
     // Check if slug already exists
     const existingBlog = await Blog.findOne({ slug });
     if (existingBlog) {
@@ -1183,7 +946,7 @@ app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async 
 
     // Parse keywords
     const keywordArray = keywords ? keywords.split(',').map(k => k.trim()) : [];
-    
+
     // Handle featured image
     let featuredImage = {};
     if (req.file) {
@@ -1210,7 +973,7 @@ app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async 
     const populatedBlog = await Blog.findById(savedBlog._id)
       .populate('category', 'name slug')
       .populate('author', 'fullName');
-    
+
     res.status(201).json(populatedBlog);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -1221,7 +984,7 @@ app.post('/api/blogs', authenticateToken, upload.single('featuredImage'), async 
 app.put('/api/blogs/:id', authenticateToken, upload.single('featuredImage'), async (req, res) => {
   try {
     const { title, metaDescription, keywords, category, content, status, altText } = req.body;
-    
+
     const blog = await Blog.findById(req.params.id);
     if (!blog) {
       return res.status(404).json({ message: 'Blog not found' });
@@ -1235,18 +998,18 @@ app.put('/api/blogs/:id', authenticateToken, upload.single('featuredImage'), asy
       blog.title = title;
       blog.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     }
-    
+
     if (metaDescription) {
       if (metaDescription.length > 160) {
         return res.status(400).json({ message: 'Meta description must be 160 characters or less' });
       }
       blog.metaDescription = metaDescription;
     }
-    
+
     if (keywords) {
       blog.keywords = keywords.split(',').map(k => k.trim());
     }
-    
+
     if (category) blog.category = category;
     if (content) blog.content = content;
     if (status) blog.status = status;
@@ -1266,7 +1029,7 @@ app.put('/api/blogs/:id', authenticateToken, upload.single('featuredImage'), asy
     const populatedBlog = await Blog.findById(updatedBlog._id)
       .populate('category', 'name slug')
       .populate('author', 'fullName');
-    
+
     res.json(populatedBlog);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -1582,28 +1345,120 @@ app.post('/api/send-verification-code', verificationEmailLimiter, validateEmailM
     }
 
     try {
-      // Send email using template
-      const sendTemplateEmail = getTemplateHelper();
-      const result = await sendTemplateEmail(
-        'email-verification',
-        email,
-        {
-          firstName: fullName.split(' ')[0],
-          fullName: fullName,
-          verificationCode: verificationCode,
-          userName: fullName,
-          email: email
-        },
-        {
-          logData: {
-            userId: null,
-            ip: req.ip,
-            userAgent: req.headers['user-agent'],
-            type: 'verification'
-          }
+      // Send email directly using nodemailer
+      const nodemailer = require('nodemailer');
+
+      const transportConfig = {
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: false,
+        tls: {
+          rejectUnauthorized: false
         }
-      );
-      console.log('✅ Verification email sent successfully:', result.messageId);
+      };
+
+      // Add auth if credentials provided
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        transportConfig.auth = {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        };
+      }
+
+      const transporter = nodemailer.createTransport(transportConfig);
+
+      const firstName = fullName.split(' ')[0];
+
+      // Email HTML template
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #7c3aed; margin: 0;">Noxtm</h1>
+          </div>
+
+          <div style="background-color: #f9fafb; border-radius: 8px; padding: 30px;">
+            <h2 style="color: #1f2937; margin-top: 0;">Welcome to Noxtm!</h2>
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Thank you for signing up! Please use the verification code below to complete your registration:
+            </p>
+
+            <div style="background-color: #ffffff; border: 2px dashed #7c3aed; border-radius: 8px; padding: 25px; text-align: center; margin: 30px 0;">
+              <div style="color: #6b7280; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                Your Verification Code
+              </div>
+              <div style="font-size: 42px; font-weight: bold; color: #7c3aed; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                ${verificationCode}
+              </div>
+            </div>
+
+            <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+              <strong>Important:</strong> This code will expire in <strong>10 minutes</strong> for security reasons.
+            </p>
+
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="color: #92400e; font-size: 14px; margin: 0; line-height: 1.6;">
+                <strong>Security Notice:</strong> If you didn't request this verification code, please ignore this email.
+              </p>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
+              © 2025 Noxtm. All rights reserved.
+            </p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const textBody = `Welcome to Noxtm!
+
+Hi ${firstName},
+
+Thank you for signing up! Please use the verification code below to complete your registration:
+
+Your Verification Code: ${verificationCode}
+
+Important: This code will expire in 10 minutes for security reasons.
+
+Security Notice: If you didn't request this verification code, please ignore this email.
+
+© 2025 Noxtm. All rights reserved.
+This is an automated message, please do not reply to this email.`;
+
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || 'Noxtm <noreply@noxtm.com>',
+        to: email,
+        subject: 'Email Verification Code - Noxtm',
+        html: htmlBody,
+        text: textBody
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      console.log('✅ Verification email sent:', result.messageId);
+
+      // Log email
+      try {
+        await EmailLog.create({
+          direction: 'sent',
+          from: mailOptions.from,
+          to: [email],
+          subject: mailOptions.subject,
+          body: htmlBody,
+          status: 'sent',
+          messageId: result.messageId,
+          userId: null,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+          type: 'verification',
+          sentAt: new Date()
+        });
+      } catch (logError) {
+        console.error('Failed to log email:', logError);
+      }
 
       res.status(200).json({
         success: true,
@@ -1612,7 +1467,7 @@ app.post('/api/send-verification-code', verificationEmailLimiter, validateEmailM
       });
     } catch (mailError) {
       console.error('❌ Failed to send verification email:', mailError);
-      throw mailError; // Re-throw to be caught by outer catch
+      throw mailError;
     }
   } catch (error) {
     console.error('Send verification code error:', error);
@@ -1750,7 +1605,7 @@ app.post('/api/verify-code', async (req, res) => {
 // ===== FORGOT PASSWORD ROUTES =====
 
 // Send password reset code
-app.post('/api/forgot-password', passwordResetLimiter, validateEmailMiddleware('email', false), async (req, res) => {
+app.post('/api/forgot-password', validateEmailMiddleware('email', false), async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -1790,29 +1645,122 @@ app.post('/api/forgot-password', passwordResetLimiter, validateEmailMiddleware('
     }
 
     try {
-      // Send email using template
-      const sendTemplateEmail = getTemplateHelper();
-      const result = await sendTemplateEmail(
-        'password-reset',
-        email,
-        {
-          firstName: user.fullName.split(' ')[0],
-          fullName: user.fullName,
-          verificationCode: resetCode,
-          resetCode: resetCode,
-          userName: user.fullName,
-          email: email
-        },
-        {
-          logData: {
-            userId: user ? user._id : null,
-            ip: req.ip,
-            userAgent: req.headers['user-agent'],
-            type: 'password-reset'
-          }
+      // Send email directly using nodemailer
+      const nodemailer = require('nodemailer');
+
+      const transportConfig = {
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: false,
+        tls: {
+          rejectUnauthorized: false
         }
-      );
+      };
+
+      // Add auth if credentials provided
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        transportConfig.auth = {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        };
+      }
+
+      const transporter = nodemailer.createTransport(transportConfig);
+
+      const firstName = user.fullName.split(' ')[0];
+
+      // Email HTML template
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #7c3aed; margin: 0;">Noxtm</h1>
+          </div>
+          
+          <div style="background-color: #f9fafb; border-radius: 8px; padding: 30px;">
+            <h2 style="color: #1f2937; margin-top: 0;">Password Reset Request</h2>
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              We received a request to reset the password for your Noxtm account. 
+              Use the verification code below to proceed with resetting your password:
+            </p>
+            
+            <div style="background-color: #ffffff; border: 2px dashed #ef4444; border-radius: 8px; padding: 25px; text-align: center; margin: 30px 0;">
+              <div style="color: #6b7280; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                Your Reset Code
+              </div>
+              <div style="font-size: 42px; font-weight: bold; color: #ef4444; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                ${resetCode}
+              </div>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+              <strong>Important:</strong> This code will expire in <strong>10 minutes</strong> for security reasons.
+            </p>
+            
+            <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="color: #991b1b; font-size: 14px; margin: 0; line-height: 1.6;">
+                <strong>Security Notice:</strong> If you didn't request a password reset, please ignore this email. 
+                Your password will remain unchanged, and your account is secure.
+              </p>
+            </div>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
+              © 2025 Noxtm. All rights reserved.
+            </p>
+            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">
+              This is an automated message, please do not reply to this email.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const textBody = `Password Reset Request
+
+Hi ${firstName},
+
+We received a request to reset the password for your Noxtm account. Use the verification code below to proceed with resetting your password:
+
+Your Reset Code: ${resetCode}
+
+Important: This code will expire in 10 minutes for security reasons.
+
+Security Notice: If you didn't request a password reset, please ignore this email. Your password will remain unchanged, and your account is secure.
+
+© 2025 Noxtm. All rights reserved.
+This is an automated message, please do not reply to this email.`;
+
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || 'Noxtm <noreply@noxtm.com>',
+        to: email,
+        subject: 'Password Reset Code - Noxtm',
+        html: htmlBody,
+        text: textBody
+      };
+
+      const result = await transporter.sendMail(mailOptions);
       console.log('✅ Password reset email sent:', result.messageId);
+
+      // Log email
+      try {
+        await EmailLog.create({
+          direction: 'sent',
+          from: mailOptions.from,
+          to: [email],
+          subject: mailOptions.subject,
+          body: htmlBody,
+          status: 'sent',
+          messageId: result.messageId,
+          userId: user._id,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+          type: 'password-reset',
+          sentAt: new Date()
+        });
+      } catch (logError) {
+        console.error('Failed to log email:', logError);
+      }
 
       res.status(200).json({
         success: true,
@@ -1886,8 +1834,8 @@ app.post('/api/reset-password', async (req, res) => {
     // Update user password directly without triggering full validation
     await User.updateOne(
       { _id: user._id },
-      { 
-        $set: { 
+      {
+        $set: {
           password: hashedPassword,
           updatedAt: Date.now()
         }
@@ -2040,7 +1988,9 @@ app.post('/api/subscribe/noxtm', authenticateToken, async (req, res) => {
       plan: 'Noxtm',
       status: 'active',
       startDate,
-      endDate
+      endDate,
+      billingCycle: billingType || user.subscription?.billingCycle || 'Monthly',
+      trialUsed: user.subscription?.trialUsed || false  // Preserve trial flag
     };
 
     // Update permissions based on Noxtm plan (role stays unchanged)
@@ -2870,8 +2820,8 @@ app.put('/api/company/members/:memberId/permissions', authenticateToken, async (
 // Login
 app.post('/api/login', async (req, res) => {
   try {
-    console.log('Login attempt:', { 
-      body: req.body, 
+    console.log('Login attempt:', {
+      body: req.body,
       headers: req.headers['content-type'],
       timestamp: new Date().toISOString(),
       mongoConnected
@@ -2893,8 +2843,8 @@ app.post('/api/login', async (req, res) => {
     // If MongoDB is not connected, return error
     if (!mongoConnected) {
       console.log('MongoDB not connected, cannot authenticate');
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
@@ -3028,10 +2978,10 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    
+
     // Check if user has an active subscription plan
     if (!user.subscription || user.subscription.status !== 'active' || user.subscription.plan === 'None') {
-      return res.status(302).json({ 
+      return res.status(302).json({
         redirect: '/pricing'
       });
     }
@@ -3059,31 +3009,31 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
     // Add role filter if specified
     const roleFilter = req.query.role ? { role: req.query.role } : {};
-    
+
     const users = await User.find(roleFilter)
       .select('-password')
       .sort({ createdAt: -1 })
       .lean(); // Use lean() for better performance
-    
+
     // Process users in a single pass
     const usersWithSyncedAccess = users.map(user => {
       const normalizedPermissions = normalizePermissions(user.permissions);
       const accessArray = syncAccessFromPermissions(normalizedPermissions);
-      
+
       return {
         ...user,
         permissions: normalizedPermissions,
         access: accessArray
       };
     });
-    
+
     res.json({
       message: 'Users retrieved successfully',
       users: usersWithSyncedAccess,
@@ -3100,8 +3050,8 @@ app.get('/api/roles', authenticateToken, async (req, res) => {
   try {
     // Get the available roles from the User schema enum
     const availableRoles = userSchema.paths.role.enumValues;
-    
-    res.json({ 
+
+    res.json({
       roles: availableRoles,
       message: 'Available roles retrieved successfully'
     });
@@ -3171,8 +3121,8 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     console.log('PUT /api/users/:id - Request received:', { id, role, access, status });
 
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
@@ -3203,8 +3153,8 @@ app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(
-      id, 
-      updateData, 
+      id,
+      updateData,
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -3242,8 +3192,8 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
     const { id } = req.params;
 
     if (!mongoConnected) {
-      return res.status(503).json({ 
-        message: 'Database connection unavailable. Please try again later.' 
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
       });
     }
 
@@ -3343,6 +3293,158 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
         details: error.errors
       });
     }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update subscription plan and billing cycle
+app.put('/api/profile/subscription', authenticateToken, async (req, res) => {
+  try {
+    const { plan, billingCycle } = req.body;
+
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    // Validate inputs
+    const validPlans = ['Noxtm', 'Enterprise'];
+    const validCycles = ['Monthly', 'Annual'];
+
+    if (plan && !validPlans.includes(plan)) {
+      return res.status(400).json({ message: 'Invalid plan selected' });
+    }
+
+    if (billingCycle && !validCycles.includes(billingCycle)) {
+      return res.status(400).json({ message: 'Invalid billing cycle' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update subscription
+    if (plan) user.subscription.plan = plan;
+    if (billingCycle) user.subscription.billingCycle = billingCycle;
+
+    // Recalculate end date if billing cycle changed
+    if (billingCycle && user.subscription.startDate) {
+      const startDate = new Date(user.subscription.startDate);
+      const endDate = new Date(startDate);
+
+      if (billingCycle === 'Annual') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+
+      user.subscription.endDate = endDate;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Subscription updated successfully',
+      user: {
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Update subscription error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Cancel subscription
+app.put('/api/profile/subscription/cancel', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update subscription status to cancelled
+    user.subscription.status = 'cancelled';
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Subscription cancelled successfully',
+      user: {
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Start 7-day free trial
+app.post('/api/subscription/start-trial', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoConnected) {
+      return res.status(503).json({
+        message: 'Database connection unavailable. Please try again later.'
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user already has an active subscription or used trial
+    if (user.subscription?.status === 'active' || user.subscription?.status === 'trial') {
+      return res.status(400).json({
+        message: 'You already have an active subscription or trial'
+      });
+    }
+
+    // Check if user has already used their trial
+    if (user.subscription?.trialUsed) {
+      return res.status(400).json({
+        message: 'You have already used your free trial'
+      });
+    }
+
+    // Set 7-day trial
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 7); // 7 days from now
+
+    user.subscription = {
+      plan: 'Trial',
+      status: 'trial',
+      billingCycle: 'Monthly',
+      startDate: startDate,
+      endDate: endDate,
+      trialUsed: true
+    };
+
+    await user.save();
+
+    // Return full user object (excluding password) for complete state update
+    const userObject = user.toObject();
+    delete userObject.password;
+
+    res.json({
+      success: true,
+      message: 'Your 7-day free trial has started!',
+      subscription: user.subscription,
+      user: userObject
+    });
+  } catch (error) {
+    console.error('Start trial error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -3463,9 +3565,9 @@ app.post('/api/profile/upload-image', authenticateToken, upload.single('profileI
     }
 
     if (!req.file) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'No image file provided' 
+        message: 'No image file provided'
       });
     }
 
@@ -3485,9 +3587,9 @@ app.post('/api/profile/upload-image', authenticateToken, upload.single('profileI
       .select('-password');
 
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
@@ -3500,10 +3602,10 @@ app.post('/api/profile/upload-image', authenticateToken, upload.single('profileI
     });
   } catch (error) {
     console.error('Upload profile image error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Server error while uploading image',
-      error: error.message 
+      error: error.message
     });
   }
 });
