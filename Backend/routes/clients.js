@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const auth = authenticateToken;
 const Client = require('../models/Client');
 
 // Get all clients

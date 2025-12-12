@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const TradeShow = require('../models/TradeShow');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const auth = authenticateToken;
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
