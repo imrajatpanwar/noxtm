@@ -182,8 +182,9 @@ export const RoleProvider = ({ children }) => {
     if (!currentUser) return false;
     // Admin and Lord always have access
     if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
-    // Check if subscription is active (Noxtm or Enterprise plans only)
-    return currentUser.subscription?.status === 'active';
+    // Check if subscription is active or trial
+    const status = currentUser.subscription?.status;
+    return status === 'active' || status === 'trial';
   }, [currentUser]);
 
   // Event-based permission updates (replaces 30-second polling)

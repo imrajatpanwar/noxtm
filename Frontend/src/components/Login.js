@@ -48,22 +48,19 @@ function Login({ onLogin }) {
         return;
       }
 
-      // Company members (invited users) go directly to dashboard
-      if (result.user.companyId) {
-        navigate('/dashboard');
-        setLoading(false);
-        return;
-      }
+      // Check if user has valid subscription (active or trial that hasn't expired)
+      const subscription = result.user.subscription;
+      const hasValidSubscription = subscription && (
+        subscription.status === 'active' ||
+        (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
+      );
 
-      // Regular users without active subscription go to pricing
-      if (!result.user.subscription ||
-          result.user.subscription.status !== 'active' ||
-          result.user.subscription.plan === 'None') {
-        navigate('/pricing');
-      }
-      // Users with active subscription go to dashboard
-      else {
+      // Users with valid subscription go to dashboard
+      if (hasValidSubscription) {
         navigate('/dashboard');
+      } else {
+        // Users without valid subscription go to pricing
+        navigate('/pricing');
       }
     } else {
       // Show error message
@@ -105,9 +102,9 @@ function Login({ onLogin }) {
                 gap: '8px'
               }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 <span>{error}</span>
               </div>
@@ -128,7 +125,7 @@ function Login({ onLogin }) {
                   required
                 />
               </div>
-              
+
               <div className="form-group">
                 <div className="login-password-input-container">
                   <input
@@ -149,19 +146,19 @@ function Login({ onLogin }) {
                   >
                     {showPassword ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
                       </svg>
                     ) : (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
                       </svg>
                     )}
                   </button>
                 </div>
               </div>
-              
+
               <div className="password-options">
                 <div className="remember-me-container">
                   <input
@@ -183,7 +180,7 @@ function Login({ onLogin }) {
                   Forgot password?
                 </button>
               </div>
-              
+
               <button type="submit" className="continue-btn" disabled={loading}>
                 {loading ? 'Signing in...' : 'Continue with email'}
               </button>
@@ -199,7 +196,7 @@ function Login({ onLogin }) {
             {/* Terms and Privacy */}
             <div className="terms-section">
               <p>
-                By clicking "Continue with email" above, you acknowledge that you 
+                By clicking "Continue with email" above, you acknowledge that you
                 have read and understood, and agree to Noxtm's{' '}
                 <a href="/terms" className="terms-link">Terms & Conditions</a> and{' '}
                 <a href="/privacy" className="terms-link">Privacy Policy</a>.

@@ -576,6 +576,22 @@ function getDefaultPermissions(planOrRole) {
       settingsConfiguration: false
     };
   }
+  // Trial subscription plan: Same as Noxtm (full dashboard access during trial)
+  else if (planOrRole === 'Trial') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: true,
+      internalPolicies: true,
+      settingsConfiguration: false
+    };
+  }
   // Default User role: Only basic dashboard access
   return {
     dashboard: true,
@@ -3428,6 +3444,10 @@ app.post('/api/subscription/start-trial', authenticateToken, async (req, res) =>
       endDate: endDate,
       trialUsed: true
     };
+
+    // Update permissions to grant full dashboard access during trial
+    user.permissions = getDefaultPermissions('Trial');
+    user.access = syncAccessFromPermissions(user.permissions);
 
     await user.save();
 

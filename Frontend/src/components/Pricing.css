@@ -125,12 +125,12 @@
     min-width: 320px;
     height: 44px;
   }
-  
+
   .toggle-option {
     padding: 8px 24px;
     font-size: 14px;
   }
-  
+
   .discount-tag {
     font-size: 12px;
   }
@@ -175,7 +175,9 @@
   font-weight: 600;
 }
 
-.billing-toggle-pill .pill-option:not(.is-active) .pill-discount { color:#d1d5db; }
+.billing-toggle-pill .pill-option:not(.is-active) .pill-discount {
+  color: #d1d5db;
+}
 
 .billing-toggle-pill .pill-discount {
   font-size: 12px;
@@ -191,8 +193,8 @@
   width: calc(50% - 4px);
   background: #fff;
   border-radius: 38px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  transition: transform .35s cubic-bezier(.65,.05,.36,1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+  transition: transform .35s cubic-bezier(.65, .05, .36, 1);
 }
 
 .billing-toggle-pill.monthly .pill-slider {
@@ -207,12 +209,12 @@
   .billing-toggle-pill {
     width: 100%;
   }
-  
+
   .billing-toggle-pill .pill-option {
     padding: 12px 12px;
     font-size: 14px;
   }
-  
+
   .billing-toggle-pill .pill-discount {
     display: none;
   }
@@ -275,7 +277,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border: 2px solid #b5b5b5;
-  background:#111;
+  background: #111;
   font-size: 16px;
   width: 100%;
   max-width: 220px;
@@ -313,6 +315,34 @@
 
 .feature-row:last-child {
   border-bottom: none;
+}
+
+/* Trial Button Style */
+.btn-trial {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.btn-trial:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Disabled Button State */
+.plan-btn.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #6b7280;
+  border-color: #6b7280;
 }
 
 .feature-name {
@@ -369,7 +399,7 @@
   .pricing-table {
     overflow-x: auto;
   }
-  
+
   .table-header,
   .feature-row {
     min-width: 800px;
@@ -380,17 +410,17 @@
   .pricing-container {
     padding: 20px 10px;
   }
-  
+
   .pricing-header h1 {
     font-size: 2rem;
   }
-  
+
   .table-header,
   .feature-row {
     grid-template-columns: 200px 1fr 1fr 1fr;
     min-width: 600px;
   }
-  
+
   .feature-column,
   .plan-column,
   .feature-name,
@@ -440,11 +470,11 @@
   border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
   background-color: #667eea;
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   transform: translateX(30px);
 }
 
@@ -617,13 +647,13 @@ input:checked + .slider:before {
 }
 
 .faq-item:hover {
-    background: #000;
-    color: #fff;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+  background: #000;
+  color: #fff;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   color: #1a1a1a;
   margin-bottom: 12px;
 }
@@ -662,41 +692,41 @@ input:checked + .slider:before {
   .pricing-container {
     padding: 20px 15px;
   }
-  
+
   .pricing-header h1 {
     font-size: 2.5rem;
   }
-  
+
   .pricing-cards {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .pricing-card {
     padding: 30px 20px;
   }
-  
+
   .pricing-card.popular {
     transform: none;
   }
-  
+
   .pricing-card.popular:hover {
     transform: translateY(-5px);
   }
-  
+
   .plan-pricing .price {
     font-size: 2.5rem;
   }
-  
+
   .faq-grid {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .contact-section {
     padding: 40px 20px;
   }
-  
+
   .billing-toggle {
     flex-direction: column;
     gap: 10px;
@@ -783,29 +813,96 @@ input:checked + .slider:before {
   .pricing-header h1 {
     font-size: 2rem;
   }
-  
+
   .pricing-header p {
     font-size: 1rem;
   }
-  
+
   .plan-pricing .price {
     font-size: 2rem;
   }
-  
+
   .faq-item {
     padding: 20px;
   }
-  
+
   .contact-section h3 {
     font-size: 1.5rem;
   }
-  
+
   .add-features-section {
     padding: 16px;
   }
-  
+
   .plan-label {
     font-size: 0.8rem;
     padding: 4px 8px;
+  }
+}
+
+/* Trial Banner Styles */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px 30px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  color: white;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.trial-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.trial-badge {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.trial-info p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.btn-start-trial {
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-start-trial:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-start-trial:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 600px) {
+  .trial-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .btn-start-trial {
+    width: 100%;
   }
 }
