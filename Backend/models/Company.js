@@ -52,8 +52,8 @@ const companySchema = new mongoose.Schema({
     status: { type: String, enum: ["pending", "accepted", "expired"], default: "pending" }
   }],
   subscription: {
-    plan: { type: String, enum: ["Noxtm", "Enterprise"], default: "Noxtm" },
-    status: { type: String, enum: ["active", "inactive", "cancelled"], default: "active" },
+    plan: { type: String, enum: ["Trial", "Noxtm", "Enterprise"], default: "Trial" },
+    status: { type: String, enum: ["trial", "active", "inactive", "cancelled", "expired"], default: "trial" },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date }
   },
