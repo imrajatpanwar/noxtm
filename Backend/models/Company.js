@@ -22,7 +22,7 @@ const companySchema = new mongoose.Schema({
   }],
   invitations: [{
     email: { type: String, required: true },
-    token: { type: String, required: true, unique: true },
+    token: { type: String, required: true },
     roleInCompany: { type: String, enum: ["Manager", "Employee"], default: "Employee" },
     department: {
       type: String,
