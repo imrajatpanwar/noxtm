@@ -19,6 +19,7 @@ const passwordResetLimiter = rateLimit({
   max: 10, // 10 requests per hour
   standardHeaders: true,
   legacyHeaders: false,
+  validate: {trustProxy: false}, // Disable proxy validation
   message: {
     success: false,
     message: 'Too many password reset requests. Please try again in an hour.',

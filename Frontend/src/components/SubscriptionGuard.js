@@ -39,19 +39,23 @@ const SubscriptionGuard = ({ children }) => {
 
         const data = await response.json();
         // ...existing code...
-        if (!data.subscription || 
-            data.subscription.status !== 'active' || 
-            data.subscription.plan === 'None') {
+        if (!data.subscription ||
+          data.subscription.plan === 'None' ||
+          (data.subscription.status !== 'active' &&
+            data.subscription.status !== 'trial') ||
+          (data.subscription.status === 'trial' &&
+            data.subscription.endDate &&
+            new Date(data.subscription.endDate) < new Date())) {
           toast.error('Please choose a subscription plan to access the dashboard');
           navigate('/pricing');
           return;
         }
         // ...existing code...
-        if (window.location.pathname.startsWith('/solohq') && 
-            currentUser.role === 'SOLOHQ' && 
-            (!data.subscription || 
-             data.subscription.plan !== 'SOLOHQ' || 
-             data.subscription.status !== 'active')) {
+        if (window.location.pathname.startsWith('/solohq') &&
+          currentUser.role === 'SOLOHQ' &&
+          (!data.subscription ||
+            data.subscription.plan !== 'SOLOHQ' ||
+            data.subscription.status !== 'active')) {
           toast.error('SOLOHQ subscription required');
           navigate('/pricing');
           return;

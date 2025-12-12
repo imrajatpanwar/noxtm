@@ -77,18 +77,18 @@ function Dashboard({ user, onLogout }) {
     } catch (error) {
       // More detailed error message to help with debugging
       let errorMsg = 'Failed to load dashboard data';
-      
+
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         console.error('API Error Status:', error.response.status);
         console.error('API Error Data:', error.response.data);
-        
+
         if (error.response.status === 401) {
           errorMsg += ': Authentication failed. Please log in again.';
           onLogout(); // Logout the user on authentication failure
-        } else if (!isAdmin && (error.response.status === 302 || 
-                  (error.response.data && error.response.data.redirect === '/pricing'))) {
+        } else if (!isAdmin && (error.response.status === 302 ||
+          (error.response.data && error.response.data.redirect === '/pricing'))) {
           // Only redirect non-admin users to pricing page
           navigate('/pricing');
           return; // Exit early since we're redirecting
@@ -104,7 +104,7 @@ function Dashboard({ user, onLogout }) {
         console.error('API Error Setup:', error.message);
         errorMsg += `: ${error.message}`;
       }
-      
+
       setError(errorMsg);
       console.error('Dashboard error:', error);
     } finally {
@@ -114,9 +114,20 @@ function Dashboard({ user, onLogout }) {
 
   useEffect(() => {
     if (currentUser) {
+      // Check if user has a valid subscription (active or trial)
+      const hasValidPlan = currentUser.subscription?.status === 'active' ||
+        currentUser.subscription?.status === 'trial';
+      const isAdminUser = currentUser.role === 'Admin';
+
+      if (!isAdminUser && !hasValidPlan) {
+        // Redirect to pricing if no valid plan
+        navigate('/pricing');
+        return;
+      }
+
       fetchDashboardData();
     }
-  }, [currentUser, fetchDashboardData]);
+  }, [currentUser, fetchDashboardData, navigate]);
 
   // Listen for navigation to messaging from toast notifications
   useEffect(() => {
