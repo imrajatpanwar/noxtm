@@ -73,10 +73,6 @@ const CompanySetup = () => {
     }
   };
 
-  const handleSkip = () => {
-    toast.info('You can add company details later from settings');
-    navigate('/dashboard');
-  };
 
   return (
     <div className="company-setup-container">
@@ -270,14 +266,6 @@ const CompanySetup = () => {
           </div>
 
           <div className="form-actions">
-            <button
-              type="button"
-              className="btn-skip"
-              onClick={handleSkip}
-              disabled={loading}
-            >
-              Skip for Now
-            </button>
             <button
               type="submit"
               className="btn-submit"
