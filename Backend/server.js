@@ -2053,13 +2053,6 @@ app.post('/api/company/setup', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has Noxtm subscription
-    if (!user.subscription || user.subscription.plan !== 'Noxtm') {
-      return res.status(403).json({
-        message: 'Noxtm subscription required to create a company'
-      });
-    }
-
     const {
       companyName,
       companyEmail,
@@ -2114,11 +2107,16 @@ app.post('/api/company/setup', authenticateToken, async (req, res) => {
         roleInCompany: 'Owner',
         joinedAt: new Date()
       }],
-      subscription: {
+      subscription: user.subscription ? {
         plan: user.subscription.plan,
         status: user.subscription.status,
         startDate: user.subscription.startDate,
         endDate: user.subscription.endDate
+      } : {
+        plan: 'Trial',
+        status: 'trial',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
       }
     });
 
