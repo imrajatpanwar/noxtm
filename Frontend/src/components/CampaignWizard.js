@@ -446,8 +446,7 @@ function CampaignWizard() {
                 value={campaignData.subject}
                 onChange={(e) => handleInputChange('subject', e.target.value)}
               />
-              <small>Variables: {{'{'}}{'{'}name{'}'}}{'}'},  {{'{'}}{'{'}companyName{'}'}}{'}'},  {{'{'}}{'{'}email{'}'}}{'}'}
-              </small>
+              <small>Variables: {'{{name}}'}, {'{{companyName}}'}, {'{{email}}'}</small>
             </div>
 
             <div className="form-group">
@@ -459,8 +458,7 @@ function CampaignWizard() {
                 modules={modules}
                 placeholder="Write your email content here..."
               />
-              <small>Use variables for personalization: {{'{'}}{'{'}name{'}'}}{'}'},  {{'{'}}{'{'}companyName{'}'}}{'}'},  {{'{'}}{'{'}email{'}'}}{'}'}
-              </small>
+              <small>Use variables for personalization: {'{{'} name {'}}'},  {'{{'} companyName {'}}'},  {'{{'} email {'}}'}</small>
             </div>
           </div>
         )}
