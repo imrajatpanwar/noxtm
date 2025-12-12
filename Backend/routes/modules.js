@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const InstalledModule = require('../models/InstalledModule');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const auth = authenticateToken;
 
 // Get all installed modules for the current user
 router.get('/installed', auth, async (req, res) => {
