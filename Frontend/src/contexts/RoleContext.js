@@ -240,6 +240,22 @@ export const RoleProvider = ({ children }) => {
       return currentUser.permissions[module];
     }
 
+    // Fallback: Check localStorage if API failed to load permissions
+    // This helps trial users who may have permissions set during trial start
+    // but API calls failed
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.permissions && parsed.permissions.hasOwnProperty(module)) {
+          console.log('[PERMISSIONS] Using fallback from localStorage for module:', module);
+          return parsed.permissions[module];
+        }
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+      }
+    }
+
     // Default: no access
     return false;
   }, [currentUser, users]);

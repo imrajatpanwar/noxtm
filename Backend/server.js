@@ -28,6 +28,7 @@ const {
 } = require('./middleware/emailRateLimit');
 const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
 const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
+const { hasActiveSubscription } = require('./utils/subscriptionHelpers');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -2993,12 +2994,29 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
 
-    // Check if user has an active subscription plan
-    if (!user.subscription || user.subscription.status !== 'active' || user.subscription.plan === 'None') {
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Use subscription helper that correctly handles trial users
+    if (!hasActiveSubscription(user)) {
+      console.log('[DASHBOARD API] User has no active subscription:', {
+        email: user.email,
+        plan: user.subscription?.plan,
+        status: user.subscription?.status,
+        endDate: user.subscription?.endDate
+      });
       return res.status(302).json({
         redirect: '/pricing'
       });
     }
+
+    // Log successful access for debugging
+    console.log('[DASHBOARD API] User accessing dashboard:', {
+      email: user.email,
+      plan: user.subscription?.plan,
+      status: user.subscription?.status
+    });
 
     // This is where you would add dashboard-specific data
     // For now, just return some mock data
