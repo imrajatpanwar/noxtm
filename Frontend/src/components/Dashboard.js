@@ -70,9 +70,18 @@ function Dashboard({ user, onLogout }) {
       return;
     }
 
+    console.log('[DASHBOARD] Fetching dashboard data for user:', currentUser.email);
+    console.log('[DASHBOARD] User subscription:', {
+      plan: currentUser.subscription?.plan,
+      status: currentUser.subscription?.status,
+      endDate: currentUser.subscription?.endDate
+    });
+    console.log('[DASHBOARD] User permissions:', currentUser.permissions);
+
     try {
       // Direct API call for dashboard data
       const response = await api.get('/dashboard');
+      console.log('[DASHBOARD] Dashboard data loaded successfully');
       setDashboardData(response.data);
     } catch (error) {
       // More detailed error message to help with debugging
@@ -81,32 +90,44 @@ function Dashboard({ user, onLogout }) {
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error('API Error Status:', error.response.status);
-        console.error('API Error Data:', error.response.data);
+        const status = error.response.status;
+        const data = error.response.data;
 
-        if (error.response.status === 401) {
+        console.error('[DASHBOARD] API Error Status:', status);
+        console.error('[DASHBOARD] API Error Data:', data);
+        console.error('[DASHBOARD] User subscription:', currentUser?.subscription);
+
+        if (status === 401) {
           errorMsg += ': Authentication failed. Please log in again.';
           onLogout(); // Logout the user on authentication failure
-        } else if (!isAdmin && (error.response.status === 302 ||
-          (error.response.data && error.response.data.redirect === '/pricing'))) {
+        } else if (!isAdmin && (status === 302 || data?.redirect === '/pricing')) {
           // Only redirect non-admin users to pricing page
+          console.error('[DASHBOARD] Subscription required - redirecting to pricing');
+          console.error('[DASHBOARD] User details:', {
+            email: currentUser?.email,
+            plan: currentUser?.subscription?.plan,
+            status: currentUser?.subscription?.status,
+            endDate: currentUser?.subscription?.endDate
+          });
           navigate('/pricing');
           return; // Exit early since we're redirecting
-        } else if (error.response.status >= 500) {
+        } else if (status >= 500) {
           errorMsg += ': Server error. Please try again later.';
+        } else {
+          errorMsg += `: ${data?.message || 'Unknown error'}`;
         }
       } else if (error.request) {
         // The request was made but no response was received
-        console.error('API Error: No response received');
+        console.error('[DASHBOARD] API Error: No response received');
         errorMsg += ': No response from server. Please check your connection.';
       } else {
         // Something happened in setting up the request that triggered an Error
-        console.error('API Error Setup:', error.message);
+        console.error('[DASHBOARD] API Error Setup:', error.message);
         errorMsg += `: ${error.message}`;
       }
 
       setError(errorMsg);
-      console.error('Dashboard error:', error);
+      console.error('[DASHBOARD] Dashboard error:', error);
     } finally {
       setLoading(false);
     }
