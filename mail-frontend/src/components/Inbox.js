@@ -11,6 +11,7 @@ import DomainManagement from './email/DomainManagement';
 import CreateCampaign from './campaign/CreateCampaign';
 import ImportMail from './campaign/ImportMail';
 import CampaignAnalytics from './campaign/CampaignAnalytics';
+import DomainSetupWizard from './onboarding/DomainSetupWizard';
 import api from '../config/api';
 import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 import './Inbox.css';
@@ -18,6 +19,8 @@ import './Inbox.css';
 function Inbox() {
   const [user, setUser] = useState(null);
   const [activeView, setActiveView] = useState('personal'); // personal, team, analytics, sla, templates, rules, domains
+  const [showDomainWizard, setShowDomainWizard] = useState(false);
+  const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +31,13 @@ function Inbox() {
         const response = await api.get('/profile');
         setUser(response.data);
         localStorage.setItem('user', JSON.stringify(response.data));
+
+        // Check if user has a verified domain (skip for admins)
+        if (response.data.role !== 'Admin') {
+          checkDomainSetup();
+        } else {
+          setHasVerifiedDomain(true); // Admins bypass domain requirement
+        }
       } catch (err) {
         // No SSO session, redirect to main app login with redirect parameter
         window.location.href = MAIL_LOGIN_URL;
@@ -36,6 +46,41 @@ function Inbox() {
 
     loadUser();
   }, [navigate]);
+
+  const checkDomainSetup = async () => {
+    try {
+      const response = await api.get('/email-domains');
+      const verifiedDomain = response.data.data?.find(d => d.verified);
+
+      if (verifiedDomain) {
+        setHasVerifiedDomain(true);
+        setShowDomainWizard(false);
+      } else {
+        // No verified domain - show wizard
+        setHasVerifiedDomain(false);
+        setShowDomainWizard(true);
+      }
+    } catch (err) {
+      console.error('Error checking domain setup:', err);
+      // If error, don't block user - let them proceed
+      setHasVerifiedDomain(true);
+    }
+  };
+
+  const handleWizardComplete = (domain) => {
+    console.log('Domain setup complete:', domain);
+    setHasVerifiedDomain(true);
+    setShowDomainWizard(false);
+    setActiveView('domains'); // Show domain management after setup
+  };
+
+  const handleSkipWizard = () => {
+    // Only admins can skip
+    if (user?.role === 'Admin') {
+      setShowDomainWizard(false);
+      setHasVerifiedDomain(true);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -55,6 +100,16 @@ function Inbox() {
         <div className="loading-spinner"></div>
         <p>Loading...</p>
       </div>
+    );
+  }
+
+  // Show domain setup wizard if user doesn't have a verified domain
+  if (showDomainWizard) {
+    return (
+      <DomainSetupWizard
+        onComplete={handleWizardComplete}
+        onSkip={handleSkipWizard}
+      />
     );
   }
 

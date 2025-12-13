@@ -73,7 +73,8 @@ const emailDomainSchema = new mongoose.Schema({
   smtpHost: {
     type: String,
     default: function() {
-      return process.env.EMAIL_HOST || 'mail.noxtm.com';
+      const mailConfig = require('../config/mailConfig');
+      return mailConfig.mailServer.smtp.host;
     }
   },
 
@@ -91,7 +92,8 @@ const emailDomainSchema = new mongoose.Schema({
   imapHost: {
     type: String,
     default: function() {
-      return process.env.EMAIL_HOST || 'mail.noxtm.com';
+      const mailConfig = require('../config/mailConfig');
+      return mailConfig.mailServer.imap.host;
     }
   },
 
@@ -109,7 +111,8 @@ const emailDomainSchema = new mongoose.Schema({
   popHost: {
     type: String,
     default: function() {
-      return process.env.EMAIL_HOST || 'mail.noxtm.com';
+      const mailConfig = require('../config/mailConfig');
+      return mailConfig.mailServer.pop3.host;
     }
   },
 
@@ -210,6 +213,98 @@ const emailDomainSchema = new mongoose.Schema({
       canDelete: { type: Boolean, default: false },
       canManage: { type: Boolean, default: false }
     }
+  },
+
+  // AWS SES Integration
+  awsSes: {
+    // Whether domain is registered with AWS SES
+    registered: {
+      type: Boolean,
+      default: false
+    },
+
+    // AWS SES verification status
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'success', 'failed', 'temporary_failure', 'not_registered'],
+      default: 'not_registered'
+    },
+
+    // Verification token from AWS SES
+    verificationToken: {
+      type: String
+    },
+
+    // DKIM tokens for AWS SES CNAME records
+    dkimTokens: [{
+      type: String
+    }],
+
+    // AWS SES Identity ARN (after successful verification)
+    identityArn: {
+      type: String
+    },
+
+    // Whether domain is verified for sending via AWS SES
+    verifiedForSending: {
+      type: Boolean,
+      default: false
+    },
+
+    // Last verification attempt
+    lastVerificationCheck: {
+      type: Date
+    },
+
+    // Registration metadata
+    registeredAt: {
+      type: Date
+    },
+
+    verifiedAt: {
+      type: Date
+    }
+  },
+
+  // Verification tracking
+  verificationAttempts: {
+    type: Number,
+    default: 0
+  },
+
+  lastVerificationAttempt: {
+    type: Date
+  },
+
+  verificationHistory: [{
+    attemptedAt: {
+      type: Date,
+      default: Date.now
+    },
+    status: {
+      type: String,
+      enum: ['success', 'partial', 'failed', 'error']
+    },
+    dnsRecords: {
+      hasVerificationToken: Boolean,
+      hasMxRecord: Boolean,
+      hasSpf: Boolean,
+      hasDkim: Boolean,
+      hasDmarc: Boolean,
+      awsSesVerified: Boolean,
+      mxRecords: [String],
+      txtRecords: [String]
+    },
+    error: String
+  }],
+
+  // Lifecycle milestones
+  setupCompletedAt: {
+    type: Date
+  },
+
+  firstEmailCreatedAt: {
+    type: Date
   },
 
   // Stats
