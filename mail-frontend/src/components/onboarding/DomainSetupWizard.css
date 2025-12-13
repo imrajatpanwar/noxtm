@@ -1,0 +1,497 @@
+.domain-setup-wizard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.wizard-container {
+  max-width: 800px;
+  width: 100%;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+/* Progress Indicator */
+.wizard-progress {
+  padding: 2rem 3rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.progress-bar {
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.4s ease;
+}
+
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.progress-step {
+  flex: 1;
+  text-align: center;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.progress-step.active {
+  opacity: 1;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.5rem;
+  font-weight: 600;
+  color: #6c757d;
+  transition: all 0.3s;
+}
+
+.progress-step.active .step-number {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.step-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Wizard Content */
+.wizard-content {
+  padding: 3rem;
+}
+
+.wizard-step {
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wizard-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.wizard-icon.success {
+  color: #28a745;
+}
+
+.wizard-step h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.wizard-subtitle {
+  font-size: 1.125rem;
+  color: #6c757d;
+  text-align: center;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+/* Form */
+.wizard-form {
+  max-width: 500px;
+  margin: 0 auto 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.wizard-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.wizard-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.wizard-input:disabled {
+  background: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.input-hint {
+  display: block;
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 0.5rem;
+}
+
+/* AWS SES Status */
+.aws-ses-status {
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aws-ses-status.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* DNS Records */
+.dns-records-container {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-bottom: 2rem;
+  padding-right: 0.5rem;
+}
+
+.dns-record-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+}
+
+.dns-record-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.dns-record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dns-type {
+  background: #667eea;
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.dns-verified {
+  color: #28a745;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.dns-record-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dns-field {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.dns-field label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+  margin: 0;
+}
+
+.dns-field code {
+  background: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-size: 0.875rem;
+  word-break: break-all;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.dns-value {
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.btn-copy {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.btn-copy:hover {
+  opacity: 1;
+}
+
+.dns-purpose {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin: 0.5rem 0 0;
+  font-style: italic;
+}
+
+/* Verification Status */
+.verification-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 2rem 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.status-item.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-item.pending {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-icon {
+  font-size: 1.5rem;
+}
+
+/* Info Box */
+.wizard-info {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.wizard-info h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1f2937;
+  font-size: 1.125rem;
+}
+
+.wizard-info ul,
+.wizard-info ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #495057;
+  line-height: 1.8;
+}
+
+.wizard-info li {
+  margin-bottom: 0.5rem;
+}
+
+.wizard-info p {
+  margin: 0.75rem 0;
+  color: #495057;
+  line-height: 1.6;
+}
+
+/* Success Message */
+.success-message {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.success-message h3 {
+  color: #155724;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.success-message ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #155724;
+}
+
+.success-message li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+/* Errors */
+.wizard-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #f5c6cb;
+}
+
+/* Actions */
+.wizard-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary.btn-large {
+  padding: 1.25rem 3rem;
+  font-size: 1.125rem;
+}
+
+.btn-secondary {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-secondary:hover {
+  background: #f8f9fa;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .domain-setup-wizard {
+    padding: 1rem;
+  }
+
+  .wizard-container {
+    border-radius: 12px;
+  }
+
+  .wizard-progress {
+    padding: 1.5rem 1.5rem;
+  }
+
+  .wizard-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .wizard-step h2 {
+    font-size: 1.5rem;
+  }
+
+  .wizard-subtitle {
+    font-size: 1rem;
+  }
+
+  .progress-steps {
+    gap: 0.5rem;
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+  }
+
+  .dns-field {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .dns-field label {
+    margin-bottom: 0;
+  }
+
+  .wizard-actions {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}

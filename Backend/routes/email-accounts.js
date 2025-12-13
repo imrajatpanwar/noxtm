@@ -13,6 +13,8 @@ const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable 
 const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody } = require('../utils/emailCache');
 const { scheduleSyncJob, syncMultiplePages } = require('../utils/emailSyncWorker');
 const { requireCompanyOwner, requireEmailAccess, requireCompanyAccess } = require('../middleware/emailAuth');
+const { requireOwnedVerifiedDomain } = require('../middleware/emailDomain');
+const mailConfig = require('../config/mailConfig');
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -437,7 +439,8 @@ router.get('/:id', isAuthenticated, async (req, res) => {
 });
 
 // Create email account
-router.post('/', isAuthenticated, async (req, res) => {
+// Create new email account (protected by domain ownership middleware)
+router.post('/', isAuthenticated, requireOwnedVerifiedDomain, async (req, res) => {
   try {
     const { email, password, displayName, domain, quota, aliases, forwardTo } = req.body;
 
@@ -456,17 +459,11 @@ router.post('/', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Email account already exists' });
     }
 
-    // Check if domain exists and is verified
-    const emailDomain = await EmailDomain.findOne({ domain: domain.toLowerCase() });
-    if (!emailDomain) {
-      return res.status(400).json({ message: 'Domain not found. Please add the domain first.' });
-    }
+    // Domain is already verified by requireOwnedVerifiedDomain middleware
+    // and attached to req.emailDomain
+    const emailDomain = req.emailDomain;
 
-    if (!emailDomain.verified) {
-      return res.status(400).json({ message: 'Domain not verified. Please verify DNS records first.' });
-    }
-
-    // Check domain account limit
+    // Check domain account limit (already checked in middleware, but keeping for safety)
     if (emailDomain.accountCount >= emailDomain.maxAccounts) {
       return res.status(400).json({ message: 'Domain account limit reached' });
     }
@@ -487,16 +484,16 @@ router.post('/', isAuthenticated, async (req, res) => {
       smtpEnabled: true,
       // Populate IMAP/SMTP settings for inbox fetching
       imapSettings: {
-        host: 'mail.noxtm.com',
-        port: 993,
-        secure: true,
+        host: mailConfig.mailServer.imap.host,
+        port: mailConfig.mailServer.imap.port,
+        secure: mailConfig.mailServer.imap.secure,
         username: email.toLowerCase(),
         encryptedPassword: encrypt(password)
       },
       smtpSettings: {
-        host: 'mail.noxtm.com',
-        port: 587,
-        secure: false, // STARTTLS
+        host: mailConfig.mailServer.smtp.host,
+        port: mailConfig.mailServer.smtp.port,
+        secure: mailConfig.mailServer.smtp.secure,
         username: email.toLowerCase(),
         encryptedPassword: encrypt(password)
       }
@@ -504,8 +501,12 @@ router.post('/', isAuthenticated, async (req, res) => {
 
     await account.save();
 
-    // Update domain account count
+    // Update domain account count and track first email created milestone
     emailDomain.accountCount += 1;
+    if (!emailDomain.firstEmailCreatedAt && emailDomain.accountCount === 1) {
+      emailDomain.firstEmailCreatedAt = new Date();
+      console.log(`[EMAIL_ACCOUNT] First email account created for domain ${emailDomain.domain}`);
+    }
     await emailDomain.save();
 
     // Create audit log

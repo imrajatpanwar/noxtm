@@ -3,6 +3,8 @@ const router = express.Router();
 const EmailDomain = require('../models/EmailDomain');
 const EmailAuditLog = require('../models/EmailAuditLog');
 const dns = require('dns').promises;
+const { registerDomainWithSES, checkAWSSESVerification } = require('../utils/awsSesHelper');
+const mailConfig = require('../config/mailConfig');
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
@@ -123,13 +125,39 @@ router.post('/', isAuthenticated, async (req, res) => {
     // Generate DKIM keys
     await domain.generateDKIMKeys();
 
-    // Set default DNS records
+    // Register domain with AWS SES (automatic DKIM setup)
+    console.log(`[EMAIL_DOMAIN] Registering domain with AWS SES: ${domainName}`);
+    const awsResult = await registerDomainWithSES(domainName);
+
+    if (awsResult.success) {
+      console.log(`[EMAIL_DOMAIN] AWS SES registration successful for ${domainName}`);
+      domain.awsSes = {
+        registered: true,
+        verificationStatus: 'pending',
+        verificationToken: awsResult.verificationToken,
+        dkimTokens: awsResult.dkimTokens || [],
+        identityArn: awsResult.identityArn,
+        verifiedForSending: false,
+        registeredAt: new Date()
+      };
+    } else {
+      console.warn(`[EMAIL_DOMAIN] AWS SES registration failed for ${domainName}:`, awsResult.error);
+      domain.awsSes = {
+        registered: false,
+        verificationStatus: 'failed',
+        lastError: awsResult.error
+      };
+    }
+
+    // Set default DNS records (using mailConfig)
+    const mailServerIp = mailConfig.mailServer.ip;
+
     domain.dnsRecords.mx = [
       { priority: 10, host: `mail.${domainName}`, verified: false }
     ];
 
     domain.dnsRecords.spf = {
-      record: `v=spf1 mx a ip4:${process.env.EMAIL_HOST || '185.137.122.61'} ~all`,
+      record: `v=spf1 mx a ip4:${mailServerIp} ~all`,
       verified: false
     };
 
@@ -157,8 +185,15 @@ router.post('/', isAuthenticated, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Domain added successfully. Please configure DNS records.',
-      data: domain
+      message: awsResult.success
+        ? 'Domain added and registered with AWS SES. Please configure DNS records.'
+        : 'Domain added. AWS SES registration pending. Please configure DNS records.',
+      data: domain,
+      awsSes: {
+        registered: awsResult.success,
+        dkimTokens: awsResult.dkimTokens || [],
+        message: awsResult.message
+      }
     });
   } catch (error) {
     console.error('Error adding domain:', error);
@@ -259,8 +294,32 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
       mx: false,
       spf: false,
       dkim: false,
-      dmarc: false
+      dmarc: false,
+      awsSesVerified: false
     };
+
+    // Check AWS SES verification status
+    let awsSesStatus = null;
+    if (domain.awsSes?.registered) {
+      console.log(`[DNS_VERIFY] Checking AWS SES verification for ${domain.domain}`);
+      try {
+        awsSesStatus = await checkAWSSESVerification(domain.domain);
+        results.awsSesVerified = awsSesStatus.verified || false;
+
+        // Update domain with AWS SES status
+        domain.awsSes.verificationStatus = awsSesStatus.status || 'pending';
+        domain.awsSes.verifiedForSending = awsSesStatus.verifiedForSending || false;
+        domain.awsSes.lastVerificationCheck = new Date();
+
+        if (awsSesStatus.verified && !domain.awsSes.verifiedAt) {
+          domain.awsSes.verifiedAt = new Date();
+          console.log(`[DNS_VERIFY] AWS SES verification successful for ${domain.domain}`);
+        }
+      } catch (error) {
+        console.error(`[DNS_VERIFY] AWS SES check failed for ${domain.domain}:`, error.message);
+        awsSesStatus = { verified: false, message: error.message };
+      }
+    }
 
     try {
       // Verify TXT records
@@ -319,11 +378,16 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
       // MX records not found
     }
 
-    // Update verified status
-    const allVerified = results.verificationToken && results.mx && results.spf;
+    // Update verified status (require AWS SES verification too)
+    const allVerified = results.verificationToken && results.mx && results.spf && results.awsSesVerified;
+    const partiallyVerified = results.verificationToken && results.mx && results.spf;
+
     if (allVerified && !domain.verified) {
       domain.verified = true;
       domain.verifiedAt = new Date();
+      domain.awsSes.setupCompletedAt = new Date();
+
+      console.log(`[DNS_VERIFY] Full verification complete for ${domain.domain}`);
 
       // Create audit log
       await EmailAuditLog.log({
@@ -334,21 +398,56 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         performedBy: req.user._id,
         performedByEmail: req.user.email,
         performedByName: req.user.fullName,
-        description: `Verified email domain: ${domain.domain}`,
+        description: `Verified email domain: ${domain.domain} (including AWS SES)`,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         companyId: req.user.companyId
       });
     }
 
+    // Track verification attempt
+    domain.verificationAttempts = (domain.verificationAttempts || 0) + 1;
+    domain.verificationHistory.push({
+      attemptedAt: new Date(),
+      status: allVerified ? 'success' : partiallyVerified ? 'partial' : 'failed',
+      dnsRecords: {
+        hasVerificationToken: results.verificationToken,
+        hasMxRecord: results.mx,
+        hasSpf: results.spf,
+        awsSesVerified: results.awsSesVerified
+      }
+    });
+
     domain.lastModifiedBy = req.user._id;
     await domain.save();
+
+    // Determine response message
+    let message = '';
+    if (allVerified) {
+      message = 'Domain fully verified! You can now create email accounts.';
+    } else if (partiallyVerified && !results.awsSesVerified) {
+      message = 'DNS records verified. Waiting for AWS SES verification (may take up to 72 hours).';
+    } else {
+      message = 'Some DNS records are missing or incorrect. Please check and try again.';
+    }
 
     res.json({
       success: true,
       verified: allVerified,
-      message: allVerified ? 'Domain verified successfully!' : 'Some DNS records are missing or incorrect',
-      results
+      partiallyVerified: partiallyVerified,
+      message,
+      results,
+      awsSes: awsSesStatus ? {
+        verified: awsSesStatus.verified,
+        status: awsSesStatus.status,
+        message: awsSesStatus.message
+      } : null,
+      nextSteps: !allVerified ? [
+        !results.verificationToken && 'Add TXT verification record',
+        !results.mx && 'Add MX record',
+        !results.spf && 'Add SPF record',
+        !results.awsSesVerified && 'Wait for AWS SES DKIM verification (automatic)'
+      ].filter(Boolean) : []
     });
   } catch (error) {
     console.error('Error verifying DNS:', error);
