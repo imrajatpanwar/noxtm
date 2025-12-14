@@ -21,37 +21,73 @@ function Inbox() {
   const [activeView, setActiveView] = useState('personal'); // personal, team, analytics, sla, templates, rules, domains
   const [showDomainWizard, setShowDomainWizard] = useState(false);
   const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
+  const [domainCheckComplete, setDomainCheckComplete] = useState(false); // NEW: Track if domain check is done
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('[INBOX] Component mounted - Starting authentication flow...');
+
     // Check for auth_token in URL (from main app redirect after login)
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('auth_token');
 
     if (urlToken) {
+      console.log('[INBOX] ✅ Token found in URL, saving to localStorage');
+      console.log('[INBOX] Token preview:', urlToken.substring(0, 20) + '...');
+
       // Save token from URL to localStorage
       localStorage.setItem('token', urlToken);
+
+      // VERIFY token was saved
+      const savedToken = localStorage.getItem('token');
+      console.log('[INBOX] Token saved:', savedToken ? 'YES' : 'NO');
+
+      // CRITICAL: Also store in a backup location in case something clears localStorage
+      window.__NOXTM_AUTH_TOKEN__ = urlToken;
+      console.log('[INBOX] Token also saved to window.__NOXTM_AUTH_TOKEN__ as backup');
 
       // Clean up URL by removing the token parameter
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
+      console.log('[INBOX] URL cleaned, token removed from visible URL');
+    } else {
+      console.log('[INBOX] No token in URL, checking localStorage...');
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        console.log('[INBOX] ✅ Token found in localStorage');
+      } else {
+        console.log('[INBOX] ⚠️  No token in localStorage either');
+      }
     }
 
     // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
+      const token = localStorage.getItem('token'); // EXPLICITLY CHECK AGAIN
+      console.log('[INBOX] Fetching user profile from /api/profile...');
+      console.log('[INBOX] Token exists:', token ? 'YES (length: ' + token.length + ')' : 'NO');
+
       try {
         // Check SSO cookie via /profile endpoint
         const response = await api.get('/profile');
+        console.log('[INBOX] ✅ Profile fetch SUCCESS:', response.data);
         setUser(response.data);
         localStorage.setItem('user', JSON.stringify(response.data));
 
         // Check if user has a verified domain (skip for admins)
         if (response.data.role !== 'Admin') {
+          console.log('[INBOX] User is not Admin, checking domain setup...');
           checkDomainSetup();
         } else {
+          console.log('[INBOX] User is Admin - bypassing domain verification requirement');
           setHasVerifiedDomain(true); // Admins bypass domain requirement
+          setDomainCheckComplete(true); // CRITICAL: Mark as complete for admins
         }
       } catch (err) {
+        console.error('[INBOX] ❌ Profile fetch FAILED:', err);
+        console.error('[INBOX] Error status:', err.response?.status);
+        console.error('[INBOX] Error message:', err.response?.data);
+        console.log('[INBOX] Redirecting to login:', MAIL_LOGIN_URL);
+
         // No SSO session, redirect to main app login with redirect parameter
         window.location.href = MAIL_LOGIN_URL;
       }
@@ -61,22 +97,37 @@ function Inbox() {
   }, [navigate]);
 
   const checkDomainSetup = async () => {
+    console.log('[INBOX] Checking domain setup via /api/email-domains...');
     try {
       const response = await api.get('/email-domains');
+      console.log('[INBOX] ✅ Email domains response:', response.data);
+
       const verifiedDomain = response.data.data?.find(d => d.verified);
 
       if (verifiedDomain) {
+        console.log('[INBOX] ✅ Found verified domain:', verifiedDomain.domain);
         setHasVerifiedDomain(true);
         setShowDomainWizard(false);
       } else {
+        console.log('[INBOX] ⚠️  No verified domain found - SHOWING DOMAIN WIZARD');
+        console.log('[INBOX] Total domains:', response.data.data?.length || 0);
+
         // No verified domain - show wizard
         setHasVerifiedDomain(false);
         setShowDomainWizard(true);
       }
     } catch (err) {
-      console.error('Error checking domain setup:', err);
+      console.error('[INBOX] ❌ Error checking domain setup:', err);
+      console.error('[INBOX] Error status:', err.response?.status);
+      console.error('[INBOX] Error message:', err.response?.data);
+      console.log('[INBOX] Allowing user to proceed despite error (fail-open policy)');
+
       // If error, don't block user - let them proceed
       setHasVerifiedDomain(true);
+    } finally {
+      // CRITICAL: Mark domain check as complete to allow rendering
+      setDomainCheckComplete(true);
+      console.log('[INBOX] Domain check complete, allowing UI to render');
     }
   };
 
@@ -112,6 +163,17 @@ function Inbox() {
       <div className="loading-container">
         <div className="loading-spinner"></div>
         <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // CRITICAL: Wait for domain check to complete before rendering anything
+  // This prevents MainstreamInbox from mounting and making API calls before we know if wizard should show
+  if (!domainCheckComplete) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Checking domain setup...</p>
       </div>
     );
   }

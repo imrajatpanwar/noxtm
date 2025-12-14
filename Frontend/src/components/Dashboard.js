@@ -9,7 +9,7 @@ import ClientLeads from './ClientLeads';
 import EmailSetup from './EmailSetup';
 import CampaignMetrics from './CampaignMetrics';
 import ConversionTracking from './ConversionTracking';
-import OurProjects from './OurProjects';
+import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
 import CaseStudies from './CaseStudies';
 import Services from './Services';
@@ -194,7 +194,7 @@ function Dashboard({ user, onLogout }) {
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
       case 'our-projects':
-        return <OurProjects />;
+        return <ProjectManagement />;
       case 'project-delivered':
         return <ProjectDelivered />;
       case 'case-studies':

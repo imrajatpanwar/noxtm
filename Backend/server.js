@@ -129,6 +129,10 @@ app.use('/api/campaigns', campaignsRoutes);
 const contactListsRoutes = require('./routes/contact-lists');
 app.use('/api/contact-lists', contactListsRoutes);
 
+// Project Management routes
+const projectsRoutes = require('./routes/projects');
+app.use('/api/projects', projectsRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
