@@ -24,6 +24,19 @@ function Inbox() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check for auth_token in URL (from main app redirect after login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('auth_token');
+
+    if (urlToken) {
+      // Save token from URL to localStorage
+      localStorage.setItem('token', urlToken);
+
+      // Clean up URL by removing the token parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
     // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
       try {

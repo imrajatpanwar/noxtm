@@ -36,7 +36,16 @@ function Login({ onLogin }) {
 
       // If redirect=mail, send user to mail app
       if (redirectParam === 'mail') {
-        window.location.href = 'https://mail.noxtm.com';
+        // Get the token that was just set in localStorage
+        const token = localStorage.getItem('token');
+
+        // Pass token as URL parameter so mail app can use it immediately
+        // Cookie might take a moment to sync across subdomains
+        const mailUrl = token
+          ? `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`
+          : 'https://mail.noxtm.com';
+
+        window.location.href = mailUrl;
         return;
       }
 

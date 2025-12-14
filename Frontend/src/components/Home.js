@@ -156,8 +156,8 @@ function Home({ user }) {
   const getImageUrl = (blog) => {
     if (blog.featuredImage?.path) {
       // If it's already a full URL or imported image, use it directly
-      if (blog.featuredImage.path.startsWith('http') || 
-          blog.featuredImage.path.includes('static/media/')) {
+      if (blog.featuredImage.path.startsWith('http') ||
+        blog.featuredImage.path.includes('static/media/')) {
         return blog.featuredImage.path;
       }
       // Otherwise, construct the API URL (remove /api from the end for static files)
@@ -171,14 +171,14 @@ function Home({ user }) {
   const renderBlogCard = (blog, index) => {
     const isRealBlog = !blog.id?.includes('fallback');
     const blogUrl = isRealBlog ? `/blog/${blog.slug}` : '#';
-    
+
     return (
       <div key={blog._id || blog.id} className="blog-journal-card">
         <div className="blog-journal-image">
-          <img 
-            src={getImageUrl(blog)} 
-            alt={blog.featuredImage?.altText || blog.title} 
-            className="blog-journal-bg-image" 
+          <img
+            src={getImageUrl(blog)}
+            alt={blog.featuredImage?.altText || blog.title}
+            className="blog-journal-bg-image"
           />
           <div className="lab-updates-tag">
             {blog.category?.name || 'Insights'}
@@ -186,13 +186,13 @@ function Home({ user }) {
           {isRealBlog ? (
             <Link to={blogUrl} className="blog-journal-action-btn" aria-label="Read more">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.5 8H12.5M12.5 8L8.5 4M12.5 8L8.5 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3.5 8H12.5M12.5 8L8.5 4M12.5 8L8.5 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
           ) : (
             <button className="blog-journal-action-btn" aria-label="Read more">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.5 8H12.5M12.5 8L8.5 4M12.5 8L8.5 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3.5 8H12.5M12.5 8L8.5 4M12.5 8L8.5 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           )}
@@ -211,7 +211,7 @@ function Home({ user }) {
     <div className="home">
       <div className="Container-home">
         <div className="hero-section">
-          <div 
+          <div
             className="masterpiece-form masterpiece-bg"
             style={{
               backgroundColor: '#ffffff',
@@ -220,24 +220,24 @@ function Home({ user }) {
           >
             <div className="masterpiece-content">
               <h1>Management of Your Masterpiece</h1>
-                <p className="masterpiece-subtitle">Manage your projects, clients, and team with real-time insights and complete control always at your fingertips.</p>
-                <div className="masterpiece-buttons">
-                  <button
-                    type="button"
-                    className="btn-try-free"
-                    onClick={() => {
-                      if (currentUser && localStorage.getItem('token')) {
-                        navigate('/dashboard');
-                      } else {
-                        navigate('/signup');
-                      }
-                    }}
-                    aria-label={currentUser && localStorage.getItem('token') ? 'Go to Dashboard' : 'Try Noxtm for Free'}
-                  >
-                    {currentUser && localStorage.getItem('token') ? 'Dashboard' : 'Try Noxtm for Free'}
-                  </button>
-                  <Link to="/products" className="btn-products">Products</Link>
-                </div>
+              <p className="masterpiece-subtitle">Manage your projects, clients, and team with real-time insights and complete control always at your fingertips.</p>
+              <div className="masterpiece-buttons">
+                <button
+                  type="button"
+                  className="btn-try-free"
+                  onClick={() => {
+                    if (currentUser && localStorage.getItem('token')) {
+                      navigate('/dashboard');
+                    } else {
+                      navigate('/signup');
+                    }
+                  }}
+                  aria-label={currentUser && localStorage.getItem('token') ? 'Go to Dashboard' : 'Try Noxtm for Free'}
+                >
+                  {currentUser && localStorage.getItem('token') ? 'Dashboard' : 'Try Noxtm for Free'}
+                </button>
+                <Link to="/products" className="btn-products">Products</Link>
+              </div>
             </div>
           </div>
 
@@ -327,23 +327,23 @@ function Home({ user }) {
         <div className="Container-home">
           <div className="stats-grid">
             <div className="stat-item">
-              <h3 className="stat-number">581</h3>
+              <h3 className="home-stat-number">581</h3>
               <p className="stat-label">tasks automated by Noxtm</p>
             </div>
             <div className="stat-item">
-              <h3 className="stat-number">&gt;2 million</h3>
+              <h3 className="home-stat-number">&gt;2 million</h3>
               <p className="stat-label">data processed by our agents each month</p>
             </div>
             <div className="stat-item">
-              <h3 className="stat-number">62</h3>
+              <h3 className="home-stat-number">62</h3>
               <p className="stat-label">tools available across 19+ integrations</p>
             </div>
             <div className="stat-item">
-              <h3 className="stat-number">02</h3>
+              <h3 className="home-stat-number">02</h3>
               <p className="stat-label">AI Agent's for repetitive tasks</p>
             </div>
             <div className="stat-item">
-              <h3 className="stat-number">6hr</h3>
+              <h3 className="home-stat-number">6hr</h3>
               <p className="stat-label">Saved per teammate per week</p>
             </div>
           </div>
@@ -447,7 +447,7 @@ function Home({ user }) {
                 <h2 className="blog-story-text">Your Story,</h2>
                 <h2 className="blog-insights-text">Our Insights.</h2>
               </div>
-              
+
               <div className="blog-journal-grid">
                 {loading ? (
                   <div className="blog-loading">

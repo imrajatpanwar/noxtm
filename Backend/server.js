@@ -424,14 +424,14 @@ const checkActivePlan = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has any active subscription plan or valid trial
-    if (!user.subscription ||
-      user.subscription.plan === 'None' ||
-      (user.subscription.status !== 'active' &&
-        user.subscription.status !== 'trial') ||
-      (user.subscription.status === 'trial' &&
-        user.subscription.endDate &&
-        new Date(user.subscription.endDate) < new Date())) {
+    // Use subscription helper that correctly handles trial users
+    if (!hasActiveSubscription(user)) {
+      console.log('[CHECK ACTIVE PLAN] User has no active subscription:', {
+        email: user.email,
+        plan: user.subscription?.plan,
+        status: user.subscription?.status,
+        endDate: user.subscription?.endDate
+      });
       return res.status(302).json({
         redirect: '/pricing'
       });
