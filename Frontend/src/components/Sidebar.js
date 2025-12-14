@@ -604,13 +604,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </>
               )}
 
-              {/* Open Mail App - Redirects to mail.noxtm.com */}
+              {/* Open Mail App - Redirects to mail.noxtm.com with auth token */}
               <a
                 href="https://mail.noxtm.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Get token from localStorage
+                  const token = localStorage.getItem('token');
+
+                  // Pass token as URL parameter so mail app can use it immediately
+                  // Cookie might take a moment to sync across subdomains
+                  const mailUrl = token
+                    ? `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`
+                    : 'https://mail.noxtm.com';
+
+                  // Open in new window/tab
+                  window.open(mailUrl, '_blank', 'noopener,noreferrer');
+                }}
                 className="Dash-noxtm-sidebar-item"
-                style={{ textDecoration: 'none', color: 'inherit' }}
+                style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
               >
                 <FiMail className="sidebar-icon" />
                 <span>Open Mail App</span>
