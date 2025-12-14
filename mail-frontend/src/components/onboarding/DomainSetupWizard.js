@@ -20,26 +20,36 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
   const [awsSesInfo, setAwsSesInfo] = useState(null);
   const [verificationResults, setVerificationResults] = useState(null);
 
-  // Check if user already has a verified domain
+  // CRITICAL: Restore token when wizard mounts (in case it was cleared)
   useEffect(() => {
-    checkExistingDomains();
+    if (window.__NOXTM_AUTH_TOKEN__ && !localStorage.getItem('token')) {
+      console.warn('[WIZARD] Token missing! Restoring from backup...');
+      localStorage.setItem('token', window.__NOXTM_AUTH_TOKEN__);
+    }
   }, []);
 
-  const checkExistingDomains = async () => {
-    try {
-      const response = await api.get('/email-domains');
-      const verifiedDomain = response.data.data?.find(d => d.verified);
+  // DISABLED: Inbox component already checks domains before showing wizard
+  // This duplicate check was causing auth token issues
+  // The parent component (Inbox) already verified no domain exists before showing wizard
+  // useEffect(() => {
+  //   checkExistingDomains();
+  // }, []);
 
-      if (verifiedDomain) {
-        // User already has a verified domain, skip wizard
-        if (onComplete) {
-          onComplete(verifiedDomain);
-        }
-      }
-    } catch (err) {
-      console.error('Error checking existing domains:', err);
-    }
-  };
+  // const checkExistingDomains = async () => {
+  //   try {
+  //     const response = await api.get('/email-domains');
+  //     const verifiedDomain = response.data.data?.find(d => d.verified);
+
+  //     if (verifiedDomain) {
+  //       // User already has a verified domain, skip wizard
+  //       if (onComplete) {
+  //         onComplete(verifiedDomain);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error('Error checking existing domains:', err);
+  //   }
+  // };
 
   // Step 1: Enter domain name
   const handleDomainSubmit = async (e) => {
