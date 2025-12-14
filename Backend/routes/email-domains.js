@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const EmailDomain = require('../models/EmailDomain');
 const EmailAuditLog = require('../models/EmailAuditLog');
+const User = require('../models/User');
 const dns = require('dns').promises;
 const { registerDomainWithSES, checkAWSSESVerification } = require('../utils/awsSesHelper');
 const mailConfig = require('../config/mailConfig');
@@ -103,6 +104,12 @@ router.post('/', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Domain name is required' });
     }
 
+    // Fetch user from DB to get companyId
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     // Check if domain already exists
     const existing = await EmailDomain.findOne({ domain: domainName.toLowerCase() });
     if (existing) {
@@ -115,8 +122,8 @@ router.post('/', isAuthenticated, async (req, res) => {
       defaultQuota: defaultQuota || 1024,
       maxAccounts: maxAccounts || 100,
       webmailUrl: webmailUrl || '',
-      createdBy: req.user._id,
-      companyId: req.user.companyId
+      createdBy: user._id,
+      companyId: user.companyId
     });
 
     // Generate verification token
@@ -174,13 +181,13 @@ router.post('/', isAuthenticated, async (req, res) => {
       resourceType: 'email_domain',
       resourceId: domain._id,
       resourceIdentifier: domain.domain,
-      performedBy: req.user._id,
-      performedByEmail: req.user.email,
-      performedByName: req.user.fullName,
+      performedBy: user._id,
+      performedByEmail: user.email,
+      performedByName: user.fullName,
       description: `Added email domain: ${domain.domain}`,
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
-      companyId: req.user.companyId
+      companyId: user.companyId
     });
 
     res.status(201).json({
@@ -286,6 +293,12 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
 
     if (!domain) {
       return res.status(404).json({ message: 'Domain not found' });
+    }
+
+    // Fetch user from DB for audit logging
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
     const results = {
@@ -395,13 +408,13 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         resourceType: 'email_domain',
         resourceId: domain._id,
         resourceIdentifier: domain.domain,
-        performedBy: req.user._id,
-        performedByEmail: req.user.email,
-        performedByName: req.user.fullName,
+        performedBy: user._id,
+        performedByEmail: user.email,
+        performedByName: user.fullName,
         description: `Verified email domain: ${domain.domain} (including AWS SES)`,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
-        companyId: req.user.companyId
+        companyId: user.companyId
       });
     }
 
@@ -418,7 +431,7 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
       }
     });
 
-    domain.lastModifiedBy = req.user._id;
+    domain.lastModifiedBy = user._id;
     await domain.save();
 
     // Determine response message
@@ -464,6 +477,12 @@ router.put('/:id', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Domain not found' });
     }
 
+    // Fetch user from DB for audit logging
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const {
       enabled,
       defaultQuota,
@@ -490,7 +509,7 @@ router.put('/:id', isAuthenticated, async (req, res) => {
     if (spamFilterEnabled !== undefined) domain.spamFilterEnabled = spamFilterEnabled;
     if (defaultSpamThreshold !== undefined) domain.defaultSpamThreshold = defaultSpamThreshold;
 
-    domain.lastModifiedBy = req.user._id;
+    domain.lastModifiedBy = user._id;
     await domain.save();
 
     // Create audit log
@@ -499,9 +518,9 @@ router.put('/:id', isAuthenticated, async (req, res) => {
       resourceType: 'email_domain',
       resourceId: domain._id,
       resourceIdentifier: domain.domain,
-      performedBy: req.user._id,
-      performedByEmail: req.user.email,
-      performedByName: req.user.fullName,
+      performedBy: user._id,
+      performedByEmail: user.email,
+      performedByName: user.fullName,
       oldValues,
       newValues: {
         enabled: domain.enabled,
@@ -511,7 +530,7 @@ router.put('/:id', isAuthenticated, async (req, res) => {
       description: `Updated email domain: ${domain.domain}`,
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
-      companyId: req.user.companyId
+      companyId: user.companyId
     });
 
     res.json({
@@ -540,6 +559,12 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
       });
     }
 
+    // Fetch user from DB for audit logging
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const domainName = domain.domain;
     await domain.deleteOne();
 
@@ -549,13 +574,13 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
       resourceType: 'email_domain',
       resourceId: domain._id,
       resourceIdentifier: domainName,
-      performedBy: req.user._id,
-      performedByEmail: req.user.email,
-      performedByName: req.user.fullName,
+      performedBy: user._id,
+      performedByEmail: user.email,
+      performedByName: user.fullName,
       description: `Deleted email domain: ${domainName}`,
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
-      companyId: req.user.companyId
+      companyId: user.companyId
     });
 
     res.json({
