@@ -92,7 +92,43 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
         setCurrentStep(2);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add domain');
+      const errorMessage = err.response?.data?.message || 'Failed to add domain';
+
+      // SMART HANDLING: If domain already exists, fetch it and proceed
+      if (errorMessage.includes('already exists') || errorMessage.includes('Domain already registered')) {
+        try {
+          // Fetch existing domains to get the domain ID
+          const domainsResponse = await api.get('/email-domains');
+          const existingDomain = domainsResponse.data.data?.find(
+            d => d.domain.toLowerCase() === domainName.toLowerCase()
+          );
+
+          if (existingDomain) {
+            // Set the existing domain data
+            setDomainId(existingDomain._id);
+            setAwsSesInfo(existingDomain.awsSes);
+
+            // Fetch DNS instructions for existing domain
+            const dnsResponse = await api.get(`/email-domains/${existingDomain._id}/dns-instructions`);
+            setDnsRecords(dnsResponse.data.data.records);
+
+            // Show info message instead of error
+            setError('ℹ️ This domain is already added to your account. Proceeding to DNS setup...');
+
+            // Automatically proceed to next step after 1.5 seconds
+            setTimeout(() => {
+              setError('');
+              setCurrentStep(2);
+            }, 1500);
+          } else {
+            setError(errorMessage);
+          }
+        } catch (fetchErr) {
+          setError('Domain already exists but could not fetch details. Please refresh the page.');
+        }
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
