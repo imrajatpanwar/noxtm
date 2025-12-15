@@ -267,10 +267,10 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
       case 3.5:
         return (
           <div className="wizard-step">
-            <div className="wizard-icon">⏳</div>
-            <h2>DNS Verified - Waiting for AWS SES</h2>
+            <div className="wizard-icon">✓ ⏳</div>
+            <h2>DNS Records Verified!</h2>
             <p className="wizard-subtitle">
-              Your DNS records are configured correctly! AWS SES is now verifying your DKIM records.
+              Your DNS records are correctly configured. AWS SES is automatically verifying your DKIM records in the background.
             </p>
 
             <div className="verification-status">
@@ -288,17 +288,17 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
               </div>
               <div className="status-item pending">
                 <span className="status-icon">⏳</span>
-                <span>AWS SES DKIM Verification</span>
+                <span>AWS SES DKIM Verification (Automatic)</span>
               </div>
             </div>
 
             <div className="wizard-info">
-              <h4>What's happening?</h4>
+              <h4>What's next?</h4>
               <p>
-                AWS SES is verifying your DKIM records. This process is automatic and usually completes within a few hours, but can take up to 72 hours.
+                AWS SES is automatically verifying your DKIM records. This usually completes within 24 hours, but can take up to 72 hours.
               </p>
               <p>
-                You can check back later or we'll notify you when verification is complete.
+                <strong>You can start using your domain for emails immediately.</strong> The system will automatically detect when AWS SES verification completes. No action needed from you!
               </p>
             </div>
 
@@ -308,8 +308,11 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
               <button onClick={() => setCurrentStep(2)} className="btn-secondary">
                 Back to DNS Records
               </button>
-              <button onClick={handleVerifyDNS} disabled={loading} className="btn-primary">
-                {loading ? 'Checking...' : 'Check Verification Status'}
+              <button
+                onClick={() => onComplete && onComplete({ domain: domainName, id: domainId })}
+                className="btn-primary btn-large"
+              >
+                Continue to Mail App
               </button>
             </div>
           </div>

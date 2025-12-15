@@ -612,14 +612,28 @@ function Sidebar({ activeSection, onSectionChange }) {
                   // Get token from localStorage
                   const token = localStorage.getItem('token');
 
+                  if (!token) {
+                    alert('Authentication token not found. Please refresh the page and try again.');
+                    return;
+                  }
+
                   // Pass token as URL parameter so mail app can use it immediately
                   // Cookie might take a moment to sync across subdomains
-                  const mailUrl = token
-                    ? `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`
-                    : 'https://mail.noxtm.com';
+                  const mailUrl = `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`;
 
                   // Open in new window/tab
-                  window.open(mailUrl, '_blank', 'noopener,noreferrer');
+                  const popupWindow = window.open(mailUrl, '_blank', 'noopener,noreferrer');
+
+                  // Detect popup blocker
+                  if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
+                    console.warn('[MAIL] Popup blocked by browser');
+                    const userConsent = window.confirm('Popup was blocked by your browser. Click OK to open mail app in current tab instead.');
+                    if (userConsent) {
+                      window.location.href = mailUrl;
+                    }
+                  } else {
+                    console.log('[MAIL] Popup opened successfully');
+                  }
                 }}
                 className="Dash-noxtm-sidebar-item"
                 style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}

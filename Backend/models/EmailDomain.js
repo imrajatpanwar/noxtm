@@ -23,6 +23,22 @@ const emailDomainSchema = new mongoose.Schema({
 
   verifiedAt: Date,
 
+  // DNS verification status (separate from full verification)
+  dnsVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  dnsVerifiedAt: Date,
+
+  // AWS SES verification status (separate tracking)
+  awsSesVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  awsSesVerifiedAt: Date,
+
   // DNS records
   dnsRecords: {
     // MX records
