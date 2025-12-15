@@ -243,12 +243,27 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
             <div className="wizard-info">
               <h4>Setup Instructions:</h4>
               <ol>
-                <li>Log in to your domain registrar (GoDaddy, Namecheap, etc.)</li>
+                <li>Log in to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.)</li>
                 <li>Navigate to DNS management or DNS settings</li>
-                <li>Add each record listed above</li>
+                <li>Add each record listed above with the <strong>exact record type</strong> shown</li>
                 <li>Wait 10-30 minutes for DNS propagation</li>
                 <li>Click "Verify DNS" below to check configuration</li>
               </ol>
+
+              <div className="wizard-warning" style={{
+                background: '#fff3cd',
+                border: '1px solid #ffc107',
+                padding: '12px',
+                borderRadius: '4px',
+                marginTop: '15px'
+              }}>
+                <strong>⚠️ Important:</strong>
+                <ul style={{ marginTop: '8px', marginBottom: '0' }}>
+                  <li>For <strong>CNAME records</strong> pointing to AWS SMTP (like <code>email-smtp.eu-north-1.amazonaws.com</code>), you MUST use CNAME type, NOT A record</li>
+                  <li>A records require IPv4 addresses (like 192.0.2.1), not hostnames</li>
+                  <li>If your DNS provider shows an error like "Valid IPv4 address is required", you're using the wrong record type</li>
+                </ul>
+              </div>
             </div>
 
             {error && <div className="wizard-error">{error}</div>}
