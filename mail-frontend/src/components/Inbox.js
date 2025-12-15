@@ -62,34 +62,50 @@ function Inbox() {
 
     // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
-      const token = localStorage.getItem('token'); // EXPLICITLY CHECK AGAIN
+      // Ensure token is restored from backup BEFORE API calls
+      let token = localStorage.getItem('token');
+      if (!token && window.__NOXTM_AUTH_TOKEN__) {
+        console.log('[INBOX] Restoring token from backup');
+        localStorage.setItem('token', window.__NOXTM_AUTH_TOKEN__);
+        token = window.__NOXTM_AUTH_TOKEN__;
+      }
+
       console.log('[INBOX] Fetching user profile from /api/profile...');
       console.log('[INBOX] Token exists:', token ? 'YES (length: ' + token.length + ')' : 'NO');
 
-      try {
-        // Check SSO cookie via /profile endpoint
-        const response = await api.get('/profile');
-        console.log('[INBOX] ✅ Profile fetch SUCCESS:', response.data);
-        setUser(response.data);
-        localStorage.setItem('user', JSON.stringify(response.data));
+      // Retry logic - try up to 3 times with 1 second delay
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          // Check SSO cookie via /profile endpoint
+          const response = await api.get('/profile');
+          console.log('[INBOX] ✅ Profile fetch SUCCESS:', response.data);
+          setUser(response.data);
+          localStorage.setItem('user', JSON.stringify(response.data));
 
-        // Check if user has a verified domain (skip for admins)
-        if (response.data.role !== 'Admin') {
-          console.log('[INBOX] User is not Admin, checking domain setup...');
-          checkDomainSetup();
-        } else {
-          console.log('[INBOX] User is Admin - bypassing domain verification requirement');
-          setHasVerifiedDomain(true); // Admins bypass domain requirement
-          setDomainCheckComplete(true); // CRITICAL: Mark as complete for admins
+          // Check if user has a verified domain (skip for admins)
+          if (response.data.role !== 'Admin') {
+            console.log('[INBOX] User is not Admin, checking domain setup...');
+            checkDomainSetup();
+          } else {
+            console.log('[INBOX] User is Admin - bypassing domain verification requirement');
+            setHasVerifiedDomain(true); // Admins bypass domain requirement
+            setDomainCheckComplete(true); // CRITICAL: Mark as complete for admins
+          }
+          return; // Success - exit function
+        } catch (err) {
+          console.error(`[INBOX] ❌ Profile fetch attempt ${attempt} FAILED:`, err);
+          console.error('[INBOX] Error status:', err.response?.status);
+          console.error('[INBOX] Error message:', err.response?.data);
+
+          if (attempt < 3) {
+            console.log(`[INBOX] Retrying in 1 second (attempt ${attempt + 1}/3)...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            console.log('[INBOX] All retry attempts failed, redirecting to login:', MAIL_LOGIN_URL);
+            // No SSO session after all retries, redirect to main app login with redirect parameter
+            window.location.href = MAIL_LOGIN_URL;
+          }
         }
-      } catch (err) {
-        console.error('[INBOX] ❌ Profile fetch FAILED:', err);
-        console.error('[INBOX] Error status:', err.response?.status);
-        console.error('[INBOX] Error message:', err.response?.data);
-        console.log('[INBOX] Redirecting to login:', MAIL_LOGIN_URL);
-
-        // No SSO session, redirect to main app login with redirect parameter
-        window.location.href = MAIL_LOGIN_URL;
       }
     };
 

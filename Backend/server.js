@@ -185,6 +185,20 @@ initializeRedis().then((success) => {
   console.error('Redis initialization error:', err);
 });
 
+// Initialize AWS SES verification background job
+// This job checks pending domain verifications every 60 minutes
+const awsSesJob = require('./jobs/awsSesVerificationJob');
+console.log('Initializing AWS SES verification background job...');
+// Wait for MongoDB connection before starting the job
+setTimeout(() => {
+  if (mongoConnected) {
+    awsSesJob.startJob();
+    console.log('✅ AWS SES verification job started successfully');
+  } else {
+    console.warn('⚠️  MongoDB not connected - AWS SES verification job not started');
+  }
+}, 5000); // Wait 5 seconds for MongoDB to connect
+
 // Lazy load template helper to avoid loading models before MongoDB connects
 let sendTemplateEmail;
 const getTemplateHelper = () => {

@@ -308,7 +308,18 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
       spf: false,
       dkim: false,
       dmarc: false,
-      awsSesVerified: false
+      awsSesVerified: false,
+      dnsVerified: false
+    };
+
+    // Helper function to add timeout to DNS lookups
+    const verifyWithTimeout = (promise, timeoutMs = 10000) => {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('DNS lookup timeout')), timeoutMs)
+        )
+      ]);
     };
 
     // Check AWS SES verification status
@@ -324,7 +335,9 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         domain.awsSes.verifiedForSending = awsSesStatus.verifiedForSending || false;
         domain.awsSes.lastVerificationCheck = new Date();
 
-        if (awsSesStatus.verified && !domain.awsSes.verifiedAt) {
+        if (awsSesStatus.verified && !domain.awsSesVerified) {
+          domain.awsSesVerified = true;
+          domain.awsSesVerifiedAt = new Date();
           domain.awsSes.verifiedAt = new Date();
           console.log(`[DNS_VERIFY] AWS SES verification successful for ${domain.domain}`);
         }
@@ -335,8 +348,8 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
     }
 
     try {
-      // Verify TXT records
-      const txtRecords = await dns.resolveTxt(domain.domain);
+      // Verify TXT records with timeout
+      const txtRecords = await verifyWithTimeout(dns.resolveTxt(domain.domain));
       const txtFlat = txtRecords.map(r => r.join('')).join(' ');
 
       // Check verification token
@@ -351,36 +364,45 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         domain.dnsRecords.spf.verified = true;
       }
 
-      // Check DMARC
+      // Check DMARC with timeout
       try {
-        const dmarcRecords = await dns.resolveTxt(`_dmarc.${domain.domain}`);
+        const dmarcRecords = await verifyWithTimeout(dns.resolveTxt(`_dmarc.${domain.domain}`));
         const dmarcFlat = dmarcRecords.map(r => r.join('')).join(' ');
         if (dmarcFlat.includes('v=DMARC1')) {
           results.dmarc = true;
           domain.dnsRecords.dmarc.verified = true;
         }
       } catch (e) {
-        // DMARC record not found
+        if (e.message === 'DNS lookup timeout') {
+          console.warn(`[DNS_VERIFY] DMARC lookup timeout for ${domain.domain}`);
+        }
+        // DMARC record not found or timed out
       }
 
-      // Check DKIM
+      // Check DKIM with timeout
       try {
-        const dkimRecords = await dns.resolveTxt(`${domain.dnsRecords.dkim.selector}._domainkey.${domain.domain}`);
+        const dkimRecords = await verifyWithTimeout(dns.resolveTxt(`${domain.dnsRecords.dkim.selector}._domainkey.${domain.domain}`));
         const dkimFlat = dkimRecords.map(r => r.join('')).join(' ');
         if (dkimFlat.includes('v=DKIM1')) {
           results.dkim = true;
           domain.dnsRecords.dkim.verified = true;
         }
       } catch (e) {
-        // DKIM record not found
+        if (e.message === 'DNS lookup timeout') {
+          console.warn(`[DNS_VERIFY] DKIM lookup timeout for ${domain.domain}`);
+        }
+        // DKIM record not found or timed out
       }
     } catch (error) {
-      // TXT records not found
+      if (error.message === 'DNS lookup timeout') {
+        console.error(`[DNS_VERIFY] TXT records lookup timeout for ${domain.domain}`);
+      }
+      // TXT records not found or timed out
     }
 
-    // Check MX records
+    // Check MX records with timeout
     try {
-      const mxRecords = await dns.resolveMx(domain.domain);
+      const mxRecords = await verifyWithTimeout(dns.resolveMx(domain.domain));
       if (mxRecords.some(r => r.exchange.includes('mail'))) {
         results.mx = true;
         if (domain.dnsRecords.mx[0]) {
@@ -388,12 +410,25 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         }
       }
     } catch (error) {
-      // MX records not found
+      if (error.message === 'DNS lookup timeout') {
+        console.error(`[DNS_VERIFY] MX records lookup timeout for ${domain.domain}`);
+      }
+      // MX records not found or timed out
     }
 
-    // Update verified status (require AWS SES verification too)
-    const allVerified = results.verificationToken && results.mx && results.spf && results.awsSesVerified;
-    const partiallyVerified = results.verificationToken && results.mx && results.spf;
+    // NEW: Separate DNS verification from AWS SES verification
+    const dnsVerified = results.verificationToken && results.mx && results.spf;
+    if (dnsVerified && !domain.dnsVerified) {
+      domain.dnsVerified = true;
+      domain.dnsVerifiedAt = new Date();
+      console.log(`[DNS_VERIFY] DNS verification complete for ${domain.domain}`);
+    }
+
+    // Full verification requires both DNS and AWS SES
+    const allVerified = domain.dnsVerified && domain.awsSesVerified;
+    const partiallyVerified = domain.dnsVerified && !domain.awsSesVerified;
+
+    results.dnsVerified = domain.dnsVerified;
 
     if (allVerified && !domain.verified) {
       domain.verified = true;
@@ -434,19 +469,21 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
     domain.lastModifiedBy = user._id;
     await domain.save();
 
-    // Determine response message
+    // Determine response message with clear three-state status
     let message = '';
     if (allVerified) {
       message = 'Domain fully verified! You can now create email accounts.';
-    } else if (partiallyVerified && !results.awsSesVerified) {
-      message = 'DNS records verified. Waiting for AWS SES verification (may take up to 72 hours).';
-    } else {
+    } else if (domain.dnsVerified && !domain.awsSesVerified) {
+      message = 'DNS verified successfully! Waiting for AWS SES DKIM verification (usually within 24-72 hours). You can start using the mail app.';
+    } else if (!domain.dnsVerified) {
       message = 'Some DNS records are missing or incorrect. Please check and try again.';
     }
 
     res.json({
       success: true,
       verified: allVerified,
+      dnsVerified: domain.dnsVerified,
+      awsSesVerified: domain.awsSesVerified,
       partiallyVerified: partiallyVerified,
       message,
       results,
@@ -459,7 +496,7 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         !results.verificationToken && 'Add TXT verification record',
         !results.mx && 'Add MX record',
         !results.spf && 'Add SPF record',
-        !results.awsSesVerified && 'Wait for AWS SES DKIM verification (automatic)'
+        (domain.dnsVerified && !domain.awsSesVerified) && 'AWS SES DKIM verification in progress (automatic, no action needed)'
       ].filter(Boolean) : []
     });
   } catch (error) {

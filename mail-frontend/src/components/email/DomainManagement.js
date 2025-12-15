@@ -72,8 +72,8 @@ const DomainCard = ({ domain, onUpdate }) => {
   const verifyDomain = async () => {
     setVerifying(true);
     try {
-      await axios.post(`/api/email-domains/${domain._id}/verify-dns`);
-      alert('✅ Domain verified successfully!');
+      const response = await axios.post(`/api/email-domains/${domain._id}/verify-dns`);
+      alert(response.data.message || '✅ Domain verified successfully!');
       onUpdate();
     } catch (error) {
       alert('❌ Verification failed: ' + (error.response?.data?.error || error.message));
@@ -82,18 +82,41 @@ const DomainCard = ({ domain, onUpdate }) => {
     }
   };
 
+  const getStatusBadge = () => {
+    if (domain.verified) {
+      return { className: 'verified', text: '✓ Fully Verified' };
+    } else if (domain.dnsVerified) {
+      return { className: 'aws-pending', text: '⏳ Waiting for AWS SES' };
+    } else {
+      return { className: 'pending', text: '⚠ Pending Verification' };
+    }
+  };
+
+  const getStatusMessage = () => {
+    if (domain.verified) {
+      return 'Your domain is fully verified and ready for email!';
+    } else if (domain.dnsVerified) {
+      return 'DNS records verified! AWS SES DKIM verification is in progress (usually within 24-72 hours). You can start using the mail app.';
+    } else {
+      return 'Please configure DNS records to verify your domain.';
+    }
+  };
+
+  const statusBadge = getStatusBadge();
   const percentageUsed = domain.totalQuota > 0
     ? (domain.usedStorage / domain.totalQuota) * 100
     : 0;
 
   return (
-    <div className={`domain-card ${domain.verified ? 'verified' : 'pending'}`}>
+    <div className={`domain-card ${statusBadge.className}`}>
       <div className="domain-header">
         <h3>{domain.domain}</h3>
-        <span className={`status-badge ${domain.verified ? 'verified' : 'pending'}`}>
-          {domain.verified ? '✓ Verified' : '⚠ Pending Verification'}
+        <span className={`status-badge ${statusBadge.className}`}>
+          {statusBadge.text}
         </span>
       </div>
+
+      <p className="status-message">{getStatusMessage()}</p>
 
       <div className="domain-stats">
         <div className="stat">
@@ -123,7 +146,7 @@ const DomainCard = ({ domain, onUpdate }) => {
       <span className="quota-percentage">{Math.round(percentageUsed)}% used</span>
 
       <div className="domain-actions">
-        {!domain.verified && (
+        {!domain.verified && !domain.dnsVerified && (
           <>
             <button
               className="btn-secondary"
@@ -140,9 +163,25 @@ const DomainCard = ({ domain, onUpdate }) => {
             </button>
           </>
         )}
+
+        {domain.dnsVerified && !domain.verified && (
+          <button
+            className="btn-secondary"
+            onClick={verifyDomain}
+            disabled={verifying}
+          >
+            {verifying ? 'Checking...' : 'Check AWS SES Status'}
+          </button>
+        )}
+
+        {domain.verified && (
+          <button className="btn-secondary" onClick={() => setShowDNS(!showDNS)}>
+            {showDNS ? 'Hide DNS Setup' : 'View DNS Setup'}
+          </button>
+        )}
       </div>
 
-      {showDNS && !domain.verified && (
+      {showDNS && (
         <DNSInstructions domain={domain} />
       )}
     </div>
