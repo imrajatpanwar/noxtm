@@ -160,11 +160,11 @@ router.post('/', isAuthenticated, async (req, res) => {
     const mailServerIp = mailConfig.mailServer.ip;
 
     domain.dnsRecords.mx = [
-      { priority: 10, host: `mail.${domainName}`, verified: false }
+      { priority: 10, host: 'mail.noxtm.com', verified: false }
     ];
 
     domain.dnsRecords.spf = {
-      record: `v=spf1 mx a ip4:${mailServerIp} ~all`,
+      record: `v=spf1 ip4:${mailServerIp} include:amazonses.com ~all`,
       verified: false
     };
 
@@ -223,17 +223,10 @@ router.get('/:id/dns-instructions', isAuthenticated, async (req, res) => {
         {
           type: 'MX',
           name: domain.domain,
-          value: `mail.${domain.domain}`,
+          value: 'mail.noxtm.com',
           priority: 10,
           purpose: 'Mail server for receiving emails',
           verified: domain.dnsRecords.mx[0]?.verified || false
-        },
-        {
-          type: 'A',
-          name: `mail.${domain.domain}`,
-          value: process.env.EMAIL_HOST || '185.137.122.61',
-          purpose: 'IP address of mail server',
-          verified: false
         },
         {
           type: 'TXT',
@@ -403,7 +396,7 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
     // Check MX records with timeout
     try {
       const mxRecords = await verifyWithTimeout(dns.resolveMx(domain.domain));
-      if (mxRecords.some(r => r.exchange.includes('mail'))) {
+      if (mxRecords.some(r => r.exchange.toLowerCase() === 'mail.noxtm.com')) {
         results.mx = true;
         if (domain.dnsRecords.mx[0]) {
           domain.dnsRecords.mx[0].verified = true;
