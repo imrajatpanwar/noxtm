@@ -3264,28 +3264,8 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
 
 // ===== PROFILE MANAGEMENT ROUTES =====
 // Get current user profile
-app.get('/api/profile', authenticateToken, async (req, res) => {
-  try {
-    if (!mongoConnected) {
-      return res.status(503).json({
-        message: 'Database connection unavailable. Please try again later.'
-      });
-    }
-
-    const user = await User.findById(req.user.userId)
-      .populate('companyId', 'companyName')
-      .select('-password');
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json({ user });
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// REMOVED: Duplicate /api/profile endpoint (kept first definition at line 2957)
+// This duplicate was causing inconsistent behavior
 
 // Update user profile (own profile)
 app.put('/api/profile', authenticateToken, async (req, res) => {

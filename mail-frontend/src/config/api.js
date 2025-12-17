@@ -1,6 +1,10 @@
 import axios from 'axios';
 import { MAIL_LOGIN_URL } from './authConfig';
 
+// Global flag to prevent redirect during token extraction/authentication
+// Set by Inbox component during initial auth flow
+window.__NOXTM_AUTH_LOADING__ = false;
+
 // Create axios instance with proper configuration for mail.noxtm.com
 // Use environment-based URL configuration
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -68,6 +72,13 @@ api.interceptors.response.use(
 
       // If no auth credentials exist at all, redirect to login
       if (!hasToken && !hasCookie && window.location.pathname !== '/login') {
+        // NEW: Don't redirect if auth is still loading (prevents race condition)
+        if (window.__NOXTM_AUTH_LOADING__) {
+          console.log('[API] Auth loading in progress, not redirecting yet');
+          error.isAuthError = true;
+          return Promise.reject(error);
+        }
+
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         console.log('[API] No authentication found, redirecting to login');

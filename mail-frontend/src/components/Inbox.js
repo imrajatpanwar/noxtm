@@ -27,6 +27,9 @@ function Inbox() {
   useEffect(() => {
     console.log('[INBOX] Component mounted - Starting authentication flow...');
 
+    // Set loading flag to prevent API interceptor from redirecting during auth
+    window.__NOXTM_AUTH_LOADING__ = true;
+
     // Check for auth_token in URL (from main app redirect after login)
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('auth_token');
@@ -82,6 +85,9 @@ function Inbox() {
           setUser(response.data);
           localStorage.setItem('user', JSON.stringify(response.data));
 
+          // Clear loading flag on success
+          window.__NOXTM_AUTH_LOADING__ = false;
+
           // Check if user has a verified domain (skip for admins)
           if (response.data.role !== 'Admin') {
             console.log('[INBOX] User is not Admin, checking domain setup...');
@@ -102,6 +108,8 @@ function Inbox() {
             await new Promise(resolve => setTimeout(resolve, 1000));
           } else {
             console.log('[INBOX] All retry attempts failed, redirecting to login:', MAIL_LOGIN_URL);
+            // Clear loading flag before redirect
+            window.__NOXTM_AUTH_LOADING__ = false;
             // No SSO session after all retries, redirect to main app login with redirect parameter
             window.location.href = MAIL_LOGIN_URL;
           }
@@ -109,7 +117,10 @@ function Inbox() {
       }
     };
 
-    loadUser();
+    loadUser().catch(() => {
+      // Ensure loading flag is cleared on any unexpected error
+      window.__NOXTM_AUTH_LOADING__ = false;
+    });
   }, [navigate]);
 
   const checkDomainSetup = async () => {
@@ -307,7 +318,7 @@ function Inbox() {
 
       {/* Main Content */}
       <div className="inbox-content">
-        {activeView === 'personal' && <MainstreamInbox />}
+        {activeView === 'personal' && <MainstreamInbox user={user} />}
         {activeView === 'team' && <TeamInbox />}
         {activeView === 'analytics' && <AnalyticsDashboard />}
         {activeView === 'sla' && <SLAMonitor />}

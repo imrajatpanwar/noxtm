@@ -8,7 +8,7 @@ import DomainManagement from './email/DomainManagement';
 import CreateTeamAccount from './email/CreateTeamAccount';
 import './MainstreamInbox.css';
 
-function MainstreamInbox() {
+function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'team' | 'settings'
@@ -25,8 +25,8 @@ function MainstreamInbox() {
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
+  const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
   const [showDomainManagement, setShowDomainManagement] = useState(false);
   const [showCreateTeamAccount, setShowCreateTeamAccount] = useState(false);
@@ -45,20 +45,14 @@ function MainstreamInbox() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount, activeTab, currentPage]);
 
+  // Update currentUser when prop changes
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const response = await api.get('/profile');
-        setCurrentUser(response.data);
-      } catch (err) {
-        console.error('Error loading profile:', err);
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, []);
+    if (user) {
+      console.log('[MAINSTREAM_INBOX] Received user from parent:', user.email);
+      setCurrentUser(user);
+      setProfileLoading(false);
+    }
+  }, [user]);
 
   const fetchHostedAccounts = async () => {
     try {
