@@ -242,7 +242,7 @@ const emailDomainSchema = new mongoose.Schema({
     // AWS SES verification status
     verificationStatus: {
       type: String,
-      enum: ['pending', 'success', 'failed', 'temporary_failure', 'not_registered'],
+      enum: ['pending', 'success', 'failed', 'temporary_failure', 'not_registered', 'PENDING', 'SUCCESS', 'FAILED', 'TEMPORARY_FAILURE', 'NOT_STARTED'],
       default: 'not_registered'
     },
 

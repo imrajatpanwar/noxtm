@@ -58,24 +58,44 @@ async function registerDomainWithSES(domain) {
     console.log(`[AWS SES] Registering domain: ${domain}`);
 
     const command = new CreateEmailIdentityCommand({
-      EmailIdentity: domain,
-      DkimSigningAttributes: {
-        DomainSigningSelector: 'default'
-      }
+      EmailIdentity: domain
     });
 
     const response = await sesClient.send(command);
 
     console.log(`[AWS SES] Domain registered successfully: ${domain}`);
-    console.log(`[AWS SES] DKIM Tokens:`, response.DkimAttributes?.Tokens);
+    console.log(`[AWS SES] Initial DKIM Tokens:`, response.DkimAttributes?.Tokens);
+
+    // CRITICAL FIX: Ensure DKIM tokens are retrieved
+    let dkimTokens = response.DkimAttributes?.Tokens || [];
+
+    if (!dkimTokens || dkimTokens.length === 0) {
+      console.log(`[AWS SES] DKIM tokens not returned by CreateEmailIdentityCommand. Fetching with GetEmailIdentityCommand...`);
+
+      // Wait 2 seconds for AWS to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const getResult = await getAWSSESIdentity(domain);
+      if (getResult.success && getResult.dkimTokens && getResult.dkimTokens.length > 0) {
+        dkimTokens = getResult.dkimTokens;
+        console.log(`[AWS SES] ✅ Retrieved ${dkimTokens.length} DKIM tokens via GetEmailIdentityCommand`);
+      } else {
+        console.warn(`[AWS SES] ⚠️ Still no DKIM tokens after GetEmailIdentityCommand. Will retry later via background job.`);
+      }
+    } else {
+      console.log(`[AWS SES] ✅ Got ${dkimTokens.length} DKIM tokens from CreateEmailIdentityCommand`);
+    }
 
     return {
       success: true,
       domain,
       identityType: response.IdentityType,
-      dkimTokens: response.DkimAttributes?.Tokens || [],
-      verificationToken: response.DkimAttributes?.Tokens?.[0],
-      message: 'Domain registered with AWS SES. Add CNAME records to verify DKIM.'
+      dkimTokens: dkimTokens,
+      verificationToken: dkimTokens[0] || null,
+      identityArn: response.DkimAttributes?.SigningAttributesOrigin === 'AWS_SES' ? `arn:aws:ses:${process.env.AWS_SDK_REGION}:identity/${domain}` : null,
+      message: dkimTokens.length > 0
+        ? 'Domain registered with AWS SES. Add CNAME records to verify DKIM.'
+        : 'Domain registered with AWS SES. DKIM tokens pending (will retry automatically).'
     };
   } catch (error) {
     console.error(`[AWS SES] Registration error for ${domain}:`, error.message);
