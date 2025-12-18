@@ -6,6 +6,7 @@ const EmailDomain = require('../models/EmailDomain');
 const EmailLog = require('../models/EmailLog');
 const EmailAuditLog = require('../models/EmailAuditLog');
 const EmailTemplate = require('../models/EmailTemplate');
+const UserVerifiedDomain = require('../models/UserVerifiedDomain');
 const nodemailer = require('nodemailer');
 const { encrypt, decrypt, generateSecurePassword } = require('../utils/encryption');
 const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../utils/imapHelper');
@@ -147,6 +148,98 @@ router.get('/', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error fetching email accounts:', error);
     res.status(500).json({ message: 'Failed to fetch email accounts', error: error.message });
+  }
+});
+
+// Get email accounts for user's verified domains
+router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // 1. Get user's verified domains from UserVerifiedDomain
+    const userVerifiedDomains = await UserVerifiedDomain.find({
+      userId: userId,
+      verified: true
+    }).select('domain');
+
+    const verifiedDomainNames = userVerifiedDomains.map(vd => vd.domain.toLowerCase());
+
+    console.log(`[by-verified-domain] User ${userId} verified domains:`, verifiedDomainNames);
+
+    // 2. Build query to find EmailAccount records
+    const query = {
+      $or: [
+        // Accounts created by this user
+        { createdBy: userId },
+        // OR accounts on user's verified domains
+        { domain: { $in: verifiedDomainNames } }
+      ],
+      enabled: true // Only show enabled accounts
+    };
+
+    // 3. Fetch email accounts
+    const accounts = await EmailAccount.find(query)
+      .select('-password')
+      .populate('createdBy', 'fullName email')
+      .lean();
+
+    // 4. Prioritize verified domain accounts first
+    const sortedAccounts = accounts.sort((a, b) => {
+      const aIsVerified = verifiedDomainNames.includes(a.domain?.toLowerCase());
+      const bIsVerified = verifiedDomainNames.includes(b.domain?.toLowerCase());
+
+      if (aIsVerified && !bIsVerified) return -1;
+      if (!aIsVerified && bIsVerified) return 1;
+      return new Date(b.createdAt) - new Date(a.createdAt); // Most recent first
+    });
+
+    console.log(`[by-verified-domain] Found ${sortedAccounts.length} accounts for user ${userId}`);
+
+    res.json({
+      success: true,
+      accounts: sortedAccounts,
+      verifiedDomains: verifiedDomainNames
+    });
+  } catch (error) {
+    console.error('[by-verified-domain] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch email accounts by verified domain',
+      error: error.message
+    });
+  }
+});
+
+// Get email accounts by domain name
+router.get('/by-domain/:domainName', isAuthenticated, async (req, res) => {
+  try {
+    const { domainName } = req.params;
+
+    console.log(`[by-domain] Fetching accounts for domain: ${domainName}`);
+
+    // Fetch email accounts for this domain
+    const accounts = await EmailAccount.find({
+      domain: domainName.toLowerCase(),
+      enabled: true
+    })
+      .select('email displayName accountType createdAt quota usedStorage')
+      .sort('-createdAt')
+      .lean();
+
+    console.log(`[by-domain] Found ${accounts.length} accounts for ${domainName}`);
+
+    res.json({
+      success: true,
+      accounts: accounts,
+      count: accounts.length
+    });
+  } catch (error) {
+    console.error('[by-domain] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch email accounts for domain',
+      error: error.message
+    });
   }
 });
 
@@ -358,8 +451,21 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       }
     }
 
-    const fromEmail = process.env.EMAIL_FROM || 'rajat@mail.noxtm.com';
-    const senderName = senderProfile?.fullName || 'Rajat';
+    // Get sender email from selected account or user's verified domain account
+    let fromEmail = process.env.EMAIL_FROM || 'noreply@noxtm.com';
+    if (accountId) {
+      const account = await EmailAccount.findById(accountId);
+      if (account) {
+        fromEmail = account.email;
+      }
+    } else {
+      // No account selected - try to use user's primary email
+      if (senderProfile && senderProfile.email) {
+        fromEmail = senderProfile.email;
+      }
+    }
+
+    const senderName = senderProfile?.fullName || 'NOXTM Mail';
     const avatarUrl =
       senderProfile?.emailAvatar ||
       senderProfile?.profileImage ||
@@ -654,7 +760,7 @@ router.post('/create-noxtm', isAuthenticated, async (req, res) => {
 // ==========================================
 router.post('/create-hosted', isAuthenticated, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, domain } = req.body;
 
     // Validation
     if (!username || !password) {
@@ -663,8 +769,8 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
 
     // Validate username format (lowercase letters, numbers, dots, hyphens, underscores)
     if (!/^[a-z0-9._-]+$/.test(username)) {
-      return res.status(400).json({ 
-        message: 'Invalid username format. Use only lowercase letters, numbers, dots, hyphens, and underscores.' 
+      return res.status(400).json({
+        message: 'Invalid username format. Use only lowercase letters, numbers, dots, hyphens, and underscores.'
       });
     }
 
@@ -678,7 +784,9 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    const email = `${username}@noxtm.com`;
+    // Use provided domain or default to noxtm.com
+    const emailDomain = domain || 'noxtm.com';
+    const email = `${username}@${emailDomain}`;
 
     // Check if email already exists
     const existingAccount = await EmailAccount.findOne({ email: email.toLowerCase() });
@@ -697,7 +805,7 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
       password, // Will be hashed by pre-save hook
       accountType: 'noxtm-hosted',
       displayName: username,
-      domain: 'noxtm.com',
+      domain: emailDomain,
       quota: 1024, // Default 1GB
       isVerified: true,
       createdBy: req.user?._id,

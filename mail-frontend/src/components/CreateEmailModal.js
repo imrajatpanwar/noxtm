@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiX, FiMail, FiLock, FiCheckCircle } from 'react-icons/fi';
 import api from '../config/api';
 import './CreateEmailModal.css';
@@ -10,6 +10,42 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState('');
+  const [verifiedDomains, setVerifiedDomains] = useState([]);
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [loadingDomains, setLoadingDomains] = useState(true);
+
+  // Fetch verified domains when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchVerifiedDomains();
+    }
+  }, [isOpen]);
+
+  const fetchVerifiedDomains = async () => {
+    try {
+      setLoadingDomains(true);
+      const response = await api.get('/email-accounts/by-verified-domain');
+
+      if (response.data.success && response.data.verifiedDomains) {
+        const domains = response.data.verifiedDomains;
+        setVerifiedDomains(domains);
+
+        // Auto-select first domain or default to noxtm.com
+        if (domains.length > 0) {
+          setSelectedDomain(domains[0]);
+        } else {
+          setSelectedDomain('noxtm.com'); // Fallback
+        }
+      } else {
+        setSelectedDomain('noxtm.com'); // Fallback
+      }
+    } catch (err) {
+      console.error('Error fetching verified domains:', err);
+      setSelectedDomain('noxtm.com'); // Fallback
+    } finally {
+      setLoadingDomains(false);
+    }
+  };
 
   // Validate username
   const isValidUsername = (user) => {
@@ -63,12 +99,16 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
     try {
       const response = await api.post('/email-accounts/create-hosted', {
         username,
-        password
+        password,
+        domain: selectedDomain // Include selected domain
       });
 
       // Success!
       console.log('Account created:', response.data);
-      
+
+      // Store domain for auto-switch functionality (Phase 3A)
+      localStorage.setItem('lastCreatedDomain', selectedDomain);
+
       // Reset form
       setUsername('');
       setPassword('');
@@ -93,7 +133,7 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  const fullEmail = username ? `${username}@noxtm.com` : '@noxtm.com';
+  const fullEmail = username ? `${username}@${selectedDomain}` : `@${selectedDomain}`;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -112,10 +152,46 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
+          {/* Domain Selector */}
+          <div className="form-group">
+            <label htmlFor="domain">
+              <FiMail /> Domain
+            </label>
+            {loadingDomains ? (
+              <p style={{ fontSize: '14px', color: '#666' }}>Loading verified domains...</p>
+            ) : verifiedDomains.length > 0 ? (
+              <select
+                id="domain"
+                value={selectedDomain}
+                onChange={(e) => setSelectedDomain(e.target.value)}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '5px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
+              >
+                {verifiedDomains.map(domain => (
+                  <option key={domain} value={domain}>
+                    @{domain}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', marginBottom: '10px' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
+                  No verified domains found. Using default: @noxtm.com
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Username Field */}
           <div className="form-group">
             <label htmlFor="username">
-              <FiMail /> Email Address
+              <FiMail /> Username
             </label>
             <div className="email-input-wrapper">
               <input
@@ -124,10 +200,10 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase())}
                 placeholder="username"
-                disabled={loading}
+                disabled={loading || loadingDomains}
                 autoFocus
               />
-              <span className="email-domain">@noxtm.com</span>
+              <span className="email-domain">@{selectedDomain}</span>
             </div>
             <div className="full-email-preview">{fullEmail}</div>
             <small className="help-text">

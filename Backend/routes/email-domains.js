@@ -4,7 +4,7 @@ const EmailDomain = require('../models/EmailDomain');
 const EmailAuditLog = require('../models/EmailAuditLog');
 const User = require('../models/User');
 const dns = require('dns').promises;
-const { registerDomainWithSES, checkAWSSESVerification } = require('../utils/awsSesHelper');
+const { registerDomainWithSES, checkAWSSESVerification, sendEmailViaSES } = require('../utils/awsSesHelper');
 const mailConfig = require('../config/mailConfig');
 
 // Middleware to check authentication
@@ -104,9 +104,23 @@ router.post('/', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Domain name is required' });
     }
 
+    // Debug logging
+    console.log('[EMAIL_DOMAIN] Adding domain:', domainName);
+    console.log('[EMAIL_DOMAIN] req.user:', req.user ? `userId=${req.user.userId}, email=${req.user.email}` : 'UNDEFINED');
+
+    // Validate authentication
+    if (!req.user || !req.user.userId) {
+      console.error('[EMAIL_DOMAIN] Authentication failed - req.user is invalid');
+      return res.status(401).json({
+        message: 'Authentication required. Please log in to the mail app first.',
+        error: 'AUTHENTICATION_REQUIRED'
+      });
+    }
+
     // Fetch user from DB to get companyId
     const user = await User.findById(req.user.userId);
     if (!user) {
+      console.error('[EMAIL_DOMAIN] User not found in database:', req.user.userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -133,26 +147,38 @@ router.post('/', isAuthenticated, async (req, res) => {
     await domain.generateDKIMKeys();
 
     // Register domain with AWS SES (automatic DKIM setup)
+    // Wrap in try-catch to ensure domain is saved even if AWS registration fails
     console.log(`[EMAIL_DOMAIN] Registering domain with AWS SES: ${domainName}`);
-    const awsResult = await registerDomainWithSES(domainName);
+    let awsResult = { success: false, error: 'Not registered' }; // Default value
+    try {
+      awsResult = await registerDomainWithSES(domainName);
 
-    if (awsResult.success) {
-      console.log(`[EMAIL_DOMAIN] AWS SES registration successful for ${domainName}`);
-      domain.awsSes = {
-        registered: true,
-        verificationStatus: 'pending',
-        verificationToken: awsResult.verificationToken,
-        dkimTokens: awsResult.dkimTokens || [],
-        identityArn: awsResult.identityArn,
-        verifiedForSending: false,
-        registeredAt: new Date()
-      };
-    } else {
-      console.warn(`[EMAIL_DOMAIN] AWS SES registration failed for ${domainName}:`, awsResult.error);
+      if (awsResult.success) {
+        console.log(`[EMAIL_DOMAIN] AWS SES registration successful for ${domainName}`);
+        domain.awsSes = {
+          registered: true,
+          verificationStatus: 'pending',
+          verificationToken: awsResult.verificationToken,
+          dkimTokens: awsResult.dkimTokens || [],
+          identityArn: awsResult.identityArn,
+          verifiedForSending: false,
+          registeredAt: new Date()
+        };
+      } else {
+        console.warn(`[EMAIL_DOMAIN] AWS SES registration failed for ${domainName}:`, awsResult.error);
+        domain.awsSes = {
+          registered: false,
+          verificationStatus: 'failed',
+          lastError: awsResult.error
+        };
+      }
+    } catch (awsError) {
+      // If AWS registration throws an error, log it but continue
+      console.error(`[EMAIL_DOMAIN] AWS SES registration threw error for ${domainName}:`, awsError.message);
       domain.awsSes = {
         registered: false,
         verificationStatus: 'failed',
-        lastError: awsResult.error
+        lastError: awsError.message || 'AWS registration failed'
       };
     }
 
@@ -217,46 +243,65 @@ router.get('/:id/dns-instructions', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Domain not found' });
     }
 
+    const records = [
+      {
+        type: 'MX',
+        name: domain.domain,
+        value: 'mail.noxtm.com',
+        priority: 10,
+        purpose: 'Mail server for receiving emails',
+        verified: domain.dnsRecords.mx[0]?.verified || false
+      },
+      {
+        type: 'TXT',
+        name: domain.domain,
+        value: domain.dnsRecords.spf.record,
+        purpose: 'SPF record for email authentication',
+        verified: domain.dnsRecords.spf.verified
+      },
+      // REMOVED: Self-generated DKIM TXT record - using ONLY AWS SES DKIM CNAME records
+      {
+        type: 'TXT',
+        name: `_dmarc.${domain.domain}`,
+        value: domain.dnsRecords.dmarc.record,
+        purpose: 'DMARC policy for email handling',
+        verified: domain.dnsRecords.dmarc.verified
+      },
+      {
+        type: 'TXT',
+        name: domain.domain,
+        value: domain.dnsRecords.verification.record,
+        purpose: 'Domain ownership verification',
+        verified: domain.dnsRecords.verification.verified
+      }
+    ];
+
+    // Add AWS SES DKIM CNAME records if tokens exist
+    if (domain.awsSes?.dkimTokens && domain.awsSes.dkimTokens.length > 0) {
+      domain.awsSes.dkimTokens.forEach((token, index) => {
+        records.push({
+          type: 'CNAME',
+          name: `${token}._domainkey.${domain.domain}`,
+          value: `${token}.dkim.amazonses.com`,
+          purpose: `AWS SES DKIM verification (${index + 1}/3)`,
+          verified: domain.awsSes?.verificationStatus === 'SUCCESS' || domain.awsSes?.verificationStatus === 'success'
+        });
+      });
+    } else {
+      // If no DKIM tokens, add a warning INFO record
+      records.push({
+        type: 'INFO',
+        name: 'AWS SES DKIM Records',
+        value: 'Tokens pending - background job will update shortly',
+        purpose: 'AWS SES DKIM CNAME records will appear here once tokens are retrieved from AWS',
+        verified: false,
+        warning: true
+      });
+    }
+
     const instructions = {
       domain: domain.domain,
-      records: [
-        {
-          type: 'MX',
-          name: domain.domain,
-          value: 'mail.noxtm.com',
-          priority: 10,
-          purpose: 'Mail server for receiving emails',
-          verified: domain.dnsRecords.mx[0]?.verified || false
-        },
-        {
-          type: 'TXT',
-          name: domain.domain,
-          value: domain.dnsRecords.spf.record,
-          purpose: 'SPF record for email authentication',
-          verified: domain.dnsRecords.spf.verified
-        },
-        {
-          type: 'TXT',
-          name: `${domain.dnsRecords.dkim.selector}._domainkey.${domain.domain}`,
-          value: domain.dnsRecords.dkim.record,
-          purpose: 'DKIM signature for email authentication',
-          verified: domain.dnsRecords.dkim.verified
-        },
-        {
-          type: 'TXT',
-          name: `_dmarc.${domain.domain}`,
-          value: domain.dnsRecords.dmarc.record,
-          purpose: 'DMARC policy for email handling',
-          verified: domain.dnsRecords.dmarc.verified
-        },
-        {
-          type: 'TXT',
-          name: domain.domain,
-          value: domain.dnsRecords.verification.record,
-          purpose: 'Domain ownership verification',
-          verified: domain.dnsRecords.verification.verified
-        }
-      ],
+      records,
       setup: {
         description: 'Add these DNS records to your domain registrar or DNS provider',
         steps: [
@@ -372,20 +417,9 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         // DMARC record not found or timed out
       }
 
-      // Check DKIM with timeout
-      try {
-        const dkimRecords = await verifyWithTimeout(dns.resolveTxt(`${domain.dnsRecords.dkim.selector}._domainkey.${domain.domain}`));
-        const dkimFlat = dkimRecords.map(r => r.join('')).join(' ');
-        if (dkimFlat.includes('v=DKIM1')) {
-          results.dkim = true;
-          domain.dnsRecords.dkim.verified = true;
-        }
-      } catch (e) {
-        if (e.message === 'DNS lookup timeout') {
-          console.warn(`[DNS_VERIFY] DKIM lookup timeout for ${domain.domain}`);
-        }
-        // DKIM record not found or timed out
-      }
+      // REMOVED: Self-generated DKIM check - using ONLY AWS SES DKIM CNAME records
+      // AWS SES DKIM verification is handled separately via checkAWSSESVerification()
+      // No need to verify self-generated DKIM TXT record
     } catch (error) {
       if (error.message === 'DNS lookup timeout') {
         console.error(`[DNS_VERIFY] TXT records lookup timeout for ${domain.domain}`);
@@ -444,6 +478,49 @@ router.post('/:id/verify-dns', isAuthenticated, async (req, res) => {
         userAgent: req.get('user-agent'),
         companyId: user.companyId
       });
+
+      // Send confirmation email (Phase 3B)
+      if (!domain.confirmationEmailSent) {
+        try {
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #28a745;">🎉 Domain Verification Successful!</h2>
+              <p>Hi ${user.fullName || 'there'},</p>
+              <p>Great news! Your domain <strong>${domain.domain}</strong> has been successfully verified and is now ready for use.</p>
+
+              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">What you can do now:</h3>
+                <ul style="line-height: 1.8;">
+                  <li>✅ Create email accounts (e.g., info@${domain.domain}, support@${domain.domain})</li>
+                  <li>✅ Send and receive emails from your domain</li>
+                  <li>✅ Manage your domain settings in the Domain Management section</li>
+                </ul>
+              </div>
+
+              <p><a href="https://mail.noxtm.com/domain-management" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0;">Go to Domain Management</a></p>
+
+              <p style="color: #666; font-size: 13px; margin-top: 30px;">
+                If you have any questions, please contact our support team.
+              </p>
+            </div>
+          `;
+
+          await sendEmailViaSES({
+            from: process.env.EMAIL_FROM || 'noreply@noxtm.com',
+            to: user.email,
+            subject: `✅ ${domain.domain} Verified Successfully!`,
+            html: emailHtml,
+            text: `Your domain ${domain.domain} has been verified successfully! You can now create email accounts and start sending/receiving emails.`
+          });
+
+          domain.confirmationEmailSent = true;
+          domain.confirmationEmailSentAt = new Date();
+          console.log(`[DNS_VERIFY] Confirmation email sent to ${user.email} for domain ${domain.domain}`);
+        } catch (emailError) {
+          console.error(`[DNS_VERIFY] Failed to send confirmation email:`, emailError.message);
+          // Don't fail the verification if email sending fails
+        }
+      }
     }
 
     // Track verification attempt

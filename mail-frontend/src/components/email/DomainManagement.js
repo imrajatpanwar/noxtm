@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './DomainManagement.css';
+import CreateEmailModal from '../CreateEmailModal';
 
 const DomainManagement = () => {
   const [domains, setDomains] = useState([]);
@@ -68,6 +69,30 @@ const DomainManagement = () => {
 const DomainCard = ({ domain, onUpdate }) => {
   const [verifying, setVerifying] = useState(false);
   const [showDNS, setShowDNS] = useState(false);
+  const [domainAccounts, setDomainAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(false);
+  const [showCreateEmailModal, setShowCreateEmailModal] = useState(false);
+
+  useEffect(() => {
+    if (domain && domain.domain) {
+      fetchDomainAccounts();
+    }
+  }, [domain]);
+
+  const fetchDomainAccounts = async () => {
+    setLoadingAccounts(true);
+    try {
+      const response = await axios.get(`/api/email-accounts/by-domain/${domain.domain}`);
+      if (response.data.success) {
+        setDomainAccounts(response.data.accounts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching domain accounts:', error);
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
 
   const verifyDomain = async () => {
     setVerifying(true);
@@ -118,6 +143,40 @@ const DomainCard = ({ domain, onUpdate }) => {
 
       <p className="status-message">{getStatusMessage()}</p>
 
+      {/* AWS SES Progress Details */}
+      {domain.dnsVerified && !domain.verified && domain.awsSes && (
+        <div style={{
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffc107',
+          borderRadius: '5px',
+          padding: '12px',
+          marginBottom: '15px',
+          fontSize: '13px'
+        }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#856404' }}>
+            ⏳ AWS SES Verification in Progress
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <div>
+              <strong>Status:</strong> {domain.awsSes.verificationStatus || 'Pending'}
+            </div>
+            {domain.awsSes.registeredAt && (
+              <div>
+                <strong>Requested:</strong> {new Date(domain.awsSes.registeredAt).toLocaleString()}
+              </div>
+            )}
+            {domain.awsSes.dkimTokens && domain.awsSes.dkimTokens.length > 0 && (
+              <div>
+                <strong>DKIM Records:</strong> {domain.awsSes.dkimTokens.length} CNAME records configured
+              </div>
+            )}
+            <div style={{ marginTop: '5px', fontSize: '12px', color: '#856404' }}>
+              📌 Verification typically completes within 24-72 hours. DNS records propagation may take time.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="domain-stats">
         <div className="stat">
           <span className="label">Accounts</span>
@@ -145,7 +204,78 @@ const DomainCard = ({ domain, onUpdate }) => {
       </div>
       <span className="quota-percentage">{Math.round(percentageUsed)}% used</span>
 
+      {/* Email Accounts Section */}
+      <div className="domain-accounts-section" style={{ marginTop: '20px', borderTop: '1px solid #e0e0e0', paddingTop: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+            Email Accounts ({domainAccounts.length})
+          </h4>
+          <button
+            onClick={() => setShowAccounts(!showAccounts)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#007bff',
+              cursor: 'pointer',
+              fontSize: '12px',
+              textDecoration: 'underline'
+            }}
+          >
+            {showAccounts ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        {showAccounts && (
+          loadingAccounts ? (
+            <p style={{ fontSize: '12px', color: '#666' }}>Loading accounts...</p>
+          ) : domainAccounts.length === 0 ? (
+            <p style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+              No email accounts created yet on this domain.
+            </p>
+          ) : (
+            <div className="accounts-list" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {domainAccounts.map(account => (
+                <div
+                  key={account._id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 10px',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '5px',
+                    marginBottom: '8px',
+                    fontSize: '13px'
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: '#333' }}>{account.email}</strong>
+                    <span style={{ marginLeft: '10px', fontSize: '11px', color: '#666', backgroundColor: '#e9ecef', padding: '2px 6px', borderRadius: '3px' }}>
+                      {account.accountType || 'hosted'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#999' }}>
+                    {new Date(account.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+
       <div className="domain-actions">
+        {/* Create Email Button - always visible for verified domains */}
+        {(domain.verified || domain.dnsVerified) && (
+          <button
+            className="btn-primary"
+            onClick={() => setShowCreateEmailModal(true)}
+            style={{ marginRight: '10px' }}
+          >
+            + Create Email
+          </button>
+        )}
+
         {!domain.verified && !domain.dnsVerified && (
           <>
             <button
@@ -183,6 +313,19 @@ const DomainCard = ({ domain, onUpdate }) => {
 
       {showDNS && (
         <DNSInstructions domain={domain} />
+      )}
+
+      {/* Create Email Modal */}
+      {showCreateEmailModal && (
+        <CreateEmailModal
+          isOpen={showCreateEmailModal}
+          onClose={() => setShowCreateEmailModal(false)}
+          onSuccess={() => {
+            setShowCreateEmailModal(false);
+            fetchDomainAccounts(); // Refresh accounts list
+            onUpdate(); // Refresh domain data
+          }}
+        />
       )}
     </div>
   );

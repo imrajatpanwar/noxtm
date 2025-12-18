@@ -56,25 +56,55 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
 
   const fetchHostedAccounts = async () => {
     try {
-      const response = await api.get('/email-accounts', {
-        params: {
-          limit: 1000 // Fetch all accounts
-        }
-      });
-      const allAccounts = response.data.data || response.data || [];
+      // Call new endpoint that fetches accounts based on user's verified domains
+      const response = await api.get('/email-accounts/by-verified-domain');
+
+      if (!response.data.success) {
+        console.error('Failed to fetch verified domain accounts:', response.data.message);
+        setAccounts([]);
+        return;
+      }
+
+      const allAccounts = response.data.accounts || [];
+      const verifiedDomains = response.data.verifiedDomains || [];
+
+      console.log('[MainstreamInbox] User verified domains:', verifiedDomains);
+
+      // Filter for hosted accounts with valid IMAP settings
       const hostedAccounts = allAccounts.filter(account => {
         if (account.accountType !== 'noxtm-hosted') {
           return false;
         }
         return Boolean(account.imapSettings && account.imapSettings.encryptedPassword);
       });
-      console.log('Hosted accounts found:', hostedAccounts.length, hostedAccounts);
+
+      console.log('[MainstreamInbox] Hosted accounts found:', hostedAccounts.length, hostedAccounts);
       setAccounts(hostedAccounts);
-      if (hostedAccounts.length > 0) {
+
+      // Check if user just created a new account (Phase 3A: Auto-switch)
+      const lastCreatedDomain = localStorage.getItem('lastCreatedDomain');
+
+      if (lastCreatedDomain && hostedAccounts.length > 0) {
+        // Try to find account on the newly created domain
+        const newAccount = hostedAccounts.find(acc =>
+          acc.domain?.toLowerCase() === lastCreatedDomain.toLowerCase()
+        );
+
+        if (newAccount) {
+          console.log('[MainstreamInbox] Auto-switching to newly created account:', newAccount.email);
+          setSelectedAccount(newAccount);
+          localStorage.removeItem('lastCreatedDomain'); // Clear flag
+        } else {
+          // Fallback to first account
+          setSelectedAccount(hostedAccounts[0]);
+        }
+      } else if (hostedAccounts.length > 0) {
+        // No auto-switch, select first account (already sorted by verified domain priority)
         setSelectedAccount(hostedAccounts[0]);
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
+      setAccounts([]);
     }
   };
 
@@ -419,7 +449,31 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
             </div>
           ) : !selectedAccount ? (
             <div className="empty-state">
-              <p>No email account selected</p>
+              {accounts.length === 0 ? (
+                <div className="empty-state-create">
+                  <h3>No Email Accounts Found</h3>
+                  <p>You don't have any email accounts yet on your verified domain.</p>
+                  <p>Create an email account to start sending and receiving emails.</p>
+                  <button
+                    onClick={() => window.location.href = '/domain-management'}
+                    className="btn-create-email"
+                    style={{
+                      marginTop: '15px',
+                      padding: '10px 20px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Go to Domain Management
+                  </button>
+                </div>
+              ) : (
+                <p>No email account selected</p>
+              )}
             </div>
           ) : emails.length === 0 ? (
             <div className="empty-state">
