@@ -601,6 +601,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
             </div>
           )}
         </div>
+      </div>
 
       {/* Create Email Account Modal */}
       <CreateEmailModal
