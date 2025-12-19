@@ -71,7 +71,7 @@ const DomainCard = ({ domain, onUpdate }) => {
   const [showDNS, setShowDNS] = useState(false);
   const [domainAccounts, setDomainAccounts] = useState([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
-  const [showAccounts, setShowAccounts] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(true); // Show accounts by default
   const [showCreateEmailModal, setShowCreateEmailModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 

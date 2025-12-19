@@ -3,15 +3,13 @@ import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
 import ProfileSettings from './mailbox/ProfileSettings';
-import TeamInbox from './email/TeamInbox';
 import DomainManagement from './email/DomainManagement';
-import CreateTeamAccount from './email/CreateTeamAccount';
 import './MainstreamInbox.css';
 
 function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'team' | 'settings'
+  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'settings' | 'domains'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,8 +26,6 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
   const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
-  const [showDomainManagement, setShowDomainManagement] = useState(false);
-  const [showCreateTeamAccount, setShowCreateTeamAccount] = useState(false);
   const emailsPerPage = 5;
 
   // Fetch hosted email accounts
@@ -381,10 +377,10 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
           Mainstream
         </button>
         <button
-          className={`tab ${activeTab === 'team' ? 'active' : ''}`}
-          onClick={() => handleTabChange('team')}
+          className={`tab ${activeTab === 'domains' ? 'active' : ''}`}
+          onClick={() => handleTabChange('domains')}
         >
-          Team
+          📧 Domains
         </button>
         <button
           className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -392,17 +388,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
         >
           Settings
         </button>
-        {activeTab === 'team' && (
-          <div className="team-actions">
-            <button className="btn-team-action" onClick={() => setShowDomainManagement(true)}>
-              🌐 Manage Domains
-            </button>
-            <button className="btn-team-action" onClick={() => setShowCreateTeamAccount(true)}>
-              ➕ Create Team Account
-            </button>
-          </div>
-        )}
-        {activeTab !== 'settings' && activeTab !== 'team' && (
+        {activeTab !== 'settings' && activeTab !== 'domains' && (
           <div className="tab-pagination">
             {totalEmails > 0 && (
               <>
@@ -426,8 +412,8 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
       </div>
 
       {/* Main Content */}
-      {activeTab === 'team' ? (
-        <TeamInbox />
+      {activeTab === 'domains' ? (
+        <DomainManagement />
       ) : (
       <div className="inbox-content">
         {/* Email List */}
@@ -634,23 +620,6 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
         onSuccess={handleCreateEmailSuccess}
       />
 
-      {/* Team Email Modals */}
-      {showDomainManagement && (
-        <DomainManagement onClose={() => setShowDomainManagement(false)} />
-      )}
-
-      {showCreateTeamAccount && (
-        <CreateTeamAccount
-          onClose={() => setShowCreateTeamAccount(false)}
-          onCreated={() => {
-            setShowCreateTeamAccount(false);
-            // Refresh team inbox if active
-            if (activeTab === 'team') {
-              window.location.reload();
-            }
-          }}
-        />
-      )}
     </div>
   );
 }
