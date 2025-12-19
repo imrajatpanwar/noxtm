@@ -516,8 +516,10 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
                     {getInitials(selectedEmail.from?.name || selectedEmail.from?.address)}
                   </div>
                   <div>
-                    <div className="sender-name">{selectedEmail.from?.name || selectedEmail.from?.address}</div>
-                    <div className="sender-email">&lt;{selectedEmail.from?.address}&gt;</div>
+                    <div className="sender-name">
+                      {selectedEmail.from?.name || selectedEmail.from?.address?.split('@')[0]}
+                    </div>
+                    <div className="sender-email">{selectedEmail.from?.address}</div>
                     <div className="recipient-info">to {selectedEmail.to?.[0]?.address}</div>
                   </div>
                 </div>
