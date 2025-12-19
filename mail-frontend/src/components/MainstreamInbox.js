@@ -27,10 +27,17 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
   const emailsPerPage = 5;
 
-  // Fetch hosted email accounts
+  // Fetch hosted email accounts - only after user is ready
   useEffect(() => {
-    fetchHostedAccounts();
-  }, []);
+    if (user) {
+      // Small delay to ensure token is stable and auth loading flag is cleared
+      console.log('[MAINSTREAM_INBOX] User ready, fetching accounts in 200ms...');
+      const timer = setTimeout(() => {
+        fetchHostedAccounts();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   // Fetch emails when account or tab changes
   useEffect(() => {
