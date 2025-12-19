@@ -30,18 +30,19 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
         const domains = response.data.verifiedDomains;
         setVerifiedDomains(domains);
 
-        // Auto-select first domain or default to noxtm.com
+        // Auto-select first domain if available
         if (domains.length > 0) {
           setSelectedDomain(domains[0]);
         } else {
-          setSelectedDomain('noxtm.com'); // Fallback
+          // No domains available - user must add a domain first
+          setSelectedDomain('');
         }
       } else {
-        setSelectedDomain('noxtm.com'); // Fallback
+        setSelectedDomain('');
       }
     } catch (err) {
       console.error('Error fetching verified domains:', err);
-      setSelectedDomain('noxtm.com'); // Fallback
+      setSelectedDomain('');
     } finally {
       setLoadingDomains(false);
     }
@@ -91,6 +92,12 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    // Check if user has selected a domain
+    if (!selectedDomain || selectedDomain === '') {
+      setError('Please add a domain first. Go to Domain Management to add your domain.');
       return;
     }
 
@@ -180,9 +187,15 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
                 ))}
               </select>
             ) : (
-              <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', marginBottom: '10px' }}>
-                <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
-                  No verified domains found. Using default: @noxtm.com
+              <div style={{ padding: '15px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '5px', marginBottom: '10px' }}>
+                <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#856404', fontWeight: '600' }}>
+                  ⚠️ No domains available
+                </p>
+                <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#856404' }}>
+                  You need to add and verify your own domain before creating email accounts.
+                </p>
+                <p style={{ margin: 0, fontSize: '13px', color: '#856404' }}>
+                  Please go to <strong>Domain Management</strong> to add your domain.
                 </p>
               </div>
             )}

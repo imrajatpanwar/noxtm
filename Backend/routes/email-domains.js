@@ -74,37 +74,26 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get domains for user's company
+// Get domains created by the current user (user-level isolation)
 router.get('/company', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.userId || req.user._id;
 
-    // Fetch user to get companyId
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    const companyId = user.companyId;
-
-    // Fetch all domains for this company
-    const domains = await EmailDomain.find({ companyId })
+    // Fetch only domains created by THIS user (not all company domains)
+    const domains = await EmailDomain.find({ createdBy: userId })
       .sort({ createdAt: -1 })
       .populate('createdBy', 'fullName email')
       .populate('lastModifiedBy', 'fullName email')
       .lean();
 
-    console.log(`[GET /company] Found ${domains.length} domains for company ${companyId}`);
+    console.log(`[GET /company] Found ${domains.length} domains created by user ${userId}`);
 
     res.json({
       success: true,
       domains
     });
   } catch (error) {
-    console.error('Error fetching company domains:', error);
+    console.error('Error fetching user domains:', error);
     res.status(500).json({
       success: false,
       error: error.message
