@@ -27,66 +27,25 @@ function Inbox() {
     console.log('[INBOX] Component mounted - Starting authentication flow...');
 
     // Set loading flag to prevent API interceptor from redirecting during auth
+    // This flag will stay true until ALL initialization is complete
     window.__NOXTM_AUTH_LOADING__ = true;
 
-    // Check for auth_token in URL (from main app redirect after login)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('auth_token');
+    // NOTE: Token extraction from URL is now handled by ProtectedRoute
+    // We just need to verify it exists and load user profile
 
-    const initializeTokenAndSync = async () => {
-      if (urlToken) {
-        console.log('[INBOX] ✅ Token found in URL, saving to localStorage');
-        console.log('[INBOX] Token preview:', urlToken.substring(0, 20) + '...');
-
-        // Save token from URL to localStorage
-        localStorage.setItem('token', urlToken);
-
-        // Also set Authorization header for immediate requests
-        api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`;
-        console.log('[INBOX] Authorization header set for immediate requests');
-
-        // VERIFY token was saved
-        const savedToken = localStorage.getItem('token');
-        console.log('[INBOX] Token saved:', savedToken ? 'YES' : 'NO');
-
-        // CRITICAL: Also store in a backup location in case something clears localStorage
-        window.__NOXTM_AUTH_TOKEN__ = urlToken;
-        console.log('[INBOX] Token also saved to window.__NOXTM_AUTH_TOKEN__ as backup');
-
-        // Clean up URL by removing the token parameter
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-        console.log('[INBOX] URL cleaned, token removed from visible URL');
-
-        // CRITICAL: Wait for cookie to sync across subdomains (1 second)
-        console.log('[INBOX] Waiting 1s for auth cookie to sync across subdomains...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('[INBOX] Auth sync wait complete, proceeding with API calls');
-      } else {
-        console.log('[INBOX] No token in URL, checking localStorage...');
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-          console.log('[INBOX] ✅ Token found in localStorage');
-          // Ensure Authorization header is set
-          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        } else {
-          console.log('[INBOX] ⚠️  No token in localStorage either');
-        }
-      }
-    };
-
-    // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
-      // Ensure token is restored from backup BEFORE API calls
-      let token = localStorage.getItem('token');
-      if (!token && window.__NOXTM_AUTH_TOKEN__) {
-        console.log('[INBOX] Restoring token from backup');
-        localStorage.setItem('token', window.__NOXTM_AUTH_TOKEN__);
-        token = window.__NOXTM_AUTH_TOKEN__;
-      }
-
       console.log('[INBOX] Fetching user profile from /api/profile...');
+
+      // Verify token exists (should be set by ProtectedRoute)
+      const token = localStorage.getItem('token');
       console.log('[INBOX] Token exists:', token ? 'YES (length: ' + token.length + ')' : 'NO');
+
+      if (!token) {
+        console.error('[INBOX] ❌ No token found! ProtectedRoute should have set it.');
+        window.__NOXTM_AUTH_LOADING__ = false;
+        window.location.href = MAIL_LOGIN_URL;
+        return;
+      }
 
       // Retry logic - try up to 3 times with 1 second delay
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -97,18 +56,20 @@ function Inbox() {
           setUser(response.data);
           localStorage.setItem('user', JSON.stringify(response.data));
 
-          // Clear loading flag on success
-          window.__NOXTM_AUTH_LOADING__ = false;
-
           // Check if user has a verified domain (skip for admins)
           if (response.data.role !== 'Admin') {
             console.log('[INBOX] User is not Admin, checking domain setup...');
-            checkDomainSetup();
+            await checkDomainSetup(); // Wait for domain check to complete
           } else {
             console.log('[INBOX] User is Admin - bypassing domain verification requirement');
             setHasVerifiedDomain(true); // Admins bypass domain requirement
             setDomainCheckComplete(true); // CRITICAL: Mark as complete for admins
           }
+
+          // CRITICAL: Only clear loading flag AFTER everything is complete
+          window.__NOXTM_AUTH_LOADING__ = false;
+          console.log('[INBOX] ✅ Authentication flow complete, clearing loading flag');
+
           return; // Success - exit function
         } catch (err) {
           console.error(`[INBOX] ❌ Profile fetch attempt ${attempt} FAILED:`, err);
@@ -129,14 +90,9 @@ function Inbox() {
       }
     };
 
-    // Call async initialization then proceed with user load
-    initializeTokenAndSync().then(() => {
-      loadUser().catch((err) => {
-        console.error('[INBOX] Fatal error in loadUser:', err);
-        window.__NOXTM_AUTH_LOADING__ = false;
-      });
-    }).catch((err) => {
-      console.error('[INBOX] Fatal error in initializeTokenAndSync:', err);
+    // Start loading user immediately (ProtectedRoute already extracted token)
+    loadUser().catch((err) => {
+      console.error('[INBOX] Fatal error in loadUser:', err);
       window.__NOXTM_AUTH_LOADING__ = false;
     });
   }, [navigate]);
