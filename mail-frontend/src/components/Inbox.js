@@ -310,7 +310,7 @@ function Inbox() {
 
       {/* Main Content */}
       <div className="inbox-content">
-        {activeView === 'personal' && <MainstreamInbox user={user} />}
+        {activeView === 'personal' && <MainstreamInbox user={user} onNavigateToDomains={() => setActiveView('domains')} />}
         {activeView === 'analytics' && <AnalyticsDashboard />}
         {activeView === 'sla' && <SLAMonitor />}
         {activeView === 'templates' && <TemplateManager />}
