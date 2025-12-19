@@ -171,29 +171,33 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
 
   const handleEmailClick = async (email) => {
     setSelectedEmail(email);
-    
+
     // Fetch full email body only when clicked (if not already loaded)
     if (!email.bodyLoaded && email.uid) {
       try {
         setLoading(true);
+        const folder = activeTab === 'mainstream' ? 'INBOX' :
+                       activeTab === 'sent' ? 'Sent' :
+                       'INBOX';
         const response = await api.get('/email-accounts/fetch-email-body', {
           params: {
             accountId: selectedAccount._id,
-            uid: email.uid
+            uid: email.uid,
+            folder: folder
           }
         });
-        
+
         // Update the email with full body data
         const fullEmail = {
           ...email,
           ...response.data.email,
           bodyLoaded: true
         };
-        
+
         setSelectedEmail(fullEmail);
-        
+
         // Update the email in the list as well
-        setEmails(prevEmails => 
+        setEmails(prevEmails =>
           prevEmails.map(e => e.uid === email.uid ? fullEmail : e)
         );
       } catch (error) {
