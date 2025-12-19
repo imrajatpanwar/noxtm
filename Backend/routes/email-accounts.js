@@ -379,35 +379,37 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
 // Fetch single email body by UID
 router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
   try {
-    const { accountId, uid } = req.query;
-    
+    const { accountId, uid, folder } = req.query;
+
     if (!accountId || !uid) {
       return res.status(400).json({ message: 'Account ID and UID are required' });
     }
-    
+
+    const folderName = folder || 'INBOX';
+
     // Check cache first
     const cached = await getCachedEmailBody(accountId, uid);
     if (cached) {
       return res.json({ success: true, email: cached, cached: true });
     }
-    
+
     const account = await EmailAccount.findById(accountId);
     if (!account) {
       return res.status(404).json({ message: 'Account not found' });
     }
-    
+
     if (account.accountType !== 'noxtm-hosted') {
       return res.status(400).json({ message: 'Only hosted accounts support this feature' });
     }
-    
+
     if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
       return res.status(400).json({ message: 'IMAP settings not configured' });
     }
-    
+
     const { fetchSingleEmail } = require('../utils/imapHelper');
     const password = decrypt(account.imapSettings.encryptedPassword);
     const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
-    
+
     const imapConfig = {
       host: host,
       port: account.imapSettings.port || 993,
@@ -415,17 +417,17 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
       username: account.imapSettings.username || account.email,
       password: password
     };
-    
-    console.log(`📧 Fetching email body for UID ${uid} from ${account.email}`);
+
+    console.log(`📧 Fetching email body for UID ${uid} from ${folderName} folder of ${account.email}`);
     const startTime = Date.now();
-    
-    const email = await fetchSingleEmail(imapConfig, parseInt(uid));
-    
+
+    const email = await fetchSingleEmail(imapConfig, parseInt(uid), folderName);
+
     console.log(`✅ Fetched email body in ${Date.now() - startTime}ms`);
-    
+
     // Cache the email body
     await cacheEmailBody(accountId, uid, email);
-    
+
     res.json({ success: true, email, cached: false });
     
   } catch (error) {
