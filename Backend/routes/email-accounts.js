@@ -1587,6 +1587,56 @@ router.put('/:id/reset-password', isAuthenticated, async (req, res) => {
   }
 });
 
+// Update display name for email account
+router.put('/:id/display-name', isAuthenticated, async (req, res) => {
+  try {
+    const { displayName } = req.body;
+
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ message: 'Display name is required' });
+    }
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Check if user owns this account
+    if (account.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You do not have permission to update this account' });
+    }
+
+    // Update display name
+    account.displayName = displayName.trim();
+    account.lastModifiedBy = req.user._id;
+    await account.save();
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'update_display_name',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Updated display name for email account: ${account.email} to "${displayName.trim()}"`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: 'Display name updated successfully',
+      displayName: account.displayName
+    });
+  } catch (error) {
+    console.error('Error updating display name:', error);
+    res.status(500).json({ message: 'Failed to update display name', error: error.message });
+  }
+});
+
 // =====================================================
 // TEAM EMAIL ENDPOINTS (Phase 1 Implementation)
 // =====================================================
