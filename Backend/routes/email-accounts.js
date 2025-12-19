@@ -484,12 +484,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
 
     const originalBody = body || '';
     const bodyHtml = plainTextToHtml(originalBody);
-    const wrappedHtml = buildEmailEnvelope({
-      senderName,
-      senderEmail: fromEmail,
-      avatarUrl,
-      bodyHtml
-    });
+    // Send clean HTML without envelope wrapper - let email clients handle sender display
     const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
 
     // Build recipients array
@@ -508,7 +503,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       from: fromEmail,
       to: recipients,
       subject: subject,
-      html: wrappedHtml,
+      html: bodyHtml,
       text: plainTextVariant,
       replyTo: fromEmail
     });
