@@ -681,10 +681,20 @@ router.put('/:id', isAuthenticated, async (req, res) => {
 // Delete domain
 router.delete('/:id', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user.userId;
     const domain = await EmailDomain.findById(req.params.id);
 
     if (!domain) {
       return res.status(404).json({ message: 'Domain not found' });
+    }
+
+    // Verify user owns this domain
+    if (domain.createdBy.toString() !== userId.toString()) {
+      console.warn(`[DELETE] User ${userId} attempted to delete domain ${domain.domain} owned by ${domain.createdBy}`);
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this domain'
+      });
     }
 
     if (domain.accountCount > 0) {

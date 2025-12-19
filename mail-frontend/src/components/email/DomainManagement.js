@@ -73,6 +73,7 @@ const DomainCard = ({ domain, onUpdate }) => {
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
   const [showCreateEmailModal, setShowCreateEmailModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (domain && domain.domain) {
@@ -104,6 +105,23 @@ const DomainCard = ({ domain, onUpdate }) => {
       alert('❌ Verification failed: ' + (error.response?.data?.error || error.message));
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const deleteDomain = async () => {
+    if (!window.confirm(`⚠️ Are you sure you want to delete ${domain.domain}?\n\nThis will permanently remove the domain and all associated data. This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/email-domains/${domain._id}`);
+      alert(`✅ Domain ${domain.domain} deleted successfully!`);
+      onUpdate();
+    } catch (error) {
+      alert('❌ Failed to delete domain: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -309,6 +327,21 @@ const DomainCard = ({ domain, onUpdate }) => {
             {showDNS ? 'Hide DNS Setup' : 'View DNS Setup'}
           </button>
         )}
+
+        {/* Delete Domain Button - always available */}
+        <button
+          className="btn-danger"
+          onClick={deleteDomain}
+          disabled={deleting}
+          style={{
+            marginLeft: '10px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none'
+          }}
+        >
+          {deleting ? 'Deleting...' : '🗑️ Delete Domain'}
+        </button>
       </div>
 
       {showDNS && (
