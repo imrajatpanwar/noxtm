@@ -3,13 +3,12 @@ import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
 import ProfileSettings from './mailbox/ProfileSettings';
-import DomainManagement from './email/DomainManagement';
 import './MainstreamInbox.css';
 
 function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'settings' | 'domains'
+  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'settings'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -377,18 +376,12 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
           Mainstream
         </button>
         <button
-          className={`tab ${activeTab === 'domains' ? 'active' : ''}`}
-          onClick={() => handleTabChange('domains')}
-        >
-          📧 Domains
-        </button>
-        <button
           className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleTabChange('settings')}
         >
           Settings
         </button>
-        {activeTab !== 'settings' && activeTab !== 'domains' && (
+        {activeTab !== 'settings' && (
           <div className="tab-pagination">
             {totalEmails > 0 && (
               <>
@@ -412,9 +405,6 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
       </div>
 
       {/* Main Content */}
-      {activeTab === 'domains' ? (
-        <DomainManagement />
-      ) : (
       <div className="inbox-content">
         {/* Email List */}
         <div className="email-list">
@@ -611,7 +601,6 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
             </div>
           )}
         </div>
-      )}
 
       {/* Create Email Account Modal */}
       <CreateEmailModal
