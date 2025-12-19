@@ -1637,6 +1637,58 @@ router.put('/:id/display-name', isAuthenticated, async (req, res) => {
   }
 });
 
+/**
+ * Update Email Account Quota
+ * PUT /api/email-accounts/:id/quota
+ */
+router.put('/:id/quota', isAuthenticated, async (req, res) => {
+  try {
+    const { quota } = req.body;
+
+    if (quota === undefined || quota === null) {
+      return res.status(400).json({ message: 'Quota value is required' });
+    }
+
+    const quotaValue = parseInt(quota);
+    if (isNaN(quotaValue) || quotaValue < 0) {
+      return res.status(400).json({ message: 'Quota must be a non-negative number (in MB)' });
+    }
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Check if user owns this account
+    if (account.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You do not have permission to update this account' });
+    }
+
+    // Update quota
+    account.quota = quotaValue;
+    account.lastModifiedBy = req.user._id;
+    await account.save();
+
+    // Create audit log
+    await EmailAuditLog.log({
+      action: 'update_quota',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      performedBy: req.user._id,
+      description: `Updated quota for email account: ${account.email} to ${quotaValue} MB`,
+    });
+
+    res.json({
+      success: true,
+      message: 'Quota updated successfully',
+      quota: account.quota
+    });
+  } catch (error) {
+    console.error('Error updating quota:', error);
+    res.status(500).json({ message: 'Failed to update quota', error: error.message });
+  }
+});
+
 // =====================================================
 // TEAM EMAIL ENDPOINTS (Phase 1 Implementation)
 // =====================================================

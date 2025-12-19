@@ -7,20 +7,33 @@ const ProtectedRoute = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Simply check if token exists - let parent (Inbox) handle /profile call
-    // This prevents duplicate API calls and race conditions
     console.log('[PROTECTED_ROUTE] Checking for auth token...');
 
+    // CRITICAL FIX: Extract token from URL FIRST (before any auth check)
+    // This prevents redirect loop when opening mail app from dashboard
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('auth_token');
+
+    if (urlToken) {
+      console.log('[PROTECTED_ROUTE] ✅ Token found in URL, saving to localStorage immediately');
+      localStorage.setItem('token', urlToken);
+      // Set Authorization header immediately for subsequent API calls
+      api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`;
+      // Clean URL to remove token parameter (security best practice)
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // NOW check for token (will find it if it was in URL or already in localStorage)
     const token = localStorage.getItem('token') || window.__NOXTM_AUTH_TOKEN__;
 
     if (token) {
-      // Token exists, assume authenticated (parent will verify)
-      console.log('[PROTECTED_ROUTE] Token found, assuming authenticated');
+      // Token exists, assume authenticated (parent Inbox will verify with /profile)
+      console.log('[PROTECTED_ROUTE] ✅ Token found, assuming authenticated');
       setAuthenticated(true);
       setLoading(false);
     } else {
-      // No token at all - redirect to login
-      console.log('[PROTECTED_ROUTE] No token found, redirecting to login');
+      // No token anywhere - redirect to login
+      console.log('[PROTECTED_ROUTE] ❌ No token found, redirecting to login');
       window.location.href = MAIL_LOGIN_URL;
     }
   }, []);
