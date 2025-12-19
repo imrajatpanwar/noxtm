@@ -23,6 +23,12 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
   const [displayNameError, setDisplayNameError] = useState(null);
   const [displayNameSuccess, setDisplayNameSuccess] = useState(null);
 
+  const [editingQuota, setEditingQuota] = useState(false);
+  const [newQuota, setNewQuota] = useState('');
+  const [quotaSaving, setQuotaSaving] = useState(false);
+  const [quotaError, setQuotaError] = useState(null);
+  const [quotaSuccess, setQuotaSuccess] = useState(null);
+
   useEffect(() => {
     // Fetch user's current signature
     api.get('/email-accounts/signature')
@@ -99,6 +105,47 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
     setEditingDisplayName(false);
     setNewDisplayName('');
     setDisplayNameError(null);
+  };
+
+  const handleQuotaEdit = () => {
+    setNewQuota(account?.quota?.toString() || '');
+    setEditingQuota(true);
+    setQuotaError(null);
+    setQuotaSuccess(null);
+  };
+
+  const handleQuotaSave = async () => {
+    const quotaValue = parseInt(newQuota);
+    if (isNaN(quotaValue) || quotaValue < 0) {
+      setQuotaError('Please enter a valid quota in MB (0 or greater)');
+      return;
+    }
+
+    setQuotaSaving(true);
+    setQuotaError(null);
+    setQuotaSuccess(null);
+
+    try {
+      const res = await api.put(`/email-accounts/${account._id}/quota`, {
+        quota: quotaValue
+      });
+      if (res.data.success) {
+        setQuotaSuccess('Quota updated successfully!');
+        setEditingQuota(false);
+        setTimeout(() => setQuotaSuccess(null), 3000);
+        window.location.reload();
+      }
+    } catch (err) {
+      setQuotaError(err.response?.data?.message || 'Failed to update quota');
+    } finally {
+      setQuotaSaving(false);
+    }
+  };
+
+  const handleQuotaCancel = () => {
+    setEditingQuota(false);
+    setNewQuota('');
+    setQuotaError(null);
   };
 
   return (
@@ -228,8 +275,80 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
         </div>
         <div className="mailbox-settings-row">
           <span className="label">Quota (MB)</span>
-          <strong>{account?.quota ?? 'Not set'}</strong>
+          {editingQuota ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <input
+                type="number"
+                value={newQuota}
+                onChange={(e) => setNewQuota(e.target.value)}
+                placeholder="Enter quota in MB"
+                min="0"
+                style={{
+                  padding: '6px 10px',
+                  fontSize: '13px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  flex: 1,
+                  maxWidth: '150px'
+                }}
+                autoFocus
+              />
+              <button
+                onClick={handleQuotaSave}
+                disabled={quotaSaving}
+                className="mailbox-upload-btn"
+                style={{ margin: 0, padding: '6px 12px', fontSize: '13px' }}
+              >
+                {quotaSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={handleQuotaCancel}
+                disabled={quotaSaving}
+                style={{
+                  margin: 0,
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  background: '#f5f5f5',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <strong>{account?.quota ?? 'Not set'}</strong>
+              <button
+                onClick={handleQuotaEdit}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  background: '#3B82F6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
+        {quotaError && (
+          <div className="mailbox-settings-row">
+            <span className="label"></span>
+            <p className="mailbox-settings-error">{quotaError}</p>
+          </div>
+        )}
+        {quotaSuccess && (
+          <div className="mailbox-settings-row">
+            <span className="label"></span>
+            <p className="mailbox-settings-success">{quotaSuccess}</p>
+          </div>
+        )}
       </div>
 
       <div className="mailbox-signature-section">
