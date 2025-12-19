@@ -5,7 +5,7 @@ import CreateEmailModal from './CreateEmailModal';
 import ProfileSettings from './mailbox/ProfileSettings';
 import './MainstreamInbox.css';
 
-function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox)
+function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and navigation callback as props from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'sent' | 'settings'
@@ -443,7 +443,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
                   <p>You don't have any email accounts yet on your verified domain.</p>
                   <p>Create an email account to start sending and receiving emails.</p>
                   <button
-                    onClick={() => window.location.href = '/domain-management'}
+                    onClick={() => onNavigateToDomains && onNavigateToDomains()}
                     className="btn-create-email"
                     style={{
                       marginTop: '15px',
