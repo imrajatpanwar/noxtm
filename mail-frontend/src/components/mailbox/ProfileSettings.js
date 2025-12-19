@@ -17,6 +17,12 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
   const [signatureError, setSignatureError] = useState(null);
   const [signatureSuccess, setSignatureSuccess] = useState(null);
 
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [displayNameSaving, setDisplayNameSaving] = useState(false);
+  const [displayNameError, setDisplayNameError] = useState(null);
+  const [displayNameSuccess, setDisplayNameSuccess] = useState(null);
+
   useEffect(() => {
     // Fetch user's current signature
     api.get('/email-accounts/signature')
@@ -52,6 +58,47 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
     } finally {
       setSignatureSaving(false);
     }
+  };
+
+  const handleDisplayNameEdit = () => {
+    setNewDisplayName(account?.displayName || '');
+    setEditingDisplayName(true);
+    setDisplayNameError(null);
+    setDisplayNameSuccess(null);
+  };
+
+  const handleDisplayNameSave = async () => {
+    if (!newDisplayName.trim()) {
+      setDisplayNameError('Display name cannot be empty');
+      return;
+    }
+
+    setDisplayNameSaving(true);
+    setDisplayNameError(null);
+    setDisplayNameSuccess(null);
+
+    try {
+      const res = await api.put(`/email-accounts/${account._id}/display-name`, {
+        displayName: newDisplayName.trim()
+      });
+      if (res.data.success) {
+        setDisplayNameSuccess('Display name updated successfully!');
+        setEditingDisplayName(false);
+        setTimeout(() => setDisplayNameSuccess(null), 3000);
+        // Refresh the page or update account state
+        window.location.reload();
+      }
+    } catch (err) {
+      setDisplayNameError(err.response?.data?.message || 'Failed to update display name');
+    } finally {
+      setDisplayNameSaving(false);
+    }
+  };
+
+  const handleDisplayNameCancel = () => {
+    setEditingDisplayName(false);
+    setNewDisplayName('');
+    setDisplayNameError(null);
   };
 
   return (
@@ -94,8 +141,79 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
         </div>
         <div className="mailbox-settings-row">
           <span className="label">Display name</span>
-          <strong>{account?.displayName || 'Not set'}</strong>
+          {editingDisplayName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <input
+                type="text"
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="Enter display name"
+                style={{
+                  padding: '6px 10px',
+                  fontSize: '13px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  flex: 1,
+                  maxWidth: '300px'
+                }}
+                autoFocus
+              />
+              <button
+                onClick={handleDisplayNameSave}
+                disabled={displayNameSaving}
+                className="mailbox-upload-btn"
+                style={{ margin: 0, padding: '6px 12px', fontSize: '13px' }}
+              >
+                {displayNameSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={handleDisplayNameCancel}
+                disabled={displayNameSaving}
+                style={{
+                  margin: 0,
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  background: '#f5f5f5',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <strong>{account?.displayName || 'Not set'}</strong>
+              <button
+                onClick={handleDisplayNameEdit}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  background: '#3B82F6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
+        {displayNameError && (
+          <div className="mailbox-settings-row">
+            <span className="label"></span>
+            <p className="mailbox-settings-error">{displayNameError}</p>
+          </div>
+        )}
+        {displayNameSuccess && (
+          <div className="mailbox-settings-row">
+            <span className="label"></span>
+            <p className="mailbox-settings-success">{displayNameSuccess}</p>
+          </div>
+        )}
         <div className="mailbox-settings-row">
           <span className="label">Domain</span>
           <strong>{account?.domain || '—'}</strong>
