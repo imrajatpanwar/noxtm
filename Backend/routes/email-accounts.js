@@ -151,54 +151,46 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get email accounts for user's verified domains
+// Get email accounts for user's own domains (user-level isolation)
 router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // 1. Get user's verified domains from UserVerifiedDomain
-    const userVerifiedDomains = await UserVerifiedDomain.find({
-      userId: userId,
-      verified: true
+    // Get EmailDomain model
+    const EmailDomain = require('../models/EmailDomain');
+
+    // 1. Get domains created by THIS user
+    const userDomains = await EmailDomain.find({
+      createdBy: userId,
+      $or: [
+        { verified: true },
+        { dnsVerified: true }
+      ]
     }).select('domain');
 
-    const verifiedDomainNames = userVerifiedDomains.map(vd => vd.domain.toLowerCase());
+    const userDomainNames = userDomains.map(d => d.domain.toLowerCase());
 
-    console.log(`[by-verified-domain] User ${userId} verified domains:`, verifiedDomainNames);
+    console.log(`[by-verified-domain] User ${userId} owns domains:`, userDomainNames);
 
-    // 2. Build query to find EmailAccount records
+    // 2. Fetch only email accounts on domains owned by this user
     const query = {
-      $or: [
-        // Accounts created by this user
-        { createdBy: userId },
-        // OR accounts on user's verified domains
-        { domain: { $in: verifiedDomainNames } }
-      ],
-      enabled: true // Only show enabled accounts
+      domain: { $in: userDomainNames },
+      enabled: true
     };
 
     // 3. Fetch email accounts
     const accounts = await EmailAccount.find(query)
       .select('-password')
       .populate('createdBy', 'fullName email')
+      .sort({ createdAt: -1 })
       .lean();
 
-    // 4. Prioritize verified domain accounts first
-    const sortedAccounts = accounts.sort((a, b) => {
-      const aIsVerified = verifiedDomainNames.includes(a.domain?.toLowerCase());
-      const bIsVerified = verifiedDomainNames.includes(b.domain?.toLowerCase());
-
-      if (aIsVerified && !bIsVerified) return -1;
-      if (!aIsVerified && bIsVerified) return 1;
-      return new Date(b.createdAt) - new Date(a.createdAt); // Most recent first
-    });
-
-    console.log(`[by-verified-domain] Found ${sortedAccounts.length} accounts for user ${userId}`);
+    console.log(`[by-verified-domain] Found ${accounts.length} accounts on user's domains`);
 
     res.json({
       success: true,
-      accounts: sortedAccounts,
-      verifiedDomains: verifiedDomainNames
+      accounts: accounts,
+      verifiedDomains: userDomainNames
     });
   } catch (error) {
     console.error('[by-verified-domain] Error:', error);
@@ -210,14 +202,32 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get email accounts by domain name
+// Get email accounts by domain name (only if user owns the domain)
 router.get('/by-domain/:domainName', isAuthenticated, async (req, res) => {
   try {
     const { domainName } = req.params;
+    const userId = req.user.userId;
 
-    console.log(`[by-domain] Fetching accounts for domain: ${domainName}`);
+    console.log(`[by-domain] User ${userId} requesting accounts for domain: ${domainName}`);
 
-    // Fetch email accounts for this domain
+    // Get EmailDomain model
+    const EmailDomain = require('../models/EmailDomain');
+
+    // 1. Verify user owns this domain
+    const domain = await EmailDomain.findOne({
+      domain: domainName.toLowerCase(),
+      createdBy: userId
+    });
+
+    if (!domain) {
+      console.warn(`[by-domain] User ${userId} does not own domain ${domainName}`);
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this domain'
+      });
+    }
+
+    // 2. Fetch email accounts for this domain
     const accounts = await EmailAccount.find({
       domain: domainName.toLowerCase(),
       enabled: true
