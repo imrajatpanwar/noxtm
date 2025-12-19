@@ -661,6 +661,111 @@ async function fetchSingleEmail(config, uid, folder = 'INBOX') {
   });
 }
 
+/**
+ * Append email to IMAP folder (for saving sent emails)
+ * @param {Object} config - IMAP configuration
+ * @param {string} folder - Target folder (e.g., 'Sent')
+ * @param {Object} emailData - Email data {from, to, cc, bcc, subject, body, date, messageId}
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+async function appendEmailToFolder(config, folder, emailData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const imap = new Imap({
+        user: config.username,
+        password: config.password,
+        host: config.host,
+        port: config.port || (config.secure ? 993 : 143),
+        tls: config.secure !== false,
+        tlsOptions: { rejectUnauthorized: false },
+        connTimeout: 10000,
+        authTimeout: 10000
+      });
+
+      imap.once('ready', () => {
+        // Build RFC822 formatted email message
+        const toAddresses = Array.isArray(emailData.to)
+          ? emailData.to.join(', ')
+          : emailData.to;
+        const ccAddresses = emailData.cc && emailData.cc.length > 0
+          ? emailData.cc.join(', ')
+          : '';
+        const bccAddresses = emailData.bcc && emailData.bcc.length > 0
+          ? emailData.bcc.join(', ')
+          : '';
+
+        const dateStr = emailData.date ? emailData.date.toUTCString() : new Date().toUTCString();
+
+        let message = `From: ${emailData.from}\r\n`;
+        message += `To: ${toAddresses}\r\n`;
+        if (ccAddresses) message += `Cc: ${ccAddresses}\r\n`;
+        if (bccAddresses) message += `Bcc: ${bccAddresses}\r\n`;
+        message += `Subject: ${emailData.subject || '(No Subject)'}\r\n`;
+        message += `Date: ${dateStr}\r\n`;
+        message += `Message-ID: <${emailData.messageId}>\r\n`;
+        message += `Content-Type: text/html; charset=utf-8\r\n`;
+        message += `\r\n`;
+        message += emailData.body || '';
+
+        // Attempt to append to folder
+        imap.openBox(folder, false, (err, box) => {
+          if (err) {
+            // Folder might not exist, try to create it
+            imap.addBox(folder, (addErr) => {
+              if (addErr) {
+                imap.end();
+                return reject(new Error(`Failed to create ${folder} folder: ${addErr.message}`));
+              }
+
+              // Retry opening after creation
+              imap.openBox(folder, false, (openErr, newBox) => {
+                if (openErr) {
+                  imap.end();
+                  return reject(new Error(`Failed to open ${folder} after creation: ${openErr.message}`));
+                }
+
+                performAppend();
+              });
+            });
+          } else {
+            performAppend();
+          }
+        });
+
+        function performAppend() {
+          imap.append(Buffer.from(message), {
+            mailbox: folder,
+            flags: ['\\Seen']  // Mark as read
+          }, (appendErr) => {
+            imap.end();
+
+            if (appendErr) {
+              return reject(new Error(`Failed to append to ${folder}: ${appendErr.message}`));
+            }
+
+            resolve({
+              success: true,
+              message: `Email appended to ${folder} folder successfully`
+            });
+          });
+        }
+      });
+
+      imap.once('error', (err) => {
+        reject(new Error(`IMAP connection error: ${err.message}`));
+      });
+
+      imap.once('end', () => {
+        // Connection ended
+      });
+
+      imap.connect();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 module.exports = {
   testImapConnection,
   testSmtpConnection,
@@ -668,5 +773,6 @@ module.exports = {
   getInboxStats,
   getEmailProviderPreset,
   fetchEmails,
-  fetchSingleEmail
+  fetchSingleEmail,
+  appendEmailToFolder
 };

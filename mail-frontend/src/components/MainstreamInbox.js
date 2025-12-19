@@ -8,7 +8,7 @@ import './MainstreamInbox.css';
 function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'settings'
+  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'sent' | 'settings'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +113,9 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
     setLoading(true);
     setError(null);
     try {
-      const folder = activeTab === 'mainstream' ? 'INBOX' : 'INBOX';
+      const folder = activeTab === 'mainstream' ? 'INBOX' :
+                     activeTab === 'sent' ? 'Sent' :
+                     'INBOX';
       const response = await api.get('/email-accounts/fetch-inbox', {
         params: {
           accountId: selectedAccount._id,
@@ -376,6 +378,12 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
           Mainstream
         </button>
         <button
+          className={`tab ${activeTab === 'sent' ? 'active' : ''}`}
+          onClick={() => handleTabChange('sent')}
+        >
+          Sent
+        </button>
+        <button
           className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleTabChange('settings')}
         >
@@ -453,7 +461,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
             </div>
           ) : emails.length === 0 ? (
             <div className="empty-state">
-              <p>No emails found in {activeTab === 'mainstream' ? 'Mainstream' : 'Team'}</p>
+              <p>No emails found in {activeTab === 'mainstream' ? 'Inbox' : activeTab === 'sent' ? 'Sent' : 'Inbox'}</p>
               <small>Try refreshing or selecting a different account</small>
             </div>
           ) : (
@@ -464,11 +472,19 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
                 onClick={() => handleEmailClick(email)}
               >
                 <div className="email-avatar">
-                  {getInitials(email.from?.name || email.from?.address)}
+                  {getInitials(
+                    activeTab === 'sent'
+                      ? (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown')
+                      : (email.from?.name || email.from?.address)
+                  )}
                 </div>
                 <div className="email-info">
                   <div className="email-header-row">
-                    <span className="email-sender">{email.from?.name || email.from?.address}</span>
+                    <span className="email-sender">
+                      {activeTab === 'sent'
+                        ? (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown Recipient')
+                        : (email.from?.name || email.from?.address)}
+                    </span>
                     <span className="email-time">{formatDate(email.date)}</span>
                   </div>
                   <div className="email-subject">
