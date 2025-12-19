@@ -696,6 +696,13 @@ async function appendEmailToFolder(config, folder, emailData) {
 
         const dateStr = emailData.date ? emailData.date.toUTCString() : new Date().toUTCString();
 
+        // Extract plain text from HTML for better preview
+        const plainText = emailData.plainText ||
+          (emailData.body ? emailData.body.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : '');
+
+        // Create multipart MIME message with both plain text and HTML
+        const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
         let message = `From: ${emailData.from}\r\n`;
         message += `To: ${toAddresses}\r\n`;
         if (ccAddresses) message += `Cc: ${ccAddresses}\r\n`;
@@ -703,9 +710,22 @@ async function appendEmailToFolder(config, folder, emailData) {
         message += `Subject: ${emailData.subject || '(No Subject)'}\r\n`;
         message += `Date: ${dateStr}\r\n`;
         message += `Message-ID: <${emailData.messageId}>\r\n`;
-        message += `Content-Type: text/html; charset=utf-8\r\n`;
+        message += `MIME-Version: 1.0\r\n`;
+        message += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n`;
         message += `\r\n`;
-        message += emailData.body || '';
+        message += `--${boundary}\r\n`;
+        message += `Content-Type: text/plain; charset=utf-8\r\n`;
+        message += `Content-Transfer-Encoding: 7bit\r\n`;
+        message += `\r\n`;
+        message += plainText + '\r\n';
+        message += `\r\n`;
+        message += `--${boundary}\r\n`;
+        message += `Content-Type: text/html; charset=utf-8\r\n`;
+        message += `Content-Transfer-Encoding: 7bit\r\n`;
+        message += `\r\n`;
+        message += (emailData.body || '') + '\r\n';
+        message += `\r\n`;
+        message += `--${boundary}--\r\n`;
 
         // Attempt to append to folder
         imap.openBox(folder, false, (err, box) => {

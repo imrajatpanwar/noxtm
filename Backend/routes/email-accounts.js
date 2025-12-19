@@ -531,6 +531,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
             bcc: bcc || [],
             subject: subject,
             body: bodyHtml,
+            plainText: plainTextVariant,
             date: new Date(),
             messageId: info.MessageId
           };
