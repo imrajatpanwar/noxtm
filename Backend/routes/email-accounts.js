@@ -9,9 +9,9 @@ const EmailTemplate = require('../models/EmailTemplate');
 const UserVerifiedDomain = require('../models/UserVerifiedDomain');
 const nodemailer = require('nodemailer');
 const { encrypt, decrypt, generateSecurePassword } = require('../utils/encryption');
-const { testEmailAccount, getEmailProviderPreset, getInboxStats } = require('../utils/imapHelper');
+const { testEmailAccount, getEmailProviderPreset, getInboxStats, appendEmailToFolder } = require('../utils/imapHelper');
 const { createMailbox, getQuota, updateQuota, deleteMailbox, isDoveadmAvailable } = require('../utils/doveadmHelper');
-const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody } = require('../utils/emailCache');
+const { getCachedEmailList, cacheEmailList, getCachedEmailBody, cacheEmailBody, invalidateFolderCache } = require('../utils/emailCache');
 const { scheduleSyncJob, syncMultiplePages } = require('../utils/emailSyncWorker');
 const { requireCompanyOwner, requireEmailAccess, requireCompanyAccess } = require('../middleware/emailAuth');
 const { requireOwnedVerifiedDomain } = require('../middleware/emailDomain');
@@ -508,13 +508,58 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       replyTo: fromEmail
     });
 
-    // Skip logging - EmailLog requires emailAccount and domain fields we don't have
-    // Email was sent successfully via AWS SES
+    // Append sent email to IMAP Sent folder
+    let savedToSent = false;
+    if (accountId) {
+      try {
+        const account = await EmailAccount.findById(accountId);
+        if (account && account.imapSettings && account.imapSettings.encryptedPassword) {
+          const password = decrypt(account.imapSettings.encryptedPassword);
+
+          const imapConfig = {
+            host: account.imapSettings.host || '127.0.0.1',
+            port: account.imapSettings.port || 993,
+            secure: account.imapSettings.secure !== false,
+            username: account.imapSettings.username || account.email,
+            password: password
+          };
+
+          const emailMessage = {
+            from: fromEmail,
+            to: Array.isArray(to) ? to : [to],
+            cc: cc || [],
+            bcc: bcc || [],
+            subject: subject,
+            body: bodyHtml,
+            date: new Date(),
+            messageId: info.MessageId
+          };
+
+          // Append to IMAP Sent folder with 5s timeout
+          const appendPromise = appendEmailToFolder(imapConfig, 'Sent', emailMessage);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('IMAP append timeout')), 5000)
+          );
+
+          await Promise.race([appendPromise, timeoutPromise]);
+
+          console.log(`✅ Sent email appended to IMAP Sent folder for ${fromEmail}`);
+          savedToSent = true;
+
+          // Invalidate Sent folder cache so new email appears immediately
+          await invalidateFolderCache(accountId, 'Sent');
+        }
+      } catch (appendError) {
+        // Don't fail the request if IMAP append fails - email was still sent
+        console.error('⚠️ Failed to append to Sent folder (email was sent via SES):', appendError.message);
+      }
+    }
 
     res.json({
       success: true,
       message: 'Email sent successfully',
-      messageId: info.MessageId
+      messageId: info.MessageId,
+      savedToSent: savedToSent
     });
 
   } catch (error) {
