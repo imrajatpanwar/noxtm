@@ -545,7 +545,6 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
           )}
         </div>
       </div>
-      )}
 
       {/* Compose Popup */}
       {composeOpen && (
