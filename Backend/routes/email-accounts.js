@@ -804,10 +804,21 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Email account already exists' });
     }
 
-    // Note: For now, mailboxes must be created manually on the mail server
-    // or through a separate admin tool. This endpoint only creates the database entry.
-    console.log(`📝 Creating database entry for ${email} (mailbox must exist on server)`);
-    console.warn(`⚠️  Make sure the mailbox ${email} exists on the mail server before using it`);
+    // Create mailbox on mail server using doveadm
+    console.log(`📝 Creating mailbox for ${email} on mail server...`);
+
+    try {
+      const quotaMB = 1024; // Default 1GB
+      await createMailbox(email, password, quotaMB);
+      console.log(`✅ Mailbox created successfully for ${email}`);
+    } catch (mailboxError) {
+      console.error(`❌ Failed to create mailbox for ${email}:`, mailboxError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create mailbox on mail server',
+        error: mailboxError.message
+      });
+    }
 
     // Create email account in database
     const account = new EmailAccount({
