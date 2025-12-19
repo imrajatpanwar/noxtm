@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiSend, FiTrash2, FiArchive, FiStar, FiClock, FiUsers, FiSettings, FiLogOut, FiBarChart2, FiUpload } from 'react-icons/fi';
 import MainstreamInbox from './MainstreamInbox';
-import TeamInbox from './email/TeamInbox';
 import AnalyticsDashboard from './email/AnalyticsDashboard';
 import SLAMonitor from './email/SLAMonitor';
 import TemplateManager from './email/TemplateManager';
@@ -18,7 +17,7 @@ import './Inbox.css';
 
 function Inbox() {
   const [user, setUser] = useState(null);
-  const [activeView, setActiveView] = useState('personal'); // personal, team, analytics, sla, templates, rules, domains
+  const [activeView, setActiveView] = useState('personal'); // personal, analytics, sla, templates, rules, domains
   const [showDomainWizard, setShowDomainWizard] = useState(false);
   const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
   const [domainCheckComplete, setDomainCheckComplete] = useState(false); // NEW: Track if domain check is done
@@ -235,13 +234,6 @@ function Inbox() {
             <FiMail /> Personal Inbox
           </button>
 
-          <button
-            className={`nav-item ${activeView === 'team' ? 'active' : ''}`}
-            onClick={() => setActiveView('team')}
-          >
-            <FiUsers /> Team Inbox
-          </button>
-
           <div className="nav-divider"></div>
 
           <button
@@ -319,7 +311,6 @@ function Inbox() {
       {/* Main Content */}
       <div className="inbox-content">
         {activeView === 'personal' && <MainstreamInbox user={user} />}
-        {activeView === 'team' && <TeamInbox />}
         {activeView === 'analytics' && <AnalyticsDashboard />}
         {activeView === 'sla' && <SLAMonitor />}
         {activeView === 'templates' && <TemplateManager />}
