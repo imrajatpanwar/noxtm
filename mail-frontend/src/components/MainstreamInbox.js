@@ -474,7 +474,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
                 <div className="email-avatar">
                   {getInitials(
                     activeTab === 'sent'
-                      ? (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown')
+                      ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown'))
                       : (email.from?.name || email.from?.address)
                   )}
                 </div>
@@ -482,7 +482,7 @@ function MainstreamInbox({ user }) {  // Receive user as prop from parent (Inbox
                   <div className="email-header-row">
                     <span className="email-sender">
                       {activeTab === 'sent'
-                        ? (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown Recipient')
+                        ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown Recipient'))
                         : (email.from?.name || email.from?.address)}
                     </span>
                     <span className="email-time">{formatDate(email.date)}</span>
