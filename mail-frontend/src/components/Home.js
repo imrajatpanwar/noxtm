@@ -63,13 +63,6 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="inbox-item">
-                  <div className="inbox-icon">👥</div>
-                  <div className="inbox-text">
-                    <div className="inbox-title">Team Inbox</div>
-                    <div className="inbox-count">5 unread</div>
-                  </div>
-                </div>
-                <div className="inbox-item">
                   <div className="inbox-icon">📊</div>
                   <div className="inbox-text">
                     <div className="inbox-title">Analytics</div>
