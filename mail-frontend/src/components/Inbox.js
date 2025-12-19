@@ -75,11 +75,6 @@ function Inbox() {
       }
     };
 
-    // Call async initialization then proceed with user load
-    initializeTokenAndSync().then(() => {
-      loadUser();
-    });
-
     // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
       // Ensure token is restored from backup BEFORE API calls
@@ -134,7 +129,16 @@ function Inbox() {
       }
     };
 
-    // loadUser is now called in initializeTokenAndSync().then() - removed duplicate call
+    // Call async initialization then proceed with user load
+    initializeTokenAndSync().then(() => {
+      loadUser().catch((err) => {
+        console.error('[INBOX] Fatal error in loadUser:', err);
+        window.__NOXTM_AUTH_LOADING__ = false;
+      });
+    }).catch((err) => {
+      console.error('[INBOX] Fatal error in initializeTokenAndSync:', err);
+      window.__NOXTM_AUTH_LOADING__ = false;
+    });
   }, [navigate]);
 
   const checkDomainSetup = async (retryCount = 0) => {
