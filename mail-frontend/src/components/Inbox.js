@@ -33,34 +33,52 @@ function Inbox() {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('auth_token');
 
-    if (urlToken) {
-      console.log('[INBOX] ✅ Token found in URL, saving to localStorage');
-      console.log('[INBOX] Token preview:', urlToken.substring(0, 20) + '...');
+    const initializeTokenAndSync = async () => {
+      if (urlToken) {
+        console.log('[INBOX] ✅ Token found in URL, saving to localStorage');
+        console.log('[INBOX] Token preview:', urlToken.substring(0, 20) + '...');
 
-      // Save token from URL to localStorage
-      localStorage.setItem('token', urlToken);
+        // Save token from URL to localStorage
+        localStorage.setItem('token', urlToken);
 
-      // VERIFY token was saved
-      const savedToken = localStorage.getItem('token');
-      console.log('[INBOX] Token saved:', savedToken ? 'YES' : 'NO');
+        // Also set Authorization header for immediate requests
+        api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`;
+        console.log('[INBOX] Authorization header set for immediate requests');
 
-      // CRITICAL: Also store in a backup location in case something clears localStorage
-      window.__NOXTM_AUTH_TOKEN__ = urlToken;
-      console.log('[INBOX] Token also saved to window.__NOXTM_AUTH_TOKEN__ as backup');
+        // VERIFY token was saved
+        const savedToken = localStorage.getItem('token');
+        console.log('[INBOX] Token saved:', savedToken ? 'YES' : 'NO');
 
-      // Clean up URL by removing the token parameter
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-      console.log('[INBOX] URL cleaned, token removed from visible URL');
-    } else {
-      console.log('[INBOX] No token in URL, checking localStorage...');
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        console.log('[INBOX] ✅ Token found in localStorage');
+        // CRITICAL: Also store in a backup location in case something clears localStorage
+        window.__NOXTM_AUTH_TOKEN__ = urlToken;
+        console.log('[INBOX] Token also saved to window.__NOXTM_AUTH_TOKEN__ as backup');
+
+        // Clean up URL by removing the token parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        console.log('[INBOX] URL cleaned, token removed from visible URL');
+
+        // CRITICAL: Wait for cookie to sync across subdomains (1 second)
+        console.log('[INBOX] Waiting 1s for auth cookie to sync across subdomains...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('[INBOX] Auth sync wait complete, proceeding with API calls');
       } else {
-        console.log('[INBOX] ⚠️  No token in localStorage either');
+        console.log('[INBOX] No token in URL, checking localStorage...');
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+          console.log('[INBOX] ✅ Token found in localStorage');
+          // Ensure Authorization header is set
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        } else {
+          console.log('[INBOX] ⚠️  No token in localStorage either');
+        }
       }
-    }
+    };
+
+    // Call async initialization then proceed with user load
+    initializeTokenAndSync().then(() => {
+      loadUser();
+    });
 
     // Load user from localStorage or fetch from API (SSO check)
     const loadUser = async () => {
@@ -116,14 +134,11 @@ function Inbox() {
       }
     };
 
-    loadUser().catch(() => {
-      // Ensure loading flag is cleared on any unexpected error
-      window.__NOXTM_AUTH_LOADING__ = false;
-    });
+    // loadUser is now called in initializeTokenAndSync().then() - removed duplicate call
   }, [navigate]);
 
-  const checkDomainSetup = async () => {
-    console.log('[INBOX] Checking domain setup via /api/email-domains...');
+  const checkDomainSetup = async (retryCount = 0) => {
+    console.log(`[INBOX] Checking domain setup via /api/email-domains... (attempt ${retryCount + 1})`);
     try {
       const response = await api.get('/email-domains');
       console.log('[INBOX] ✅ Email domains response:', response.data);
@@ -146,9 +161,16 @@ function Inbox() {
       console.error('[INBOX] ❌ Error checking domain setup:', err);
       console.error('[INBOX] Error status:', err.response?.status);
       console.error('[INBOX] Error message:', err.response?.data);
-      console.log('[INBOX] Allowing user to proceed despite error (fail-open policy)');
 
-      // If error, don't block user - let them proceed
+      // If 401 and we haven't retried yet, try one more time after delay
+      if (err.response?.status === 401 && retryCount === 0) {
+        console.log('[INBOX] 401 error, retrying domain check in 1 second...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return checkDomainSetup(1); // Retry once with retryCount = 1
+      }
+
+      // If still failing or not a 401, don't block user - let them proceed
+      console.log('[INBOX] Allowing user to proceed despite error (fail-open policy)');
       setHasVerifiedDomain(true);
     } finally {
       // CRITICAL: Mark domain check as complete to allow rendering

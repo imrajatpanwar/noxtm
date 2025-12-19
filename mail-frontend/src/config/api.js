@@ -79,10 +79,27 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        console.log('[API] No authentication found, redirecting to login');
-        window.location.href = MAIL_LOGIN_URL;
+        // Add a small delay to avoid race condition with token saving
+        // This gives time for localStorage/cookie to sync
+        console.log('[API] No auth detected, waiting 500ms before redirecting...');
+        setTimeout(() => {
+          const recheckToken = localStorage.getItem('token');
+          const recheckCookie = document.cookie.includes('token') || document.cookie.includes('auth');
+
+          // Only redirect if STILL no token after delay
+          if (!recheckToken && !recheckCookie) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            console.log('[API] No authentication found after delay, redirecting to login');
+            window.location.href = MAIL_LOGIN_URL;
+          } else {
+            console.log('[API] ✅ Token found after delay, NOT redirecting');
+          }
+        }, 500); // 500ms grace period
+
+        // Still reject the error so component can handle it
+        error.isAuthError = true;
+        return Promise.reject(error);
       } else {
         // User has credentials but got 401 - likely endpoint issue or permission denied
         // Log it but don't redirect - let component handle the error
