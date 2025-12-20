@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import dayHero from '../assets/day-time-login-signup.webp';
@@ -14,6 +14,28 @@ function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // CRITICAL FIX: Handle already-authenticated users with redirect=mail parameter
+  useEffect(() => {
+    // Check if user is already authenticated AND has redirect=mail parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectParam = urlParams.get('redirect');
+
+    if (redirectParam === 'mail') {
+      // Check if user is already logged in
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+
+      if (token && user) {
+        console.log('[LOGIN] User already authenticated, redirecting to mail app...');
+        const mailUrl = `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`;
+        window.location.href = mailUrl;
+        return;
+      } else {
+        console.log('[LOGIN] redirect=mail param found, but user not authenticated. Showing login form...');
+      }
+    }
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
