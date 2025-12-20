@@ -624,16 +624,25 @@ function Sidebar({ activeSection, onSectionChange }) {
                   // Open in new window/tab
                   const popupWindow = window.open(mailUrl, '_blank', 'noopener,noreferrer');
 
-                  // Detect popup blocker
-                  if (!popupWindow || popupWindow.closed || typeof popupWindow.closed === 'undefined') {
-                    console.warn('[MAIL] Popup blocked by browser');
-                    const userConsent = window.confirm('Popup was blocked by your browser. Click OK to open mail app in current tab instead.');
-                    if (userConsent) {
-                      window.location.href = mailUrl;
-                    }
-                  } else {
-                    console.log('[MAIL] Popup opened successfully');
+                  console.log('[MAIL] window.open() returned:', popupWindow);
+                  console.log('[MAIL] Token being passed:', token.substring(0, 20) + '...');
+
+                  // Immediate check for popup blocker
+                  if (!popupWindow) {
+                    console.error('[MAIL] ❌ Popup blocked - window.open returned null');
+                    alert('Popup was blocked by your browser. Opening mail app in current tab...');
+                    window.location.href = mailUrl;
+                    return;
                   }
+
+                  // Delayed check (some browsers close popup after a moment)
+                  setTimeout(() => {
+                    if (popupWindow.closed) {
+                      console.warn('[MAIL] ⚠️  Popup was closed by browser');
+                    } else {
+                      console.log('[MAIL] ✅ Popup still open after 100ms');
+                    }
+                  }, 100);
                 }}
                 className="Dash-noxtm-sidebar-item"
                 style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}

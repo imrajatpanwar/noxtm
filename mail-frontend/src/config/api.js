@@ -86,8 +86,21 @@ api.interceptors.response.use(
           const recheckToken = localStorage.getItem('token');
           const recheckCookie = document.cookie.includes('token') || document.cookie.includes('auth');
 
+          // Check if we've already redirected recently (prevent loop)
+          const lastRedirect = sessionStorage.getItem('last_mail_redirect');
+          const now = Date.now();
+
+          if (lastRedirect && (now - parseInt(lastRedirect)) < 5000) {
+            console.error('[API] ❌ REDIRECT LOOP DETECTED - Not redirecting again');
+            console.error('[API] Last redirect was', (now - parseInt(lastRedirect)), 'ms ago');
+            alert('Unable to authenticate with mail app. Please refresh the page and try again.');
+            error.isAuthError = true;
+            return Promise.reject(error);
+          }
+
           // Only redirect if STILL no token after delay
           if (!recheckToken && !recheckCookie) {
+            sessionStorage.setItem('last_mail_redirect', now.toString());
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             console.log('[API] No authentication found after delay, redirecting to login');

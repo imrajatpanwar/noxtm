@@ -16,7 +16,19 @@ const ProtectedRoute = ({ children }) => {
       const urlToken = urlParams.get('auth_token');
 
       if (urlToken) {
-        console.log('[PROTECTED_ROUTE] ✅ Token found in URL, saving to localStorage immediately');
+        console.log('[PROTECTED_ROUTE] ✅ Token found in URL');
+        console.log('[PROTECTED_ROUTE] Token preview:', urlToken.substring(0, 30) + '...');
+
+        // Basic JWT validation (should have 3 parts separated by dots)
+        const tokenParts = urlToken.split('.');
+        if (tokenParts.length !== 3) {
+          console.error('[PROTECTED_ROUTE] ❌ Invalid token format - not a valid JWT');
+          console.error('[PROTECTED_ROUTE] Token parts:', tokenParts.length, 'expected: 3');
+          window.location.href = MAIL_LOGIN_URL;
+          return;
+        }
+
+        console.log('[PROTECTED_ROUTE] Token format valid, saving to localStorage');
         localStorage.setItem('token', urlToken);
         // Set Authorization header immediately for subsequent API calls
         api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`;
