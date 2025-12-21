@@ -81,7 +81,7 @@ api.interceptors.response.use(
 
         // Add a delay to avoid race condition with token saving
         // This gives time for localStorage/cookie to sync across subdomains
-        console.log('[API] No auth detected, waiting 1500ms before redirecting...');
+        console.log('[API] No auth detected, waiting 3500ms before redirecting...');
         setTimeout(() => {
           const recheckToken = localStorage.getItem('token');
           const recheckCookie = document.cookie.includes('token') || document.cookie.includes('auth');
@@ -108,7 +108,7 @@ api.interceptors.response.use(
           } else {
             console.log('[API] ✅ Token found after delay, NOT redirecting');
           }
-        }, 1500); // 1500ms grace period (increased from 500ms)
+        }, 3500); // 3500ms grace period - longer than Inbox's 3-second retry
 
         // Still reject the error so component can handle it
         error.isAuthError = true;
