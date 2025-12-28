@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import './JoinCompany.css';
 
 function JoinCompany({ onSignup }) {
   const [searchParams] = useSearchParams();
+  const { token: paramToken } = useParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token');
+  // Support both /invite/:token and /join-company?token=xxx formats
+  const token = paramToken || searchParams.get('token');
 
   const [loading, setLoading] = useState(true);
   const [invitationValid, setInvitationValid] = useState(false);
