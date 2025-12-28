@@ -1,0 +1,55 @@
+.gmail-tab {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  font-size: 14px;
+  color: #5f6368;
+  font-weight: 500;
+}
+
+.gmail-tab:hover {
+  background-color: #e8f0fe;
+  border-bottom-color: #dadce0;
+}
+
+.gmail-tab.active {
+  color: #1a73e8;
+  border-bottom-color: #1a73e8;
+}
+
+.gmail-tab.active .tab-icon {
+  color: #1a73e8;
+}
+
+.tab-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-icon {
+  font-size: 18px;
+  color: #5f6368;
+}
+
+.tab-label {
+  line-height: 1;
+}
+
+.tab-count {
+  font-weight: 400;
+  color: #80868b;
+  margin-left: 4px;
+}
+
+.gmail-tab:focus {
+  outline: none;
+  background-color: #e8f0fe;
+}

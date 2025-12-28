@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { FiRefreshCw, FiChevronDown, FiSearch, FiX, FiMinus, FiMaximize2, FiSend, FiPaperclip, FiUserPlus } from 'react-icons/fi';
+import {
+  MdInbox, MdRefresh, MdMoreVert, MdStar, MdStarBorder,
+  MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
+  MdChevronLeft, MdChevronRight, MdLocalOffer, MdPeople,
+  MdInfo, MdSend, MdAttachFile, MdClose, MdMinimize,
+  MdMaximize, MdPersonAdd
+} from 'react-icons/md';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
 import ProfileSettings from './mailbox/ProfileSettings';
+import Checkbox from './ui/Checkbox';
+import IconButton from './ui/IconButton';
+import Tab from './ui/Tab';
 import './MainstreamInbox.css';
 
 function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and navigation callback as props from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('mainstream'); // 'mainstream' | 'sent' | 'settings'
+  const [activeTab, setActiveTab] = useState('primary'); // 'primary' | 'promotions' | 'social' | 'updates' | 'sent' | 'settings'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +35,11 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
   const emailsPerPage = 5;
+
+  // Gmail-style checkbox selection
+  const [selectedEmails, setSelectedEmails] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [starredEmails, setStarredEmails] = useState(new Set());
 
   // Fetch hosted email accounts - only after user is ready
   useEffect(() => {
@@ -120,9 +134,9 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
     setLoading(true);
     setError(null);
     try {
-      const folder = activeTab === 'mainstream' ? 'INBOX' :
-                     activeTab === 'sent' ? 'Sent' :
-                     'INBOX';
+      // Map Gmail tabs to folders (all tabs currently use INBOX, can be extended later)
+      const folder = activeTab === 'sent' ? 'Sent' : 'INBOX';
+
       const response = await api.get('/email-accounts/fetch-inbox', {
         params: {
           accountId: selectedAccount._id,
@@ -140,7 +154,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       console.log(`Fetched ${fetchedEmails.length} emails out of ${total} total`);
 
       // Filter out emails sent by the current user (self-sent emails in Inbox)
-      if (activeTab === 'mainstream') {
+      if (activeTab !== 'sent') {
         const originalLength = fetchedEmails.length;
         fetchedEmails = fetchedEmails.filter(email => {
           const fromAddress = email.from?.address || '';
@@ -151,7 +165,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
       setEmails(fetchedEmails);
       setTotalEmails(total);
-      
+
       console.log('Set emails state with', fetchedEmails.length, 'emails');
     } catch (error) {
       console.error('Error fetching emails:', error);
@@ -177,15 +191,12 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   };
 
   const handleEmailClick = async (email) => {
-    setSelectedEmail(email);
-
+    // Gmail-style: Open email in full view by setting it as selected
     // Fetch full email body only when clicked (if not already loaded)
     if (!email.bodyLoaded && email.uid) {
       try {
         setLoading(true);
-        const folder = activeTab === 'mainstream' ? 'INBOX' :
-                       activeTab === 'sent' ? 'Sent' :
-                       'INBOX';
+        const folder = activeTab === 'sent' ? 'Sent' : 'INBOX';
         const response = await api.get('/email-accounts/fetch-email-body', {
           params: {
             accountId: selectedAccount._id,
@@ -213,7 +224,13 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       } finally {
         setLoading(false);
       }
+    } else {
+      setSelectedEmail(email);
     }
+  };
+
+  const handleBackToList = () => {
+    setSelectedEmail(null);
   };
 
   const handleCompose = () => {
@@ -288,6 +305,105 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
     if (tab === 'settings') {
       setSelectedEmail(null);
     }
+    // Clear selections when switching tabs
+    setSelectedEmails(new Set());
+    setSelectAll(false);
+  };
+
+  // Checkbox selection handlers
+  const handleCheckboxClick = (emailUid) => {
+    const newSelected = new Set(selectedEmails);
+    if (newSelected.has(emailUid)) {
+      newSelected.delete(emailUid);
+    } else {
+      newSelected.add(emailUid);
+    }
+    setSelectedEmails(newSelected);
+    setSelectAll(newSelected.size === emails.length && emails.length > 0);
+  };
+
+  const handleSelectAllChange = (checked) => {
+    if (checked) {
+      setSelectedEmails(new Set(emails.map(e => e.uid)));
+      setSelectAll(true);
+    } else {
+      setSelectedEmails(new Set());
+      setSelectAll(false);
+    }
+  };
+
+  const handleSelectOption = (option) => {
+    if (option === 'all') {
+      setSelectedEmails(new Set(emails.map(e => e.uid)));
+      setSelectAll(true);
+    } else if (option === 'none') {
+      setSelectedEmails(new Set());
+      setSelectAll(false);
+    } else if (option === 'read') {
+      setSelectedEmails(new Set(emails.filter(e => e.seen).map(e => e.uid)));
+      setSelectAll(false);
+    } else if (option === 'unread') {
+      setSelectedEmails(new Set(emails.filter(e => !e.seen).map(e => e.uid)));
+      setSelectAll(false);
+    } else if (option === 'starred') {
+      setSelectedEmails(new Set(emails.filter(e => starredEmails.has(e.uid)).map(e => e.uid)));
+      setSelectAll(false);
+    }
+  };
+
+  const handleStarToggle = (emailUid) => {
+    const newStarred = new Set(starredEmails);
+    if (newStarred.has(emailUid)) {
+      newStarred.delete(emailUid);
+    } else {
+      newStarred.add(emailUid);
+    }
+    setStarredEmails(newStarred);
+  };
+
+  // Bulk action handlers
+  const handleBulkDelete = async () => {
+    if (selectedEmails.size === 0) {
+      alert('No emails selected');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedEmails.size} selected email(s)?`)) {
+      return;
+    }
+
+    try {
+      // Delete emails one by one
+      const deletePromises = Array.from(selectedEmails).map(uid =>
+        api.delete(`/email-accounts/hosted/${selectedAccount._id}/emails/${uid}`)
+      );
+
+      await Promise.all(deletePromises);
+
+      alert(`${selectedEmails.size} email(s) deleted successfully`);
+      setSelectedEmails(new Set());
+      setSelectAll(false);
+      await fetchEmails();
+    } catch (error) {
+      console.error('Error deleting emails:', error);
+      alert('Failed to delete emails: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedEmails.size === 0) {
+      alert('No emails selected');
+      return;
+    }
+    alert(`Archive functionality for ${selectedEmails.size} email(s) - to be implemented`);
+  };
+
+  const handleBulkMarkRead = async () => {
+    if (selectedEmails.size === 0) {
+      alert('No emails selected');
+      return;
+    }
+    alert(`Mark as read functionality for ${selectedEmails.size} email(s) - to be implemented`);
   };
 
   const getEmailPreview = (email) => {
@@ -331,43 +447,38 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   };
 
   return (
-    <div className="mainstream-inbox">
-      {/* Header */}
-      <div className="inbox-header">
-        <div className="inbox-title-section">
-          <h2>Mail Inbox</h2>
-          <button className="refresh-btn" onClick={fetchEmails} disabled={loading}>
-            <FiRefreshCw className={loading ? 'spinning' : ''} />
-          </button>
-        </div>
-
-        <div className="inbox-actions">
-          <button className="create-account-btn" onClick={() => setCreateEmailModalOpen(true)}>
-            <FiUserPlus /> Create Email Account
-          </button>
-          <button className="compose-btn" onClick={handleCompose}>
-            + Compose E-mail
-          </button>
-          <div className="search-box">
-            <FiSearch className="search-icon" />
+    <div className="mail-mainstream-inbox mail-gmail-style">
+      {/* Gmail-style Header */}
+      <div className="mail-gmail-header">
+        <div className="mail-gmail-header-left">
+          <h2 className="mail-gmail-logo">Mail</h2>
+          <div className="mail-gmail-search-box">
+            <MdSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search mail"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="account-dropdown">
+        </div>
+
+        <div className="mail-gmail-header-right">
+          <button className="mail-create-account-btn-header" onClick={() => setCreateEmailModalOpen(true)}>
+            <MdPersonAdd /> Create Email
+          </button>
+          <div className="mail-account-dropdown-gmail">
             <select
               value={selectedAccount?._id || ''}
               onChange={(e) => {
                 const account = accounts.find(a => a._id === e.target.value);
                 setSelectedAccount(account);
                 setSelectedEmail(null);
+                setSelectedEmails(new Set());
               }}
             >
               {accounts.length === 0 && (
-                <option value="">No accounts available</option>
+                <option value="">No accounts</option>
               )}
               {accounts.map(account => (
                 <option key={account._id} value={account._id}>
@@ -375,58 +486,157 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                 </option>
               ))}
             </select>
-            <FiChevronDown className="dropdown-icon" />
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="inbox-tabs">
-        <button
-          className={`tab ${activeTab === 'mainstream' ? 'active' : ''}`}
-          onClick={() => handleTabChange('mainstream')}
-        >
-          Mainstream
-        </button>
-        <button
-          className={`tab ${activeTab === 'sent' ? 'active' : ''}`}
-          onClick={() => handleTabChange('sent')}
-        >
-          Sent
-        </button>
-        <button
-          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => handleTabChange('settings')}
-        >
-          Settings
-        </button>
+      {/* Gmail-style Tabs */}
+      <div className="mail-gmail-tabs">
         {activeTab !== 'settings' && (
-          <div className="tab-pagination">
-            {totalEmails > 0 && (
+          <>
+            <Tab
+              icon={MdInbox}
+              label="Primary"
+              active={activeTab === 'primary'}
+              onClick={() => handleTabChange('primary')}
+              count={activeTab === 'primary' ? totalEmails : 0}
+            />
+            <Tab
+              icon={MdLocalOffer}
+              label="Promotions"
+              active={activeTab === 'promotions'}
+              onClick={() => handleTabChange('promotions')}
+            />
+            <Tab
+              icon={MdPeople}
+              label="Social"
+              active={activeTab === 'social'}
+              onClick={() => handleTabChange('social')}
+            />
+            <Tab
+              icon={MdInfo}
+              label="Updates"
+              active={activeTab === 'updates'}
+              onClick={() => handleTabChange('updates')}
+            />
+            <Tab
+              label="Sent"
+              active={activeTab === 'sent'}
+              onClick={() => handleTabChange('sent')}
+            />
+          </>
+        )}
+        <Tab
+          icon={MdSettings}
+          label="Settings"
+          active={activeTab === 'settings'}
+          onClick={() => handleTabChange('settings')}
+        />
+      </div>
+
+      {/* Gmail-style Toolbar */}
+      {activeTab !== 'settings' && (
+        <div className="mail-gmail-toolbar">
+          <div className="mail-toolbar-left">
+            <Checkbox
+              checked={selectAll}
+              indeterminate={selectedEmails.size > 0 && selectedEmails.size < emails.length}
+              onChange={handleSelectAllChange}
+            />
+            <select
+              className="mail-gmail-select-dropdown"
+              value=""
+              onChange={(e) => handleSelectOption(e.target.value)}
+            >
+              <option value="" disabled>Select...</option>
+              <option value="all">All</option>
+              <option value="none">None</option>
+              <option value="read">Read</option>
+              <option value="unread">Unread</option>
+              <option value="starred">Starred</option>
+            </select>
+            <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
+            <IconButton icon={MdMoreVert} title="More options" />
+            {selectedEmails.size > 0 && (
               <>
-                {((currentPage - 1) * emailsPerPage) + 1} - {Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                >
-                  ‹
-                </button>
-                <button
-                  disabled={currentPage * emailsPerPage >= totalEmails}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                >
-                  ›
-                </button>
+                <div className="mail-toolbar-divider"></div>
+                <IconButton icon={MdArchive} onClick={handleBulkArchive} title="Archive" />
+                <IconButton icon={MdDelete} onClick={handleBulkDelete} title="Delete" />
               </>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Main Content */}
-      <div className="inbox-content">
-        {/* Email List */}
-        <div className="email-list">
+          <div className="mail-toolbar-right">
+            {totalEmails > 0 && (
+              <>
+                <span className="email-count">
+                  {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
+                </span>
+                <IconButton
+                  icon={MdChevronLeft}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  title="Newer"
+                />
+                <IconButton
+                  icon={MdChevronRight}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage * emailsPerPage >= totalEmails}
+                  title="Older"
+                />
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Gmail Full Width Style */}
+      <div className="mail-inbox-content-fullwidth">
+        {/* Show Email Detail in Full Width when email is selected */}
+        {selectedEmail && activeTab !== 'settings' ? (
+          <div className="mail-email-detail-fullwidth">
+            <div className="mail-detail-header-gmail">
+              <IconButton icon={MdChevronLeft} onClick={handleBackToList} title="Back to list" />
+              <h3>{selectedEmail.subject || '(No Subject)'}</h3>
+              <div className="mail-detail-actions-gmail">
+                <IconButton icon={MdArchive} title="Archive" />
+                <IconButton icon={MdDelete} title="Delete" />
+                <IconButton icon={MdMoreVert} title="More" />
+              </div>
+            </div>
+            <div className="mail-detail-meta-gmail">
+              <div className="mail-sender-info-gmail">
+                <div className="mail-email-avatar-gmail large">
+                  {getInitials(selectedEmail.from?.name || selectedEmail.from?.address)}
+                </div>
+                <div>
+                  <div className="mail-sender-name-gmail">
+                    {selectedEmail.from?.name || selectedEmail.from?.address?.split('@')[0]}
+                  </div>
+                  <div className="mail-sender-email-gmail">{selectedEmail.from?.address}</div>
+                  <div className="mail-recipient-info-gmail">to {selectedEmail.to?.[0]?.address}</div>
+                </div>
+              </div>
+              <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
+            </div>
+            <div className="mail-detail-body-gmail">
+              {selectedEmail.html ? (
+                <iframe
+                  srcDoc={selectedEmail.html}
+                  title="Email Content"
+                  sandbox="allow-same-origin"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              ) : (
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Roboto, Arial, sans-serif', color: '#202124' }}>
+                  {selectedEmail.text}
+                </pre>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Email List in Full Width */
+          <div className="mail-email-list-fullwidth">
           {activeTab === 'settings' ? (
             <div className="settings-placeholder">
               <h4>Mailbox settings</h4>
@@ -455,7 +665,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                     style={{
                       marginTop: '15px',
                       padding: '10px 20px',
-                      backgroundColor: '#007bff',
+                      backgroundColor: '#1a73e8',
                       color: 'white',
                       border: 'none',
                       borderRadius: '5px',
@@ -472,108 +682,62 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
             </div>
           ) : emails.length === 0 ? (
             <div className="empty-state">
-              <p>No emails found in {activeTab === 'mainstream' ? 'Inbox' : activeTab === 'sent' ? 'Sent' : 'Inbox'}</p>
+              <p>No emails found in {activeTab === 'sent' ? 'Sent' : 'Inbox'}</p>
               <small>Try refreshing or selecting a different account</small>
             </div>
           ) : (
             emails.map((email, index) => (
               <div
-                key={index}
-                className={`email-item ${selectedEmail === email ? 'selected' : ''} ${email.seen ? '' : 'unread'}`}
+                key={email.uid || index}
+                className={`gmail-email-item ${selectedEmail === email ? 'selected' : ''} ${email.seen ? '' : 'unread'} ${selectedEmails.has(email.uid) ? 'checked' : ''}`}
                 onClick={() => handleEmailClick(email)}
               >
-                <div className="email-avatar">
-                  {getInitials(
-                    activeTab === 'sent'
-                      ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown'))
-                      : (email.from?.name || email.from?.address)
-                  )}
+                <div className="email-checkbox">
+                  <Checkbox
+                    checked={selectedEmails.has(email.uid)}
+                    onChange={() => handleCheckboxClick(email.uid)}
+                  />
                 </div>
-                <div className="email-info">
-                  <div className="email-header-row">
-                    <span className="email-sender">
-                      {activeTab === 'sent'
-                        ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown Recipient'))
-                        : (email.from?.name || email.from?.address)}
-                    </span>
-                    <span className="email-time">{formatDate(email.date)}</span>
-                  </div>
-                  <div className="email-subject">
+
+                <div className="email-star">
+                  <IconButton
+                    icon={starredEmails.has(email.uid) ? MdStar : MdStarBorder}
+                    onClick={() => handleStarToggle(email.uid)}
+                    className={starredEmails.has(email.uid) ? 'starred' : ''}
+                  />
+                </div>
+
+                <div className="mail-email-sender-gmail">
+                  {activeTab === 'sent'
+                    ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown'))
+                    : (email.from?.name || email.from?.address?.split('@')[0] || 'Unknown')}
+                </div>
+
+                <div className="mail-email-content-gmail">
+                  <span className="mail-email-subject-gmail">
                     {email.subject || '(No Subject)'}
-                    {email.hasAttachments && <span className="attachment-icon"> 📎</span>}
-                  </div>
-                  <div className="email-preview">{getEmailPreview(email)}</div>
+                  </span>
+                  <span className="mail-email-preview-gmail">
+                    {' - ' + getEmailPreview(email)}
+                  </span>
+                </div>
+
+                <div className="mail-email-timestamp-gmail">
+                  {formatDate(email.date)}
+                  {email.hasAttachments && <MdAttachFile className="attachment-icon-gmail" />}
                 </div>
               </div>
             ))
           )}
-        </div>
-
-        {/* Email Detail View */}
-        <div className="email-detail">
-          {activeTab === 'settings' ? (
-            profileLoading ? (
-              <div className="loading-state">
-                <div className="spinner"></div>
-                <p>Loading settings...</p>
-              </div>
-            ) : (
-              <ProfileSettings
-                account={selectedAccount}
-                user={currentUser}
-                onAvatarUpload={handleAvatarUpload}
-                uploading={avatarUploadState.uploading}
-                uploadError={avatarUploadState.error}
-                uploadSuccess={avatarUploadState.success}
-              />
-            )
-          ) : selectedEmail ? (
-            <>
-              <div className="detail-header">
-                <h3>{selectedEmail.subject || '(No Subject)'}</h3>
-                <div className="detail-actions">
-                  <button>Reply</button>
-                  <button>Forward</button>
-                  <button>Delete</button>
-                </div>
-              </div>
-              <div className="detail-meta">
-                <div className="sender-info">
-                  <div className="email-avatar large">
-                    {getInitials(selectedEmail.from?.name || selectedEmail.from?.address)}
-                  </div>
-                  <div>
-                    <div className="sender-name">
-                      {selectedEmail.from?.name || selectedEmail.from?.address?.split('@')[0]}
-                    </div>
-                    <div className="sender-email">{selectedEmail.from?.address}</div>
-                    <div className="recipient-info">to {selectedEmail.to?.[0]?.address}</div>
-                  </div>
-                </div>
-                <div className="email-date">{new Date(selectedEmail.date).toLocaleString()}</div>
-              </div>
-              <div className="detail-body">
-                {selectedEmail.html ? (
-                  <iframe
-                    srcDoc={selectedEmail.html}
-                    title="Email Content"
-                    sandbox="allow-same-origin"
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                  />
-                ) : (
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                    {selectedEmail.text}
-                  </pre>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="no-selection">
-              <p>Select an email to view</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Gmail-style Compose Button */}
+      <button className="mail-compose-btn-gmail" onClick={handleCompose}>
+        <MdEdit size={24} />
+        Compose
+      </button>
 
       {/* Compose Popup */}
       {composeOpen && (
@@ -582,10 +746,10 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
             <span>New Message</span>
             <div className="compose-controls">
               <button onClick={() => setComposeMinimized(!composeMinimized)}>
-                {composeMinimized ? <FiMaximize2 size={14} /> : <FiMinus size={14} />}
+                {composeMinimized ? <MdMaximize size={18} /> : <MdMinimize size={18} />}
               </button>
               <button onClick={() => setComposeOpen(false)}>
-                <FiX size={16} />
+                <MdClose size={20} />
               </button>
             </div>
           </div>
@@ -618,11 +782,11 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                 />
               </div>
               <div className="compose-footer">
-                <button className="send-btn" onClick={handleSendEmail}>
-                  <FiSend /> Send
+                <button className="send-btn-gmail" onClick={handleSendEmail}>
+                  <MdSend /> Send
                 </button>
-                <button className="attach-btn">
-                  <FiPaperclip /> Attach
+                <button className="attach-btn-gmail">
+                  <MdAttachFile /> Attach
                 </button>
                 <span className="from-info">From: {selectedAccount?.email}</span>
               </div>
