@@ -236,6 +236,37 @@
   font-family: 'Switzer', sans-serif;
 }
 
+/* Password Strength Indicators */
+.password-strength-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.strength-item {
+  font-size: 13px;
+  color: #6b7280;
+  font-family: 'Switzer', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s;
+}
+
+.strength-item.valid {
+  color: #059669;
+  font-weight: 500;
+}
+
+.strength-item:not(.valid) {
+  color: #9ca3af;
+}
+
 /* Responsive Design */
 @media (max-width: 640px) {
   .join-company-card {
@@ -257,5 +288,13 @@
   .btn-join-company {
     padding: 12px 20px;
     font-size: 15px;
+  }
+
+  .password-strength-indicators {
+    padding: 10px;
+  }
+
+  .strength-item {
+    font-size: 12px;
   }
 }

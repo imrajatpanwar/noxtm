@@ -205,7 +205,7 @@ function initializeRoutes(dependencies) {
         roleInCompany: roleInCompany || 'Member',
         invitedBy: inviterId,
         createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 48 hours
         status: 'pending'
       });
 
@@ -245,7 +245,7 @@ function initializeRoutes(dependencies) {
                     Accept Invitation
                   </a>
                 </div>
-                <p style="color: #666; font-size: 12px;">This invitation will expire in 7 days.</p>
+                <p style="color: #666; font-size: 12px;">This invitation will expire in 48 hours.</p>
                 <p style="color: #666; font-size: 12px;">© 2025 Noxtm. All rights reserved.</p>
               </div>
             `
@@ -294,7 +294,7 @@ function initializeRoutes(dependencies) {
 
       if (!company) {
         return res.status(404).json({
-          message: 'Invalid or expired invitation',
+          message: 'This invitation link is invalid or has been used. Please contact your administrator for a new invitation.',
           valid: false
         });
       }
@@ -306,7 +306,7 @@ function initializeRoutes(dependencies) {
 
       if (!invitation) {
         return res.status(404).json({
-          message: 'Invitation not found',
+          message: 'This invitation link is invalid or has been used. Please contact your administrator for a new invitation.',
           valid: false
         });
       }
@@ -314,7 +314,7 @@ function initializeRoutes(dependencies) {
       // Check if invitation has expired
       if (new Date() > invitation.expiresAt) {
         return res.status(400).json({
-          message: 'Invitation has expired',
+          message: 'This invitation has expired (48 hours). Please contact your administrator for a new invitation.',
           valid: false
         });
       }
@@ -596,9 +596,19 @@ function initializeRoutes(dependencies) {
 
       await user.save();
 
+      // Generate JWT token for auto-login
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
+      const token = jwt.sign(
+        { userId: user._id, fullName: user.fullName, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
       res.json({
         success: true,
         message: 'Successfully joined company',
+        token,  // NEW - enables auto-login
         company: {
           id: company._id,
           companyName: company.companyName,
@@ -606,6 +616,10 @@ function initializeRoutes(dependencies) {
         },
         user: {
           id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          access: user.access,
           permissions: user.permissions,
           subscription: user.subscription,
           companyId: user.companyId

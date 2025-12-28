@@ -1898,10 +1898,25 @@ app.post('/api/register', async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
 
+    // Validate password strength
+    const { validatePassword } = require('./utils/passwordValidator');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: passwordValidation.message,
+        errors: passwordValidation.errors
+      });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists. Please log in instead.',
+        userExists: true
+      });
     }
 
     // Hash password with configurable rounds
@@ -2514,7 +2529,7 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
       customPermissions: permissions,
       invitedBy: userId,
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 48 hours
       status: 'pending'
     });
 
