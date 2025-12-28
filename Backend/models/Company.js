@@ -48,7 +48,7 @@ const companySchema = new mongoose.Schema({
     },
     invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     createdAt: { type: Date, default: Date.now },
-    expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+    expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) }, // 48 hours
     status: { type: String, enum: ["pending", "accepted", "expired"], default: "pending" }
   }],
   subscription: {

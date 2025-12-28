@@ -18,6 +18,13 @@ function JoinCompany({ onSignup }) {
     confirmPassword: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasUppercase: false,
+    hasLowercase: false,
+    hasSpecialChar: false,
+    minLength: false,
+    isValid: false
+  });
 
   useEffect(() => {
     if (!token) {
@@ -42,8 +49,13 @@ function JoinCompany({ onSignup }) {
           email: data.invitation.email
         }));
       } else {
-        toast.error(data.message || 'Invalid or expired invitation');
-        setTimeout(() => navigate('/login'), 2000);
+        const errorMsg = data.message || 'Invalid or expired invitation';
+        if (errorMsg.includes('expired') || errorMsg.includes('used')) {
+          toast.error(errorMsg);
+        } else {
+          toast.error(errorMsg);
+        }
+        setTimeout(() => navigate('/login'), 3000);
       }
     } catch (error) {
       console.error('Error verifying invitation:', error);
@@ -52,6 +64,23 @@ function JoinCompany({ onSignup }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const validatePasswordStrength = (password) => {
+    const strength = {
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password),
+      minLength: password.length >= 8,
+    };
+    strength.isValid = Object.values(strength).every(v => v);
+    setPasswordStrength(strength);
+  };
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setFormData({ ...formData, password: newPassword });
+    validatePasswordStrength(newPassword);
   };
 
   const handleChange = (e) => {
@@ -70,8 +99,8 @@ function JoinCompany({ onSignup }) {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!passwordStrength.isValid) {
+      toast.error('Password must contain uppercase, lowercase, and special character');
       return;
     }
 
@@ -101,20 +130,28 @@ function JoinCompany({ onSignup }) {
       const signupData = await signupResponse.json();
 
       if (!signupResponse.ok || !signupData.success) {
-        toast.error(signupData.message || 'Failed to create account');
+        if (signupData.userExists) {
+          toast.error('This email is already registered. Try logging in instead.');
+          setTimeout(() => {
+            navigate(`/login?email=${encodeURIComponent(formData.email)}`);
+          }, 2000);
+        } else {
+          toast.error(signupData.message || 'Failed to create account');
+        }
         setSubmitting(false);
         return;
       }
 
-      // Store the token and user data
+      // Store the token immediately after registration
       localStorage.setItem('token', signupData.token);
       localStorage.setItem('user', JSON.stringify(signupData.user));
 
-      // Then, accept the invitation with the new user ID
+      // Accept invitation with authentication
       const acceptResponse = await fetch('/api/messaging/invitations/signup-accept', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${signupData.token}`
         },
         body: JSON.stringify({
           token: token,
@@ -125,9 +162,12 @@ function JoinCompany({ onSignup }) {
       const acceptData = await acceptResponse.json();
 
       if (acceptResponse.ok && acceptData.success) {
-        toast.success(`Successfully joined ${invitationData.company.companyName}!`);
+        // Update token if new one provided
+        if (acceptData.token) {
+          localStorage.setItem('token', acceptData.token);
+        }
 
-        // Update user in localStorage with complete company info and permissions
+        // Update user with complete company info
         const updatedUser = {
           ...signupData.user,
           companyId: acceptData.company.id,
@@ -137,8 +177,9 @@ function JoinCompany({ onSignup }) {
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
 
+        toast.success(`Successfully joined ${invitationData.company.companyName}!`);
+
         // Use hard redirect to ensure clean page reload with updated user state
-        // This prevents any timing issues with React Router
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1000);
@@ -184,9 +225,9 @@ function JoinCompany({ onSignup }) {
     <div className="join-company-container">
       <div className="join-company-card">
         <div className="join-company-header">
-          <h1>Join {invitationData.company.companyName}</h1>
+          <h1>Accept Invitation to {invitationData.company.companyName}</h1>
           <p className="invitation-subtitle">
-            You've been invited to join as <strong>{invitationData.invitation.roleInCompany}</strong>
+            You've been invited to join {invitationData.company.companyName}
           </p>
         </div>
 
@@ -242,12 +283,26 @@ function JoinCompany({ onSignup }) {
               id="password"
               name="password"
               value={formData.password}
-              onChange={handleChange}
-              placeholder="Create a strong password (min 6 characters)"
+              onChange={handlePasswordChange}
+              placeholder="Create a strong password (min 8 characters)"
               required
               disabled={submitting}
-              minLength="6"
+              minLength="8"
             />
+            <div className="password-strength-indicators">
+              <div className={`strength-item ${passwordStrength.minLength ? 'valid' : ''}`}>
+                {passwordStrength.minLength ? '✓' : '○'} At least 8 characters
+              </div>
+              <div className={`strength-item ${passwordStrength.hasUppercase ? 'valid' : ''}`}>
+                {passwordStrength.hasUppercase ? '✓' : '○'} One uppercase letter
+              </div>
+              <div className={`strength-item ${passwordStrength.hasLowercase ? 'valid' : ''}`}>
+                {passwordStrength.hasLowercase ? '✓' : '○'} One lowercase letter
+              </div>
+              <div className={`strength-item ${passwordStrength.hasSpecialChar ? 'valid' : ''}`}>
+                {passwordStrength.hasSpecialChar ? '✓' : '○'} One special character
+              </div>
+            </div>
           </div>
 
           <div className="form-group">
@@ -270,7 +325,7 @@ function JoinCompany({ onSignup }) {
             className="btn-join-company"
             disabled={submitting}
           >
-            {submitting ? 'Creating Account...' : 'Create Account & Join Company'}
+            {submitting ? 'Creating Account...' : 'Accept & Join'}
           </button>
         </form>
 
