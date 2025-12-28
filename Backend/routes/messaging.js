@@ -599,7 +599,7 @@ function initializeRoutes(dependencies) {
       // Generate JWT token for auto-login
       const jwt = require('jsonwebtoken');
       const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
-      const token = jwt.sign(
+      const authToken = jwt.sign(
         { userId: user._id, fullName: user.fullName, email: user.email },
         JWT_SECRET,
         { expiresIn: '24h' }
@@ -608,7 +608,7 @@ function initializeRoutes(dependencies) {
       res.json({
         success: true,
         message: 'Successfully joined company',
-        token,  // NEW - enables auto-login
+        token: authToken,  // NEW - enables auto-login
         company: {
           id: company._id,
           companyName: company.companyName,
