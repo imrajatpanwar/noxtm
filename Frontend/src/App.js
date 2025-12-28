@@ -436,7 +436,7 @@ function App() {
                 <Route path="/blog" element={<PublicBlogList />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/legal/*" element={<Legal />} />
-                <Route path="/invite/:token" element={<InviteAccept />} />
+                <Route path="/invite/:token" element={<JoinCompany />} />
                 <Route path="/extension-login" element={<ExtensionLogin />} />
                 <Route path="/extension-auth-callback" element={<ExtensionAuthCallback />} />
               </Routes>
