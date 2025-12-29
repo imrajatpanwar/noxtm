@@ -197,9 +197,9 @@ function Inbox() {
   }
 
   return (
-    <div className="inbox-container">
+    <div className="mail-inbox-container">
       {/* Sidebar */}
-      <div className="inbox-sidebar">
+      <div className="mail-inbox-sidebar">
         <div className="sidebar-header">
           <h1>Mail</h1>
           <div className="user-info">
@@ -291,7 +291,7 @@ function Inbox() {
       </div>
 
       {/* Main Content */}
-      <div className="inbox-content">
+      <div className="mail-inbox-content">
         {activeView === 'personal' && <MainstreamInbox user={user} onNavigateToDomains={() => setActiveView('domains')} />}
         {activeView === 'analytics' && <AnalyticsDashboard />}
         {activeView === 'sla' && <SLAMonitor />}
