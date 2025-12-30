@@ -519,6 +519,9 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       auth: {
         user: emailAccount.smtpSettings.username,
         pass: decrypt(emailAccount.smtpSettings.encryptedPassword)
+      },
+      tls: {
+        rejectUnauthorized: false // Accept self-signed certificates
       }
     });
 
@@ -2061,6 +2064,9 @@ router.post('/team-send/:accountId', requireEmailAccess('canSend'), async (req, 
       auth: {
         user: emailAccount.smtpSettings.username,
         pass: decrypt(emailAccount.smtpSettings.encryptedPassword)
+      },
+      tls: {
+        rejectUnauthorized: false // Accept self-signed certificates
       }
     });
 
