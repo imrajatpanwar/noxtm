@@ -448,8 +448,8 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Recipient and subject are required' });
     }
 
-    // Use AWS SES for sending - no account needed
-    const { sendEmailViaSES } = require('../utils/awsSesHelper');
+    // FIXED: Use SMTP via mail server instead of AWS SES
+    const nodemailer = require('nodemailer');
 
     let senderProfile = null;
     if (mongoose.Types.ObjectId.isValid(req.user.userId)) {
@@ -500,14 +500,37 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       recipients.push(...bccArray);
     }
 
-    // Send via AWS SES
-    const info = await sendEmailViaSES({
-      from: fromEmail,
-      to: recipients,
+    // FIXED: Send via SMTP through mail server
+    // Get account for SMTP credentials
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required for sending emails' });
+    }
+
+    const emailAccount = await EmailAccount.findById(accountId);
+    if (!emailAccount || !emailAccount.smtpSettings) {
+      return res.status(400).json({ message: 'Email account not found or SMTP not configured' });
+    }
+
+    // Create SMTP transport
+    const transporter = nodemailer.createTransport({
+      host: emailAccount.smtpSettings.host,
+      port: emailAccount.smtpSettings.port,
+      secure: emailAccount.smtpSettings.secure,
+      auth: {
+        user: emailAccount.smtpSettings.username,
+        pass: decrypt(emailAccount.smtpSettings.encryptedPassword)
+      }
+    });
+
+    // Send email via SMTP
+    const info = await transporter.sendMail({
+      from: `${senderName} <${fromEmail}>`,
+      to: Array.isArray(to) ? to : [to],
+      cc: cc,
+      bcc: bcc,
       subject: subject,
       html: bodyHtml,
-      text: plainTextVariant,
-      replyTo: fromEmail
+      text: plainTextVariant
     });
 
     // Append sent email to IMAP Sent folder
