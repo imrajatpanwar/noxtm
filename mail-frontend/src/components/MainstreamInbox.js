@@ -502,24 +502,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
               count={activeTab === 'primary' ? totalEmails : 0}
             />
             <Tab
-              icon={MdLocalOffer}
-              label="Promotions"
-              active={activeTab === 'promotions'}
-              onClick={() => handleTabChange('promotions')}
-            />
-            <Tab
-              icon={MdPeople}
-              label="Social"
-              active={activeTab === 'social'}
-              onClick={() => handleTabChange('social')}
-            />
-            <Tab
-              icon={MdInfo}
-              label="Updates"
-              active={activeTab === 'updates'}
-              onClick={() => handleTabChange('updates')}
-            />
-            <Tab
               label="Sent"
               active={activeTab === 'sent'}
               onClick={() => handleTabChange('sent')}
