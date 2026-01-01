@@ -61,18 +61,22 @@ const InviteAccept = () => {
       if (response.ok && data.success) {
         toast.success('Successfully joined the company!');
 
-        // Update user data in localStorage
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        storedUser.companyId = data.company._id;
-        localStorage.setItem('user', JSON.stringify(storedUser));
+        // Update user data in localStorage with complete data from backend
+        const updatedUser = {
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          companyId: data.company._id,
+          // Include any other company-related data from response
+          ...(data.user || {})
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
 
-        // Dispatch event to notify App.js of user update
+        // Dispatch event to notify App.js and RoleContext of user update
         window.dispatchEvent(new Event('userUpdated'));
 
-        // Redirect to dashboard
+        // Small delay to ensure state propagates before navigation
         setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
+          navigate('/dashboard', { replace: true });
+        }, 100);
       } else {
         toast.error(data.message || 'Failed to accept invitation');
         if (response.status === 403) {

@@ -8,6 +8,7 @@ import {
 } from 'react-icons/md';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
+import EmailConnectionForm from './EmailConnectionForm';
 import ProfileSettings from './mailbox/ProfileSettings';
 import Checkbox from './ui/Checkbox';
 import IconButton from './ui/IconButton';
@@ -72,37 +73,42 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
   const fetchHostedAccounts = async () => {
     try {
-      // Call new endpoint that fetches accounts based on user's verified domains
-      const response = await api.get('/email-accounts/by-verified-domain');
+      // Fetch both owned accounts and connected accounts
+      const [ownedResponse, connectedResponse] = await Promise.all([
+        api.get('/email-accounts/by-verified-domain'),
+        api.get('/email-accounts/connected')
+      ]);
 
-      if (!response.data.success) {
-        console.error('Failed to fetch verified domain accounts:', response.data.message);
-        setAccounts([]);
-        return;
-      }
-
-      const allAccounts = response.data.accounts || [];
-      const verifiedDomains = response.data.verifiedDomains || [];
+      const ownedAccounts = ownedResponse.data?.accounts || [];
+      const connectedAccounts = connectedResponse.data?.accounts || [];
+      const verifiedDomains = ownedResponse.data?.verifiedDomains || [];
 
       console.log('[MainstreamInbox] User verified domains:', verifiedDomains);
+      console.log('[MainstreamInbox] Owned accounts:', ownedAccounts.length);
+      console.log('[MainstreamInbox] Connected accounts:', connectedAccounts.length);
 
-      // Filter for hosted accounts with valid IMAP settings
-      const hostedAccounts = allAccounts.filter(account => {
-        if (account.accountType !== 'noxtm-hosted') {
-          return false;
+      // Merge both lists, avoiding duplicates
+      const accountMap = new Map();
+
+      [...ownedAccounts, ...connectedAccounts].forEach(account => {
+        if (account.accountType === 'noxtm-hosted' &&
+            account.imapSettings &&
+            account.imapSettings.encryptedPassword) {
+          accountMap.set(account._id, account);
         }
-        return Boolean(account.imapSettings && account.imapSettings.encryptedPassword);
       });
 
-      console.log('[MainstreamInbox] Hosted accounts found:', hostedAccounts.length, hostedAccounts);
-      setAccounts(hostedAccounts);
+      const allAccounts = Array.from(accountMap.values());
+      console.log('[MainstreamInbox] Total available accounts:', allAccounts.length);
+
+      setAccounts(allAccounts);
 
       // Check if user just created a new account (Phase 3A: Auto-switch)
       const lastCreatedDomain = localStorage.getItem('lastCreatedDomain');
 
-      if (lastCreatedDomain && hostedAccounts.length > 0) {
+      if (lastCreatedDomain && allAccounts.length > 0) {
         // Try to find account on the newly created domain
-        const newAccount = hostedAccounts.find(acc =>
+        const newAccount = allAccounts.find(acc =>
           acc.domain?.toLowerCase() === lastCreatedDomain.toLowerCase()
         );
 
@@ -112,11 +118,11 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           localStorage.removeItem('lastCreatedDomain'); // Clear flag
         } else {
           // Fallback to first account
-          setSelectedAccount(hostedAccounts[0]);
+          setSelectedAccount(allAccounts[0]);
         }
-      } else if (hostedAccounts.length > 0) {
+      } else if (allAccounts.length > 0) {
         // No auto-switch, select first account (already sorted by verified domain priority)
-        setSelectedAccount(hostedAccounts[0]);
+        setSelectedAccount(allAccounts[0]);
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -637,27 +643,42 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           ) : !selectedAccount ? (
             <div className="empty-state">
               {accounts.length === 0 ? (
-                <div className="empty-state-create">
-                  <h3>No Email Accounts Found</h3>
-                  <p>You don't have any email accounts yet on your verified domain.</p>
-                  <p>Create an email account to start sending and receiving emails.</p>
-                  <button
-                    onClick={() => onNavigateToDomains && onNavigateToDomains()}
-                    className="btn-create-email"
-                    style={{
-                      marginTop: '15px',
-                      padding: '10px 20px',
-                      backgroundColor: '#1a73e8',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '5px',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
-                  >
-                    Go to Domain Management
-                  </button>
-                </div>
+                // Check if user is a workspace member
+                currentUser?.companyId ? (
+                  <div className="empty-state-connect">
+                    <EmailConnectionForm
+                      onSuccess={(account) => {
+                        // Refresh accounts list
+                        fetchHostedAccounts();
+                        // Auto-select the newly connected account
+                        setSelectedAccount(account);
+                      }}
+                      onCancel={null}
+                    />
+                  </div>
+                ) : (
+                  <div className="empty-state-create">
+                    <h3>No Email Accounts Found</h3>
+                    <p>You don't have any email accounts yet on your verified domain.</p>
+                    <p>Create an email account to start sending and receiving emails.</p>
+                    <button
+                      onClick={() => onNavigateToDomains && onNavigateToDomains()}
+                      className="btn-create-email"
+                      style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#1a73e8',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Go to Domain Management
+                    </button>
+                  </div>
+                )
               ) : (
                 <p>No email account selected</p>
               )}

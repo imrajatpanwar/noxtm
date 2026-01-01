@@ -138,10 +138,12 @@ function Dashboard({ user, onLogout }) {
       // Check if user has a valid subscription (active or trial)
       const hasValidPlan = currentUser.subscription?.status === 'active' ||
         currentUser.subscription?.status === 'trial';
-      const isAdminUser = currentUser.role === 'Admin';
+      const isAdminUser = currentUser.role === 'Admin' || currentUser.role === 'Lord';
+      const isCompanyMember = Boolean(currentUser.companyId);
 
-      if (!isAdminUser && !hasValidPlan) {
-        // Redirect to pricing if no valid plan
+      // Allow access for: Admin/Lord, Active subscription, or Company member
+      if (!isAdminUser && !hasValidPlan && !isCompanyMember) {
+        // Redirect to pricing if no valid plan and not a company member
         navigate('/pricing');
         return;
       }
