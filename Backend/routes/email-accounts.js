@@ -202,6 +202,167 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
   }
 });
 
+// Authenticate and connect to an existing email account
+// Used by invited workspace members to connect to accounts created by owner
+router.post('/connect', isAuthenticated, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const userId = req.user._id;
+
+    console.log(`[connect] User ${req.user.email} attempting to connect to ${email}`);
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    // Find the email account
+    const EmailAccount = require('../models/EmailAccount');
+    const emailAccount = await EmailAccount.findOne({
+      email: email.toLowerCase(),
+      enabled: true
+    });
+
+    if (!emailAccount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email account not found'
+      });
+    }
+
+    // Verify the password
+    const isPasswordValid = await emailAccount.comparePassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password'
+      });
+    }
+
+    // Check if user has company access to this account
+    // If account has companyId, verify user is in the same company
+    if (emailAccount.companyId) {
+      if (!req.user.companyId) {
+        return res.status(403).json({
+          success: false,
+          message: 'You must be part of a workspace to access this account'
+        });
+      }
+
+      if (!emailAccount.companyId.equals(req.user.companyId)) {
+        return res.status(403).json({
+          success: false,
+          message: 'This email account belongs to a different workspace'
+        });
+      }
+
+      // Check role-based access permissions
+      const hasAccess = await emailAccount.hasAccess(req.user);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to access this email account'
+        });
+      }
+    } else {
+      // Personal account - only creator can connect
+      if (!emailAccount.createdBy.equals(userId)) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to access this email account'
+        });
+      }
+    }
+
+    // Create/update a UserEmailConnection record to remember this connection
+    const UserEmailConnection = require('../models/UserEmailConnection');
+
+    await UserEmailConnection.findOneAndUpdate(
+      { userId, emailAccountId: emailAccount._id },
+      {
+        userId,
+        emailAccountId: emailAccount._id,
+        email: emailAccount.email,
+        lastConnectedAt: new Date(),
+        // Store encrypted credentials for auto-login
+        encryptedPassword: emailAccount.imapSettings?.encryptedPassword
+      },
+      { upsert: true, new: true }
+    );
+
+    // Get user's permissions for this account
+    const permissions = emailAccount.companyId ? await emailAccount.getPermissions(req.user) : {
+      canSend: true,
+      canRead: true,
+      canDelete: true,
+      canManage: true
+    };
+
+    // Update last login
+    emailAccount.lastLoginAt = new Date();
+    await emailAccount.save();
+
+    // Return account info without password
+    const accountData = emailAccount.toObject();
+    delete accountData.password;
+    delete accountData.imapSettings?.encryptedPassword;
+    delete accountData.smtpSettings?.encryptedPassword;
+
+    res.json({
+      success: true,
+      message: 'Successfully connected to email account',
+      account: accountData,
+      permissions
+    });
+  } catch (error) {
+    console.error('[connect] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to connect to email account',
+      error: error.message
+    });
+  }
+});
+
+// Get connected email accounts for current user
+router.get('/connected', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const UserEmailConnection = require('../models/UserEmailConnection');
+
+    // Get all connected accounts for this user
+    const connections = await UserEmailConnection.find({ userId })
+      .populate('emailAccountId')
+      .sort({ lastConnectedAt: -1 });
+
+    // Filter out deleted accounts and get valid ones
+    const validConnections = connections
+      .filter(conn => conn.emailAccountId && conn.emailAccountId.enabled)
+      .map(conn => {
+        const account = conn.emailAccountId.toObject();
+        delete account.password;
+        delete account.imapSettings?.encryptedPassword;
+        delete account.smtpSettings?.encryptedPassword;
+        return account;
+      });
+
+    res.json({
+      success: true,
+      accounts: validConnections
+    });
+  } catch (error) {
+    console.error('[connected] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch connected accounts',
+      error: error.message
+    });
+  }
+});
+
 // Get email accounts by domain name (only if user owns the domain)
 router.get('/by-domain/:domainName', isAuthenticated, async (req, res) => {
   try {

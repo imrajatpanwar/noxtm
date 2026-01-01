@@ -179,12 +179,15 @@ function JoinCompany({ onSignup }) {
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
 
+        // Dispatch event to notify App.js and RoleContext
+        window.dispatchEvent(new Event('userUpdated'));
+
         toast.success(`Successfully joined ${invitationData.company.companyName}!`);
 
-        // Use hard redirect to ensure clean page reload with updated user state
+        // Short delay for state propagation, then navigate
         setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1000);
+          navigate('/dashboard', { replace: true });
+        }, 100);
       } else {
         toast.error(acceptData.message || 'Failed to join company');
         setSubmitting(false);
