@@ -579,10 +579,12 @@ async function fetchSingleEmail(config, uid, folder = 'INBOX') {
                   date: parsed.date || null,
                   text: parsed.text || '',
                   html: parsed.html || '',
-                  attachments: parsed.attachments ? parsed.attachments.map(att => ({
+                  attachments: parsed.attachments ? parsed.attachments.map((att, index) => ({
                     filename: att.filename,
                     contentType: att.contentType,
-                    size: att.size
+                    size: att.size,
+                    content: att.content ? att.content.toString('base64') : null,
+                    index: index
                   })) : []
                 };
 

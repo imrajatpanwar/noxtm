@@ -600,6 +600,75 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
   }
 });
 
+// Download email attachment
+router.get('/download-attachment', isAuthenticated, async (req, res) => {
+  try {
+    const { accountId, uid, folder, index } = req.query;
+
+    if (!accountId || !uid || index === undefined) {
+      return res.status(400).json({ message: 'Account ID, UID, and attachment index are required' });
+    }
+
+    const folderName = folder || 'INBOX';
+
+    // Fetch email with attachments
+    const account = await EmailAccount.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
+    if (account.accountType !== 'noxtm-hosted') {
+      return res.status(400).json({ message: 'Only hosted accounts support this feature' });
+    }
+
+    if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
+      return res.status(400).json({ message: 'IMAP settings not configured' });
+    }
+
+    const { fetchSingleEmail } = require('../utils/imapHelper');
+    const password = decrypt(account.imapSettings.encryptedPassword);
+    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+
+    const imapConfig = {
+      host: host,
+      port: account.imapSettings.port || 993,
+      secure: account.imapSettings.secure !== false,
+      username: account.imapSettings.username || account.email,
+      password: password
+    };
+
+    const email = await fetchSingleEmail(imapConfig, parseInt(uid), folderName);
+
+    if (!email.attachments || !email.attachments[index]) {
+      return res.status(404).json({ message: 'Attachment not found' });
+    }
+
+    const attachment = email.attachments[index];
+
+    if (!attachment.content) {
+      return res.status(404).json({ message: 'Attachment content not available' });
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(attachment.content, 'base64');
+
+    // Set response headers
+    res.setHeader('Content-Type', attachment.contentType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+
+    // Send the file
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    res.status(500).json({
+      message: 'Failed to download attachment',
+      error: error.message
+    });
+  }
+});
+
 // Send email from hosted account
 router.post('/send-email', isAuthenticated, async (req, res) => {
   try {
