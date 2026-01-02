@@ -73,19 +73,18 @@ async function createMailbox(email, password, quotaMB = 1024) {
     const { stdout: passwordHash } = await execAsync(hashCmd);
     const hash = passwordHash.trim();
     
-    // Get next available UID (find highest current UID and add 1)
-    const getUidCmd = `awk -F: '{print $3}' /etc/dovecot/users | sort -n | tail -1`;
-    const { stdout: maxUid } = await execAsync(getUidCmd);
-    const nextUid = (parseInt(maxUid.trim()) || 5000) + 1;
-    
+    // Use standard vmail UID/GID (5000:5000) for all email accounts
+    const vmailUid = 5000;
+    const vmailGid = 5000;
+
     // Create home directory
     const homeDir = `/home/${username.split('@')[0]}`;
     await execAsync(`mkdir -p ${homeDir}`);
-    await execAsync(`chown ${nextUid}:${nextUid} ${homeDir}`);
-    
+    await execAsync(`chown ${vmailUid}:${vmailGid} ${homeDir}`);
+
     // Add user to dovecot users file
     // Format: username:password:uid:gid::homedir::
-    const userLine = `${username}:${hash}:${nextUid}:${nextUid}::${homeDir}::`;
+    const userLine = `${username}:${hash}:${vmailUid}:${vmailGid}::${homeDir}::`;
     await execAsync(`echo '${userLine}' >> /etc/dovecot/users`);
     
     // Set permissions on users file
@@ -109,7 +108,7 @@ async function createMailbox(email, password, quotaMB = 1024) {
       // Don't fail the whole operation if map update fails
     }
     
-    console.log(`✅ Mailbox created for ${email} with quota ${quotaMB}MB (UID: ${nextUid})`);
+    console.log(`✅ Mailbox created for ${email} with quota ${quotaMB}MB (UID: ${vmailUid})`);
     return true;
   } catch (error) {
     console.error('Error creating mailbox:', error);
