@@ -617,6 +617,49 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                 </pre>
               )}
             </div>
+
+            {/* Attachments Section */}
+            {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+              <div className="mail-attachments-section" style={{ padding: '16px 24px', borderTop: '1px solid #e0e0e0' }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px', color: '#5f6368' }}>
+                  {selectedEmail.attachments.length} Attachment{selectedEmail.attachments.length > 1 ? 's' : ''}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  {selectedEmail.attachments.map((attachment, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '12px',
+                        border: '1px solid #dadce0',
+                        borderRadius: '8px',
+                        backgroundColor: '#f8f9fa',
+                        minWidth: '250px',
+                        gap: '12px'
+                      }}
+                    >
+                      <MdAttachFile style={{ fontSize: '24px', color: '#5f6368' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#202124',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {attachment.filename}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#5f6368' }}>
+                          {attachment.contentType} • {(attachment.size / 1024).toFixed(1)} KB
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Email List in Full Width */
