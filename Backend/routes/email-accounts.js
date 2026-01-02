@@ -2519,4 +2519,35 @@ router.get('/:id/storage-usage', isAuthenticated, async (req, res) => {
   }
 });
 
+// Update email signature
+router.put('/signature', isAuthenticated, async (req, res) => {
+  try {
+    const { signature } = req.body;
+
+    // Find the user's email account
+    const account = await EmailAccount.findOne({ userId: req.user._id });
+    if (!account) {
+      return res.status(404).json({ success: false, message: 'Email account not found' });
+    }
+
+    // Update signature
+    account.signature = signature || '';
+    await account.save();
+
+    // Log the change
+    await AuditLog.create({
+      userId: req.user._id,
+      action: 'update_signature',
+      details: { email: account.email },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.json({ success: true, message: 'Signature updated successfully' });
+  } catch (error) {
+    console.error('Error updating signature:', error);
+    res.status(500).json({ success: false, message: 'Failed to update signature' });
+  }
+});
+
 module.exports = router;
