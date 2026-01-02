@@ -4,7 +4,7 @@ import {
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
   MdChevronLeft, MdChevronRight, MdLocalOffer, MdPeople,
   MdInfo, MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd
+  MdMaximize, MdPersonAdd, MdDownload
 } from 'react-icons/md';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
@@ -237,6 +237,34 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
   const handleBackToList = () => {
     setSelectedEmail(null);
+  };
+
+  const handleDownloadAttachment = async (attachment, index) => {
+    try {
+      const folder = activeTab === 'sent' ? 'Sent' : 'INBOX';
+      const response = await api.get('/email-accounts/download-attachment', {
+        params: {
+          accountId: selectedAccount._id,
+          uid: selectedEmail.uid,
+          folder: folder,
+          index: index
+        },
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', attachment.filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment');
+    }
   };
 
   const handleCompose = () => {
@@ -628,6 +656,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                   {selectedEmail.attachments.map((attachment, index) => (
                     <div
                       key={index}
+                      className="attachment-card"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -636,8 +665,22 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                         borderRadius: '8px',
                         backgroundColor: '#f8f9fa',
                         minWidth: '250px',
-                        gap: '12px'
+                        gap: '12px',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'all 0.2s ease'
                       }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e8f0fe';
+                        e.currentTarget.style.borderColor = '#1a73e8';
+                        e.currentTarget.querySelector('.download-btn').style.opacity = '1';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f8f9fa';
+                        e.currentTarget.style.borderColor = '#dadce0';
+                        e.currentTarget.querySelector('.download-btn').style.opacity = '0';
+                      }}
+                      onClick={() => handleDownloadAttachment(attachment, index)}
                     >
                       <MdAttachFile style={{ fontSize: '24px', color: '#5f6368' }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -654,6 +697,23 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                         <div style={{ fontSize: '12px', color: '#5f6368' }}>
                           {attachment.contentType} • {(attachment.size / 1024).toFixed(1)} KB
                         </div>
+                      </div>
+                      <div
+                        className="download-btn"
+                        style={{
+                          opacity: '0',
+                          transition: 'opacity 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: '#1a73e8',
+                          color: 'white'
+                        }}
+                      >
+                        <MdDownload style={{ fontSize: '20px' }} />
                       </div>
                     </div>
                   ))}
