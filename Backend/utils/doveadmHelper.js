@@ -90,15 +90,33 @@ async function createMailbox(email, password, quotaMB = 1024) {
     // Set permissions on users file
     await execAsync(`chown root:dovecot /etc/dovecot/users`);
     await execAsync(`chmod 640 /etc/dovecot/users`);
-    
+
+    // Create Maildir structure manually to ensure it exists
+    const maildirPath = `${homeDir}/Maildir`;
+    await execAsync(`mkdir -p ${maildirPath}/{new,cur,tmp}`);
+    await execAsync(`chown -R ${vmailUid}:${vmailGid} ${homeDir}`);
+    await execAsync(`chmod -R 700 ${maildirPath}`);
+
     // Create initial mailbox folders using doveadm
-    const createFoldersCmd = `doveadm mailbox create -u ${username} INBOX Sent Drafts Trash Spam 2>&1 || true`;
-    await execAsync(createFoldersCmd);
-    
+    try {
+      const createFoldersCmd = `doveadm mailbox create -u ${username} INBOX Sent Drafts Trash Spam 2>&1`;
+      await execAsync(createFoldersCmd);
+      console.log(`✅ Mailbox folders created for ${username}`);
+    } catch (folderError) {
+      console.warn(`Warning: Could not create folders with doveadm: ${folderError.message}`);
+      // Maildir structure already created manually, so this is not critical
+    }
+
     // Set quota for the user
     const quotaBytes = quotaMB * 1024 * 1024;
-    const setQuotaCmd = `doveadm quota set -u ${username} storage ${quotaBytes} 2>&1 || true`;
-    await execAsync(setQuotaCmd);
+    try {
+      const setQuotaCmd = `doveadm quota set -u ${username} storage ${quotaBytes} 2>&1`;
+      await execAsync(setQuotaCmd);
+      console.log(`✅ Quota set for ${username}: ${quotaMB}MB`);
+    } catch (quotaError) {
+      console.warn(`Warning: Could not set quota with doveadm: ${quotaError.message}`);
+      // Quota can be set later if needed
+    }
     
     // Update Postfix recipient map
     try {
