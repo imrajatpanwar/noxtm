@@ -498,22 +498,18 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
       {/* Gmail-style Tabs */}
       <div className="mail-gmail-tabs">
-        {activeTab !== 'settings' && (
-          <>
-            <Tab
-              icon={MdInbox}
-              label="Primary"
-              active={activeTab === 'primary'}
-              onClick={() => handleTabChange('primary')}
-              count={activeTab === 'primary' ? totalEmails : 0}
-            />
-            <Tab
-              label="Sent"
-              active={activeTab === 'sent'}
-              onClick={() => handleTabChange('sent')}
-            />
-          </>
-        )}
+        <Tab
+          icon={MdInbox}
+          label="Primary"
+          active={activeTab === 'primary'}
+          onClick={() => handleTabChange('primary')}
+          count={activeTab === 'primary' ? totalEmails : 0}
+        />
+        <Tab
+          label="Sent"
+          active={activeTab === 'sent'}
+          onClick={() => handleTabChange('sent')}
+        />
         <Tab
           icon={MdSettings}
           label="Settings"
@@ -626,10 +622,14 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           /* Email List in Full Width */
           <div className="mail-email-list-fullwidth">
           {activeTab === 'settings' ? (
-            <div className="settings-placeholder">
-              <h4>Mailbox settings</h4>
-              <p>Select a hosted mailbox on the right to update its display avatar and review connection details.</p>
-            </div>
+            <ProfileSettings
+              account={selectedAccount}
+              user={currentUser}
+              onAvatarUpload={handleAvatarUpload}
+              uploading={avatarUploadState.uploading}
+              uploadError={avatarUploadState.error}
+              uploadSuccess={avatarUploadState.success}
+            />
           ) : loading && emails.length === 0 ? (
             <div className="loading-state">
               <div className="spinner"></div>
