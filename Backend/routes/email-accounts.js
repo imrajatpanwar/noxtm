@@ -2271,4 +2271,252 @@ router.post('/team-send/:accountId', requireEmailAccess('canSend'), async (req, 
   }
 });
 
+// ==================== EMAIL SETTINGS ENDPOINTS ====================
+
+// Get email forwarding settings
+router.get('/:id/forwarding', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    res.json({
+      success: true,
+      forwardingEnabled: account.forwardingEnabled || false,
+      forwardTo: account.forwardTo || ''
+    });
+  } catch (error) {
+    console.error('Error fetching forwarding settings:', error);
+    res.status(500).json({ message: 'Failed to fetch forwarding settings' });
+  }
+});
+
+// Update email forwarding settings
+router.put('/:id/forwarding', isAuthenticated, async (req, res) => {
+  try {
+    const { forwardingEnabled, forwardTo } = req.body;
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Validate email format if forwarding is enabled
+    if (forwardingEnabled && forwardTo) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(forwardTo)) {
+        return res.status(400).json({ message: 'Invalid forward-to email address' });
+      }
+    }
+
+    account.forwardingEnabled = forwardingEnabled;
+    account.forwardTo = forwardingEnabled ? forwardTo : '';
+    await account.save();
+
+    // Create audit log
+    const EmailAuditLog = require('../models/EmailAuditLog');
+    await EmailAuditLog.log({
+      action: 'forwarding_updated',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Updated forwarding settings: ${forwardingEnabled ? `enabled to ${forwardTo}` : 'disabled'}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: 'Forwarding settings updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating forwarding settings:', error);
+    res.status(500).json({ message: 'Failed to update forwarding settings' });
+  }
+});
+
+// Get blocked senders list
+router.get('/:id/blocked-senders', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    res.json({
+      success: true,
+      blockedSenders: account.blockedSenders || []
+    });
+  } catch (error) {
+    console.error('Error fetching blocked senders:', error);
+    res.status(500).json({ message: 'Failed to fetch blocked senders' });
+  }
+});
+
+// Add blocked sender
+router.post('/:id/blocked-senders', isAuthenticated, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email address' });
+    }
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Check if already blocked
+    if (account.blockedSenders && account.blockedSenders.includes(email.toLowerCase())) {
+      return res.status(400).json({ message: 'Email address is already blocked' });
+    }
+
+    // Add to blocked senders
+    if (!account.blockedSenders) {
+      account.blockedSenders = [];
+    }
+    account.blockedSenders.push(email.toLowerCase());
+    await account.save();
+
+    // Create audit log
+    const EmailAuditLog = require('../models/EmailAuditLog');
+    await EmailAuditLog.log({
+      action: 'blocked_sender_added',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Added blocked sender: ${email}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: 'Sender blocked successfully',
+      blockedSenders: account.blockedSenders
+    });
+  } catch (error) {
+    console.error('Error adding blocked sender:', error);
+    res.status(500).json({ message: 'Failed to block sender' });
+  }
+});
+
+// Remove blocked sender
+router.delete('/:id/blocked-senders/:email', isAuthenticated, async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Remove from blocked senders
+    if (account.blockedSenders) {
+      account.blockedSenders = account.blockedSenders.filter(
+        sender => sender !== email.toLowerCase()
+      );
+      await account.save();
+    }
+
+    // Create audit log
+    const EmailAuditLog = require('../models/EmailAuditLog');
+    await EmailAuditLog.log({
+      action: 'blocked_sender_removed',
+      resourceType: 'email_account',
+      resourceId: account._id,
+      resourceIdentifier: account.email,
+      performedBy: req.user._id,
+      performedByEmail: req.user.email,
+      performedByName: req.user.fullName,
+      description: `Removed blocked sender: ${email}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: req.user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: 'Sender unblocked successfully',
+      blockedSenders: account.blockedSenders || []
+    });
+  } catch (error) {
+    console.error('Error removing blocked sender:', error);
+    res.status(500).json({ message: 'Failed to unblock sender' });
+  }
+});
+
+// Get storage usage statistics
+router.get('/:id/storage-usage', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Email account not found' });
+    }
+
+    // Verify user owns this account
+    if (!account.userId.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    const used = account.usedStorage || 0;
+    const quota = account.quota || 1024;
+    const percentage = quota > 0 ? Math.round((used / quota) * 100) : 0;
+    const available = Math.max(0, quota - used);
+
+    res.json({
+      success: true,
+      storage: {
+        used,
+        quota,
+        available,
+        percentage
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching storage usage:', error);
+    res.status(500).json({ message: 'Failed to fetch storage usage' });
+  }
+});
+
 module.exports = router;
