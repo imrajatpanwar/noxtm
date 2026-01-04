@@ -151,7 +151,9 @@ Guidelines:
 - Suggest relevant dashboard sections when appropriate (e.g., "You can view this in the Projects section")
 - If you don't know something, say so honestly
 - Keep responses under 150 words for readability
-- Focus on actionable insights and next steps`;
+- Focus on actionable insights and next steps
+- DO NOT use markdown formatting like **bold**, *italic*, or code blocks - use plain text only
+- Avoid special characters like asterisks, underscores, or backticks for formatting`;
 };
 
 /**
