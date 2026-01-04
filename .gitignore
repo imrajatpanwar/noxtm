@@ -2,6 +2,7 @@
 node_modules/
 Frontend/node_modules/
 Backend/node_modules/
+mail-frontend/node_modules/
 
 # Cache directories
 .cache/
@@ -43,16 +44,18 @@ server-output.log
 dist/
 build/
 Frontend/build/
+mail-frontend/build/
 *.tsbuildinfo
 
-# Claude Code settings
-.claude/settings.local.json
+# Claude Code
+.claude/
 
 # Uploads
 Backend/uploads/
 
 # Backup files
 *.backup
+*.backup-*
 
 # Test files
 Backend/test-*.js
@@ -60,17 +63,19 @@ Backend/check-*.js
 Backend/cleanup-*.js
 test-*.js
 simple-*.js
-verify-*.bat
+test_*.csv
 
-# Scripts (temporary)
-Backend/scripts/
-
-# Documentation (temporary)
-Backend/*.md
-!Backend/README.md
+# Windows batch files
+*.bat
 
 # Workspace files
 *.code-workspace
 
 # Windows specific
 nul
+
+# SSH keys (should never be committed)
+noxtm
+noxtm.pub
+*.pem
+*.key
