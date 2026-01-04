@@ -6,12 +6,18 @@
   "scripts": {
     "start": "cd Backend && npm start",
     "dev": "cd Backend && npm run dev",
+    "dev:frontend": "cd Frontend && npm start",
+    "dev:backend": "cd Backend && npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "cd Frontend && npm run build",
     "install-frontend": "cd Frontend && npm install",
     "install-backend": "cd Backend && npm install",
     "install-all": "npm run install-backend && npm run install-frontend",
     "test": "cd Backend && npm test",
     "deploy": "bash deploy.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   },
 
   "keywords": ["react", "mongodb", "express", "node"],
