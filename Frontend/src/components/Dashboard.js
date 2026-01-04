@@ -49,6 +49,7 @@ import OurClients from './OurClients';
 import LeadsDirectory from './LeadsDirectory';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
+import AIChatWidget from './AIChatWidget';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -314,6 +315,9 @@ function Dashboard({ user, onLogout }) {
           )}
         </div>
       </div>
+
+      {/* AI Chat Widget */}
+      <AIChatWidget />
     </div>
   );
 }

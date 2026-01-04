@@ -133,6 +133,10 @@ app.use('/api/contact-lists', contactListsRoutes);
 const projectsRoutes = require('./routes/projects');
 app.use('/api/projects', projectsRoutes);
 
+// AI Chatbot routes
+const aiRoutes = require('./routes/ai');
+app.use('/api/ai', aiRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
