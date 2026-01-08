@@ -25,7 +25,7 @@ const requireAuth = (req, res, next) => {
 router.post('/add', requireAuth, async (req, res) => {
   try {
     const { domain } = req.body;
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId || req.user.id || req.user._id;
 
     if (!domain) {
       return res.status(400).json({ success: false, error: 'Domain is required' });
@@ -91,7 +91,7 @@ router.post('/add', requireAuth, async (req, res) => {
 // GET /api/user-domains/status/:domain - Check verification status
 router.get('/status/:domain', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId || req.user.id || req.user._id;
     const domain = req.params.domain;
 
     // Verify ownership
@@ -134,7 +134,7 @@ router.get('/status/:domain', requireAuth, async (req, res) => {
 // GET /api/user-domains - List user's domains
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId || req.user.id || req.user._id;
     const domains = await UserVerifiedDomain.find({ userId }).sort({ createdAt: -1 });
 
     res.json({
@@ -148,11 +148,36 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/user-domains/count - Get count of verified domains
+router.get('/count', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id || req.user._id;
+
+    const verifiedCount = await UserVerifiedDomain.countDocuments({
+      userId,
+      verificationStatus: 'SUCCESS',
+      enabled: true
+    });
+
+    const totalCount = await UserVerifiedDomain.countDocuments({ userId });
+
+    res.json({
+      success: true,
+      verifiedCount,
+      totalCount,
+      hasVerifiedDomain: verifiedCount > 0
+    });
+  } catch (error) {
+    console.error('Error counting domains:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/user-domains/send - Send email from verified domain
 router.post('/send', requireAuth, awsSESRateLimitMiddleware, async (req, res) => {
   try {
     const { from, to, subject, html, text } = req.body;
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId || req.user.id || req.user._id;
 
     if (!from || !to || !subject) {
       return res.status(400).json({
@@ -220,7 +245,7 @@ router.post('/send', requireAuth, awsSESRateLimitMiddleware, async (req, res) =>
 // DELETE /api/user-domains/:domain - Remove domain
 router.delete('/:domain', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId || req.user.id || req.user._id;
     const domain = req.params.domain;
 
     const userDomain = await UserVerifiedDomain.findOneAndDelete({ domain, userId });
