@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+import api from '../config/api';
 import './JoinCompany.css';
 
 function JoinCompany({ onSignup }) {
@@ -20,6 +22,8 @@ function JoinCompany({ onSignup }) {
     confirmPassword: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({
     hasUppercase: false,
     hasLowercase: false,
@@ -40,10 +44,10 @@ function JoinCompany({ onSignup }) {
 
   const verifyInvitation = async () => {
     try {
-      const response = await fetch(`/api/messaging/invitations/verify/${token}`);
-      const data = await response.json();
+      const response = await api.get(`/messaging/invitations/verify/${token}`);
+      const data = response.data;
 
-      if (response.ok && data.valid) {
+      if (data.valid) {
         setInvitationValid(true);
         setInvitationData(data);
         setFormData(prev => ({
@@ -116,22 +120,16 @@ function JoinCompany({ onSignup }) {
     try {
       // Create user account directly via API call instead of using onSignup
       // This bypasses the email verification flow used in regular signup
-      const signupResponse = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-          role: 'Employee' // Default role for invited users
-        })
+      const signupResponse = await api.post('/register', {
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: 'Employee' // Default role for invited users
       });
 
-      const signupData = await signupResponse.json();
+      const signupData = signupResponse.data;
 
-      if (!signupResponse.ok || !signupData.success) {
+      if (!signupData.success) {
         if (signupData.userExists) {
           toast.error('This email is already registered. Try logging in instead.');
           setTimeout(() => {
@@ -149,21 +147,14 @@ function JoinCompany({ onSignup }) {
       localStorage.setItem('user', JSON.stringify(signupData.user));
 
       // Accept invitation with authentication
-      const acceptResponse = await fetch('/api/messaging/invitations/signup-accept', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${signupData.token}`
-        },
-        body: JSON.stringify({
-          token: token,
-          userId: signupData.user.id
-        })
+      const acceptResponse = await api.post('/messaging/invitations/signup-accept', {
+        token: token,
+        userId: signupData.user.id
       });
 
-      const acceptData = await acceptResponse.json();
+      const acceptData = acceptResponse.data;
 
-      if (acceptResponse.ok && acceptData.success) {
+      if (acceptData.success) {
         // Update token if new one provided
         if (acceptData.token) {
           localStorage.setItem('token', acceptData.token);
@@ -201,10 +192,10 @@ function JoinCompany({ onSignup }) {
 
   if (loading) {
     return (
-      <div className="join-company-container">
-        <div className="join-company-card">
-          <div className="loading-state">
-            <div className="spinner"></div>
+      <div className="jc-container">
+        <div className="jc-card">
+          <div className="jc-loading-state">
+            <div className="jc-spinner"></div>
             <p>Verifying invitation...</p>
           </div>
         </div>
@@ -214,10 +205,10 @@ function JoinCompany({ onSignup }) {
 
   if (!invitationValid) {
     return (
-      <div className="join-company-container">
-        <div className="join-company-card">
-          <div className="error-state">
-            <div className="error-icon">⚠️</div>
+      <div className="jc-container">
+        <div className="jc-card">
+          <div className="jc-error-state">
+            <div className="jc-error-icon">⚠️</div>
             <h2>Invalid Invitation</h2>
             <p>This invitation link is invalid or has expired.</p>
           </div>
@@ -227,115 +218,116 @@ function JoinCompany({ onSignup }) {
   }
 
   return (
-    <div className="join-company-container">
-      <div className="join-company-card">
-        <div className="join-company-header">
+    <div className="jc-container">
+      <div className="jc-card">
+        <div className="jc-header">
           <h1>Accept Invitation to {invitationData.company.companyName}</h1>
-          <p className="invitation-subtitle">
-            You've been invited to join {invitationData.company.companyName}
+          <p className="jc-subtitle">
+            You've been invited to join <strong>{invitationData.company.companyName}</strong>
           </p>
         </div>
 
-        <div className="company-info-box">
-          <div className="company-info-item">
-            <span className="info-label">Company:</span>
-            <span className="info-value">{invitationData.company.companyName}</span>
-          </div>
-          {invitationData.company.industry && (
-            <div className="company-info-item">
-              <span className="info-label">Industry:</span>
-              <span className="info-value">{invitationData.company.industry}</span>
+        <div className="jc-content-wrapper">
+          <div className="jc-info-section">
+            <div className="jc-info-item">
+              <span className="jc-info-label">Company:</span>
+              <span className="jc-info-value">{invitationData.company.companyName}</span>
             </div>
-          )}
-          <div className="company-info-item">
-            <span className="info-label">Your Role:</span>
-            <span className="info-value">{invitationData.invitation.roleInCompany}</span>
-          </div>
-        </div>
+            {invitationData.company.industry && (
+              <div className="jc-info-item">
+                <span className="jc-info-label">Industry:</span>
+                <span className="jc-info-value">{invitationData.company.industry}</span>
+              </div>
+            )}
+            <div className="jc-info-item">
+              <span className="jc-info-label">Your Role:</span>
+              <span className="jc-info-value">{invitationData.invitation.roleInCompany}</span>
+            </div>
+            <div className="jc-info-item">
+              <span className="jc-info-label">Email:</span>
+              <span className="jc-info-value">{formData.email}</span>
+            </div>
 
-        <form onSubmit={handleSubmit} className="join-company-form">
-          <div className="form-group">
-            <label htmlFor="fullName">Full Name *</label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Enter your full name"
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email Address *</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              disabled
-              className="disabled-input"
-            />
-            <small className="form-hint">This email was invited by your company</small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password *</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handlePasswordChange}
-              placeholder="Create a strong password (min 8 characters)"
-              required
-              disabled={submitting}
-              minLength="8"
-            />
-            <div className="password-strength-indicators">
-              <div className={`strength-item ${passwordStrength.minLength ? 'valid' : ''}`}>
-                {passwordStrength.minLength ? '✓' : '○'} At least 8 characters
-              </div>
-              <div className={`strength-item ${passwordStrength.hasUppercase ? 'valid' : ''}`}>
-                {passwordStrength.hasUppercase ? '✓' : '○'} One uppercase letter
-              </div>
-              <div className={`strength-item ${passwordStrength.hasLowercase ? 'valid' : ''}`}>
-                {passwordStrength.hasLowercase ? '✓' : '○'} One lowercase letter
-              </div>
-              <div className={`strength-item ${passwordStrength.hasSpecialChar ? 'valid' : ''}`}>
-                {passwordStrength.hasSpecialChar ? '✓' : '○'} One special character
-              </div>
+            <div className="jc-footer-link">
+              <p>Already have an account? <a href="/login">Login here</a></p>
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password *</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter your password"
-              required
-              disabled={submitting}
-              minLength="6"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="jc-form">
+            <div className="jc-form-group">
+              <label htmlFor="fullName">Full Name*</label>
+              <input
+                type="text"
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="Enter your full name"
+                required
+                disabled={submitting}
+              />
+            </div>
 
-          <button
-            type="submit"
-            className="btn-join-company"
-            disabled={submitting}
-          >
-            {submitting ? 'Creating Account...' : 'Accept & Join'}
-          </button>
-        </form>
+            <div className="jc-form-group jc-password-wrapper">
+              <label htmlFor="password">Password*</label>
+              <div className="jc-password-field">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handlePasswordChange}
+                  placeholder="Create a Strong Password"
+                  required
+                  disabled={submitting}
+                  minLength="8"
+                />
+                <button
+                  type="button"
+                  className="jc-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+            </div>
 
-        <div className="join-company-footer">
-          <p>Already have an account? <a href="/login">Login here</a></p>
+            <div className="jc-form-group jc-password-wrapper">
+              <label htmlFor="confirmPassword">Confirm Password*</label>
+              <div className="jc-password-field">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Re-enter your password"
+                  required
+                  disabled={submitting}
+                  minLength="8"
+                />
+                <button
+                  type="button"
+                  className="jc-password-toggle"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+            </div>
+
+            <div className="jc-form-footer">
+              <button
+                type="submit"
+                className="jc-btn-submit"
+                disabled={submitting}
+              >
+                {submitting ? 'Creating Account...' : 'Accept & Join'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
