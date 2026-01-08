@@ -31,7 +31,8 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
       : 'http://localhost:3000';
   };
 
-  const handleAddDomain = async () => {
+  const handleNextToDNS = () => {
+    // Validate domain format before showing DNS instructions
     if (!newDomain.trim()) {
       setError('Please enter a domain name');
       return;
@@ -43,6 +44,12 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
       return;
     }
 
+    // Just move to DNS step, don't save yet
+    setError('');
+    setStep('dnsInstructions');
+  };
+
+  const handleConfirmAndSave = async () => {
     try {
       setAddingDomain(true);
       setError('');
@@ -52,26 +59,25 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
       });
 
       setDnsRecords(response.data.dnsRecords || []);
-      setStep('dnsInstructions');
-      showToast('Domain added! Configure DNS records to verify.', 'success');
+      showToast('Domain saved successfully! Configure DNS records to verify.', 'success');
 
       // Mark onboarding as seen
       await api.patch('/users/onboarding-status', {
         hasSeenDomainOnboarding: true
       });
+
+      // Close modal and refresh
+      if (onDomainAdded) {
+        onDomainAdded();
+      }
+      onClose();
     } catch (err) {
       console.error('Error adding domain:', err);
       setError(err.response?.data?.error || 'Failed to add domain');
+      showToast(err.response?.data?.error || 'Failed to add domain', 'error');
     } finally {
       setAddingDomain(false);
     }
-  };
-
-  const handleFinish = () => {
-    if (onDomainAdded) {
-      onDomainAdded();
-    }
-    onClose();
   };
 
   const renderWelcomeStep = () => (
@@ -195,10 +201,9 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         </button>
         <button
           className="btn-primary"
-          onClick={handleAddDomain}
-          disabled={addingDomain}
+          onClick={handleNextToDNS}
         >
-          {addingDomain ? 'Adding...' : 'Add Domain'}
+          Next: View DNS Records
         </button>
       </div>
     </div>
@@ -208,15 +213,19 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
     <div className="modal-body">
       <div style={{
         padding: '12px',
-        background: '#d1fae5',
+        background: '#fef3c7',
         borderRadius: '8px',
         marginBottom: '16px',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        color: '#065f46'
+        color: '#92400e'
       }}>
-        <FiCheck /> Domain added successfully! Configure these DNS records:
+        <FiAlertCircle /> Review these DNS records before saving
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+        <strong>Domain:</strong> {newDomain}
       </div>
 
       <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>DNS Records to Configure</h3>
@@ -267,85 +276,101 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         </div>
       </div>
 
-      {/* DKIM Records */}
-      {dnsRecords && dnsRecords.filter(r => r.type === 'CNAME').map((record, index) => (
-        <div key={index} style={{
+      {/* DKIM Records Placeholder */}
+      {dnsRecords && dnsRecords.length > 0 ? (
+        dnsRecords.filter(r => r.type === 'CNAME').map((record, index) => (
+          <div key={index} style={{
+            padding: '16px',
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            marginBottom: '12px'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <strong style={{ fontSize: '14px' }}>DKIM Record {index + 1}</strong>
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+              Type: <strong>CNAME</strong>
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Name:</div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                background: 'white',
+                borderRadius: '4px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
+                  {record.name}
+                </code>
+                <button
+                  className="btn-icon"
+                  onClick={() => copyToClipboard(record.name)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    color: '#667eea'
+                  }}
+                >
+                  <FiCopy />
+                </button>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Value:</div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                background: 'white',
+                borderRadius: '4px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
+                  {record.value}
+                </code>
+                <button
+                  className="btn-icon"
+                  onClick={() => copyToClipboard(record.value)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    color: '#667eea'
+                  }}
+                >
+                  <FiCopy />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div style={{
           padding: '16px',
           background: '#f8f9fa',
           borderRadius: '8px',
-          marginBottom: '12px'
+          marginBottom: '16px',
+          textAlign: 'center',
+          color: '#666'
         }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '8px'
-          }}>
-            <strong style={{ fontSize: '14px' }}>DKIM Record {index + 1}</strong>
-          </div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-            Type: <strong>CNAME</strong>
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Name:</div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px',
-              background: 'white',
-              borderRadius: '4px',
-              border: '1px solid #e0e0e0'
-            }}>
-              <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
-                {record.name}
-              </code>
-              <button
-                className="btn-icon"
-                onClick={() => copyToClipboard(record.name)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: '#667eea'
-                }}
-              >
-                <FiCopy />
-              </button>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Value:</div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px',
-              background: 'white',
-              borderRadius: '4px',
-              border: '1px solid #e0e0e0'
-            }}>
-              <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
-                {record.value}
-              </code>
-              <button
-                className="btn-icon"
-                onClick={() => copyToClipboard(record.value)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: '#667eea'
-                }}
-              >
-                <FiCopy />
-              </button>
-            </div>
-          </div>
+          <p style={{ margin: 0 }}>
+            DKIM records will be generated after you save the domain.
+            You'll receive 3 CNAME records to configure.
+          </p>
         </div>
-      ))}
+      )}
 
       <div style={{
         padding: '12px',
@@ -355,13 +380,25 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         color: '#1e40af',
         marginTop: '16px'
       }}>
-        <strong>Next Steps:</strong>
-        <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-          <li>Add these DNS records to your domain provider</li>
-          <li>Wait 5-72 hours for DNS propagation</li>
-          <li>Check verification status in Settings → Domain Management</li>
-        </ol>
+        <strong>Important:</strong> Click "Confirm & Save Domain" below to save this domain to your account.
+        After saving, you'll receive the actual DKIM records to configure along with the SPF record shown above.
       </div>
+
+      {error && (
+        <div style={{
+          padding: '12px',
+          background: '#fef2f2',
+          color: '#dc2626',
+          borderRadius: '8px',
+          fontSize: '14px',
+          marginTop: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <FiAlertCircle /> {error}
+        </div>
+      )}
 
       <div style={{
         display: 'flex',
@@ -369,8 +406,15 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         justifyContent: 'flex-end',
         marginTop: '24px'
       }}>
-        <button className="btn-primary" onClick={handleFinish}>
-          Done
+        <button className="btn-secondary" onClick={() => setStep('addDomain')}>
+          Back
+        </button>
+        <button
+          className="btn-primary"
+          onClick={handleConfirmAndSave}
+          disabled={addingDomain}
+        >
+          {addingDomain ? 'Saving...' : 'Confirm & Save Domain'}
         </button>
       </div>
     </div>
