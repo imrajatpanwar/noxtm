@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../config/api';
 import { MAIL_LOGIN_URL } from '../config/authConfig';
+import LoadingScreen from './LoadingScreen';
 
 const ProtectedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,7 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
-    return null; // Don't show anything while loading, the index.html loader will be visible
+    return <LoadingScreen message="Authenticating..." />;
   }
 
   return authenticated ? children : null;

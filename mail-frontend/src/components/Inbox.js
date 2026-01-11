@@ -12,6 +12,7 @@ import ImportMail from './campaign/ImportMail';
 import CampaignAnalytics from './campaign/CampaignAnalytics';
 import DomainSetupWizard from './onboarding/DomainSetupWizard';
 import DomainOnboardingModal from './DomainOnboardingModal';
+import LoadingScreen from './LoadingScreen';
 import api from '../config/api';
 import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 import './Inbox.css';
@@ -180,7 +181,7 @@ function Inbox() {
   // CRITICAL: Wait for domain check to complete before rendering anything
   // This prevents MainstreamInbox from mounting and making API calls before we know if wizard should show
   if (!domainCheckComplete) {
-    return null; // Don't show anything, the index.html loader will be visible
+    return <LoadingScreen message="Checking domain setup..." />;
   }
 
   // Show domain setup wizard if user doesn't have a verified domain
