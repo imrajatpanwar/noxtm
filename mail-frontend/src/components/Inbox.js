@@ -14,7 +14,6 @@ import DomainSetupWizard from './onboarding/DomainSetupWizard';
 import DomainOnboardingModal from './DomainOnboardingModal';
 import api from '../config/api';
 import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
-import mailLoadingGif from './images/mail_loding.gif';
 import './Inbox.css';
 
 function Inbox() {
@@ -181,23 +180,7 @@ function Inbox() {
   // CRITICAL: Wait for domain check to complete before rendering anything
   // This prevents MainstreamInbox from mounting and making API calls before we know if wizard should show
   if (!domainCheckComplete) {
-    return (
-      <div className="loading-container" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <img
-          src={mailLoadingGif}
-          alt="Loading..."
-          style={{ width: '150px', height: '150px' }}
-        />
-        <p style={{ marginTop: '20px', fontSize: '16px', color: '#666' }}>Loading Mail...</p>
-      </div>
-    );
+    return null; // Don't show anything, the index.html loader will be visible
   }
 
   // Show domain setup wizard if user doesn't have a verified domain
