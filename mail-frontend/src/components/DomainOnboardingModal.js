@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../config/api';
-import { FiGlobe, FiCheck, FiCopy, FiAlertCircle } from 'react-icons/fi';
+import { FiGlobe, FiCheck, FiCopy, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import './CreateEmailModal.css';
+import VerificationIcon from './images/Verification.svg';
 
 function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
   const [step, setStep] = useState('loading'); // 'loading' | 'welcome' | 'addDomain' | 'dnsInstructions' | 'dkimRecords'
