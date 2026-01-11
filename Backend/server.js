@@ -3130,6 +3130,46 @@ app.get('/api/roles', authenticateToken, async (req, res) => {
   }
 });
 
+// PATCH /api/users/onboarding-status - Update user onboarding flags
+app.patch('/api/users/onboarding-status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { hasSeenDomainOnboarding } = req.body;
+
+    if (typeof hasSeenDomainOnboarding !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'hasSeenDomainOnboarding must be a boolean'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { hasSeenDomainOnboarding },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Onboarding status updated',
+      hasSeenDomainOnboarding: user.hasSeenDomainOnboarding
+    });
+  } catch (error) {
+    console.error('Error updating onboarding status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update onboarding status'
+    });
+  }
+});
+
 // Update user permissions (protected route - admin only)
 app.put('/api/users/:userId/permissions', authenticateToken, requireAdmin, async (req, res) => {
   try {

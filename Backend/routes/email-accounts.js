@@ -156,11 +156,12 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // Get EmailDomain model
+    // Get models
     const EmailDomain = require('../models/EmailDomain');
+    const UserVerifiedDomain = require('../models/UserVerifiedDomain');
 
-    // 1. Get domains created by THIS user
-    const userDomains = await EmailDomain.find({
+    // 1. Get domains from EmailDomain (legacy model)
+    const emailDomains = await EmailDomain.find({
       createdBy: userId,
       $or: [
         { verified: true },
@@ -168,17 +169,29 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
       ]
     }).select('domain');
 
-    const userDomainNames = userDomains.map(d => d.domain.toLowerCase());
+    const emailDomainNames = emailDomains.map(d => d.domain.toLowerCase());
 
-    console.log(`[by-verified-domain] User ${userId} owns domains:`, userDomainNames);
+    // 2. Get domains from UserVerifiedDomain (new model with AWS SES)
+    const userVerifiedDomains = await UserVerifiedDomain.find({
+      userId: userId,
+      verificationStatus: 'SUCCESS',
+      enabled: true
+    }).select('domain');
 
-    // 2. Fetch only email accounts on domains owned by this user
+    const userVerifiedDomainNames = userVerifiedDomains.map(d => d.domain.toLowerCase());
+
+    // 3. Combine both domain lists (remove duplicates)
+    const allDomainNames = [...new Set([...emailDomainNames, ...userVerifiedDomainNames])];
+
+    console.log(`[by-verified-domain] User ${userId} owns domains:`, allDomainNames);
+
+    // 4. Fetch only email accounts on domains owned by this user
     const query = {
-      domain: { $in: userDomainNames },
+      domain: { $in: allDomainNames },
       enabled: true
     };
 
-    // 3. Fetch email accounts
+    // 5. Fetch email accounts
     const accounts = await EmailAccount.find(query)
       .select('-password')
       .populate('createdBy', 'fullName email')
@@ -190,7 +203,7 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
     res.json({
       success: true,
       accounts: accounts,
-      verifiedDomains: userDomainNames
+      verifiedDomains: allDomainNames
     });
   } catch (error) {
     console.error('[by-verified-domain] Error:', error);

@@ -28,7 +28,8 @@ function Login({ onLogin }) {
 
       if (token && user) {
         console.log('[LOGIN] User already authenticated, redirecting to mail app...');
-        const mailUrl = `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`;
+        const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
+        const mailUrl = `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`;
         window.location.href = mailUrl;
         return;
       } else {
@@ -63,9 +64,10 @@ function Login({ onLogin }) {
 
         // Pass token as URL parameter so mail app can use it immediately
         // Cookie might take a moment to sync across subdomains
+        const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
         const mailUrl = token
-          ? `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`
-          : 'https://mail.noxtm.com';
+          ? `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`
+          : mailBaseUrl;
 
         window.location.href = mailUrl;
         return;

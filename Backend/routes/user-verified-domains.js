@@ -54,9 +54,29 @@ router.post('/add', requireAuth, async (req, res) => {
       });
     }
 
-    // Create in AWS SES
-    const command = new CreateEmailIdentityCommand({ EmailIdentity: domain });
-    const response = await sesClient.send(command);
+    // Create in AWS SES (or get existing)
+    let response;
+    try {
+      const command = new CreateEmailIdentityCommand({ EmailIdentity: domain });
+      response = await sesClient.send(command);
+    } catch (sesError) {
+      // If domain already exists in AWS SES, get its details instead
+      if (sesError.name === 'AlreadyExistsException' || sesError.message.includes('already exist')) {
+        console.log(`Domain ${domain} already exists in AWS SES, fetching details...`);
+        const getCommand = new GetEmailIdentityCommand({ EmailIdentity: domain });
+        const existingIdentity = await sesClient.send(getCommand);
+        
+        // Use existing DKIM tokens if available
+        response = {
+          DkimAttributes: {
+            Tokens: existingIdentity.DkimAttributes?.Tokens || [],
+            Status: existingIdentity.DkimAttributes?.Status || 'PENDING'
+          }
+        };
+      } else {
+        throw sesError;
+      }
+    }
 
     // Save to database
     const userDomain = new UserVerifiedDomain({

@@ -83,6 +83,11 @@ const userSchema = new mongoose.Schema({
     default: USER_STATUS.IN_REVIEW
   },
 
+  hasSeenDomainOnboarding: {
+    type: Boolean,
+    default: false
+  },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

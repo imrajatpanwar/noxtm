@@ -11,6 +11,7 @@ import CreateCampaign from './campaign/CreateCampaign';
 import ImportMail from './campaign/ImportMail';
 import CampaignAnalytics from './campaign/CampaignAnalytics';
 import DomainSetupWizard from './onboarding/DomainSetupWizard';
+import DomainOnboardingModal from './DomainOnboardingModal';
 import api from '../config/api';
 import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 import './Inbox.css';
@@ -19,6 +20,7 @@ function Inbox() {
   const [user, setUser] = useState(null);
   const [activeView, setActiveView] = useState('personal'); // personal, analytics, sla, templates, rules, domains
   const [showDomainWizard, setShowDomainWizard] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
   const [domainCheckComplete, setDomainCheckComplete] = useState(false); // NEW: Track if domain check is done
   const navigate = useNavigate();
@@ -98,25 +100,27 @@ function Inbox() {
   }, [navigate]);
 
   const checkDomainSetup = async (retryCount = 0) => {
-    console.log(`[INBOX] Checking domain setup via /api/email-domains... (attempt ${retryCount + 1})`);
+    console.log(`[INBOX] Checking domain setup via /api/user-domains/count... (attempt ${retryCount + 1})`);
     try {
-      const response = await api.get('/email-domains');
-      console.log('[INBOX] ✅ Email domains response:', response.data);
+      const response = await api.get('/user-domains/count');
+      console.log('[INBOX] ✅ User domains count response:', response.data);
 
-      const verifiedDomain = response.data.data?.find(d => d.verified);
+      const hasVerified = response.data.hasVerifiedDomain;
 
-      if (verifiedDomain) {
-        console.log('[INBOX] ✅ Found verified domain:', verifiedDomain.domain);
+      if (hasVerified) {
+        console.log('[INBOX] ✅ User has verified domain');
         setHasVerifiedDomain(true);
-        setShowDomainWizard(false);
+        setShowOnboardingModal(false);
       } else {
-        console.log('[INBOX] ⚠️  No verified domain found - SHOWING DOMAIN WIZARD');
-        console.log('[INBOX] Total domains:', response.data.data?.length || 0);
+        console.log('[INBOX] ⚠️  No verified domain found - SHOWING ONBOARDING MODAL');
 
-        // No verified domain - show wizard
+        // No verified domain - show onboarding modal
         setHasVerifiedDomain(false);
-        setShowDomainWizard(true);
+        setShowOnboardingModal(true);
       }
+
+      // Mark domain check as complete
+      setDomainCheckComplete(true);
     } catch (err) {
       console.error('[INBOX] ❌ Error checking domain setup:', err);
       console.error('[INBOX] Error status:', err.response?.status);
@@ -129,13 +133,11 @@ function Inbox() {
         return checkDomainSetup(1); // Retry once with retryCount = 1
       }
 
-      // If still failing or not a 401, don't block user - let them proceed
-      console.log('[INBOX] Allowing user to proceed despite error (fail-open policy)');
-      setHasVerifiedDomain(true);
-    } finally {
-      // CRITICAL: Mark domain check as complete to allow rendering
+      // If still failing or not a 401, show modal anyway (user needs to set up domain)
+      console.log('[INBOX] Error checking domains - showing onboarding modal');
+      setHasVerifiedDomain(false);
+      setShowOnboardingModal(true);
       setDomainCheckComplete(true);
-      console.log('[INBOX] Domain check complete, allowing UI to render');
     }
   };
 
@@ -302,6 +304,18 @@ function Inbox() {
         {activeView === 'import-mail' && <ImportMail />}
         {activeView === 'campaign-analytics' && <CampaignAnalytics />}
       </div>
+
+      {/* Domain Onboarding Modal */}
+      {showOnboardingModal && (
+        <DomainOnboardingModal
+          onClose={() => setShowOnboardingModal(false)}
+          onDomainAdded={() => {
+            setShowOnboardingModal(false);
+            checkDomainSetup();
+          }}
+          userRole={user?.role}
+        />
+      )}
     </div>
   );
 }
