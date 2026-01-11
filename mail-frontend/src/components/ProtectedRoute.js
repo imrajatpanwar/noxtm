@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { MAIL_LOGIN_URL } from '../config/authConfig';
-import mailLoadingGif from './images/mail_loding.gif';
 
 const ProtectedRoute = ({ children }) => {
   const [loading, setLoading] = useState(true);
@@ -60,23 +59,7 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <img
-          src={mailLoadingGif}
-          alt="Loading..."
-          style={{ width: '150px', height: '150px' }}
-        />
-        <p style={{ marginTop: '20px', fontSize: '16px', color: '#666' }}>Loading Mail...</p>
-      </div>
-    );
+    return null; // Don't show anything while loading, the index.html loader will be visible
   }
 
   return authenticated ? children : null;
