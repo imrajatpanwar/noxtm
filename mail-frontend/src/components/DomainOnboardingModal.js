@@ -1,15 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../config/api';
-import { FiGlobe, FiCheck, FiCopy, FiAlertCircle } from 'react-icons/fi';
+import { FiCheck, FiCopy, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import './CreateEmailModal.css';
+import './DomainOnboardingModal.css';
+import VerificationIcon from './images/Verification.svg';
 
 function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
-  const [step, setStep] = useState('welcome'); // 'welcome' | 'addDomain' | 'dnsInstructions'
+  const [step, setStep] = useState('loading'); // 'loading' | 'welcome' | 'addDomain' | 'dnsInstructions' | 'dkimRecords'
+  const [animationClass, setAnimationClass] = useState('');
   const [newDomain, setNewDomain] = useState('');
   const [addingDomain, setAddingDomain] = useState(false);
-  const [dnsRecords, setDnsRecords] = useState(null);
+  const [dkimRecords, setDkimRecords] = useState([]);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  // Check for existing domain on component load
+  useEffect(() => {
+    const checkExistingDomain = async () => {
+      try {
+        const response = await api.get('/user-domains');
+        if (response.data.domains && response.data.domains.length > 0) {
+          const domain = response.data.domains[0];
+          setNewDomain(domain.domain);
+          setDkimRecords(domain.dnsRecords || []);
+          setVerificationStatus({
+            verified: domain.verificationStatus === 'SUCCESS',
+            dkimStatus: domain.dkimVerificationStatus || 'PENDING'
+          });
+          setStep('dkimRecords');
+        } else {
+          setStep('welcome');
+        }
+      } catch (err) {
+        console.error('Error checking existing domain:', err);
+        setStep('welcome');
+      }
+    };
+    checkExistingDomain();
+  }, []);
+
+  // Check verification status
+  const handleCheckVerification = async () => {
+    try {
+      setCheckingStatus(true);
+      const response = await api.get(`/user-domains/status/${newDomain}`);
+      setVerificationStatus({
+        verified: response.data.verified,
+        dkimStatus: response.data.dkimStatus
+      });
+      if (response.data.verified) {
+        showToast('Domain verified successfully!', 'success');
+      } else {
+        showToast('Domain not yet verified. Please add DNS records and wait for propagation.', 'info');
+      }
+    } catch (err) {
+      console.error('Error checking verification:', err);
+      showToast('Failed to check verification status', 'error');
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const handleStepChange = (newStep, direction = 'forward') => {
+    setAnimationClass(direction === 'forward' ? 'domain-slide-in' : 'domain-slide-in-reverse');
+    setStep(newStep);
+  };
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -58,364 +115,344 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         domain: newDomain.trim().toLowerCase()
       });
 
-      setDnsRecords(response.data.dnsRecords || []);
-      showToast('Domain saved successfully! Configure DNS records to verify.', 'success');
+      // Get DKIM records from response
+      const records = response.data.dnsRecords || response.data.domain?.dnsRecords || [];
+      setDkimRecords(records);
 
-      // Mark onboarding as seen
-      await api.patch('/users/onboarding-status', {
-        hasSeenDomainOnboarding: true
-      });
+      showToast('Domain saved successfully! Now configure DKIM records.', 'success');
 
-      // Close modal and refresh
-      if (onDomainAdded) {
-        onDomainAdded();
+      // Mark onboarding as seen (non-critical, don't fail if this errors)
+      try {
+        await api.patch('/users/onboarding-status', {
+          hasSeenDomainOnboarding: true
+        });
+      } catch (onboardingErr) {
+        console.warn('Failed to update onboarding status:', onboardingErr.message);
       }
-      onClose();
+
+      // Show DKIM records step
+      handleStepChange('dkimRecords', 'forward');
     } catch (err) {
       console.error('Error adding domain:', err);
-      setError(err.response?.data?.error || 'Failed to add domain');
-      showToast(err.response?.data?.error || 'Failed to add domain', 'error');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to add domain');
+      showToast(err.response?.data?.error || err.response?.data?.message || 'Failed to add domain', 'error');
     } finally {
       setAddingDomain(false);
     }
   };
 
   const renderWelcomeStep = () => (
-    <div className="modal-body">
-      <div style={{
-        textAlign: 'center',
-        padding: '20px 0'
-      }}>
-        <FiGlobe style={{ fontSize: '64px', color: '#667eea', marginBottom: '20px' }} />
-        <h2 style={{ fontSize: '24px', marginBottom: '12px', color: '#1a1a1a' }}>
-          Welcome! Set Up Your Domain
-        </h2>
-        <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6', marginBottom: '24px' }}>
-          To send emails through our platform, you'll need to verify a domain using AWS SES.
-          This ensures your emails are authenticated and improves deliverability.
-        </p>
+    <div className={`modal-body domain-welcome-body ${animationClass}`}>
+      {/* Header with Back button and Title */}
+      <div className="domain-welcome-header">
+        <button
+          onClick={handleBackToDashboard}
+          className="domain-back-btn"
+        >
+          ← Back to Dashboard
+        </button>
+        <div className="domain-title-section">
+          <h2 className="domain-title">
+            <img src={VerificationIcon} alt="Verification" className="domain-title-icon" />
+            Domain Verification
+          </h2>
+          <p className="domain-subtitle">
+            Secure reputation by verifying your domain ownership.
+          </p>
+        </div>
       </div>
+      
+      {/* Divider line */}
+      <div className="domain-header-divider"></div>
 
-      <div style={{
-        background: '#f8f9fa',
-        padding: '20px',
-        borderRadius: '8px',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ fontSize: '16px', marginBottom: '12px', color: '#1a1a1a' }}>
-          What you'll need:
+      {/* Main content */}
+      <div className="domain-main-content">
+        <h3 className="domain-requirements-title">
+          What you'll need to get started:
         </h3>
-        <ul style={{
-          margin: '0',
-          paddingLeft: '20px',
-          color: '#666',
-          lineHeight: '1.8'
-        }}>
-          <li>A domain you own (e.g., yourcompany.com)</li>
-          <li>Access to your domain's DNS settings</li>
-          <li>About 5-10 minutes to configure DNS records</li>
+        <ul className="domain-requirements-list">
+          <li>A registered domain name (e.g., yourcompany.com)</li>
+          <li>Administrative access to your domain's DNS panel</li>
+          <li>Approximately 5-10 minutes for configuration</li>
         </ul>
-      </div>
 
-      <div style={{
-        padding: '16px',
-        background: '#dbeafe',
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: '#1e40af',
-        marginBottom: '24px'
-      }}>
-        <strong>Note:</strong> DNS changes can take 5-72 hours to propagate.
-        You can skip this for now and set it up later from Settings.
-      </div>
+        <div className="domain-note-box">
+          <strong>Note:</strong> DNS changes can take up to 72 hours to propagate globally. You may proceed with the setup now or finish this step later in Settings.
+        </div>
 
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        justifyContent: 'flex-end'
-      }}>
-        <button className="btn-secondary" onClick={handleBackToDashboard}>
-          Back to Dashboard
-        </button>
-        <button className="btn-primary" onClick={() => setStep('addDomain')}>
-          Add Domain
-        </button>
+        <div className="domain-action-row">
+          <button
+            className="domain-setup-btn"
+            onClick={() => handleStepChange('addDomain', 'forward')}
+          >
+            Set Up Custom Domain
+          </button>
+        </div>
       </div>
     </div>
   );
 
   const renderAddDomainStep = () => (
-    <div className="modal-body">
-      <div className="form-group">
-        <label>Domain Name</label>
+    <div className={`modal-body domain-add-body ${animationClass}`}>
+      {/* Header with Return button and Title */}
+      <div className="domain-add-header">
+        <button
+          onClick={() => handleStepChange('welcome', 'back')}
+          className="domain-return-btn"
+        >
+          ← Return
+        </button>
+        <div className="domain-title-section">
+          <h2 className="domain-title">
+            <img src={VerificationIcon} alt="Verification" className="domain-title-icon" />
+            Domain Verification
+          </h2>
+          <p className="domain-subtitle">
+            Secure reputation by verifying your domain ownership.
+          </p>
+        </div>
+      </div>
+      
+      {/* Divider line */}
+      <div className="domain-header-divider"></div>
+
+      {/* Main content */}
+      <div className="domain-add-content">
+        <label className="domain-form-label">Domain Name</label>
         <input
           type="text"
-          className="form-input"
-          placeholder="example.com"
+          className="domain-form-input"
+          placeholder="yourcompanydomain.com"
           value={newDomain}
           onChange={(e) => setNewDomain(e.target.value)}
           disabled={addingDomain}
           autoFocus
         />
-        <small style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+        <span className="domain-form-helper">
           Enter your domain without http:// or www (e.g., example.com)
-        </small>
-      </div>
+        </span>
 
-      {error && (
-        <div style={{
-          padding: '12px',
-          background: '#fef2f2',
-          color: '#dc2626',
-          borderRadius: '8px',
-          fontSize: '14px',
-          marginTop: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <FiAlertCircle /> {error}
+        {error && (
+          <div className="domain-error-box">
+            <FiAlertCircle /> {error}
+          </div>
+        )}
+
+        <div className="domain-action-row" style={{ marginTop: '24px' }}>
+          <button
+            className="domain-view-dns-btn"
+            onClick={handleNextToDNS}
+          >
+            View SPF Records
+          </button>
         </div>
-      )}
-
-      <div style={{
-        padding: '12px',
-        background: '#fef3c7',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: '#92400e',
-        marginTop: '16px'
-      }}>
-        <strong>Note:</strong> After adding your domain, you'll receive DNS records
-        to configure for verification.
-      </div>
-
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        justifyContent: 'flex-end',
-        marginTop: '24px'
-      }}>
-        <button className="btn-secondary" onClick={() => setStep('welcome')}>
-          Back
-        </button>
-        <button
-          className="btn-primary"
-          onClick={handleNextToDNS}
-        >
-          Next: View DNS Records
-        </button>
       </div>
     </div>
   );
 
   const renderDNSInstructionsStep = () => (
-    <div className="modal-body">
-      <div style={{
-        padding: '12px',
-        background: '#fef3c7',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        color: '#92400e'
-      }}>
-        <FiAlertCircle /> Review these DNS records before saving
-      </div>
-
-      <div style={{ marginBottom: '16px' }}>
-        <strong>Domain:</strong> {newDomain}
-      </div>
-
-      <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>DNS Records to Configure</h3>
-
-      {/* SPF Record */}
-      <div style={{
-        padding: '16px',
-        background: '#f8f9fa',
-        borderRadius: '8px',
-        marginBottom: '16px'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '8px'
-        }}>
-          <strong style={{ fontSize: '14px' }}>SPF Record (Recommended)</strong>
+    <div className={`modal-body domain-dns-body ${animationClass}`}>
+      {/* Header with Return button and Title */}
+      <div className="domain-add-header">
+        <button
+          onClick={() => handleStepChange('addDomain', 'back')}
+          className="domain-return-btn"
+        >
+          ← Return
+        </button>
+        <div className="domain-title-section">
+          <h2 className="domain-title">
+            <img src={VerificationIcon} alt="Verification" className="domain-title-icon" />
+            Domain Verification
+          </h2>
+          <p className="domain-subtitle">
+            Secure reputation by verifying your domain ownership.
+          </p>
         </div>
-        <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-          Type: <strong>TXT</strong> | Name: <strong>@</strong> or <strong>{newDomain}</strong>
-        </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px',
-          background: 'white',
-          borderRadius: '4px',
-          border: '1px solid #e0e0e0'
-        }}>
-          <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
-            v=spf1 mx include:amazonses.com ~all
+      </div>
+      
+      {/* Divider line */}
+      <div className="domain-header-divider"></div>
+
+      {/* Main content */}
+      <div className="domain-dns-content">
+        {/* Domain Name */}
+        <h2 className="domain-dns-domain-name">{newDomain}</h2>
+        <p className="domain-dns-subtitle">Add SPF Records to Configure into Cloudflare</p>
+
+        {/* SPF Record Type Info */}
+        <p className="domain-dns-type-info">
+          Type : TXT  &nbsp;|&nbsp;  Name: @ or {newDomain}
+        </p>
+
+        {/* SPF Record Value */}
+        <div className="domain-dns-record-box">
+          <code className="domain-dns-record-value">
+            v=spf1 mx  include :amazonses.com ~all
           </code>
           <button
-            className="btn-icon"
+            className="domain-dns-copy-btn"
             onClick={() => copyToClipboard('v=spf1 mx include:amazonses.com ~all')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: '#667eea'
-            }}
           >
             <FiCopy />
           </button>
         </div>
-      </div>
 
-      {/* DKIM Records Placeholder */}
-      {dnsRecords && dnsRecords.length > 0 ? (
-        dnsRecords.filter(r => r.type === 'CNAME').map((record, index) => (
-          <div key={index} style={{
-            padding: '16px',
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            marginBottom: '12px'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '8px'
-            }}>
-              <strong style={{ fontSize: '14px' }}>DKIM Record {index + 1}</strong>
-            </div>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-              Type: <strong>CNAME</strong>
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Name:</div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px',
-                background: 'white',
-                borderRadius: '4px',
-                border: '1px solid #e0e0e0'
-              }}>
-                <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
-                  {record.name}
-                </code>
-                <button
-                  className="btn-icon"
-                  onClick={() => copyToClipboard(record.name)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    color: '#667eea'
-                  }}
-                >
-                  <FiCopy />
-                </button>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Value:</div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px',
-                background: 'white',
-                borderRadius: '4px',
-                border: '1px solid #e0e0e0'
-              }}>
-                <code style={{ flex: 1, fontSize: '12px', wordBreak: 'break-all' }}>
-                  {record.value}
-                </code>
-                <button
-                  className="btn-icon"
-                  onClick={() => copyToClipboard(record.value)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    color: '#667eea'
-                  }}
-                >
-                  <FiCopy />
-                </button>
-              </div>
-            </div>
+        {/* Important Note */}
+        <div className="domain-dns-important-box">
+          <strong>Important:</strong> Click "Confirm & Save Domain" below to save this domain to your account. After saving, you'll receive the actual DKIM records to configure along with the SPF record shown above.
+        </div>
+
+        {error && (
+          <div className="domain-error-box">
+            <FiAlertCircle /> {error}
           </div>
-        ))
-      ) : (
-        <div style={{
-          padding: '16px',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          textAlign: 'center',
-          color: '#666'
-        }}>
-          <p style={{ margin: 0 }}>
-            DKIM records will be generated after you save the domain.
-            You'll receive 3 CNAME records to configure.
+        )}
+
+        {/* Confirm Button */}
+        <div className="domain-action-row" style={{ marginTop: '24px' }}>
+          <button
+            className="domain-confirm-btn"
+            onClick={handleConfirmAndSave}
+            disabled={addingDomain}
+          >
+            {addingDomain ? 'Saving...' : 'Confirm Now'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDKIMRecordsStep = () => (
+    <div className={`modal-body domain-dns-body ${animationClass}`}>
+      {/* Header with Return button and Title */}
+      <div className="domain-add-header">
+        <button
+          onClick={() => {
+            if (onDomainAdded) onDomainAdded();
+            onClose();
+          }}
+          className={`domain-return-btn ${verificationStatus?.verified ? 'domain-done-btn' : ''}`}
+        >
+          {verificationStatus?.verified ? '✓ Done' : '← Back to Dashboard'}
+        </button>
+        <div className="domain-title-section">
+          <h2 className="domain-title">
+            <img src={VerificationIcon} alt="Verification" className="domain-title-icon" />
+            {verificationStatus?.verified ? 'Domain Verified' : 'DKIM Configuration'}
+          </h2>
+          <p className="domain-subtitle">
+            {verificationStatus?.verified 
+              ? 'Your domain is ready! You can now send emails.' 
+              : 'Add these CNAME records to complete verification.'
+            }
           </p>
         </div>
-      )}
-
-      <div style={{
-        padding: '12px',
-        background: '#dbeafe',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: '#1e40af',
-        marginTop: '16px'
-      }}>
-        <strong>Important:</strong> Click "Confirm & Save Domain" below to save this domain to your account.
-        After saving, you'll receive the actual DKIM records to configure along with the SPF record shown above.
       </div>
+      
+      {/* Divider line */}
+      <div className="domain-header-divider"></div>
 
-      {error && (
-        <div style={{
-          padding: '12px',
-          background: '#fef2f2',
-          color: '#dc2626',
-          borderRadius: '8px',
-          fontSize: '14px',
-          marginTop: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <FiAlertCircle /> {error}
+      {/* Main content */}
+      <div className="domain-dns-content">
+        {/* Verification Status Box */}
+        <div className={`domain-verification-status-box ${verificationStatus?.verified ? 'verified' : 'pending'}`}>
+          <div className="domain-verification-status-info">
+            <span className="domain-verification-status-icon">
+              {verificationStatus?.verified ? <FiCheck /> : <FiAlertCircle />}
+            </span>
+            <div>
+              <strong>{verificationStatus?.verified ? 'Domain Verified' : 'Verification Pending'}</strong>
+              <p>{verificationStatus?.verified 
+                ? 'Your domain is verified and ready to send emails.' 
+                : 'Add the DNS records below and check verification status.'
+              }</p>
+              {verificationStatus?.dkimStatus && (
+                <span className="domain-dkim-status">DKIM: {verificationStatus.dkimStatus}</span>
+              )}
+            </div>
+          </div>
+          <button
+            className="domain-check-verification-btn"
+            onClick={handleCheckVerification}
+            disabled={checkingStatus}
+          >
+            <FiRefreshCw className={checkingStatus ? 'spinning' : ''} />
+            {checkingStatus ? 'Checking...' : 'Check Status'}
+          </button>
         </div>
-      )}
 
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        justifyContent: 'flex-end',
-        marginTop: '24px'
-      }}>
-        <button className="btn-secondary" onClick={() => setStep('addDomain')}>
-          Back
-        </button>
-        <button
-          className="btn-primary"
-          onClick={handleConfirmAndSave}
-          disabled={addingDomain}
-        >
-          {addingDomain ? 'Saving...' : 'Confirm & Save Domain'}
-        </button>
+        {/* Domain Name */}
+        <h2 className="domain-dns-domain-name">{newDomain}</h2>
+        <p className="domain-dns-subtitle">Add these 3 DKIM CNAME Records to Cloudflare</p>
+
+        {/* DKIM Records */}
+        {dkimRecords.length > 0 ? (
+          dkimRecords.map((record, index) => (
+            <div key={index} className="domain-dkim-record-card">
+              <div className="domain-dkim-record-header">
+                <strong>DKIM Record {index + 1}</strong>
+                <span className="domain-dkim-record-type">CNAME</span>
+              </div>
+              
+              <div className="domain-dkim-field">
+                <label>Name:</label>
+                <div className="domain-dns-record-box">
+                  <code className="domain-dns-record-value">
+                    {record.name.replace(`.${newDomain}`, '')}
+                  </code>
+                  <button
+                    className="domain-dns-copy-btn"
+                    onClick={() => copyToClipboard(record.name.replace(`.${newDomain}`, ''))}
+                  >
+                    <FiCopy />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="domain-dkim-field">
+                <label>Value:</label>
+                <div className="domain-dns-record-box">
+                  <code className="domain-dns-record-value">
+                    {record.value}
+                  </code>
+                  <button
+                    className="domain-dns-copy-btn"
+                    onClick={() => copyToClipboard(record.value)}
+                  >
+                    <FiCopy />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="domain-dns-important-box">
+            No DKIM records found. Please contact support.
+          </div>
+        )}
+
+        {/* SPF Record Info */}
+        <div className="domain-spf-reminder-box">
+          <strong>SPF Record (if not added yet):</strong>
+          <p>Type: TXT  |  Name: @ or {newDomain}</p>
+          <div className="domain-dns-record-box">
+            <code className="domain-dns-record-value">
+              v=spf1 mx include:amazonses.com ~all
+            </code>
+            <button
+              className="domain-dns-copy-btn"
+              onClick={() => copyToClipboard('v=spf1 mx include:amazonses.com ~all')}
+            >
+              <FiCopy />
+            </button>
+          </div>
+        </div>
+
+        {/* Info Note */}
+        <div className="domain-dns-info-box">
+          <strong>ℹ️ Info:</strong> DNS changes can take up to 72 hours to propagate. Use the "Check Status" button above to verify.
+        </div>
       </div>
     </div>
   );
@@ -424,39 +461,24 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
     <>
       {/* Toast Notification */}
       {toast.show && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          padding: '12px 20px',
-          background: toast.type === 'success' ? '#10b981' : '#ef4444',
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 10001,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
+        <div className={`domain-toast ${toast.type}`}>
           {toast.type === 'success' ? <FiCheck /> : <FiAlertCircle />}
           {toast.message}
         </div>
       )}
 
-      <div className="modal-overlay">
-        <div
-          className="modal-content"
-          style={{ maxWidth: '600px' }}
-        >
-          <div className="modal-header">
-            <h2>
-              <FiGlobe /> Domain Verification Setup
-            </h2>
-          </div>
-
+      <div className="modal-overlay domain-onboarding-modal">
+        <div className="modal-content">
+          {step === 'loading' && (
+            <div className="modal-body domain-loading-body">
+              <div className="domain-loading-spinner"></div>
+              <p>Checking domain status...</p>
+            </div>
+          )}
           {step === 'welcome' && renderWelcomeStep()}
           {step === 'addDomain' && renderAddDomainStep()}
           {step === 'dnsInstructions' && renderDNSInstructionsStep()}
+          {step === 'dkimRecords' && renderDKIMRecordsStep()}
         </div>
       </div>
     </>

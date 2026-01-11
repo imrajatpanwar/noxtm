@@ -604,9 +604,9 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </>
               )}
 
-              {/* Open Mail App - Redirects to mail.noxtm.com with auth token */}
+              {/* Open Mail App - Redirects to mail app with auth token */}
               <a
-                href="https://mail.noxtm.com"
+                href={process.env.REACT_APP_MAIL_URL || "https://mail.noxtm.com"}
                 onClick={(e) => {
                   e.preventDefault();
                   // Get token from localStorage
@@ -619,7 +619,8 @@ function Sidebar({ activeSection, onSectionChange }) {
 
                   // Pass token as URL parameter so mail app can use it immediately
                   // Cookie might take a moment to sync across subdomains
-                  const mailUrl = `https://mail.noxtm.com?auth_token=${encodeURIComponent(token)}`;
+                  const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
+                  const mailUrl = `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`;
 
                   // Open in new window/tab
                   const popupWindow = window.open(mailUrl, '_blank', 'noopener,noreferrer');
