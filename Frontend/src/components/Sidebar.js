@@ -604,7 +604,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </>
               )}
 
-              {/* Open Mail App - Redirects to mail app with auth token */}
+              {/* Open Mail App - Redirects to mail app with auth token in same tab */}
               <a
                 href={process.env.REACT_APP_MAIL_URL || "https://mail.noxtm.com"}
                 onClick={(e) => {
@@ -618,39 +618,20 @@ function Sidebar({ activeSection, onSectionChange }) {
                   }
 
                   // Pass token as URL parameter so mail app can use it immediately
-                  // Cookie might take a moment to sync across subdomains
                   const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
                   const mailUrl = `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`;
 
-                  // Open in new window/tab
-                  const popupWindow = window.open(mailUrl, '_blank', 'noopener,noreferrer');
-
-                  console.log('[MAIL] window.open() returned:', popupWindow);
+                  console.log('[MAIL] Opening mail app in same tab');
                   console.log('[MAIL] Token being passed:', token.substring(0, 20) + '...');
 
-                  // Immediate check for popup blocker
-                  if (!popupWindow) {
-                    console.error('[MAIL] ❌ Popup blocked - window.open returned null');
-                    alert('Popup was blocked by your browser. Opening mail app in current tab...');
-                    window.location.href = mailUrl;
-                    return;
-                  }
-
-                  // Delayed check (some browsers close popup after a moment)
-                  setTimeout(() => {
-                    if (popupWindow.closed) {
-                      console.warn('[MAIL] ⚠️  Popup was closed by browser');
-                    } else {
-                      console.log('[MAIL] ✅ Popup still open after 100ms');
-                    }
-                  }, 100);
+                  // Open in same tab
+                  window.location.href = mailUrl;
                 }}
                 className="Dash-noxtm-sidebar-item"
                 style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
               >
                 <FiMail className="sidebar-icon" />
                 <span>Open Mail App</span>
-                <FiExternalLink className="sidebar-icon" style={{ marginLeft: 'auto', fontSize: '14px' }} />
               </a>
 
               {!isSOLOHQUser && (
