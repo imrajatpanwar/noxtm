@@ -4,7 +4,7 @@ import {
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
   MdChevronLeft, MdChevronRight, MdLocalOffer, MdPeople,
   MdInfo, MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd, MdDownload
+  MdMaximize, MdPersonAdd, MdDownload, MdMail
 } from 'react-icons/md';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
@@ -33,6 +33,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
+  const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
   const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
@@ -504,6 +505,9 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         </div>
 
         <div className="mail-gmail-header-right">
+          <button className="mail-create-account-btn-header" onClick={() => setLoginMailModalOpen(true)}>
+            <MdMail /> Login Mail
+          </button>
           <button className="mail-create-account-btn-header" onClick={() => setCreateEmailModalOpen(true)}>
             <MdPersonAdd /> Create Email
           </button>
@@ -919,6 +923,28 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         onClose={() => setCreateEmailModalOpen(false)}
         onSuccess={handleCreateEmailSuccess}
       />
+
+      {/* Login Mail Modal */}
+      {loginMailModalOpen && (
+        <div className="modal-overlay" onClick={() => setLoginMailModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setLoginMailModalOpen(false)}>
+              <MdClose />
+            </button>
+            <EmailConnectionForm
+              onSuccess={(account) => {
+                console.log('[MainstreamInbox] External email connected:', account);
+                setLoginMailModalOpen(false);
+                // Refresh accounts list
+                fetchHostedAccounts();
+                // Auto-select the newly connected account
+                setSelectedAccount(account);
+              }}
+              onCancel={() => setLoginMailModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );
