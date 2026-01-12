@@ -20,7 +20,7 @@ const LoadingScreen = () => {
       <img
         src={mailLoadingGif}
         alt="Loading..."
-        style={{ width: '300px', height: '300px' }}
+        style={{ width: '600px', height: '600px' }}
       />
     </div>
   );
