@@ -505,9 +505,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         </div>
 
         <div className="mail-gmail-header-right">
-          <button className="mail-create-account-btn-header" onClick={() => setLoginMailModalOpen(true)}>
-            <MdMail /> Login Mail
-          </button>
           <button className="mail-create-account-btn-header" onClick={() => setCreateEmailModalOpen(true)}>
             <MdPersonAdd /> Create Email
           </button>
@@ -515,7 +512,19 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
             <select
               value={selectedAccount?._id || ''}
               onChange={(e) => {
-                const account = accounts.find(a => a._id === e.target.value);
+                const value = e.target.value;
+
+                // Check if "Login Mail" option was selected
+                if (value === '__login_mail__') {
+                  setLoginMailModalOpen(true);
+                  // Reset dropdown to current account after opening modal
+                  setTimeout(() => {
+                    e.target.value = selectedAccount?._id || '';
+                  }, 100);
+                  return;
+                }
+
+                const account = accounts.find(a => a._id === value);
                 setSelectedAccount(account);
                 setSelectedEmail(null);
                 setSelectedEmails(new Set());
@@ -529,6 +538,10 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                   {account.email}
                 </option>
               ))}
+              {/* Login Mail option at the bottom */}
+              <option value="__login_mail__" style={{ borderTop: '1px solid #ddd', marginTop: '5px', fontWeight: 'bold' }}>
+                + Login Mail
+              </option>
             </select>
           </div>
         </div>
