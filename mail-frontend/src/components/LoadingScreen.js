@@ -1,7 +1,7 @@
 import React from 'react';
 import mailLoadingGif from './images/mail_loding.gif';
 
-const LoadingScreen = ({ message = 'Loading Mail...' }) => {
+const LoadingScreen = () => {
   return (
     <div style={{
       display: 'flex',
@@ -9,7 +9,7 @@ const LoadingScreen = ({ message = 'Loading Mail...' }) => {
       alignItems: 'center',
       justifyContent: 'center',
       height: '100vh',
-      background: '#f5f5f5',
+      background: '#ffffff',
       position: 'fixed',
       top: 0,
       left: 0,
@@ -20,16 +20,8 @@ const LoadingScreen = ({ message = 'Loading Mail...' }) => {
       <img
         src={mailLoadingGif}
         alt="Loading..."
-        style={{ width: '150px', height: '150px' }}
+        style={{ width: '300px', height: '300px' }}
       />
-      <p style={{
-        marginTop: '20px',
-        fontSize: '16px',
-        color: '#666',
-        fontFamily: 'Switzer, sans-serif'
-      }}>
-        {message}
-      </p>
     </div>
   );
 };

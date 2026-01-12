@@ -60,7 +60,7 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
-    return <LoadingScreen message="Authenticating..." />;
+    return <LoadingScreen />;
   }
 
   return authenticated ? children : null;
