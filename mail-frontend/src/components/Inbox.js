@@ -23,22 +23,22 @@ function Inbox() {
   const [showDomainWizard, setShowDomainWizard] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
-  const [domainCheckComplete, setDomainCheckComplete] = useState(false); // NEW: Track if domain check is done
+
+  // NEW: Consolidated initialization state
+  const [initializationComplete, setInitializationComplete] = useState(false);
+  const [shouldShowDomainModal, setShouldShowDomainModal] = useState(false);
+  const [shouldShowInbox, setShouldShowInbox] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('[INBOX] Component mounted - Starting authentication flow...');
+    console.log('[INBOX] Component mounted - Starting consolidated initialization...');
 
     // Set loading flag to prevent API interceptor from redirecting during auth
     // This flag will stay true until ALL initialization is complete
     window.__NOXTM_AUTH_LOADING__ = true;
 
-    // NOTE: Token extraction from URL is now handled by ProtectedRoute
-    // We just need to verify it exists and load user profile
-
-    const loadUser = async () => {
-      console.log('[INBOX] Fetching user profile from /api/profile...');
-
+    const initializeApp = async () => {
       // Verify token exists (should be set by ProtectedRoute)
       const token = localStorage.getItem('token');
       console.log('[INBOX] Token exists:', token ? 'YES (length: ' + token.length + ')' : 'NO');
@@ -53,29 +53,64 @@ function Inbox() {
       // Retry logic - try up to 3 times with 1 second delay
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          // Check SSO cookie via /profile endpoint
-          const response = await api.get('/profile');
-          console.log('[INBOX] ✅ Profile fetch SUCCESS:', response.data);
-          setUser(response.data);
-          localStorage.setItem('user', JSON.stringify(response.data));
+          // STEP 1: Fetch user profile
+          console.log('[INBOX] Step 1/3: Fetching user profile from /api/profile...');
+          const userResponse = await api.get('/profile');
+          console.log('[INBOX] ✅ Profile fetch SUCCESS:', userResponse.data);
+          setUser(userResponse.data);
+          localStorage.setItem('user', JSON.stringify(userResponse.data));
 
-          // Check if user has a verified domain (skip for admins)
-          if (response.data.role !== 'Admin') {
-            console.log('[INBOX] User is not Admin, checking domain setup...');
-            await checkDomainSetup(); // Wait for domain check to complete
+          let needsDomain = false;
+
+          // STEP 2: Check domain setup (skip for admins)
+          if (userResponse.data.role !== 'Admin') {
+            console.log('[INBOX] Step 2/3: User is not Admin, checking domain setup...');
+            try {
+              const domainResponse = await api.get('/user-domains/count');
+              console.log('[INBOX] ✅ User domains count response:', domainResponse.data);
+              needsDomain = !domainResponse.data.hasVerifiedDomain;
+
+              if (needsDomain) {
+                console.log('[INBOX] ⚠️  No verified domain found');
+              } else {
+                console.log('[INBOX] ✅ User has verified domain');
+              }
+            } catch (domainErr) {
+              console.error('[INBOX] ❌ Error checking domain setup:', domainErr);
+              // On error, assume domain setup needed
+              needsDomain = true;
+            }
           } else {
-            console.log('[INBOX] User is Admin - bypassing domain verification requirement');
-            setHasVerifiedDomain(true); // Admins bypass domain requirement
-            setDomainCheckComplete(true); // CRITICAL: Mark as complete for admins
+            console.log('[INBOX] Step 2/3: User is Admin - bypassing domain verification');
           }
+
+          // STEP 3: Decide what to show (don't render yet)
+          console.log('[INBOX] Step 3/3: Determining which screen to show...');
+          if (needsDomain) {
+            console.log('[INBOX] → Will show domain onboarding modal');
+            setShouldShowDomainModal(true);
+            setShouldShowInbox(false);
+            setHasVerifiedDomain(false);
+            setShowOnboardingModal(true);
+          } else {
+            console.log('[INBOX] → Will show inbox');
+            setShouldShowDomainModal(false);
+            setShouldShowInbox(true);
+            setHasVerifiedDomain(true);
+            setShowOnboardingModal(false);
+          }
+
+          // STEP 4: Mark initialization complete
+          console.log('[INBOX] ✅ All initialization complete - ready to render');
+          setInitializationComplete(true);
 
           // CRITICAL: Only clear loading flag AFTER everything is complete
           window.__NOXTM_AUTH_LOADING__ = false;
-          console.log('[INBOX] ✅ Authentication flow complete, clearing loading flag');
+          console.log('[INBOX] ✅ Clearing loading flag');
 
           return; // Success - exit function
         } catch (err) {
-          console.error(`[INBOX] ❌ Profile fetch attempt ${attempt} FAILED:`, err);
+          console.error(`[INBOX] ❌ Initialization attempt ${attempt} FAILED:`, err);
           console.error('[INBOX] Error status:', err.response?.status);
           console.error('[INBOX] Error message:', err.response?.data);
 
@@ -86,22 +121,22 @@ function Inbox() {
             console.log('[INBOX] All retry attempts failed, redirecting to login:', MAIL_LOGIN_URL);
             // Clear loading flag before redirect
             window.__NOXTM_AUTH_LOADING__ = false;
-            // No SSO session after all retries, redirect to main app login with redirect parameter
+            // No SSO session after all retries, redirect to main app login
             window.location.href = MAIL_LOGIN_URL;
           }
         }
       }
     };
 
-    // Start loading user immediately (ProtectedRoute already extracted token)
-    loadUser().catch((err) => {
-      console.error('[INBOX] Fatal error in loadUser:', err);
+    // Start initialization
+    initializeApp().catch((err) => {
+      console.error('[INBOX] Fatal error in initializeApp:', err);
       window.__NOXTM_AUTH_LOADING__ = false;
     });
   }, [navigate]);
 
-  const checkDomainSetup = async (retryCount = 0) => {
-    console.log(`[INBOX] Checking domain setup via /api/user-domains/count... (attempt ${retryCount + 1})`);
+  const recheckDomainSetup = async () => {
+    console.log('[INBOX] Rechecking domain setup after user added domain...');
     try {
       const response = await api.get('/user-domains/count');
       console.log('[INBOX] ✅ User domains count response:', response.data);
@@ -109,36 +144,16 @@ function Inbox() {
       const hasVerified = response.data.hasVerifiedDomain;
 
       if (hasVerified) {
-        console.log('[INBOX] ✅ User has verified domain');
+        console.log('[INBOX] ✅ User now has verified domain - showing inbox');
         setHasVerifiedDomain(true);
         setShowOnboardingModal(false);
+        setShouldShowDomainModal(false);
+        setShouldShowInbox(true);
       } else {
-        console.log('[INBOX] ⚠️  No verified domain found - SHOWING ONBOARDING MODAL');
-
-        // No verified domain - show onboarding modal
-        setHasVerifiedDomain(false);
-        setShowOnboardingModal(true);
+        console.log('[INBOX] ⚠️  Still no verified domain');
       }
-
-      // Mark domain check as complete
-      setDomainCheckComplete(true);
     } catch (err) {
-      console.error('[INBOX] ❌ Error checking domain setup:', err);
-      console.error('[INBOX] Error status:', err.response?.status);
-      console.error('[INBOX] Error message:', err.response?.data);
-
-      // If 401 and we haven't retried yet, try one more time after delay
-      if (err.response?.status === 401 && retryCount === 0) {
-        console.log('[INBOX] 401 error, retrying domain check in 1 second...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return checkDomainSetup(1); // Retry once with retryCount = 1
-      }
-
-      // If still failing or not a 401, show modal anyway (user needs to set up domain)
-      console.log('[INBOX] Error checking domains - showing onboarding modal');
-      setHasVerifiedDomain(false);
-      setShowOnboardingModal(true);
-      setDomainCheckComplete(true);
+      console.error('[INBOX] ❌ Error rechecking domain setup:', err);
     }
   };
 
@@ -169,19 +184,10 @@ function Inbox() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  // CRITICAL: Wait for domain check to complete before rendering anything
-  // This prevents MainstreamInbox from mounting and making API calls before we know if wizard should show
-  if (!domainCheckComplete) {
-    return <LoadingScreen message="Checking domain setup..." />;
+  // CRITICAL: Show ONLY loading screen until ALL initialization is complete
+  // This prevents any intermediate screens from flashing
+  if (!initializationComplete || !user) {
+    return <LoadingScreen />;
   }
 
   // Show domain setup wizard if user doesn't have a verified domain
@@ -307,7 +313,7 @@ function Inbox() {
           onClose={() => setShowOnboardingModal(false)}
           onDomainAdded={() => {
             setShowOnboardingModal(false);
-            checkDomainSetup();
+            recheckDomainSetup();
           }}
           userRole={user?.role}
         />
