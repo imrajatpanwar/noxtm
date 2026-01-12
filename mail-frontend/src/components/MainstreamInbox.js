@@ -22,6 +22,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [accountsLoading, setAccountsLoading] = useState(true); // NEW: Track initial account fetch
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +73,8 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   }, [user]);
 
   const fetchHostedAccounts = async () => {
+    console.log('[MAINSTREAM_INBOX] Starting account fetch...');
+    setAccountsLoading(true); // Set loading state
     try {
       // Fetch both owned accounts and connected accounts
       const [ownedResponse, connectedResponse] = await Promise.all([
@@ -127,6 +130,9 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
     } catch (error) {
       console.error('Error fetching accounts:', error);
       setAccounts([]);
+    } finally {
+      console.log('[MAINSTREAM_INBOX] Account fetch complete');
+      setAccountsLoading(false); // Clear loading state
     }
   };
 
@@ -745,7 +751,13 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
             </div>
           ) : !selectedAccount ? (
             <div className="empty-state">
-              {accounts.length === 0 ? (
+              {accountsLoading ? (
+                // Show loading state while fetching accounts - prevents form flash
+                <div className="loading-state">
+                  <div className="spinner"></div>
+                  <p>Loading accounts...</p>
+                </div>
+              ) : accounts.length === 0 ? (
                 // Check if user is a workspace member
                 currentUser?.companyId ? (
                   <div className="empty-state-connect">
