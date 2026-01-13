@@ -28,6 +28,7 @@ function Inbox() {
   const [initializationComplete, setInitializationComplete] = useState(false);
   const [shouldShowDomainModal, setShouldShowDomainModal] = useState(false);
   const [shouldShowInbox, setShouldShowInbox] = useState(false);
+  const [inboxDataLoaded, setInboxDataLoaded] = useState(false); // NEW: Track if MainstreamInbox has loaded accounts and emails
 
   const navigate = useNavigate();
 
@@ -184,9 +185,9 @@ function Inbox() {
     }
   };
 
-  // CRITICAL: Show ONLY loading screen until ALL initialization is complete
+  // CRITICAL: Show ONLY loading screen until ALL initialization AND inbox data loading is complete
   // This prevents any intermediate screens from flashing
-  if (!initializationComplete || !user) {
+  if (!initializationComplete || !user || (shouldShowInbox && !inboxDataLoaded)) {
     return <LoadingScreen />;
   }
 
@@ -296,7 +297,16 @@ function Inbox() {
 
       {/* Main Content */}
       <div className="mail-inbox-content">
-        {activeView === 'personal' && <MainstreamInbox user={user} onNavigateToDomains={() => setActiveView('domains')} />}
+        {activeView === 'personal' && (
+          <MainstreamInbox
+            user={user}
+            onNavigateToDomains={() => setActiveView('domains')}
+            onInitialLoadComplete={() => {
+              console.log('[INBOX] MainstreamInbox initial load complete');
+              setInboxDataLoaded(true);
+            }}
+          />
+        )}
         {activeView === 'analytics' && <AnalyticsDashboard />}
         {activeView === 'sla' && <SLAMonitor />}
         {activeView === 'templates' && <TemplateManager />}
