@@ -137,13 +137,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
         }
       }
 
-      // IMPORTANT: Notify parent immediately after selecting first account
-      // This shows the interface faster - emails will load in background
-      if (allAccounts.length > 0 && onInitialLoadComplete && !initialEmailsLoaded) {
-        console.log('[MAINSTREAM_INBOX] First account selected - notifying parent to show interface');
-        setInitialEmailsLoaded(true);
-        onInitialLoadComplete();
-      }
+      // NOTE: We will notify parent AFTER emails are loaded (in fetchEmails function)
+      // This ensures inbox appears with emails already visible
     } catch (error) {
       console.error('Error fetching accounts:', error);
       setAccounts([]);
@@ -203,8 +198,14 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
 
       console.log('Set emails state with', fetchedEmails.length, 'emails');
 
-      // NOTE: We already notified parent in fetchHostedAccounts after selecting first account
-      // Emails load in background while interface is already visible
+      // Mark initial load complete and notify parent
+      if (!initialEmailsLoaded) {
+        console.log('[MAINSTREAM_INBOX] Initial emails loaded - notifying parent');
+        setInitialEmailsLoaded(true);
+        if (onInitialLoadComplete) {
+          onInitialLoadComplete();
+        }
+      }
     } catch (error) {
       console.error('Error fetching emails:', error);
       console.error('Error response:', error.response?.data);
@@ -224,7 +225,14 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
 
       setEmails([]);
 
-      // NOTE: Interface is already showing, just display the error message
+      // Even if there's an error, mark as loaded to show the interface
+      if (!initialEmailsLoaded) {
+        console.log('[MAINSTREAM_INBOX] Initial load complete (with error) - notifying parent');
+        setInitialEmailsLoaded(true);
+        if (onInitialLoadComplete) {
+          onInitialLoadComplete();
+        }
+      }
     } finally {
       setLoading(false);
     }
