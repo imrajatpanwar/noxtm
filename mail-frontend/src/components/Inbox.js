@@ -93,12 +93,15 @@ function Inbox() {
             setShouldShowInbox(false);
             setHasVerifiedDomain(false);
             setShowOnboardingModal(true);
+            // Mark inbox data as loaded since we're not showing inbox
+            setInboxDataLoaded(true);
           } else {
             console.log('[INBOX] → Will show inbox');
             setShouldShowDomainModal(false);
             setShouldShowInbox(true);
             setHasVerifiedDomain(true);
             setShowOnboardingModal(false);
+            // Inbox data will be loaded by MainstreamInbox callback
           }
 
           // STEP 4: Mark initialization complete
