@@ -15,7 +15,7 @@ import IconButton from './ui/IconButton';
 import Tab from './ui/Tab';
 import './MainstreamInbox.css';
 
-function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {  // Receive user, navigation callback, and load callback as props from parent (Inbox)
+function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and navigation callback as props from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('primary'); // 'primary' | 'promotions' | 'social' | 'updates' | 'sent' | 'settings'
@@ -23,7 +23,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(true); // NEW: Track initial account fetch
-  const [initialEmailsLoaded, setInitialEmailsLoaded] = useState(false); // NEW: Track initial email fetch
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -128,26 +127,10 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
       } else if (allAccounts.length > 0) {
         // No auto-switch, select first account (already sorted by verified domain priority)
         setSelectedAccount(allAccounts[0]);
-      } else {
-        // No accounts found - notify parent that load is complete
-        console.log('[MAINSTREAM_INBOX] No accounts found - notifying parent load complete');
-        if (onInitialLoadComplete && !initialEmailsLoaded) {
-          setInitialEmailsLoaded(true);
-          onInitialLoadComplete();
-        }
       }
-
-      // NOTE: We will notify parent AFTER emails are loaded (in fetchEmails function)
-      // This ensures inbox appears with emails already visible
     } catch (error) {
       console.error('Error fetching accounts:', error);
       setAccounts([]);
-      // On error, also notify parent that load is complete
-      if (onInitialLoadComplete && !initialEmailsLoaded) {
-        console.log('[MAINSTREAM_INBOX] Account fetch error - notifying parent load complete');
-        setInitialEmailsLoaded(true);
-        onInitialLoadComplete();
-      }
     } finally {
       console.log('[MAINSTREAM_INBOX] Account fetch complete');
       setAccountsLoading(false); // Clear loading state
@@ -197,15 +180,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
       setTotalEmails(total);
 
       console.log('Set emails state with', fetchedEmails.length, 'emails');
-
-      // Mark initial load complete and notify parent
-      if (!initialEmailsLoaded) {
-        console.log('[MAINSTREAM_INBOX] Initial emails loaded - notifying parent');
-        setInitialEmailsLoaded(true);
-        if (onInitialLoadComplete) {
-          onInitialLoadComplete();
-        }
-      }
     } catch (error) {
       console.error('Error fetching emails:', error);
       console.error('Error response:', error.response?.data);
@@ -224,15 +198,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onInitialLoadComplete }) {
       }
 
       setEmails([]);
-
-      // Even if there's an error, mark as loaded to show the interface
-      if (!initialEmailsLoaded) {
-        console.log('[MAINSTREAM_INBOX] Initial load complete (with error) - notifying parent');
-        setInitialEmailsLoaded(true);
-        if (onInitialLoadComplete) {
-          onInitialLoadComplete();
-        }
-      }
     } finally {
       setLoading(false);
     }

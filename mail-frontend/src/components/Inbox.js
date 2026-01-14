@@ -28,7 +28,6 @@ function Inbox() {
   const [initializationComplete, setInitializationComplete] = useState(false);
   const [shouldShowDomainModal, setShouldShowDomainModal] = useState(false);
   const [shouldShowInbox, setShouldShowInbox] = useState(false);
-  const [inboxDataLoaded, setInboxDataLoaded] = useState(false); // NEW: Track if MainstreamInbox has loaded accounts and emails
 
   const navigate = useNavigate();
 
@@ -93,15 +92,12 @@ function Inbox() {
             setShouldShowInbox(false);
             setHasVerifiedDomain(false);
             setShowOnboardingModal(true);
-            // Mark inbox data as loaded since we're not showing inbox
-            setInboxDataLoaded(true);
           } else {
             console.log('[INBOX] → Will show inbox');
             setShouldShowDomainModal(false);
             setShouldShowInbox(true);
             setHasVerifiedDomain(true);
             setShowOnboardingModal(false);
-            // Inbox data will be loaded by MainstreamInbox callback
           }
 
           // STEP 4: Mark initialization complete
@@ -188,9 +184,9 @@ function Inbox() {
     }
   };
 
-  // CRITICAL: Show ONLY loading screen until ALL initialization AND inbox data loading is complete
-  // This prevents any intermediate screens from flashing
-  if (!initializationComplete || !user || (shouldShowInbox && !inboxDataLoaded)) {
+  // Show loading screen only during auth and profile initialization
+  // Accounts and emails will load progressively after inbox renders
+  if (!initializationComplete || !user) {
     return <LoadingScreen />;
   }
 
@@ -304,10 +300,6 @@ function Inbox() {
           <MainstreamInbox
             user={user}
             onNavigateToDomains={() => setActiveView('domains')}
-            onInitialLoadComplete={() => {
-              console.log('[INBOX] MainstreamInbox initial load complete');
-              setInboxDataLoaded(true);
-            }}
           />
         )}
         {activeView === 'analytics' && <AnalyticsDashboard />}
