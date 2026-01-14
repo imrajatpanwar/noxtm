@@ -392,8 +392,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             const startTime = Date.now();
             
             // Fetch by UID instead of sequence number
+            // Include TEXT body preview (first 200 chars) for email preview
             const fetch = imap.fetch(targetUIDs, {
-              bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],
+              bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT'],
               struct: true
             });
 
@@ -418,23 +419,38 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                   buffer += chunk.toString('utf8');
                 });
                 stream.once('end', () => {
-                  // Parse only essential header fields
-                  const header = Imap.parseHeader(buffer);
-                  emailData.from = header.from ? header.from[0] : null;
-                  emailData.to = header.to || [];
-                  emailData.subject = header.subject ? header.subject[0] : '';
-                  emailData.date = header.date ? header.date[0] : null;
+                  // Check if this is header or body text
+                  if (info.which === 'TEXT') {
+                    // This is the email body - extract preview
+                    // Strip HTML tags and get first 150 characters
+                    const textPreview = buffer
+                      .replace(/<[^>]*>/g, '') // Remove HTML tags
+                      .replace(/\s+/g, ' ') // Normalize whitespace
+                      .trim()
+                      .substring(0, 150);
+                    emailData.preview = textPreview || 'No preview available';
+                  } else {
+                    // Parse header fields
+                    const header = Imap.parseHeader(buffer);
+                    emailData.from = header.from ? header.from[0] : null;
+                    emailData.to = header.to || [];
+                    emailData.subject = header.subject ? header.subject[0] : '';
+                    emailData.date = header.date ? header.date[0] : null;
+                  }
                 });
               });
 
               msg.once('attributes', (attrs) => {
                 emailData.uid = attrs.uid;
                 emailData.seen = attrs.flags.includes('\\Seen');
-                
-                // Generate preview from BODYSTRUCTURE
+
+                // Check for attachments from BODYSTRUCTURE
                 if (attrs.struct) {
-                  emailData.preview = extractPreviewFromStructure(attrs.struct);
                   emailData.hasAttachments = checkForAttachments(attrs.struct);
+                  // Only set preview from struct if we don't have one from TEXT body
+                  if (!emailData.preview || emailData.preview === '') {
+                    emailData.preview = extractPreviewFromStructure(attrs.struct);
+                  }
                 }
               });
 
