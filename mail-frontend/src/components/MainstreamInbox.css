@@ -414,12 +414,12 @@
 
 .gmail-email-item.unread .mail-email-sender-gmail {
   color: #131313;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .gmail-email-item.unread .mail-email-subject-gmail {
   color: #676767;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .email-checkbox {
