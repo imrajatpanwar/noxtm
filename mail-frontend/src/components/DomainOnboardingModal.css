@@ -1,0 +1,667 @@
+/* DomainOnboardingModal Styles */
+
+.domain-onboarding-modal {
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-onboarding-modal .modal-content {
+  max-width: 600px;
+  font-family: 'Switzer', sans-serif;
+  overflow: hidden;
+}
+
+.domain-onboarding-modal .modal-content::-webkit-scrollbar {
+  display: none;
+}
+
+.domain-onboarding-modal .modal-body {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.domain-onboarding-modal .modal-body::-webkit-scrollbar {
+  display: none;
+}
+
+/* Step Transition Animations */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.domain-slide-in {
+  animation: slideInFromRight 0.3s ease forwards;
+}
+
+.domain-slide-in-reverse {
+  animation: slideInFromLeft 0.3s ease forwards;
+}
+
+/* Welcome Step */
+.domain-welcome-body {
+  padding: 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-welcome-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 19px 16px;
+  border-bottom: none;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+  margin-bottom: 0;
+}
+
+.domain-header-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+  width: 100%;
+}
+
+.domain-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-back-btn:hover {
+  background: #f5f5f5;
+}
+
+.domain-title-section {
+  text-align: right;
+}
+
+.domain-title {
+  font-size: 20px;
+  margin-bottom: 1px;
+  color: #1a1a1a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-title-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.domain-subtitle {
+  color: #666;
+  font-size: 12px;
+  margin: 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+/* Main Content */
+.domain-main-content {
+  padding: 24px;
+}
+
+.domain-requirements-title {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: #1a1a1a;
+  font-weight: 600;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-requirements-list {
+  margin: 0 0 24px 0;
+  padding-left: 24px;
+  color: #333;
+  line-height: 2;
+  font-size: 15px;
+}
+
+.domain-note-box {
+  padding: 16px 20px;
+  background: #fef2f2;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #991b1b;
+  margin-bottom: 24px;
+  border: 1px solid #fecaca;
+}
+
+.domain-note-box strong {
+  color: #991b1b;
+}
+
+.domain-action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.domain-setup-btn {
+  padding: 12px 24px;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-setup-btn:hover {
+  background: #333;
+}
+
+/* Add Domain Step */
+.domain-add-body {
+  padding: 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-add-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 19px 16px;
+  border-bottom: none;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+  margin-bottom: 0;
+}
+
+.domain-return-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-return-btn:hover {
+  background: #f5f5f5;
+}
+
+/* Done button style when verified */
+.domain-return-btn.domain-done-btn {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981;
+}
+
+.domain-return-btn.domain-done-btn:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.domain-add-content {
+  padding: 24px;
+  background: #f8f9fa;
+}
+
+.domain-form-label {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  display: block;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-form-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Switzer', sans-serif;
+  box-sizing: border-box;
+}
+
+.domain-form-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.domain-form-input::placeholder {
+  color: #999;
+}
+
+.domain-form-helper {
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+  display: block;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-error-box {
+  padding: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.domain-view-dns-btn {
+  padding: 12px 24px;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-view-dns-btn:hover {
+  background: #333;
+}
+
+/* DNS Instructions Step */
+.domain-dns-body {
+  padding: 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-dns-content {
+  padding: 24px;
+  background: #fff;
+}
+
+.domain-dns-domain-name {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-dns-subtitle {
+  font-size: 14px;
+  color: #888;
+  margin: 0 0 20px 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-dns-type-info {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 12px 0;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-dns-record-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.domain-dns-record-value {
+  font-size: 15px;
+  color: #1a1a1a;
+  font-family: 'Switzer', sans-serif;
+  word-break: break-all;
+}
+
+.domain-dns-copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.domain-dns-copy-btn:hover {
+  color: #667eea;
+}
+
+.domain-dns-important-box {
+  padding: 16px 20px;
+  background: #e0f2fe;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0369a1;
+  line-height: 1.5;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-dns-important-box strong {
+  color: #0369a1;
+}
+
+.domain-confirm-btn {
+  padding: 12px 24px;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-confirm-btn:hover {
+  background: #333;
+}
+
+.domain-confirm-btn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* DKIM Records Step */
+.domain-dkim-record-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.domain-dkim-record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.domain-dkim-record-header strong {
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.domain-dkim-record-type {
+  background: #667eea;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.domain-dkim-field {
+  margin-bottom: 10px;
+}
+
+.domain-dkim-field label {
+  font-size: 12px;
+  color: #666;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.domain-dkim-field .domain-dns-record-box {
+  margin-bottom: 0;
+}
+
+.domain-dns-success-box {
+  padding: 16px 20px;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #065f46;
+  line-height: 1.5;
+  font-family: 'Switzer', sans-serif;
+  margin-top: 16px;
+}
+
+.domain-dns-success-box strong {
+  color: #065f46;
+}
+
+/* Toast Notification */
+.domain-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.domain-toast.success {
+  background: #10b981;
+}
+
+.domain-toast.error {
+  background: #ef4444;
+}
+
+.domain-toast.info {
+  background: #3b82f6;
+}
+
+/* Loading State */
+.domain-loading-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-loading-body p {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+.domain-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Verification Status Box */
+.domain-verification-status-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-verification-status-box.verified {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+.domain-verification-status-box.pending {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.domain-verification-status-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.domain-verification-status-icon {
+  font-size: 24px;
+  margin-top: 2px;
+}
+
+.domain-verification-status-box.verified .domain-verification-status-icon {
+  color: #059669;
+}
+
+.domain-verification-status-box.pending .domain-verification-status-icon {
+  color: #d97706;
+}
+
+.domain-verification-status-info strong {
+  font-size: 15px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.domain-verification-status-box.verified .domain-verification-status-info strong {
+  color: #065f46;
+}
+
+.domain-verification-status-box.pending .domain-verification-status-info strong {
+  color: #92400e;
+}
+
+.domain-verification-status-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.domain-dkim-status {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.domain-check-verification-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Switzer', sans-serif;
+  white-space: nowrap;
+}
+
+.domain-check-verification-btn:hover {
+  background: #5a6fd6;
+}
+
+.domain-check-verification-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.domain-check-verification-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* SPF Reminder Box */
+.domain-spf-reminder-box {
+  padding: 16px 20px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 16px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.domain-spf-reminder-box strong {
+  color: #374151;
+}
+
+.domain-spf-reminder-box p {
+  margin: 8px 0 12px 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.domain-spf-reminder-box .domain-dns-record-box {
+  margin-bottom: 0;
+}
+
+/* Info Box */
+.domain-dns-info-box {
+  padding: 16px 20px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e40af;
+  line-height: 1.5;
+  font-family: 'Switzer', sans-serif;
+  margin-top: 16px;
+}
+
+.domain-dns-info-box strong {
+  color: #1e40af;
+}
