@@ -4,7 +4,7 @@ import {
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
   MdChevronLeft, MdChevronRight, MdLocalOffer, MdPeople,
   MdInfo, MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd, MdDownload, MdMail
+  MdMaximize, MdPersonAdd, MdDownload, MdMail, MdArrowDropDown
 } from 'react-icons/md';
 import api from '../config/api';
 import CreateEmailModal from './CreateEmailModal';
@@ -43,6 +43,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [selectedEmails, setSelectedEmails] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [starredEmails, setStarredEmails] = useState(new Set());
+  const [selectDropdownOpen, setSelectDropdownOpen] = useState(false);
 
   // Fetch hosted email accounts - only after user is ready
   useEffect(() => {
@@ -550,32 +551,93 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       <div className="mail-gmail-tabs">
         {activeTab !== 'settings' && (
           <>
-            <Checkbox
-              checked={selectAll}
-              indeterminate={selectedEmails.size > 0 && selectedEmails.size < emails.length}
-              onChange={handleSelectAllChange}
-            />
-            <select
-              className="mail-gmail-select-dropdown"
-              value=""
-              onChange={(e) => handleSelectOption(e.target.value)}
-              style={{ marginRight: '8px' }}
-            >
-              <option value="" disabled>Select...</option>
-              <option value="all">All</option>
-              <option value="none">None</option>
-              <option value="read">Read</option>
-              <option value="unread">Unread</option>
-              <option value="starred">Starred</option>
-            </select>
-            <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
-            <IconButton icon={MdMoreVert} title="More options" />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Checkbox
+                checked={selectAll}
+                indeterminate={selectedEmails.size > 0 && selectedEmails.size < emails.length}
+                onChange={handleSelectAllChange}
+              />
+              <button
+                onClick={() => setSelectDropdownOpen(!selectDropdownOpen)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#5f6368'
+                }}
+              >
+                <MdArrowDropDown size={20} />
+              </button>
+              {selectDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    backgroundColor: 'white',
+                    border: '1px solid #dadce0',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    zIndex: 1000,
+                    minWidth: '120px',
+                    marginTop: '4px'
+                  }}
+                >
+                  <div
+                    onClick={() => { handleSelectOption('all'); setSelectDropdownOpen(false); }}
+                    style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    All
+                  </div>
+                  <div
+                    onClick={() => { handleSelectOption('none'); setSelectDropdownOpen(false); }}
+                    style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    None
+                  </div>
+                  <div
+                    onClick={() => { handleSelectOption('read'); setSelectDropdownOpen(false); }}
+                    style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    Read
+                  </div>
+                  <div
+                    onClick={() => { handleSelectOption('unread'); setSelectDropdownOpen(false); }}
+                    style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    Unread
+                  </div>
+                  <div
+                    onClick={() => { handleSelectOption('starred'); setSelectDropdownOpen(false); }}
+                    style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    Starred
+                  </div>
+                </div>
+              )}
+            </div>
             {selectedEmails.size > 0 && (
-              <>
-                <div className="mail-toolbar-divider"></div>
-                <IconButton icon={MdArchive} onClick={handleBulkArchive} title="Archive" />
-                <IconButton icon={MdDelete} onClick={handleBulkDelete} title="Delete" />
-              </>
+              <div style={{
+                fontSize: '13px',
+                color: '#5f6368',
+                marginLeft: '8px',
+                marginRight: '8px'
+              }}>
+                {selectedEmails.size} selected
+              </div>
             )}
           </>
         )}
@@ -597,23 +659,37 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           active={activeTab === 'settings'}
           onClick={() => handleTabChange('settings')}
         />
-        {activeTab !== 'settings' && totalEmails > 0 && (
+        {activeTab !== 'settings' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="email-count">
-              {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
-            </span>
-            <IconButton
-              icon={MdChevronLeft}
-              onClick={() => setCurrentPage(p => p - 1)}
-              disabled={currentPage === 1}
-              title="Newer"
-            />
-            <IconButton
-              icon={MdChevronRight}
-              onClick={() => setCurrentPage(p => p + 1)}
-              disabled={currentPage * emailsPerPage >= totalEmails}
-              title="Older"
-            />
+            <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
+            <IconButton icon={MdMoreVert} title="More options" />
+            {selectedEmails.size > 0 && (
+              <>
+                <div className="mail-toolbar-divider"></div>
+                <IconButton icon={MdArchive} onClick={handleBulkArchive} title="Archive" />
+                <IconButton icon={MdDelete} onClick={handleBulkDelete} title="Delete" />
+              </>
+            )}
+            {totalEmails > 0 && (
+              <>
+                <div className="mail-toolbar-divider"></div>
+                <span className="email-count">
+                  {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
+                </span>
+                <IconButton
+                  icon={MdChevronLeft}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  title="Newer"
+                />
+                <IconButton
+                  icon={MdChevronRight}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage * emailsPerPage >= totalEmails}
+                  title="Older"
+                />
+              </>
+            )}
           </div>
         )}
       </div>
