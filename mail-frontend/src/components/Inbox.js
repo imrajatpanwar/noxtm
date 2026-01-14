@@ -205,11 +205,7 @@ function Inbox() {
       {/* Sidebar */}
       <div className="mail-inbox-sidebar">
         <div className="sidebar-header">
-          <h1>Mail</h1>
-          <div className="user-info">
-            <p className="user-name">{user.fullName}</p>
-            <p className="user-email">{user.email}</p>
-          </div>
+          <h1>Noxtm Mail</h1>
         </div>
 
         <nav className="sidebar-nav">
