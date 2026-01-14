@@ -202,8 +202,100 @@ function Inbox() {
 
   return (
     <div className="mail-inbox-container">
-      {/* Main Content - Sidebar removed */}
-      <div className="mail-inbox-content" style={{ marginLeft: 0, width: '100%' }}>
+      {/* Sidebar */}
+      <div className="mail-inbox-sidebar">
+        <div className="sidebar-header">
+          <h1>Mail</h1>
+          <div className="user-info">
+            <p className="user-name">{user.fullName}</p>
+            <p className="user-email">{user.email}</p>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <button
+            className={`nav-item ${activeView === 'personal' ? 'active' : ''}`}
+            onClick={() => setActiveView('personal')}
+          >
+            <FiMail /> Personal Inbox
+          </button>
+
+          <div className="nav-divider"></div>
+
+          <button
+            className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
+            onClick={() => setActiveView('analytics')}
+          >
+            <FiBarChart2 /> Analytics
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'sla' ? 'active' : ''}`}
+            onClick={() => setActiveView('sla')}
+          >
+            <FiClock /> SLA Monitor
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'templates' ? 'active' : ''}`}
+            onClick={() => setActiveView('templates')}
+          >
+            <FiSend /> Templates
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'rules' ? 'active' : ''}`}
+            onClick={() => setActiveView('rules')}
+          >
+            <FiSettings /> Assignment Rules
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'domains' ? 'active' : ''}`}
+            onClick={() => setActiveView('domains')}
+          >
+            <FiMail /> Domain Management
+          </button>
+
+          <div className="nav-divider"></div>
+
+          <button
+            className={`nav-item ${activeView === 'create-campaign' ? 'active' : ''}`}
+            onClick={() => setActiveView('create-campaign')}
+          >
+            <FiSend /> Create Campaign Email
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'import-mail' ? 'active' : ''}`}
+            onClick={() => setActiveView('import-mail')}
+          >
+            <FiUpload /> Import Mail
+          </button>
+
+          <button
+            className={`nav-item ${activeView === 'campaign-analytics' ? 'active' : ''}`}
+            onClick={() => setActiveView('campaign-analytics')}
+          >
+            <FiBarChart2 /> Campaign Analytics
+          </button>
+
+          <div className="nav-divider"></div>
+
+          <button className="nav-item logout-btn" onClick={handleLogout}>
+            <FiLogOut /> Sign Out
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <a href={getMainAppUrl()} target="_blank" rel="noopener noreferrer">
+            Back to Dashboard
+          </a>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="mail-inbox-content">
         {activeView === 'personal' && (
           <MainstreamInbox
             user={user}
