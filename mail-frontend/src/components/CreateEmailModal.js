@@ -159,7 +159,7 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {/* Domain Selector */}
+          {/* Domain Display - Fixed, no dropdown */}
           <div className="form-group">
             <label htmlFor="domain">
               <FiMail /> Domain
@@ -167,25 +167,20 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
             {loadingDomains ? (
               <p style={{ fontSize: '14px', color: '#666' }}>Loading verified domains...</p>
             ) : verifiedDomains.length > 0 ? (
-              <select
-                id="domain"
-                value={selectedDomain}
-                onChange={(e) => setSelectedDomain(e.target.value)}
-                disabled={loading}
+              <div
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '10px 15px',
                   borderRadius: '5px',
-                  border: '1px solid #ddd',
-                  fontSize: '14px'
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: '#f8f9fa',
+                  fontSize: '14px',
+                  color: '#333',
+                  fontWeight: '500'
                 }}
               >
-                {verifiedDomains.map(domain => (
-                  <option key={domain} value={domain}>
-                    @{domain}
-                  </option>
-                ))}
-              </select>
+                @{selectedDomain}
+              </div>
             ) : (
               <div style={{ padding: '15px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '5px', marginBottom: '10px' }}>
                 <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#856404', fontWeight: '600' }}>
