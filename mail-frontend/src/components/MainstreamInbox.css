@@ -37,7 +37,7 @@
   font-weight: 400;
   color: #202124;
   margin: 0;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mail-gmail-search-box {
@@ -70,7 +70,7 @@
   outline: none;
   font-size: 16px;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mail-gmail-search-box input::placeholder {
@@ -87,7 +87,7 @@
   border-radius: 4px;
   color: #5f6368;
   font-size: 14px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -136,7 +136,7 @@
   color: #202124;
   cursor: pointer;
   outline: none;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   border-radius: 4px;
 }
 
@@ -147,7 +147,7 @@
 .email-count {
   font-size: 14px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .select-dropdown {
@@ -163,7 +163,7 @@
   cursor: pointer;
   appearance: none;
   outline: none;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .select-dropdown select:hover {
@@ -230,7 +230,7 @@
   outline: none;
   font-size: 16px;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .search-box-gmail input::placeholder {
@@ -252,7 +252,7 @@
   appearance: none;
   outline: none;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mail-account-dropdown-gmail select:hover {
@@ -317,7 +317,7 @@
   font-size: 20px;
   font-weight: 400;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mail-detail-actions-gmail {
@@ -474,7 +474,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 0;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .email-content,
@@ -490,7 +490,7 @@
 .mail-email-subject-gmail {
   font-size: 14px;
   color: #9c9c9c;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .email-preview,
@@ -498,7 +498,7 @@
   font-size: 14px;
   color: #5f6368;
   margin-left: 4px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .email-timestamp,
@@ -508,7 +508,7 @@
   font-size: 12px;
   color: #80868b;
   flex-shrink: 0;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .attachment-icon-gmail {
@@ -533,7 +533,7 @@
   gap: 12px;
   padding: 40px;
   text-align: center;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .loading-state .spinner {
@@ -569,7 +569,7 @@
   cursor: pointer;
   font-size: 13px;
   transition: background 0.2s;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .retry-btn:hover {
@@ -600,7 +600,7 @@
   font-weight: 400;
   color: #202124;
   margin: 0;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .detail-actions,
@@ -663,7 +663,7 @@
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .email-avatar.large,
@@ -679,7 +679,7 @@
   font-weight: 500;
   color: #202124;
   margin-bottom: 4px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .sender-email,
@@ -687,21 +687,21 @@
   font-size: 12px;
   color: #5f6368;
   margin-bottom: 4px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .recipient-info,
 .recipient-info-gmail {
   font-size: 12px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .email-date,
 .email-date-gmail {
   font-size: 12px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .detail-body,
@@ -711,7 +711,7 @@
   overflow-y: auto;
   line-height: 1.6;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Gmail Compose Button - Fixed Bottom Left */
@@ -733,7 +733,7 @@
   box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
   transition: all 0.2s;
   z-index: 100;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mail-compose-btn-gmail:hover {
@@ -778,7 +778,7 @@
 .compose-header span {
   font-size: 14px;
   font-weight: 500;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .compose-controls {
@@ -828,7 +828,7 @@
   font-size: 13px;
   color: #5f6368;
   min-width: 60px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .compose-field input {
@@ -837,7 +837,7 @@
   outline: none;
   font-size: 14px;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .compose-field textarea {
@@ -846,7 +846,7 @@
   font-size: 14px;
   color: #202124;
   resize: none;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
 }
 
@@ -872,7 +872,7 @@
   align-items: center;
   gap: 6px;
   transition: background 0.2s;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .send-btn:hover,
@@ -909,7 +909,7 @@
   margin-left: auto;
   font-size: 12px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Settings Tab - Gmail Style */
@@ -928,14 +928,14 @@
   font-size: 22px;
   font-weight: 400;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-settings-heading p {
   margin: 6px 0 0;
   color: #5f6368;
   font-size: 14px;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-avatar-section {
@@ -961,13 +961,13 @@
 .mailbox-avatar-text strong {
   font-size: 16px;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-avatar-text span {
   font-size: 14px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-upload-btn {
@@ -981,7 +981,7 @@
   font-weight: 500;
   transition: background 0.2s;
   width: fit-content;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-upload-btn:hover:not(:disabled) {
@@ -1014,31 +1014,31 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #80868b;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-settings-row strong {
   font-size: 15px;
   color: #202124;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-settings-footer-note {
   font-size: 13px;
   color: #5f6368;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-settings-error {
   font-size: 12px;
   color: #d93025;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mailbox-settings-success {
   font-size: 12px;
   color: #188038;
-  font-family: 'Roboto', 'Arial', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Responsive Design */
