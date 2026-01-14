@@ -613,6 +613,89 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
   }
 });
 
+// Mark email as read
+router.post('/mark-as-read', isAuthenticated, async (req, res) => {
+  try {
+    const { accountId, uid, folder } = req.body;
+
+    if (!accountId || !uid) {
+      return res.status(400).json({ message: 'Account ID and UID are required' });
+    }
+
+    const folderName = folder || 'INBOX';
+
+    const account = await EmailAccount.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
+    if (account.accountType !== 'noxtm-hosted') {
+      return res.status(400).json({ message: 'Only hosted accounts support this feature' });
+    }
+
+    if (!account.imapSettings || !account.imapSettings.encryptedPassword) {
+      return res.status(400).json({ message: 'IMAP settings not configured' });
+    }
+
+    const Imap = require('imap');
+    const password = decrypt(account.imapSettings.encryptedPassword);
+    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+
+    const imapConfig = {
+      user: account.imapSettings.username || account.email,
+      password: password,
+      host: host,
+      port: account.imapSettings.port || 993,
+      tls: account.imapSettings.secure !== false,
+      tlsOptions: { rejectUnauthorized: false }
+    };
+
+    console.log(`📧 Marking email UID ${uid} as read in ${folderName} folder of ${account.email}`);
+
+    // Mark email as read using IMAP
+    await new Promise((resolve, reject) => {
+      const imap = new Imap(imapConfig);
+
+      imap.once('ready', () => {
+        imap.openBox(folderName, false, (err) => {  // false = read-write mode
+          if (err) {
+            imap.end();
+            return reject(err);
+          }
+
+          imap.addFlags([parseInt(uid)], ['\\Seen'], (flagErr) => {
+            imap.end();
+            if (flagErr) {
+              return reject(flagErr);
+            }
+            resolve();
+          });
+        });
+      });
+
+      imap.once('error', (err) => {
+        reject(err);
+      });
+
+      imap.connect();
+    });
+
+    console.log(`✅ Marked email UID ${uid} as read`);
+
+    // Invalidate cache for this folder to reflect the read status
+    await invalidateFolderCache(accountId, folderName);
+
+    res.json({ success: true, message: 'Email marked as read' });
+
+  } catch (error) {
+    console.error('Error marking email as read:', error);
+    res.status(500).json({
+      message: 'Failed to mark email as read',
+      error: error.message
+    });
+  }
+});
+
 // Download email attachment
 router.get('/download-attachment', isAuthenticated, async (req, res) => {
   try {
