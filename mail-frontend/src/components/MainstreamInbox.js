@@ -662,7 +662,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         {activeTab !== 'settings' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
-            <IconButton icon={MdMoreVert} title="More options" />
             {selectedEmails.size > 0 && (
               <>
                 <div className="mail-toolbar-divider"></div>
@@ -676,6 +675,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                 <span className="email-count">
                   {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
                 </span>
+                <IconButton icon={MdMoreVert} title="More options" />
                 <IconButton
                   icon={MdChevronLeft}
                   onClick={() => setCurrentPage(p => p - 1)}
