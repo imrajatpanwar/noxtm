@@ -546,7 +546,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         </div>
       </div>
 
-      {/* Gmail-style Tabs */}
+      {/* Gmail-style Tabs with Toolbar */}
       <div className="mail-gmail-tabs">
         {activeTab !== 'settings' && (
           <>
@@ -568,6 +568,15 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
               <option value="unread">Unread</option>
               <option value="starred">Starred</option>
             </select>
+            <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
+            <IconButton icon={MdMoreVert} title="More options" />
+            {selectedEmails.size > 0 && (
+              <>
+                <div className="mail-toolbar-divider"></div>
+                <IconButton icon={MdArchive} onClick={handleBulkArchive} title="Archive" />
+                <IconButton icon={MdDelete} onClick={handleBulkDelete} title="Delete" />
+              </>
+            )}
           </>
         )}
         <Tab
@@ -588,46 +597,26 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           active={activeTab === 'settings'}
           onClick={() => handleTabChange('settings')}
         />
+        {activeTab !== 'settings' && totalEmails > 0 && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="email-count">
+              {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
+            </span>
+            <IconButton
+              icon={MdChevronLeft}
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={currentPage === 1}
+              title="Newer"
+            />
+            <IconButton
+              icon={MdChevronRight}
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={currentPage * emailsPerPage >= totalEmails}
+              title="Older"
+            />
+          </div>
+        )}
       </div>
-
-      {/* Gmail-style Toolbar */}
-      {activeTab !== 'settings' && (
-        <div className="mail-gmail-toolbar">
-          <div className="mail-toolbar-left">
-            <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
-            <IconButton icon={MdMoreVert} title="More options" />
-            {selectedEmails.size > 0 && (
-              <>
-                <div className="mail-toolbar-divider"></div>
-                <IconButton icon={MdArchive} onClick={handleBulkArchive} title="Archive" />
-                <IconButton icon={MdDelete} onClick={handleBulkDelete} title="Delete" />
-              </>
-            )}
-          </div>
-
-          <div className="mail-toolbar-right">
-            {totalEmails > 0 && (
-              <>
-                <span className="email-count">
-                  {((currentPage - 1) * emailsPerPage) + 1}-{Math.min(currentPage * emailsPerPage, totalEmails)} of {totalEmails}
-                </span>
-                <IconButton
-                  icon={MdChevronLeft}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                  disabled={currentPage === 1}
-                  title="Newer"
-                />
-                <IconButton
-                  icon={MdChevronRight}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  disabled={currentPage * emailsPerPage >= totalEmails}
-                  title="Older"
-                />
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Main Content - Gmail Full Width Style */}
       <div className="mail-inbox-content-fullwidth">
