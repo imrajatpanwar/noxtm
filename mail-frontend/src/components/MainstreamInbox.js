@@ -219,11 +219,12 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           }
         });
 
-        // Update the email with full body data
+        // Update the email with full body data and mark as seen
         const fullEmail = {
           ...email,
           ...response.data.email,
-          bodyLoaded: true
+          bodyLoaded: true,
+          seen: true  // Mark as read when opened
         };
 
         setSelectedEmail(fullEmail);
@@ -232,6 +233,18 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
         setEmails(prevEmails =>
           prevEmails.map(e => e.uid === email.uid ? fullEmail : e)
         );
+
+        // Mark email as read on server (fire and forget)
+        try {
+          await api.post('/email-accounts/mark-as-read', {
+            accountId: selectedAccount._id,
+            uid: email.uid,
+            folder: folder
+          });
+        } catch (markReadError) {
+          console.error('Failed to mark email as read on server:', markReadError);
+          // Don't show error to user - email is already marked as read in UI
+        }
       } catch (error) {
         console.error('Error fetching email body:', error);
         setError('Failed to load email content');
@@ -240,6 +253,26 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       }
     } else {
       setSelectedEmail(email);
+      // If email was unread, mark it as read
+      if (!email.seen && email.uid) {
+        const updatedEmail = { ...email, seen: true };
+        setSelectedEmail(updatedEmail);
+        setEmails(prevEmails =>
+          prevEmails.map(e => e.uid === email.uid ? updatedEmail : e)
+        );
+
+        // Mark email as read on server (fire and forget)
+        try {
+          const folder = activeTab === 'sent' ? 'Sent' : 'INBOX';
+          await api.post('/email-accounts/mark-as-read', {
+            accountId: selectedAccount._id,
+            uid: email.uid,
+            folder: folder
+          });
+        } catch (markReadError) {
+          console.error('Failed to mark email as read on server:', markReadError);
+        }
+      }
     }
   };
 
