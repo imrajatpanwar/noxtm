@@ -483,12 +483,16 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
   const getEmailPreview = (email) => {
     // Use preview from backend if available
-    if (email.preview) return email.preview;
-    
+    if (email.preview) {
+      // Remove [html content] and [plain content] tags from preview
+      const cleanPreview = email.preview.replace(/\s*-?\s*\[(html|plain)\s+content\]/gi, '').trim();
+      return cleanPreview || 'No preview available';
+    }
+
     // Fallback to text/html if body was loaded
     const body = email.text || email.html || '';
     if (!body) return 'No preview available';
-    
+
     const text = body.replace(/<[^>]*>/g, ''); // Strip HTML tags
     return text.substring(0, 100) + (text.length > 100 ? '...' : '');
   };
