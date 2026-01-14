@@ -548,6 +548,28 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
       {/* Gmail-style Tabs */}
       <div className="mail-gmail-tabs">
+        {activeTab !== 'settings' && (
+          <>
+            <Checkbox
+              checked={selectAll}
+              indeterminate={selectedEmails.size > 0 && selectedEmails.size < emails.length}
+              onChange={handleSelectAllChange}
+            />
+            <select
+              className="mail-gmail-select-dropdown"
+              value=""
+              onChange={(e) => handleSelectOption(e.target.value)}
+              style={{ marginRight: '8px' }}
+            >
+              <option value="" disabled>Select...</option>
+              <option value="all">All</option>
+              <option value="none">None</option>
+              <option value="read">Read</option>
+              <option value="unread">Unread</option>
+              <option value="starred">Starred</option>
+            </select>
+          </>
+        )}
         <Tab
           icon={MdInbox}
           label="Primary"
@@ -572,23 +594,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       {activeTab !== 'settings' && (
         <div className="mail-gmail-toolbar">
           <div className="mail-toolbar-left">
-            <Checkbox
-              checked={selectAll}
-              indeterminate={selectedEmails.size > 0 && selectedEmails.size < emails.length}
-              onChange={handleSelectAllChange}
-            />
-            <select
-              className="mail-gmail-select-dropdown"
-              value=""
-              onChange={(e) => handleSelectOption(e.target.value)}
-            >
-              <option value="" disabled>Select...</option>
-              <option value="all">All</option>
-              <option value="none">None</option>
-              <option value="read">Read</option>
-              <option value="unread">Unread</option>
-              <option value="starred">Starred</option>
-            </select>
             <IconButton icon={MdRefresh} onClick={fetchEmails} title="Refresh" />
             <IconButton icon={MdMoreVert} title="More options" />
             {selectedEmails.size > 0 && (
@@ -849,7 +854,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
                 <div className="mail-email-content-gmail">
                   <span className="mail-email-subject-gmail">
-                    {email.subject || '(No Subject)'}
+                    {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
                   </span>
                   <span className="mail-email-preview-gmail">
                     {' - ' + getEmailPreview(email)}
