@@ -492,7 +492,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
       {/* Gmail-style Header */}
       <div className="mail-gmail-header">
         <div className="mail-gmail-header-left">
-          <h2 className="mail-gmail-logo">Mail</h2>
           <div className="mail-gmail-search-box">
             <MdSearch className="search-icon" />
             <input
