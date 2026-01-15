@@ -392,9 +392,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
             const startTime = Date.now();
             
             // Fetch by UID instead of sequence number
-            // Include TEXT body preview (first 200 chars) for email preview
+            // Include first text part for email preview (BODY.PEEK to not mark as read)
             const fetch = imap.fetch(targetUIDs, {
-              bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT'],
+              bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', '1.1'],
               struct: true
             });
 
@@ -420,16 +420,28 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                 });
                 stream.once('end', () => {
                   // Check if this is header or body text
-                  if (info.which === 'TEXT') {
-                    // This is the email body - extract preview
-                    // Strip HTML tags and get first 150 characters
-                    const textPreview = buffer
-                      .replace(/<[^>]*>/g, '') // Remove HTML tags
-                      .replace(/\s+/g, ' ') // Normalize whitespace
+                  if (info.which === '1.1') {
+                    // This is the first text/plain part - extract preview
+                    // Remove MIME headers and boundaries
+                    let cleanText = buffer;
+
+                    // Remove MIME boundary markers and headers
+                    cleanText = cleanText.replace(/^------=.*$/gm, ''); // Boundary markers
+                    cleanText = cleanText.replace(/^Content-Type:.*$/gm, ''); // Content-Type headers
+                    cleanText = cleanText.replace(/^Content-Transfer-Encoding:.*$/gm, ''); // Encoding headers
+                    cleanText = cleanText.replace(/^Content-Disposition:.*$/gm, ''); // Disposition headers
+
+                    // Strip HTML tags
+                    cleanText = cleanText.replace(/<[^>]*>/g, '');
+
+                    // Normalize whitespace and extract preview
+                    const textPreview = cleanText
+                      .replace(/\s+/g, ' ')
                       .trim()
                       .substring(0, 150);
-                    emailData.preview = textPreview || 'No preview available';
-                  } else {
+
+                    emailData.preview = textPreview || '';
+                  } else if (info.which.includes('HEADER')) {
                     // Parse header fields
                     const header = Imap.parseHeader(buffer);
                     emailData.from = header.from ? header.from[0] : null;
