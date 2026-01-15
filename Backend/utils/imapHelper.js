@@ -434,11 +434,14 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                     // Strip HTML tags
                     cleanText = cleanText.replace(/<[^>]*>/g, '');
 
-                    // Normalize whitespace and extract preview
-                    const textPreview = cleanText
+                    // Normalize whitespace and extract preview (70 chars max)
+                    const normalizedText = cleanText
                       .replace(/\s+/g, ' ')
-                      .trim()
-                      .substring(0, 150);
+                      .trim();
+
+                    const textPreview = normalizedText.length > 70
+                      ? normalizedText.substring(0, 70) + '...'
+                      : normalizedText;
 
                     emailData.preview = textPreview || '';
                   } else if (info.which.includes('HEADER')) {
