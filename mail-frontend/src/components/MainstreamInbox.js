@@ -959,7 +959,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                     {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
                   </span>
                   <span className="mail-email-preview-gmail">
-                    {' - ' + getEmailPreview(email)}
+                    {getEmailPreview(email) ? ' - ' + getEmailPreview(email) : ''}
                   </span>
                 </div>
 
