@@ -434,13 +434,13 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                     // Strip HTML tags
                     cleanText = cleanText.replace(/<[^>]*>/g, '');
 
-                    // Normalize whitespace and extract preview (70 chars max)
+                    // Normalize whitespace and extract preview (115 chars max)
                     const normalizedText = cleanText
                       .replace(/\s+/g, ' ')
                       .trim();
 
-                    const textPreview = normalizedText.length > 70
-                      ? normalizedText.substring(0, 70) + '...'
+                    const textPreview = normalizedText.length > 115
+                      ? normalizedText.substring(0, 115) + '...'
                       : normalizedText;
 
                     emailData.preview = textPreview || '';
