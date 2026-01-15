@@ -1,14 +1,3 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Background -->
-  <rect width="100" height="100" fill="#2563eb" rx="15"/>
-
-  <!-- Mail envelope -->
-  <g transform="translate(20, 30)">
-    <!-- Envelope body -->
-    <rect x="0" y="10" width="60" height="40" fill="white" rx="3"/>
-
-    <!-- Envelope flap -->
-    <path d="M 0 10 L 30 30 L 60 10" fill="none" stroke="white" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M 0 10 L 30 30 L 60 10 Z" fill="#93c5fd" opacity="0.6"/>
-  </g>
+<svg width="586" height="171" viewBox="0 0 586 171" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0.000126685 170.399V-6.8931e-05H52.8739L89.9606 100.736L97.2277 126.045L104.495 100.736L141.581 -6.8931e-05H192.952V170.399H152.858L155.113 44.8549L142.083 87.204L111.01 170.399H81.9419L50.6186 86.7028L37.8387 45.1055L40.094 170.399H0.000126685ZM339.946 170.399L328.67 138.574H261.763L250.487 170.399H210.142L272.288 -6.8931e-05H320.4L382.796 170.399H339.946ZM290.079 58.6371L272.789 107.752H317.644L300.353 58.6371L295.342 39.342L290.079 58.6371ZM399.862 170.399V-6.8931e-05H439.955V170.399H399.862ZM470.584 170.399V-6.8931e-05H510.678V137.822H585.603V170.399H470.584Z" fill="black"/>
 </svg>
