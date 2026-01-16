@@ -86,7 +86,8 @@ function Inbox() {
 
           // STEP 3: Decide what to show (don't render yet)
           console.log('[INBOX] Step 3/3: Determining which screen to show...');
-          if (needsDomain) {
+          // Never show domain modal for Admins, even if needsDomain is true
+          if (needsDomain && userResponse.data.role !== 'Admin') {
             console.log('[INBOX] → Will show domain onboarding modal');
             setShouldShowDomainModal(true);
             setShouldShowInbox(false);
