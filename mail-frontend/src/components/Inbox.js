@@ -17,6 +17,34 @@ import api from '../config/api';
 import { MAIL_LOGIN_URL, getMainAppUrl } from '../config/authConfig';
 import './Inbox.css';
 
+// Check if user has valid subscription for mail access
+function checkSubscriptionStatus(subscription) {
+  if (!subscription) return false;
+
+  const { plan, status, endDate } = subscription;
+
+  // No plan or None plan
+  if (!plan || plan === 'None') return false;
+
+  // Must be active or trial status
+  if (status !== 'active' && status !== 'trial') return false;
+
+  // Check if expired (with 7-day grace period)
+  if (endDate) {
+    const now = new Date();
+    const subscriptionEnd = new Date(endDate);
+    const gracePeriodMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const gracePeriodEnd = new Date(subscriptionEnd.getTime() + gracePeriodMs);
+
+    if (now > gracePeriodEnd) {
+      console.log('[INBOX] Subscription expired past grace period');
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function Inbox() {
   const [user, setUser] = useState(null);
   const [activeView, setActiveView] = useState('personal'); // personal, analytics, sla, templates, rules, domains
@@ -54,17 +82,37 @@ function Inbox() {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           // STEP 1: Fetch user profile
-          console.log('[INBOX] Step 1/3: Fetching user profile from /api/profile...');
+          console.log('[INBOX] Step 1/4: Fetching user profile from /api/profile...');
           const userResponse = await api.get('/profile');
           console.log('[INBOX] ✅ Profile fetch SUCCESS:', userResponse.data);
           setUser(userResponse.data);
           localStorage.setItem('user', JSON.stringify(userResponse.data));
 
+          // STEP 2: Check subscription status (NEW - prevents pricing flickering)
+          console.log('[INBOX] Step 2/4: Checking subscription status...');
+          const subscription = userResponse.data.subscription;
+          const isAdmin = userResponse.data.role === 'Admin';
+
+          if (!isAdmin) {
+            const hasValid = checkSubscriptionStatus(subscription);
+            console.log('[INBOX] Subscription check result:', hasValid, subscription);
+
+            if (!hasValid) {
+              console.log('[INBOX] ❌ Invalid subscription - redirecting to pricing');
+              window.__NOXTM_AUTH_LOADING__ = false;
+              window.location.href = getMainAppUrl('/pricing');
+              return;
+            }
+            console.log('[INBOX] ✅ Subscription is valid');
+          } else {
+            console.log('[INBOX] ✅ Admin user - skipping subscription check');
+          }
+
           let needsDomain = false;
 
-          // STEP 2: Check domain setup (skip for admins)
-          if (userResponse.data.role !== 'Admin') {
-            console.log('[INBOX] Step 2/3: User is not Admin, checking domain setup...');
+          // STEP 3: Check domain setup (skip for admins)
+          if (!isAdmin) {
+            console.log('[INBOX] Step 3/4: Checking domain setup...');
             try {
               const domainResponse = await api.get('/user-domains/count');
               console.log('[INBOX] ✅ User domains count response:', domainResponse.data);
@@ -81,13 +129,13 @@ function Inbox() {
               needsDomain = true;
             }
           } else {
-            console.log('[INBOX] Step 2/3: User is Admin - bypassing domain verification');
+            console.log('[INBOX] Step 3/4: Admin user - bypassing domain verification');
           }
 
-          // STEP 3: Decide what to show (don't render yet)
-          console.log('[INBOX] Step 3/3: Determining which screen to show...');
+          // STEP 4: Decide what to show (don't render yet)
+          console.log('[INBOX] Step 4/4: Determining which screen to show...');
           // Never show domain modal for Admins, even if needsDomain is true
-          if (needsDomain && userResponse.data.role !== 'Admin') {
+          if (needsDomain && !isAdmin) {
             console.log('[INBOX] → Will show domain onboarding modal');
             setShouldShowDomainModal(true);
             setShouldShowInbox(false);

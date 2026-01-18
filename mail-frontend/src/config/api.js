@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MAIL_LOGIN_URL } from './authConfig';
+import { MAIL_LOGIN_URL, getMainAppUrl } from './authConfig';
 
 // Global flag to prevent redirect during token extraction/authentication
 // Set by Inbox component during initial auth flow
@@ -118,6 +118,29 @@ api.interceptors.response.use(
         // Log it but don't redirect - let component handle the error
         console.error('[API] 401 error but user has credentials (not auto-redirecting)');
         error.isAuthError = true;
+      }
+    }
+
+    // Handle 403 - Subscription required errors
+    if (error.response?.status === 403) {
+      console.error('[API] ❌ 403 Error on:', error.config?.url);
+      const data = error.response?.data;
+
+      // Check if this is a subscription-related 403
+      if (data?.code === 'SUBSCRIPTION_REQUIRED' ||
+          data?.code === 'SUBSCRIPTION_EXPIRED' ||
+          data?.redirect === '/pricing') {
+
+        // Don't redirect if auth is still loading
+        if (window.__NOXTM_AUTH_LOADING__) {
+          console.log('[API] Auth loading in progress, not redirecting for 403');
+          error.isSubscriptionError = true;
+          return Promise.reject(error);
+        }
+
+        console.log('[API] Subscription error detected - redirecting to pricing');
+        window.location.href = getMainAppUrl('/pricing');
+        return Promise.reject(error);
       }
     }
 
