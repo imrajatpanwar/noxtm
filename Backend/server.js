@@ -446,6 +446,12 @@ const checkActivePlan = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Admin users bypass subscription check
+    if (user.role === 'Admin') {
+      console.log('[CHECK ACTIVE PLAN] Admin user - bypassing subscription check:', user.email);
+      return next();
+    }
+
     // Use subscription helper that correctly handles trial users
     if (!hasActiveSubscription(user)) {
       console.log('[CHECK ACTIVE PLAN] User has no active subscription:', {
@@ -3035,8 +3041,11 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Use subscription helper that correctly handles trial users
-    if (!hasActiveSubscription(user)) {
+    // Admin users bypass subscription check
+    if (user.role === 'Admin') {
+      console.log('[DASHBOARD API] Admin user - bypassing subscription check:', user.email);
+    } else if (!hasActiveSubscription(user)) {
+      // Use subscription helper that correctly handles trial users
       console.log('[DASHBOARD API] User has no active subscription:', {
         email: user.email,
         plan: user.subscription?.plan,
