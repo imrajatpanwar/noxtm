@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 import './TemplateEditor.css';
 
 const TemplateEditor = ({ template, onClose, onSave }) => {
@@ -64,9 +64,9 @@ const TemplateEditor = ({ template, onClose, onSave }) => {
       const payload = { ...formData };
 
       if (template) {
-        await axios.patch(`/api/email-templates/${template._id}`, payload);
+        await api.patch(`/email-templates/${template._id}`, payload);
       } else {
-        await axios.post('/api/email-templates', payload);
+        await api.post('/email-templates', payload);
       }
 
       onSave && onSave();
@@ -119,7 +119,7 @@ const TemplateEditor = ({ template, onClose, onSave }) => {
   const handlePreview = async () => {
     try {
       if (template && template._id) {
-        const res = await axios.post(`/api/email-templates/${template._id}/render`, {
+        const res = await api.post(`/email-templates/${template._id}/render`, {
           variables: testVariables
         });
         setPreview(res.data.rendered);
