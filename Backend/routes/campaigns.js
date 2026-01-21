@@ -101,17 +101,29 @@ router.post('/', async (req, res) => {
       description,
       subject,
       body,
+      content, // Frontend sends 'content', accept both
       replyTo,
+      from,    // Frontend sends 'from', accept both
       fromEmail,
       fromName,
-      emailTemplate
+      emailTemplate,
+      recipients,
+      schedule,
+      scheduledTime
     } = req.body;
 
-    // Validation
-    if (!name || !subject || !body || !replyTo) {
+    // Use content if body not provided (frontend compatibility)
+    const emailBody = body || content;
+    // Use from if fromEmail not provided (frontend compatibility)
+    const senderEmail = fromEmail || from || 'rajat@mail.noxtm.com';
+    // Use fromEmail as replyTo fallback
+    const replyToEmail = replyTo || senderEmail;
+
+    // Validation - only name, subject, and body/content are required
+    if (!name || !subject || !emailBody) {
       return res.status(400).json({
         success: false,
-        message: 'Name, subject, body, and replyTo are required'
+        message: 'Name, subject, and body/content are required'
       });
     }
 
@@ -119,15 +131,31 @@ router.post('/', async (req, res) => {
       name,
       description,
       subject,
-      body,
-      replyTo,
-      fromEmail: fromEmail || 'rajat@mail.noxtm.com',
+      body: emailBody,
+      replyTo: replyToEmail,
+      fromEmail: senderEmail,
       fromName: fromName || 'Noxtm',
       emailTemplate,
       companyId,
       createdBy: userId,
       lastModifiedBy: userId
     });
+
+    // If recipients provided, add them directly
+    if (recipients && Array.isArray(recipients) && recipients.length > 0) {
+      campaign.recipients = recipients.map(email => ({
+        email: typeof email === 'string' ? email : email.email,
+        name: typeof email === 'object' ? email.name : '',
+        status: 'pending'
+      }));
+      campaign.stats = {
+        totalRecipients: recipients.length,
+        sent: 0,
+        failed: 0,
+        bounced: 0,
+        pending: recipients.length
+      };
+    }
 
     await campaign.save();
 
