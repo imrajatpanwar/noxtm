@@ -8,6 +8,14 @@ const { requireCompanyAccess } = require('../middleware/emailAuth');
 router.use(authenticateToken);
 router.use(requireCompanyAccess);
 
+// Helper to get user ID and company ID from JWT token
+// JWT has userId (not _id), and companyId may not exist
+const getUserIds = (req) => {
+  const userId = req.user.userId || req.user._id;
+  const companyId = req.user.companyId || userId; // Fallback to userId
+  return { userId, companyId };
+};
+
 /**
  * POST /api/email-templates/
  * Create a new email template
@@ -25,8 +33,7 @@ router.post('/', async (req, res) => {
       isShared
     } = req.body;
 
-    const userId = req.user._id;
-    const companyId = req.user.companyId;
+    const { userId, companyId } = getUserIds(req);
 
     // Validate required fields
     if (!name || !subject || !body) {
@@ -68,7 +75,7 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
     const { category, isShared, createdBy } = req.query;
 
     const filters = {};
@@ -95,7 +102,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/popular', async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
     const limit = parseInt(req.query.limit) || 10;
 
     const templates = await EmailTemplate.getPopular(companyId, limit);
@@ -117,7 +124,7 @@ router.get('/popular', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
 
     const stats = await EmailTemplate.getStats(companyId);
 
@@ -136,7 +143,7 @@ router.get('/stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
 
     const template = await EmailTemplate.findOne({ _id: id, companyId })
       .populate('createdBy', 'name email')
@@ -167,8 +174,7 @@ router.get('/:id', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
-    const userId = req.user._id;
+    const { userId, companyId } = getUserIds(req);
 
     const template = await EmailTemplate.findOne({ _id: id, companyId });
 
@@ -226,7 +232,7 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
 
     const template = await EmailTemplate.findOne({ _id: id, companyId });
 
@@ -255,7 +261,7 @@ router.post('/:id/render', async (req, res) => {
   try {
     const { id } = req.params;
     const { variables } = req.body;
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
 
     const template = await EmailTemplate.findOne({ _id: id, companyId });
 
@@ -287,7 +293,7 @@ router.post('/:id/render', async (req, res) => {
 router.post('/:id/use', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
+    const { companyId } = getUserIds(req);
 
     const template = await EmailTemplate.findOne({ _id: id, companyId });
 
