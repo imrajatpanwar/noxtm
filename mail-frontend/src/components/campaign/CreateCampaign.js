@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 import './CreateCampaign.css';
 
 function CreateCampaign() {
@@ -19,14 +19,40 @@ function CreateCampaign() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
 
   useEffect(() => {
     fetchEmailAccounts();
+    fetchTemplates();
   }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await api.get('/email-templates');
+      setTemplates(response.data.templates || []);
+    } catch (err) {
+      console.error('Error fetching templates:', err);
+    }
+  };
+
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplate(templateId);
+    if (!templateId) return;
+
+    const template = templates.find(t => t._id === templateId);
+    if (template) {
+      setCampaignData(prev => ({
+        ...prev,
+        subject: template.subject
+      }));
+      setEmailContent(template.body);
+    }
+  };
 
   const fetchEmailAccounts = async () => {
     try {
-      const response = await axios.get('/api/email-accounts/by-verified-domain');
+      const response = await api.get('/email-accounts/by-verified-domain');
       if (response.data.success) {
         setEmailAccounts(response.data.accounts || []);
         if (response.data.accounts.length > 0) {
@@ -142,7 +168,7 @@ function CreateCampaign() {
         scheduledTime: campaignData.schedule === 'scheduled' ? campaignData.scheduledTime : null
       };
 
-      const response = await axios.post('/api/campaigns', payload);
+      const response = await api.post('/campaigns', payload);
 
       if (response.data.success) {
         setSuccess(true);
@@ -179,7 +205,7 @@ function CreateCampaign() {
     if (!testEmail) return;
 
     try {
-      await axios.post('/api/campaigns/send-test', {
+      await api.post('/campaigns/send-test', {
         from: campaignData.fromEmail,
         to: testEmail,
         subject: campaignData.subject || 'Test Email',
@@ -224,6 +250,25 @@ function CreateCampaign() {
               placeholder="e.g., Monthly Newsletter - December 2025"
               disabled={loading}
             />
+          </div>
+
+          <div className="form-group">
+            <label>Use Email Template (optional)</label>
+            <select
+              value={selectedTemplate}
+              onChange={(e) => handleTemplateSelect(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">-- Select a template --</option>
+              {templates.map(template => (
+                <option key={template._id} value={template._id}>
+                  {template.name} ({template.category})
+                </option>
+              ))}
+            </select>
+            <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+              Selecting a template will auto-fill subject and content
+            </small>
           </div>
 
           <div className="form-group">
