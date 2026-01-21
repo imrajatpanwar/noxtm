@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 import TemplateEditor from './TemplateEditor';
 import './TemplateManager.css';
 
@@ -22,7 +22,7 @@ const TemplateManager = () => {
     setLoading(true);
     try {
       const params = selectedCategory !== 'all' ? { category: selectedCategory } : {};
-      const res = await axios.get('/api/email-templates', { params });
+      const res = await api.get('/email-templates', { params });
       setTemplates(res.data.templates || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -33,7 +33,7 @@ const TemplateManager = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get('/api/email-templates/stats');
+      const res = await api.get('/email-templates/stats');
       setStats(res.data.stats);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -46,7 +46,7 @@ const TemplateManager = () => {
     }
 
     try {
-      await axios.delete(`/api/email-templates/${templateId}`);
+      await api.delete(`/email-templates/${templateId}`);
       setTemplates(templates.filter(t => t._id !== templateId));
       fetchStats();
     } catch (error) {

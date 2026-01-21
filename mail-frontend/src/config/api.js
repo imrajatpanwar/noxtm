@@ -6,9 +6,8 @@ import { MAIL_LOGIN_URL, getMainAppUrl } from './authConfig';
 window.__NOXTM_AUTH_LOADING__ = false;
 
 // Create axios instance with proper configuration for mail.noxtm.com
-// Use environment-based URL configuration
-const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const BACKEND_URL = isDevelopment ? 'https://noxtm.com/api' : '/api';
+// ALWAYS use absolute URL since mail.noxtm.com calls noxtm.com backend
+const BACKEND_URL = 'https://noxtm.com/api';
 
 const api = axios.create({
   baseURL: BACKEND_URL,
