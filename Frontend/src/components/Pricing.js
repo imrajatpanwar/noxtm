@@ -42,8 +42,7 @@ const Pricing = () => {
         '10 GB Storage Access',
         'Free AI Analytics & Suggestions',
         '10+ integrations Tools',
-        'Customer support',
-        '99.9% Up time'
+        'Customer support'
       ]
     },
     {
@@ -56,10 +55,12 @@ const Pricing = () => {
         'Everything from Starter',
         'Add 60 Team Access Max',
         'Free 10,000 Bulk emails',
+        '50GB Storage Access',
         'Request new integrations',
         'Intelligent Analytics Bot',
         'AI Analysis work report',
-        'Priority customer support'
+        'Priority customer support',
+        '99.9% Up time'
       ]
     },
     {
@@ -72,6 +73,7 @@ const Pricing = () => {
         'Everything from Pro+',
         'Unlimited Team Access',
         'Free 50,000 Bulk Emails',
+        '75GB Storage Access',
         'Advanced noxtm bot',
         'Custom Branding'
       ]
