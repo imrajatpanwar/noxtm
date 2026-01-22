@@ -621,6 +621,54 @@ function getDefaultPermissions(planOrRole) {
       settingsConfiguration: false
     };
   }
+  // Starter plan: Basic access with limited features
+  else if (planOrRole === 'Starter') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: false,
+      internalPolicies: true,
+      settingsConfiguration: false
+    };
+  }
+  // Pro+ plan: Full access with advanced features
+  else if (planOrRole === 'Pro+') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: true,
+      internalPolicies: true,
+      settingsConfiguration: false
+    };
+  }
+  // Advance plan: Full access with all features
+  else if (planOrRole === 'Advance') {
+    return {
+      dashboard: true,
+      dataCenter: true,
+      projects: true,
+      teamCommunication: true,
+      digitalMediaManagement: true,
+      marketing: true,
+      hrManagement: true,
+      financeManagement: true,
+      seoManagement: true,
+      internalPolicies: true,
+      settingsConfiguration: true
+    };
+  }
   // Default User role: Only basic dashboard access
   return {
     dashboard: true,
@@ -2072,6 +2120,66 @@ app.post('/api/subscribe/noxtm', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Noxtm subscription error:', error);
+    res.status(500).json({ message: 'Server error during subscription' });
+  }
+});
+
+// Handle new subscription plans (Starter, Pro+, Advance)
+app.post('/api/subscription/subscribe', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { plan, billingCycle } = req.body;
+    const validPlans = ['Starter', 'Pro+', 'Advance'];
+
+    if (!validPlans.includes(plan)) {
+      return res.status(400).json({ message: 'Invalid subscription plan' });
+    }
+
+    // Set up subscription details
+    const startDate = new Date();
+    const endDate = new Date();
+
+    // Set end date based on billing cycle
+    if (billingCycle === 'Annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1); // 1 year subscription
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+    }
+
+    user.subscription = {
+      plan: plan,
+      status: 'active',
+      startDate,
+      endDate,
+      billingCycle: billingCycle || 'Monthly',
+      trialUsed: user.subscription?.trialUsed || false  // Preserve trial flag
+    };
+
+    // Update permissions based on plan
+    user.permissions = getDefaultPermissions(plan);
+    user.access = syncAccessFromPermissions(user.permissions);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Successfully subscribed to ${plan} plan`,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
+        subscription: user.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Subscription error:', error);
     res.status(500).json({ message: 'Server error during subscription' });
   }
 });
