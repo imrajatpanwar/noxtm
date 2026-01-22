@@ -37,7 +37,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
   const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
-  const emailsPerPage = 5;
+  const emailsPerPage = 12;
 
   // Gmail-style checkbox selection
   const [selectedEmails, setSelectedEmails] = useState(new Set());
