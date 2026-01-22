@@ -30,6 +30,9 @@ const COMPANY_ROLE_VALUES = Object.values(COMPANY_ROLES);
 const SUBSCRIPTION_PLANS = {
   NONE: 'None',
   TRIAL: 'Trial',
+  STARTER: 'Starter',
+  PRO_PLUS: 'Pro+',
+  ADVANCE: 'Advance',
   NOXTM: 'Noxtm',
   ENTERPRISE: 'Enterprise'
 };
@@ -201,6 +204,90 @@ const PERMISSION_TEMPLATES = {
 // PLAN LIMITS
 // ============================================
 const PLAN_LIMITS = {
+  [SUBSCRIPTION_PLANS.STARTER]: {
+    maxEmployees: 5,
+    maxStorage: '5GB',
+    support: 'Email Support',
+    uptimeSLA: 99,
+    price: {
+      monthly: 1699,
+      yearly: 1359 // 20% discount
+    },
+    currency: 'INR',
+    features: {
+      clientLeads: true,
+      conversionTracking: true,
+      projectManagement: 'Limited',
+      emailMarketing: 'Limited',
+      whatsappMarketing: true,
+      socialMediaScheduler: 'Limited',
+      internalMessages: true,
+      hrManagement: true,
+      financialManagement: true,
+      internalPolicies: true,
+      videoMeeting: false,
+      quickTools: true,
+      seoContent: false,
+      storage: '5GB storage',
+      emailNotifications: 'Limited'
+    }
+  },
+  [SUBSCRIPTION_PLANS.PRO_PLUS]: {
+    maxEmployees: 50,
+    maxStorage: '50GB',
+    support: '24/7 Support',
+    uptimeSLA: 99.9,
+    price: {
+      monthly: 2699,
+      yearly: 2159 // 20% discount
+    },
+    currency: 'INR',
+    features: {
+      clientLeads: true,
+      conversionTracking: true,
+      projectManagement: 'Unlimited',
+      emailMarketing: 'Unlimited',
+      whatsappMarketing: true,
+      socialMediaScheduler: 'Unlimited Instagram | LinkedIn',
+      internalMessages: true,
+      hrManagement: true,
+      financialManagement: true,
+      internalPolicies: true,
+      videoMeeting: true,
+      quickTools: true,
+      seoContent: true,
+      storage: '50GB storage',
+      emailNotifications: 'Unlimited'
+    }
+  },
+  [SUBSCRIPTION_PLANS.ADVANCE]: {
+    maxEmployees: 500,
+    maxStorage: 'unlimited',
+    support: '24/7 Premium Support',
+    uptimeSLA: 99.99,
+    price: {
+      monthly: 4699,
+      yearly: 3759 // 20% discount
+    },
+    currency: 'INR',
+    features: {
+      clientLeads: true,
+      conversionTracking: true,
+      projectManagement: 'Unlimited',
+      emailMarketing: 'Unlimited',
+      whatsappMarketing: true,
+      socialMediaScheduler: 'Unlimited Instagram | LinkedIn',
+      internalMessages: true,
+      hrManagement: true,
+      financialManagement: true,
+      internalPolicies: true,
+      videoMeeting: true,
+      quickTools: true,
+      seoContent: true,
+      storage: 'Unlimited storage',
+      emailNotifications: 'Unlimited'
+    }
+  },
   [SUBSCRIPTION_PLANS.NOXTM]: {
     maxEmployees: 500,
     maxStorage: 'unlimited',
