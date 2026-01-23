@@ -1,6 +1,32 @@
 const Imap = require('imap');
 const nodemailer = require('nodemailer');
 const { simpleParser } = require('mailparser');
+const { decode: decodeQuotedPrintable } = require('quoted-printable');
+const utf8 = require('utf8');
+
+/**
+ * Decode quoted-printable and clean email preview text
+ * @param {string} text - Raw text that may contain QP encoding
+ * @returns {string} - Decoded clean text
+ */
+function decodeEmailText(text) {
+  if (!text) return '';
+
+  try {
+    // Check if text contains quoted-printable patterns (=XX)
+    if (/=[0-9A-F]{2}/i.test(text)) {
+      // Decode quoted-printable
+      const decoded = decodeQuotedPrintable(text);
+      // Decode UTF-8
+      return utf8.decode(decoded);
+    }
+    return text;
+  } catch (e) {
+    // If decoding fails, try to clean up the raw text
+    // Remove =XX patterns that couldn't be decoded
+    return text.replace(/=[0-9A-F]{2}/gi, '').replace(/=\r?\n/g, '');
+  }
+}
 
 /**
  * Test IMAP connection
@@ -430,6 +456,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                     cleanText = cleanText.replace(/^Content-Type:.*$/gm, ''); // Content-Type headers
                     cleanText = cleanText.replace(/^Content-Transfer-Encoding:.*$/gm, ''); // Encoding headers
                     cleanText = cleanText.replace(/^Content-Disposition:.*$/gm, ''); // Disposition headers
+
+                    // Decode quoted-printable encoding
+                    cleanText = decodeEmailText(cleanText);
 
                     // Strip HTML tags
                     cleanText = cleanText.replace(/<[^>]*>/g, '');
