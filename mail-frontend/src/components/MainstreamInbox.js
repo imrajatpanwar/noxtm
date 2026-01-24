@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   MdInbox, MdRefresh, MdMoreVert, MdStar, MdStarBorder,
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
-  MdChevronLeft, MdChevronRight, MdLocalOffer, MdPeople,
-  MdInfo, MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd, MdDownload, MdMail, MdArrowDropDown
+  MdChevronLeft, MdChevronRight, MdInfo,
+  MdSend, MdAttachFile, MdClose, MdMinimize,
+  MdMaximize, MdPersonAdd, MdDownload, MdArrowDropDown
 } from 'react-icons/md';
 import api from '../config/api';
+import { getMainAppUrl } from '../config/authConfig';
 import CreateEmailModal from './CreateEmailModal';
 import EmailConnectionForm from './EmailConnectionForm';
 import ProfileSettings from './mailbox/ProfileSettings';
@@ -15,7 +16,7 @@ import IconButton from './ui/IconButton';
 import Tab from './ui/Tab';
 import './MainstreamInbox.css';
 
-function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and navigation callback as props from parent (Inbox)
+function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive user and navigation callback as props from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [activeTab, setActiveTab] = useState('primary'); // 'primary' | 'promotions' | 'social' | 'updates' | 'sent' | 'settings'
@@ -35,7 +36,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
   const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
-  const [profileLoading, setProfileLoading] = useState(!user);  // Not loading if user prop exists
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
   const emailsPerPage = 12;
 
@@ -44,6 +44,7 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
   const [selectAll, setSelectAll] = useState(false);
   const [starredEmails, setStarredEmails] = useState(new Set());
   const [selectDropdownOpen, setSelectDropdownOpen] = useState(false);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
 
   // Fetch hosted email accounts - only after user is ready
   useEffect(() => {
@@ -70,9 +71,22 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
     if (user) {
       console.log('[MAINSTREAM_INBOX] Received user from parent:', user.email);
       setCurrentUser(user);
-      setProfileLoading(false);
     }
   }, [user]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (accountDropdownOpen && !event.target.closest('.mail-account-dropdown-gmail')) {
+        setAccountDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [accountDropdownOpen]);
 
   const fetchHostedAccounts = async () => {
     console.log('[MAINSTREAM_INBOX] Starting account fetch...');
@@ -473,28 +487,52 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
     alert(`Archive functionality for ${selectedEmails.size} email(s) - to be implemented`);
   };
 
-  const handleBulkMarkRead = async () => {
-    if (selectedEmails.size === 0) {
-      alert('No emails selected');
-      return;
-    }
-    alert(`Mark as read functionality for ${selectedEmails.size} email(s) - to be implemented`);
-  };
-
   const getEmailPreview = (email) => {
     // Use preview from backend if available
     if (email.preview) {
       // Remove [html content] and [plain content] tags from preview
-      const cleanPreview = email.preview.replace(/\s*-?\s*\[(html|plain)\s+content\]/gi, '').trim();
-      return cleanPreview || 'No preview available';
+      let cleanPreview = email.preview.replace(/\s*-?\s*\[(html|plain)\s+content\]/gi, '').trim();
+      
+      // Remove empty parentheses and brackets patterns like "( )", "- ( )", etc.
+      cleanPreview = cleanPreview.replace(/\s*-?\s*\(\s*\)\s*/g, '').trim();
+      cleanPreview = cleanPreview.replace(/^\s*-\s+/, '').trim(); // Remove leading dash
+      
+      // Only remove standalone URLs (tracking links that are the only content)
+      const urlPattern = /^https?:\/\/[^\s]+$/;
+      if (urlPattern.test(cleanPreview)) {
+        // This is just a URL, try to get text from body
+        const body = email.text || email.html || '';
+        if (body) {
+          let text = body.replace(/<[^>]*>/g, '').trim();
+          text = text.replace(/\s*-?\s*\(\s*\)\s*/g, '').replace(/^\s*-\s+/, '').trim();
+          // Remove standalone URLs from body text too
+          text = text.replace(/^https?:\/\/\S+\s*/g, '').trim();
+          if (text && text.length >= 3) {
+            return text.substring(0, 150);
+          }
+        }
+        return '';
+      }
+      
+      // If after cleaning we have meaningful content, return it
+      if (cleanPreview && cleanPreview.length >= 3 && !/^[\s\-()]+$/.test(cleanPreview)) {
+        return cleanPreview.substring(0, 150);
+      }
     }
-
-    // Fallback to text/html if body was loaded
+    
+    // Fallback to text/html if preview not available or empty
     const body = email.text || email.html || '';
-    if (!body) return 'No preview available';
-
-    const text = body.replace(/<[^>]*>/g, ''); // Strip HTML tags
-    return text.substring(0, 100) + (text.length > 100 ? '...' : '');
+    if (body) {
+      let text = body.replace(/<[^>]*>/g, '').trim();
+      text = text.replace(/\s*-?\s*\(\s*\)\s*/g, '').replace(/^\s*-\s+/, '').trim();
+      // Remove leading URLs
+      text = text.replace(/^https?:\/\/\S+\s*/g, '').trim();
+      if (text && text.length >= 3) {
+        return text.substring(0, 150);
+      }
+    }
+    
+    return '';
   };
 
   const formatDate = (date) => {
@@ -546,40 +584,115 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
             <MdPersonAdd /> Create Email
           </button>
           <div className="mail-account-dropdown-gmail">
-            <select
-              value={selectedAccount?._id || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                // Check if "Login Mail" option was selected
-                if (value === '__login_mail__') {
-                  setLoginMailModalOpen(true);
-                  // Reset dropdown to current account after opening modal
-                  setTimeout(() => {
-                    e.target.value = selectedAccount?._id || '';
-                  }, 100);
-                  return;
-                }
-
-                const account = accounts.find(a => a._id === value);
-                setSelectedAccount(account);
-                setSelectedEmail(null);
-                setSelectedEmails(new Set());
-              }}
+            <button 
+              className="account-avatar-button"
+              onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
             >
-              {accounts.length === 0 && (
-                <option value="">No accounts</option>
-              )}
-              {accounts.map(account => (
-                <option key={account._id} value={account._id}>
-                  {account.email}
-                </option>
-              ))}
-              {/* Login Mail option at the bottom */}
-              <option value="__login_mail__" style={{ borderTop: '1px solid #ddd', marginTop: '5px', fontWeight: 'bold' }}>
-                + Login Mail
-              </option>
-            </select>
+              {selectedAccount?.email?.charAt(0).toUpperCase() || 'U'}
+            </button>
+            {accountDropdownOpen && (
+              <div className="account-dropdown-menu">
+                {/* User Header */}
+                <div className="account-dropdown-header">
+                  <div className="account-dropdown-user-info">
+                    <div className="account-dropdown-user-avatar">
+                      {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="account-dropdown-user-details">
+                      <div className="account-dropdown-user-greeting">Hello, {user?.fullName || 'User'}</div>
+                      <div className="account-dropdown-user-email">{user?.email || ''}</div>
+                    </div>
+                  </div>
+                  <div 
+                    className="account-dropdown-link"
+                    onClick={() => {
+                      setAccountDropdownOpen(false);
+                      window.open(getMainAppUrl(), '_blank');
+                    }}
+                  >
+                    Back to the Dashboard
+                  </div>
+                </div>
+
+                {/* Email Accounts List */}
+                {accounts.length > 0 && (
+                  <>
+                    <div className="account-dropdown-section">
+                      {accounts.map(account => (
+                        <div
+                          key={account._id}
+                          className={`account-dropdown-account-item ${selectedAccount?._id === account._id ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setSelectedEmail(null);
+                            setSelectedEmails(new Set());
+                            setAccountDropdownOpen(false);
+                          }}
+                        >
+                          <div className="account-dropdown-account-avatar">
+                            {account.email?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="account-dropdown-account-info">
+                            <div className="account-dropdown-account-name">{account.displayName || account.email?.split('@')[0]}</div>
+                            <div className="account-dropdown-account-email">{account.email}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="account-dropdown-divider"></div>
+                  </>
+                )}
+
+                {/* Footer Menu */}
+                <div className="account-dropdown-menu-section">
+                  <div
+                    className="account-dropdown-menu-item"
+                    onClick={() => {
+                      setActiveTab('settings');
+                      setAccountDropdownOpen(false);
+                    }}
+                  >
+                    <MdSettings className="account-dropdown-menu-icon" />
+                    Mail Settings & Privacy
+                  </div>
+                  <div
+                    className="account-dropdown-menu-item"
+                    onClick={() => {
+                      setAccountDropdownOpen(false);
+                      window.open('https://help.noxtm.com', '_blank');
+                    }}
+                  >
+                    <MdInfo className="account-dropdown-menu-icon" />
+                    Help
+                  </div>
+                  <div
+                    className="account-dropdown-menu-item"
+                    onClick={() => {
+                      setLoginMailModalOpen(true);
+                      setAccountDropdownOpen(false);
+                    }}
+                  >
+                    <MdPersonAdd className="account-dropdown-menu-icon" />
+                    Login Mail
+                  </div>
+                </div>
+
+                <div className="account-dropdown-divider"></div>
+
+                {/* Sign Out */}
+                <div className="account-dropdown-sign-out-section">
+                  <div
+                    className="account-dropdown-sign-out"
+                    onClick={() => {
+                      setAccountDropdownOpen(false);
+                      onLogout && onLogout();
+                    }}
+                  >
+                    Sign Out
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -689,12 +802,6 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
           label="Sent"
           active={activeTab === 'sent'}
           onClick={() => handleTabChange('sent')}
-        />
-        <Tab
-          icon={MdSettings}
-          label="Settings"
-          active={activeTab === 'settings'}
-          onClick={() => handleTabChange('settings')}
         />
         {activeTab !== 'settings' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -927,7 +1034,9 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
               <small>Try refreshing or selecting a different account</small>
             </div>
           ) : (
-            emails.map((email, index) => (
+            emails.map((email, index) => {
+              const preview = getEmailPreview(email);
+              return (
               <div
                 key={email.uid || index}
                 className={`gmail-email-item ${selectedEmail === email ? 'selected' : ''} ${email.seen ? '' : 'unread'} ${selectedEmails.has(email.uid) ? 'checked' : ''}`}
@@ -956,10 +1065,13 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
 
                 <div className="mail-email-content-gmail">
                   <span className="mail-email-subject-gmail">
-                    {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
+                    {(() => {
+                      const subject = (email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '');
+                      return subject.length > 30 ? subject.substring(0, 30) + '...' : subject;
+                    })()}
                   </span>
                   <span className="mail-email-preview-gmail">
-                    {getEmailPreview(email) ? ' - ' + getEmailPreview(email) : ''}
+                    {preview ? ' - ' + preview : ''}
                   </span>
                 </div>
 
@@ -968,7 +1080,8 @@ function MainstreamInbox({ user, onNavigateToDomains }) {  // Receive user and n
                   {email.hasAttachments && <MdAttachFile className="attachment-icon-gmail" />}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
           </div>
         )}
