@@ -580,9 +580,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         </div>
 
         <div className="mail-gmail-header-right">
-          <button className="mail-compose-btn-header" onClick={() => setComposeOpen(true)}>
-            <MdEdit /> Compose
-          </button>
           <button className="mail-create-account-btn-header" onClick={() => setCreateEmailModalOpen(true)}>
             <MdPersonAdd /> Create Email
           </button>
