@@ -37,7 +37,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
-  const emailsPerPage = 12;
+  const emailsPerPage = 14;
 
   // Gmail-style checkbox selection
   const [selectedEmails, setSelectedEmails] = useState(new Set());
