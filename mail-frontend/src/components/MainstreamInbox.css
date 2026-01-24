@@ -242,21 +242,253 @@
   position: relative;
 }
 
-.mail-account-dropdown-gmail select {
-  padding: 8px 32px 8px 12px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 14px;
-  background: #fff;
+.account-avatar-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  appearance: none;
-  outline: none;
-  color: #202124;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+.account-avatar-button:hover {
+  background: #1557b0;
+}
+
+.account-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  max-width: 320px;
+  max-height: 500px;
+  overflow-y: auto;
+  z-index: 1000;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Hide scrollbar */
+.account-dropdown-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.account-dropdown-menu {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* User Header */
+.account-dropdown-header {
+  padding: 12px 16px 10px 16px;
+}
+
+.account-dropdown-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-dropdown-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.account-dropdown-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-dropdown-user-greeting {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202124;
+  margin-bottom: 2px;
+}
+
+.account-dropdown-user-email {
+  font-size: 13px;
+  color: #5f6368;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-dropdown-link {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #000;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+  text-align: center;
+  font-weight: 500;
+  background: #F5F1F0;
+}
+
+.account-dropdown-link:hover {
+  background: #f1f3f4;
+}
+
+.account-dropdown-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0px 0;
+}
+
+/* Email Accounts Section */
+.account-dropdown-section {
+  padding: 5px 0;
+}
+
+.account-dropdown-account-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.account-dropdown-account-item:hover {
+  background: #f1f3f4;
+}
+
+.account-dropdown-account-item.active {
+  background: #e8f0fe;
+}
+
+.account-dropdown-account-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Generate different colors for different accounts */
+.account-dropdown-account-item:nth-child(1) .account-dropdown-account-avatar {
+  background: #ea4335;
+}
+
+.account-dropdown-account-item:nth-child(2) .account-dropdown-account-avatar {
+  background: #4285f4;
+}
+
+.account-dropdown-account-item:nth-child(3) .account-dropdown-account-avatar {
+  background: #f57c00;
+}
+
+.account-dropdown-account-item:nth-child(4) .account-dropdown-account-avatar {
+  background: #0b8043;
+}
+
+.account-dropdown-account-item:nth-child(n+5) .account-dropdown-account-avatar {
+  background: #1a73e8;
+}
+
+.account-dropdown-account-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-dropdown-account-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-dropdown-account-email {
+  font-size: 13px;
+  color: #5f6368;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Menu Section */
+.account-dropdown-menu-section {
+  padding: 0px 0;
+}
+
+.account-dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  font-size: 14px;
+  color: #202124;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.account-dropdown-menu-item:hover {
+  background: #f1f3f4;
+}
+
+.account-dropdown-menu-icon {
+  font-size: 20px;
+  color: #5f6368;
+}
+
+/* Sign Out Section */
+.account-dropdown-sign-out-section {
+  padding: 0px;
+  background: #fce8e6;
+}
+
+.account-dropdown-sign-out {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #c5221f;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.account-dropdown-sign-out:hover {
+  background: #fad2cf;
+}
+
+/* Old styles - hidden */
+.mail-account-dropdown-gmail select {
+  display: none;
+}
+
 .mail-account-dropdown-gmail select:hover {
-  background: #f8f9fa;
+  display: none;
 }
 
 .dropdown-icon-gmail {
@@ -484,6 +716,7 @@
   align-items: center;
   min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .email-subject,
@@ -491,6 +724,7 @@
   font-size: 14px;
   color: #9c9c9c;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  flex-shrink: 0;
 }
 
 .email-preview,
@@ -499,6 +733,9 @@
   color: #b8b8b8;
   margin-left: 8px;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .email-timestamp,

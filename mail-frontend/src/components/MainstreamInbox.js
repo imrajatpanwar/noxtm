@@ -1065,10 +1065,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
 
                 <div className="mail-email-content-gmail">
                   <span className="mail-email-subject-gmail">
-                    {(() => {
-                      const subject = (email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '');
-                      return subject.length > 30 ? subject.substring(0, 30) + '...' : subject;
-                    })()}
+                    {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
                   </span>
                   <span className="mail-email-preview-gmail">
                     {preview ? ' - ' + preview : ''}
