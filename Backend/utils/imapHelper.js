@@ -514,9 +514,9 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                     // Clean and decode email preview text
                     cleanText = cleanEmailPreview(cleanText);
 
-                    // Extract preview (150 chars max for better readability)
-                    const textPreview = cleanText.length > 150
-                      ? cleanText.substring(0, 150) + '...'
+                    // Extract preview (107 chars max)
+                    const textPreview = cleanText.length > 107
+                      ? cleanText.substring(0, 107) + '...'
                       : cleanText;
 
                     emailData.preview = textPreview || '';
