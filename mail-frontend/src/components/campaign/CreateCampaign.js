@@ -171,7 +171,21 @@ function CreateCampaign() {
       const response = await api.post('/campaigns', payload);
 
       if (response.data.success) {
-        setSuccess(true);
+        const campaignId = response.data.data._id;
+
+        // If immediate send, trigger the send endpoint
+        if (campaignData.schedule === 'immediate') {
+          try {
+            await api.post(`/campaigns/${campaignId}/send`);
+            setSuccess(true);
+          } catch (sendErr) {
+            console.error('Error sending campaign:', sendErr);
+            setError('Campaign created but failed to send. You can send it from the campaigns list.');
+          }
+        } else {
+          setSuccess(true);
+        }
+
         // Reset form
         setCampaignData({
           name: '',
@@ -184,6 +198,7 @@ function CreateCampaign() {
         setEmailContent('');
         setRecipients([]);
         setRecipientText('');
+        setSelectedTemplate('');
 
         setTimeout(() => setSuccess(false), 5000);
       }
