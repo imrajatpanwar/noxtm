@@ -2,7 +2,7 @@
 /* Color Palette: Gmail Blue #1a73e8, Gray #f5f5f5, Text #202124 */
 
 .mail-mainstream-inbox {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 0px);
   display: flex;
   flex-direction: column;
   background: #f5f5f5;
