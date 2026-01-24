@@ -29,6 +29,60 @@ function decodeEmailText(text) {
 }
 
 /**
+ * Clean email preview text - remove URLs, HTML, and tracking content
+ * @param {string} text - Raw text from email
+ * @returns {string} - Clean readable preview text
+ */
+function cleanEmailPreview(text) {
+  if (!text) return '';
+
+  let cleaned = text;
+
+  // Decode quoted-printable first
+  cleaned = decodeEmailText(cleaned);
+
+  // Remove HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, ' ');
+
+  // Remove URLs (http, https, ftp)
+  cleaned = cleaned.replace(/https?:\/\/[^\s)>\]]+/gi, '');
+  cleaned = cleaned.replace(/ftp:\/\/[^\s)>\]]+/gi, '');
+
+  // Remove email addresses in angle brackets
+  cleaned = cleaned.replace(/<[^@\s]+@[^>\s]+>/g, '');
+
+  // Remove common tracking patterns
+  cleaned = cleaned.replace(/\([^)]*click\.[^)]*\)/gi, '');
+  cleaned = cleaned.replace(/\([^)]*tracking[^)]*\)/gi, '');
+  cleaned = cleaned.replace(/\([^)]*convertkit[^)]*\)/gi, '');
+  cleaned = cleaned.replace(/\([^)]*mail2\.com[^)]*\)/gi, '');
+
+  // Remove base64-like strings (long alphanumeric sequences)
+  cleaned = cleaned.replace(/[a-zA-Z0-9]{50,}/g, '');
+
+  // Remove leftover parentheses with just whitespace or dashes
+  cleaned = cleaned.replace(/\(\s*-?\s*\)/g, '');
+  cleaned = cleaned.replace(/-\s*\(\s*\)/g, '');
+
+  // Remove "View in browser" and similar common phrases
+  cleaned = cleaned.replace(/view\s*(this\s*)?(email\s*)?in\s*(your\s*)?(browser|web)/gi, '');
+  cleaned = cleaned.replace(/unsubscribe/gi, '');
+
+  // Remove MIME boundaries and headers
+  cleaned = cleaned.replace(/^------=.*$/gm, '');
+  cleaned = cleaned.replace(/^Content-Type:.*$/gmi, '');
+  cleaned = cleaned.replace(/^Content-Transfer-Encoding:.*$/gmi, '');
+  cleaned = cleaned.replace(/^Content-Disposition:.*$/gmi, '');
+
+  // Clean up whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.replace(/\s*-\s*-\s*/g, ' ');
+  cleaned = cleaned.replace(/^\s*-\s*/g, '');
+
+  return cleaned.trim();
+}
+
+/**
  * Test IMAP connection
  * @param {Object} config - IMAP configuration
  * @param {string} config.host - IMAP host
@@ -457,20 +511,13 @@ async function fetchEmails(config, folder = 'INBOX', page = 1, limit = 50) {
                     cleanText = cleanText.replace(/^Content-Transfer-Encoding:.*$/gm, ''); // Encoding headers
                     cleanText = cleanText.replace(/^Content-Disposition:.*$/gm, ''); // Disposition headers
 
-                    // Decode quoted-printable encoding
-                    cleanText = decodeEmailText(cleanText);
+                    // Clean and decode email preview text
+                    cleanText = cleanEmailPreview(cleanText);
 
-                    // Strip HTML tags
-                    cleanText = cleanText.replace(/<[^>]*>/g, '');
-
-                    // Normalize whitespace and extract preview (115 chars max)
-                    const normalizedText = cleanText
-                      .replace(/\s+/g, ' ')
-                      .trim();
-
-                    const textPreview = normalizedText.length > 115
-                      ? normalizedText.substring(0, 115) + '...'
-                      : normalizedText;
+                    // Extract preview (150 chars max for better readability)
+                    const textPreview = cleanText.length > 150
+                      ? cleanText.substring(0, 150) + '...'
+                      : cleanText;
 
                     emailData.preview = textPreview || '';
                   } else if (info.which.includes('HEADER')) {
