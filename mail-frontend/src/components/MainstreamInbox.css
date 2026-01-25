@@ -615,6 +615,42 @@
   color: #5f6368;
 }
 
+/* Reply & Forward buttons */
+.mail-reply-forward-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #dadce0;
+}
+
+.mail-reply-btn,
+.mail-forward-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 18px;
+  background: #fff;
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.mail-reply-btn:hover,
+.mail-forward-btn:hover {
+  background: #f1f3f4;
+  border-color: #5f6368;
+}
+
+.mail-reply-btn svg,
+.mail-forward-btn svg {
+  font-size: 18px;
+}
+
 .mail-detail-body-gmail {
   padding: 24px 48px;
   background: #ffffff;
