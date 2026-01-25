@@ -919,16 +919,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
               </div>
             </div>
 
-            {/* Reply & Forward buttons */}
-            <div className="mail-reply-forward-actions">
-              <button className="mail-reply-btn" onClick={handleReply}>
-                <MdReply /> Reply
-              </button>
-              <button className="mail-forward-btn" onClick={handleForward}>
-                <MdForward /> Forward
-              </button>
-            </div>
-
             <div className="mail-detail-body-gmail">
               {selectedEmail.html ? (
                 <iframe
