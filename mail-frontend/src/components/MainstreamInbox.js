@@ -860,8 +860,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                 <div>
                   <div className="mail-sender-name-gmail">
                     {selectedEmail.from?.name || selectedEmail.from?.address?.split('@')[0]}
+                    <span className="mail-sender-email-gmail"> - {selectedEmail.from?.address}</span>
                   </div>
-                  <div className="mail-sender-email-gmail">{selectedEmail.from?.address}</div>
                   <div className="mail-recipient-info-gmail">to {selectedEmail.to?.[0]?.address}</div>
                 </div>
               </div>
@@ -872,11 +872,21 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                 <iframe
                   srcDoc={selectedEmail.html}
                   title="Email Content"
-                  sandbox="allow-same-origin"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  sandbox="allow-same-origin allow-scripts"
+                  style={{ width: '100%', border: 'none', display: 'block', minHeight: '500px' }}
+                  onLoad={(e) => {
+                    try {
+                      const iframe = e.target;
+                      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                      const contentHeight = Math.max(iframeDoc.documentElement.scrollHeight, 500);
+                      iframe.style.height = contentHeight + 'px';
+                    } catch (err) {
+                      e.target.style.height = '500px';
+                    }
+                  }}
                 />
               ) : (
-                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Roboto, Arial, sans-serif', color: '#202124' }}>
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Roboto, Arial, sans-serif', color: '#202124', padding: '0' }}>
                   {selectedEmail.text}
                 </pre>
               )}
