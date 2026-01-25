@@ -615,6 +615,44 @@
   color: #5f6368;
 }
 
+/* Meta right section with date and inline reply/forward */
+.mail-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mail-reply-forward-inline {
+  display: flex;
+  gap: 4px;
+}
+
+.mail-reply-btn-small,
+.mail-forward-btn-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-reply-btn-small:hover,
+.mail-forward-btn-small:hover {
+  background: #f1f3f4;
+  color: #202124;
+}
+
+.mail-reply-btn-small svg,
+.mail-forward-btn-small svg {
+  font-size: 20px;
+}
+
 /* Reply & Forward buttons */
 .mail-reply-forward-actions {
   display: flex;

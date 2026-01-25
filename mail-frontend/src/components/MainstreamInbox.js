@@ -906,7 +906,17 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                   <div className="mail-recipient-info-gmail">to {selectedEmail.to?.[0]?.address}</div>
                 </div>
               </div>
-              <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
+              <div className="mail-meta-right">
+                <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
+                <div className="mail-reply-forward-inline">
+                  <button className="mail-reply-btn-small" onClick={handleReply} title="Reply">
+                    <MdReply />
+                  </button>
+                  <button className="mail-forward-btn-small" onClick={handleForward} title="Forward">
+                    <MdForward />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Reply & Forward buttons */}
