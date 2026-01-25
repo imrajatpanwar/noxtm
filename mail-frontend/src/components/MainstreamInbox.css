@@ -533,6 +533,13 @@
   overflow-y: auto;
   width: 100%;
   background: #ffffff;
+  /* Hide scrollbar but keep scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.mail-email-detail-fullwidth::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 .mail-detail-header-gmail {
