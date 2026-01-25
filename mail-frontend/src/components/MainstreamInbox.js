@@ -4,7 +4,8 @@ import {
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
   MdChevronLeft, MdChevronRight, MdInfo,
   MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd, MdDownload, MdArrowDropDown
+  MdMaximize, MdPersonAdd, MdDownload, MdArrowDropDown,
+  MdReply, MdForward
 } from 'react-icons/md';
 import api from '../config/api';
 import { getMainAppUrl } from '../config/authConfig';
@@ -353,6 +354,46 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       console.error('Error sending email:', error);
       alert('Failed to send email: ' + (error.response?.data?.message || error.message));
     }
+  };
+
+  // Reply to email
+  const handleReply = () => {
+    if (!selectedEmail) return;
+
+    const replyTo = selectedEmail.from?.address || '';
+    const originalSubject = selectedEmail.subject || '';
+    const replySubject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
+
+    // Format quoted original message
+    const originalDate = new Date(selectedEmail.date).toLocaleString();
+    const originalFrom = selectedEmail.from?.name || selectedEmail.from?.address || '';
+    const originalBody = selectedEmail.text || '';
+    const quotedBody = `\n\n--- Original Message ---\nFrom: ${originalFrom}\nDate: ${originalDate}\n\n${originalBody}`;
+
+    setComposeTo(replyTo);
+    setComposeSubject(replySubject);
+    setComposeBody(quotedBody);
+    setComposeOpen(true);
+  };
+
+  // Forward email
+  const handleForward = () => {
+    if (!selectedEmail) return;
+
+    const originalSubject = selectedEmail.subject || '';
+    const fwdSubject = originalSubject.startsWith('Fwd:') ? originalSubject : `Fwd: ${originalSubject}`;
+
+    // Format forwarded message
+    const originalDate = new Date(selectedEmail.date).toLocaleString();
+    const originalFrom = selectedEmail.from?.name || selectedEmail.from?.address || '';
+    const originalTo = selectedEmail.to?.[0]?.address || '';
+    const originalBody = selectedEmail.text || '';
+    const forwardBody = `\n\n--- Forwarded Message ---\nFrom: ${originalFrom}\nTo: ${originalTo}\nDate: ${originalDate}\nSubject: ${originalSubject}\n\n${originalBody}`;
+
+    setComposeTo('');
+    setComposeSubject(fwdSubject);
+    setComposeBody(forwardBody);
+    setComposeOpen(true);
   };
 
   const handleAvatarUpload = async (file) => {
@@ -867,6 +908,17 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
               </div>
               <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
             </div>
+
+            {/* Reply & Forward buttons */}
+            <div className="mail-reply-forward-actions">
+              <button className="mail-reply-btn" onClick={handleReply}>
+                <MdReply /> Reply
+              </button>
+              <button className="mail-forward-btn" onClick={handleForward}>
+                <MdForward /> Forward
+              </button>
+            </div>
+
             <div className="mail-detail-body-gmail">
               {selectedEmail.html ? (
                 <iframe
