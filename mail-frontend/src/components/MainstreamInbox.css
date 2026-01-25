@@ -611,8 +611,7 @@
 .mail-detail-body-gmail {
   padding: 24px 48px;
   background: #ffffff;
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
   flex: 1;
   overflow-y: auto;
   min-height: 400px;
