@@ -870,10 +870,10 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             <div className="mail-detail-body-gmail">
               {selectedEmail.html ? (
                 <iframe
-                  srcDoc={selectedEmail.html}
+                  srcDoc={`<style>html,body{overflow:hidden;scrollbar-width:none;-ms-overflow-style:none;}::-webkit-scrollbar{display:none;}</style>${selectedEmail.html}`}
                   title="Email Content"
                   sandbox="allow-same-origin allow-scripts"
-                  style={{ width: '100%', border: 'none', display: 'block', minHeight: '500px' }}
+                  style={{ width: '100%', border: 'none', display: 'block', minHeight: '500px', overflow: 'hidden' }}
                   onLoad={(e) => {
                     try {
                       const iframe = e.target;
