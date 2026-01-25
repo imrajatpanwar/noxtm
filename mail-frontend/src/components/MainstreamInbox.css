@@ -612,9 +612,6 @@
   padding: 24px 48px;
   background: #ffffff;
   width: 100%;
-  flex: 1;
-  overflow-y: auto;
-  min-height: 400px;
 }
 
 /* Email List - Gmail Style */
