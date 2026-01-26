@@ -888,6 +888,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
               <IconButton icon={MdChevronLeft} onClick={handleBackToList} title="Back to list" />
               <h3>{selectedEmail.subject || '(No Subject)'}</h3>
               <div className="mail-detail-actions-gmail">
+                <IconButton icon={MdReply} onClick={handleReply} title="Reply" />
+                <IconButton icon={MdForward} onClick={handleForward} title="Forward" />
                 <IconButton icon={MdArchive} title="Archive" />
                 <IconButton icon={MdDelete} title="Delete" />
                 <IconButton icon={MdMoreVert} title="More" />
@@ -896,7 +898,19 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             <div className="mail-detail-meta-gmail">
               <div className="mail-sender-info-gmail">
                 <div className="mail-email-avatar-gmail large">
-                  {getInitials(selectedEmail.from?.name || selectedEmail.from?.address)}
+                  {selectedEmail.from?.avatar ? (
+                    <img 
+                      src={selectedEmail.from.avatar} 
+                      alt={selectedEmail.from?.name || selectedEmail.from?.address}
+                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.textContent = getInitials(selectedEmail.from?.name || selectedEmail.from?.address);
+                      }}
+                    />
+                  ) : (
+                    getInitials(selectedEmail.from?.name || selectedEmail.from?.address)
+                  )}
                 </div>
                 <div>
                   <div className="mail-sender-name-gmail">
@@ -906,17 +920,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                   <div className="mail-recipient-info-gmail">to {selectedEmail.to?.[0]?.address}</div>
                 </div>
               </div>
-              <div className="mail-meta-right">
-                <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
-                <div className="mail-reply-forward-inline">
-                  <button className="mail-reply-btn-small" onClick={handleReply} title="Reply">
-                    <MdReply />
-                  </button>
-                  <button className="mail-forward-btn-small" onClick={handleForward} title="Forward">
-                    <MdForward />
-                  </button>
-                </div>
-              </div>
+              <div className="mail-email-date-gmail">{new Date(selectedEmail.date).toLocaleString()}</div>
             </div>
 
             <div className="mail-detail-body-gmail">
