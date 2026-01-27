@@ -1953,6 +1953,12 @@ app.post('/api/reset-password', async (req, res) => {
 
 // Register
 app.post('/api/register', async (req, res) => {
+  // TEMPORARILY DISABLED - New user signups are currently disabled
+  return res.status(403).json({
+    success: false,
+    message: 'New user registration is temporarily disabled. Please contact administrator.'
+  });
+
   try {
     const { fullName, email, password, role } = req.body;
 
