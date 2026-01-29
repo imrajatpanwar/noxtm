@@ -54,7 +54,7 @@
 
 .mail-gmail-search-box:hover {
   background: #e8eaed;
-  box-shadow: 0 1px 1px 0 rgba(65,69,73,.3), 0 1px 3px 1px rgba(65,69,73,.15);
+  box-shadow: 0 1px 1px 0 rgba(65, 69, 73, .3), 0 1px 3px 1px rgba(65, 69, 73, .15);
 }
 
 .mail-gmail-search-box .search-icon {
@@ -534,12 +534,15 @@
   width: 100%;
   background: #ffffff;
   /* Hide scrollbar but keep scroll functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
 }
 
 .mail-email-detail-fullwidth::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Opera */
+  display: none;
+  /* Chrome/Safari/Opera */
 }
 
 .mail-detail-header-gmail {
@@ -863,8 +866,13 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state small {
@@ -1400,73 +1408,78 @@
 }
 
 /* Login Mail Modal Styles */
-.modal-overlay {
+.mln-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 0.2s ease-in-out;
+  animation: mlnFadeIn 0.25s ease-out;
+  padding: 20px;
 }
 
-.modal-content {
+.mln-modal-content {
   background: white;
-  border-radius: 12px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
+  border-radius: 20px;
+  max-width: 480px;
+  width: 100%;
   position: relative;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease-out;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  animation: mlnSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
-.modal-close-btn {
+.mln-modal-close-btn {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: transparent;
+  top: 16px;
+  right: 16px;
+  background: #f1f5f9;
   border: none;
-  font-size: 24px;
-  color: #5f6368;
+  font-size: 20px;
+  color: #64748b;
   cursor: pointer;
-  padding: 5px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 10px;
   width: 36px;
   height: 36px;
   transition: all 0.2s;
   z-index: 1;
 }
 
-.modal-close-btn:hover {
-  background-color: #f1f3f4;
-  color: #202124;
+.mln-modal-close-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.05);
 }
 
-@keyframes fadeIn {
+@keyframes mlnFadeIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
-@keyframes slideUp {
+@keyframes mlnSlideUp {
   from {
-    transform: translateY(50px);
+    transform: translateY(30px) scale(0.97);
     opacity: 0;
   }
+
   to {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }

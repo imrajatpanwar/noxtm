@@ -97,6 +97,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const extensionAuthRoutes = require('./routes/extension-auth');
 app.use('/api/extension-auth', extensionAuthRoutes);
 
+// Users routes
+const usersRoutes = require('./routes/users.js');
+app.use('/api/users', usersRoutes);
+
 // Modules routes
 const modulesRoutes = require('./routes/modules');
 app.use('/api/modules', modulesRoutes);
@@ -125,6 +129,10 @@ app.use('/api', exhibitorsRoutes);
 const campaignsRoutes = require('./routes/campaigns');
 app.use('/api/campaigns', campaignsRoutes);
 
+// Email Tracking routes
+const emailTrackingRoutes = require('./routes/email-tracking');
+app.use('/api/tracking', emailTrackingRoutes);
+
 // Contact List routes
 const contactListsRoutes = require('./routes/contact-lists');
 app.use('/api/contact-lists', contactListsRoutes);
@@ -136,6 +144,10 @@ app.use('/api/projects', projectsRoutes);
 // AI Chatbot routes
 const aiRoutes = require('./routes/ai');
 app.use('/api/ai', aiRoutes);
+
+// Billing routes
+const billingRoutes = require('./routes/billing');
+app.use('/api/billing', billingRoutes);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port

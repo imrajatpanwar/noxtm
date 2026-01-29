@@ -564,6 +564,25 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
     // Check cache first
     const cached = await getCachedEmailBody(accountId, uid);
     if (cached) {
+      // Enrich cached email with sender's profile image if available
+      if (cached && cached.from && cached.from.address) {
+        try {
+          const User = require('../models/User');
+          const senderUser = await User.findOne(
+            { email: cached.from.address },
+            { emailAvatar: 1, profileImage: 1, fullName: 1 }
+          ).lean();
+
+          if (senderUser) {
+            cached.from.avatar = senderUser.emailAvatar || senderUser.profileImage || null;
+            if (senderUser.fullName && !cached.from.name) {
+              cached.from.name = senderUser.fullName;
+            }
+          }
+        } catch (lookupError) {
+          console.warn('Failed to lookup sender profile from cache:', lookupError.message);
+        }
+      }
       return res.json({ success: true, email: cached, cached: true });
     }
 
@@ -598,6 +617,26 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
     const email = await fetchSingleEmail(imapConfig, parseInt(uid), folderName);
 
     console.log(`✅ Fetched email body in ${Date.now() - startTime}ms`);
+
+    // Enrich email data with sender's profile image if they have an account
+    if (email && email.from && email.from.address) {
+      try {
+        const User = require('../models/User');
+        const senderUser = await User.findOne(
+          { email: email.from.address },
+          { emailAvatar: 1, profileImage: 1, fullName: 1 }
+        ).lean();
+
+        if (senderUser) {
+          email.from.avatar = senderUser.emailAvatar || senderUser.profileImage || null;
+          if (senderUser.fullName && !email.from.name) {
+            email.from.name = senderUser.fullName;
+          }
+        }
+      } catch (lookupError) {
+        console.warn('Failed to lookup sender profile:', lookupError.message);
+      }
+    }
 
     // Cache the email body
     await cacheEmailBody(accountId, uid, email);

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiEdit2, FiTrash2, FiMail, FiUsers, FiFileText } from 'react-icons/fi';
 import api from '../../config/api';
 import TemplateEditor from './TemplateEditor';
 import './TemplateManager.css';
@@ -13,12 +14,7 @@ const TemplateManager = () => {
 
   const categories = ['all', 'support', 'sales', 'general', 'auto-response', 'follow-up'];
 
-  useEffect(() => {
-    fetchTemplates();
-    fetchStats();
-  }, [selectedCategory]);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
       const params = selectedCategory !== 'all' ? { category: selectedCategory } : {};
@@ -29,7 +25,7 @@ const TemplateManager = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory]);
 
   const fetchStats = async () => {
     try {
@@ -39,6 +35,11 @@ const TemplateManager = () => {
       console.error('Error fetching stats:', error);
     }
   };
+
+  useEffect(() => {
+    fetchTemplates();
+    fetchStats();
+  }, [selectedCategory, fetchTemplates]);
 
   const handleDeleteTemplate = async (templateId) => {
     if (!window.confirm('Are you sure you want to delete this template?')) {
@@ -107,8 +108,8 @@ const TemplateManager = () => {
           <h2>Email Templates</h2>
           <p>Create and manage reusable email templates</p>
         </div>
-        <button className="btn-create-template" onClick={handleCreateNew}>
-          + Create Template
+        <button className="btn-primary" onClick={handleCreateNew}>
+          Create Template
         </button>
       </div>
 
@@ -146,24 +147,39 @@ const TemplateManager = () => {
 
       {templates.length === 0 ? (
         <div className="no-templates">
-          <div className="no-templates-icon">=�</div>
+          <div className="no-templates-icon"><FiFileText size={48} /></div>
           <h3>No templates found</h3>
           <p>Create your first email template to save time responding to emails</p>
-          <button className="btn-create-first" onClick={handleCreateNew}>
+          <button className="btn-primary" onClick={handleCreateNew}>
             Create Your First Template
           </button>
         </div>
       ) : (
-        <div className="templates-grid">
+        <div className="templates-list">
+          <div className="templates-list-header">
+            <span className="list-col-name">Template</span>
+            <span className="list-col-category">Category</span>
+            <span className="list-col-subject">Subject</span>
+            <span className="list-col-usage">Usage</span>
+            <span className="list-col-actions">Actions</span>
+          </div>
           {templates.map(template => (
-            <div key={template._id} className="template-card">
-              <div className="template-card-header">
-                <div className="template-info">
-                  <h3 className="template-name">{template.name}</h3>
-                  {template.description && (
-                    <p className="template-description">{template.description}</p>
+            <div key={template._id} className="template-list-item">
+              <div className="list-col-name">
+                <div className="template-name-info">
+                  <span className="template-name">{template.name}</span>
+                  {template.body && template.body.includes('<') && (
+                    <span className="html-badge">HTML</span>
+                  )}
+                  {template.isShared && (
+                    <span className="shared-badge"><FiUsers size={10} /></span>
                   )}
                 </div>
+                {template.description && (
+                  <span className="template-description">{template.description}</span>
+                )}
+              </div>
+              <div className="list-col-category">
                 <span
                   className="category-badge"
                   style={{ backgroundColor: getCategoryBadgeColor(template.category) }}
@@ -171,63 +187,30 @@ const TemplateManager = () => {
                   {template.category}
                 </span>
               </div>
-
-              <div className="template-card-body">
-                <div className="template-subject">
-                  <strong>Subject:</strong> {template.subject}
-                </div>
-                <div className="template-body-preview">
-                  {template.body.substring(0, 150)}
-                  {template.body.length > 150 && '...'}
-                </div>
-
-                {template.variables && template.variables.length > 0 && (
-                  <div className="template-variables">
-                    <span className="variables-label">Variables:</span>
-                    {template.variables.slice(0, 3).map(v => (
-                      <span key={v.name} className="variable-tag">
-                        {`{{${v.name}}}`}
-                      </span>
-                    ))}
-                    {template.variables.length > 3 && (
-                      <span className="more-variables">+{template.variables.length - 3} more</span>
-                    )}
-                  </div>
-                )}
+              <div className="list-col-subject">
+                <span className="subject-text">{template.subject}</span>
               </div>
-
-              <div className="template-card-footer">
-                <div className="template-meta">
-                  <span className="meta-item">
-                    <span className="meta-icon">=�</span>
-                    {template.useCount || 0} uses
-                  </span>
-                  {template.lastUsedAt && (
-                    <span className="meta-item">
-                      <span className="meta-icon">=P</span>
-                      {formatDate(template.lastUsedAt)}
-                    </span>
-                  )}
-                  {template.isShared && (
-                    <span className="shared-badge">Shared</span>
-                  )}
-                </div>
-                <div className="template-actions">
-                  <button
-                    className="btn-icon-action"
-                    onClick={() => handleEditTemplate(template)}
-                    title="Edit template"
-                  >
-                    
-                  </button>
-                  <button
-                    className="btn-icon-action btn-delete-action"
-                    onClick={() => handleDeleteTemplate(template._id)}
-                    title="Delete template"
-                  >
-                    =�
-                  </button>
-                </div>
+              <div className="list-col-usage">
+                <span className="usage-count">
+                  <FiMail size={13} />
+                  {template.useCount || 0}
+                </span>
+              </div>
+              <div className="list-col-actions">
+                <button
+                  className="btn-icon-action"
+                  onClick={() => handleEditTemplate(template)}
+                  title="Edit template"
+                >
+                  <FiEdit2 size={15} />
+                </button>
+                <button
+                  className="btn-icon-action btn-delete-action"
+                  onClick={() => handleDeleteTemplate(template._id)}
+                  title="Delete template"
+                >
+                  <FiTrash2 size={15} />
+                </button>
               </div>
             </div>
           ))}

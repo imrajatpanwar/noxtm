@@ -65,6 +65,19 @@ const companySchema = new mongoose.Schema({
       usedMB: { type: Number, default: 0 }
     }
   },
+  billing: {
+    emailCredits: { type: Number, default: 0 },
+    totalPurchased: { type: Number, default: 0 },
+    totalUsed: { type: Number, default: 0 },
+    purchaseHistory: [{
+      date: { type: Date, default: Date.now },
+      emailCredits: { type: Number },
+      amount: { type: Number },
+      status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], default: 'completed' },
+      paymentMethod: { type: String },
+      transactionId: { type: String }
+    }]
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

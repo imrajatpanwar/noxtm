@@ -35,8 +35,8 @@ const Home = () => {
               Professional Email Management
             </h1>
             <p className="hero-description">
-              Manage personal and team inboxes with powerful analytics,
-              SLA monitoring, and seamless collaboration tools.
+              Manage personal inboxes and run powerful email campaigns with
+              tracking, analytics, and seamless collaboration tools.
             </p>
             <div className="hero-buttons">
               <button onClick={handleGetStarted} className="btn-get-started">
@@ -113,10 +113,10 @@ const Home = () => {
 
             <div className="feature-card">
               <div className="feature-icon">⚡</div>
-              <h3 className="feature-title">SLA Monitoring</h3>
+              <h3 className="feature-title">Email Campaigns</h3>
               <p className="feature-description">
-                Set and monitor service level agreements to ensure
-                timely responses to customers.
+                Create and send bulk email campaigns with tracking,
+                scheduling, and performance analytics.
               </p>
             </div>
 
@@ -130,11 +130,11 @@ const Home = () => {
             </div>
 
             <div className="feature-card">
-              <div className="feature-icon">🔄</div>
-              <h3 className="feature-title">Assignment Rules</h3>
+              <div className="feature-icon">📋</div>
+              <h3 className="feature-title">Mail Lists</h3>
               <p className="feature-description">
-                Automatically route emails to team members based
-                on custom rules and conditions.
+                Organize your contacts into lists for targeted
+                email campaigns and easy management.
               </p>
             </div>
           </div>

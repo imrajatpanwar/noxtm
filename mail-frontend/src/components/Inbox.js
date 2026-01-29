@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMail, FiSend, FiTrash2, FiArchive, FiStar, FiClock, FiUsers, FiSettings, FiLogOut, FiBarChart2, FiUpload } from 'react-icons/fi';
+import { FiMail, FiSend, FiSettings, FiBarChart2, FiList, FiFileText, FiGlobe } from 'react-icons/fi';
 import MainstreamInbox from './MainstreamInbox';
-import AnalyticsDashboard from './email/AnalyticsDashboard';
-import SLAMonitor from './email/SLAMonitor';
 import TemplateManager from './email/TemplateManager';
-import RulesManager from './email/RulesManager';
 import DomainManagement from './email/DomainManagement';
-import CreateCampaign from './campaign/CreateCampaign';
-import ImportMail from './campaign/ImportMail';
+import CampaignList from './campaign/CampaignList';
+import MailLists from './campaign/MailLists';
 import CampaignAnalytics from './campaign/CampaignAnalytics';
+import Settings from './settings/Settings';
 import DomainSetupWizard from './onboarding/DomainSetupWizard';
 import DomainOnboardingModal from './DomainOnboardingModal';
 import LoadingScreen from './LoadingScreen';
@@ -47,15 +45,12 @@ function checkSubscriptionStatus(subscription) {
 
 function Inbox() {
   const [user, setUser] = useState(null);
-  const [activeView, setActiveView] = useState('personal'); // personal, analytics, sla, templates, rules, domains
+  const [activeView, setActiveView] = useState('personal'); // personal, analytics, templates, domains
   const [showDomainWizard, setShowDomainWizard] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [hasVerifiedDomain, setHasVerifiedDomain] = useState(false);
 
   // NEW: Consolidated initialization state
   const [initializationComplete, setInitializationComplete] = useState(false);
-  const [shouldShowDomainModal, setShouldShowDomainModal] = useState(false);
-  const [shouldShowInbox, setShouldShowInbox] = useState(false);
 
   const navigate = useNavigate();
 
@@ -137,15 +132,9 @@ function Inbox() {
           // Never show domain modal for Admins, even if needsDomain is true
           if (needsDomain && !isAdmin) {
             console.log('[INBOX] → Will show domain onboarding modal');
-            setShouldShowDomainModal(true);
-            setShouldShowInbox(false);
-            setHasVerifiedDomain(false);
             setShowOnboardingModal(true);
           } else {
             console.log('[INBOX] → Will show inbox');
-            setShouldShowDomainModal(false);
-            setShouldShowInbox(true);
-            setHasVerifiedDomain(true);
             setShowOnboardingModal(false);
           }
 
@@ -194,10 +183,7 @@ function Inbox() {
 
       if (hasVerified) {
         console.log('[INBOX] ✅ User now has verified domain - showing inbox');
-        setHasVerifiedDomain(true);
         setShowOnboardingModal(false);
-        setShouldShowDomainModal(false);
-        setShouldShowInbox(true);
       } else {
         console.log('[INBOX] ⚠️  Still no verified domain');
       }
@@ -208,7 +194,6 @@ function Inbox() {
 
   const handleWizardComplete = (domain) => {
     console.log('Domain setup complete:', domain);
-    setHasVerifiedDomain(true);
     setShowDomainWizard(false);
     setActiveView('domains'); // Show domain management after setup
   };
@@ -217,7 +202,6 @@ function Inbox() {
     // Only admins can skip
     if (user?.role === 'Admin') {
       setShowDomainWizard(false);
-      setHasVerifiedDomain(true);
     }
   };
 
@@ -254,7 +238,7 @@ function Inbox() {
       {/* Sidebar */}
       <div className="mail-inbox-sidebar">
         <div className="sidebar-header">
-          <h1>Noxtm Mail</h1>
+          <img src={require('./images/mail_logo.svg').default} alt="Noxtm Mail" />
         </div>
 
         <nav className="sidebar-nav">
@@ -265,78 +249,52 @@ function Inbox() {
             <FiMail /> Personal Inbox
           </button>
 
-          <div className="nav-divider"></div>
-
-          <button
-            className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveView('analytics')}
-          >
-            <FiBarChart2 /> Analytics
-          </button>
-
-          <button
-            className={`nav-item ${activeView === 'sla' ? 'active' : ''}`}
-            onClick={() => setActiveView('sla')}
-          >
-            <FiClock /> SLA Monitor
-          </button>
-
-          <button
-            className={`nav-item ${activeView === 'templates' ? 'active' : ''}`}
-            onClick={() => setActiveView('templates')}
-          >
-            <FiSend /> Templates
-          </button>
-
-          <button
-            className={`nav-item ${activeView === 'rules' ? 'active' : ''}`}
-            onClick={() => setActiveView('rules')}
-          >
-            <FiSettings /> Assignment Rules
-          </button>
-
           <button
             className={`nav-item ${activeView === 'domains' ? 'active' : ''}`}
             onClick={() => setActiveView('domains')}
           >
-            <FiMail /> Domain Management
+            <FiGlobe /> Domain Management
           </button>
 
-          <div className="nav-divider"></div>
+          <div className="nav-section-label">Email Marketing</div>
 
           <button
             className={`nav-item ${activeView === 'create-campaign' ? 'active' : ''}`}
             onClick={() => setActiveView('create-campaign')}
           >
-            <FiSend /> Create Campaign Email
-          </button>
-
-          <button
-            className={`nav-item ${activeView === 'import-mail' ? 'active' : ''}`}
-            onClick={() => setActiveView('import-mail')}
-          >
-            <FiUpload /> Import Mail
+            <FiSend /> Email Campaign
           </button>
 
           <button
             className={`nav-item ${activeView === 'campaign-analytics' ? 'active' : ''}`}
             onClick={() => setActiveView('campaign-analytics')}
           >
-            <FiBarChart2 /> Campaign Analytics
+            <FiBarChart2 /> Analytics
           </button>
 
-          <div className="nav-divider"></div>
+          <button
+            className={`nav-item ${activeView === 'mail-lists' ? 'active' : ''}`}
+            onClick={() => setActiveView('mail-lists')}
+          >
+            <FiList /> Mail Lists
+          </button>
 
-          <button className="nav-item logout-btn" onClick={handleLogout}>
-            <FiLogOut /> Sign Out
+          <button
+            className={`nav-item ${activeView === 'templates' ? 'active' : ''}`}
+            onClick={() => setActiveView('templates')}
+          >
+            <FiFileText /> Templates
+          </button>
+
+
+
+          <button
+            className={`nav-item ${activeView === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveView('settings')}
+          >
+            <FiSettings /> Settings
           </button>
         </nav>
-
-        <div className="sidebar-footer">
-          <a href={getMainAppUrl()} target="_blank" rel="noopener noreferrer">
-            Back to Dashboard
-          </a>
-        </div>
       </div>
 
       {/* Main Content */}
@@ -345,16 +303,15 @@ function Inbox() {
           <MainstreamInbox
             user={user}
             onNavigateToDomains={() => setActiveView('domains')}
+            onLogout={handleLogout}
           />
         )}
-        {activeView === 'analytics' && <AnalyticsDashboard />}
-        {activeView === 'sla' && <SLAMonitor />}
         {activeView === 'templates' && <TemplateManager />}
-        {activeView === 'rules' && <RulesManager />}
         {activeView === 'domains' && <DomainManagement />}
-        {activeView === 'create-campaign' && <CreateCampaign />}
-        {activeView === 'import-mail' && <ImportMail />}
+        {activeView === 'create-campaign' && <CampaignList />}
         {activeView === 'campaign-analytics' && <CampaignAnalytics />}
+        {activeView === 'mail-lists' && <MailLists />}
+        {activeView === 'settings' && <Settings />}
       </div>
 
       {/* Domain Onboarding Modal */}

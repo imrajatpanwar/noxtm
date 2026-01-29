@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import api from '../config/api';
 import './EmailConnectionForm.css';
 
 function EmailConnectionForm({ onSuccess, onCancel }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,9 +42,9 @@ function EmailConnectionForm({ onSuccess, onCancel }) {
     <div className="email-connection-form">
       <div className="form-header">
         <FiMail className="header-icon" />
-        <h3>Connect to Your Email Account</h3>
+        <h3>Connect to Your <span className="header-text-spacer">Email Account</span></h3>
         <p className="form-description">
-          Enter the email address and password provided by your workspace administrator
+          Enter your admin-provided email and password
         </p>
       </div>
 
@@ -70,16 +71,26 @@ function EmailConnectionForm({ onSuccess, onCancel }) {
             <FiLock className="label-icon" />
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your email password"
-            required
-            disabled={loading}
-            autoComplete="current-password"
-          />
+          <div className="password-input-wrapper">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your email password"
+              required
+              disabled={loading}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="password-toggle-btn"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex={-1}
+            >
+              {showPassword ? <FiEyeOff /> : <FiEye />}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -97,16 +108,6 @@ function EmailConnectionForm({ onSuccess, onCancel }) {
           >
             {loading ? 'Connecting...' : 'Connect to Email'}
           </button>
-          {onCancel && (
-            <button
-              type="button"
-              className="btn-cancel"
-              onClick={onCancel}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-          )}
         </div>
       </form>
 
@@ -120,3 +121,4 @@ function EmailConnectionForm({ onSuccess, onCancel }) {
 }
 
 export default EmailConnectionForm;
+

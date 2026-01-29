@@ -337,6 +337,93 @@ const emailDomainSchema = new mongoose.Schema({
   totalSpamBlocked: {
     type: Number,
     default: 0
+  },
+
+  // Domain Warmup Configuration
+  warmup: {
+    // Whether warmup is enabled for this domain
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+
+    // Warmup status: not_started, in_progress, completed, paused
+    status: {
+      type: String,
+      enum: ['not_started', 'in_progress', 'completed', 'paused'],
+      default: 'not_started'
+    },
+
+    // When warmup was started
+    startDate: {
+      type: Date
+    },
+
+    // Current day in the warmup schedule (1-based)
+    currentDay: {
+      type: Number,
+      default: 0
+    },
+
+    // Total days in warmup plan
+    totalDays: {
+      type: Number,
+      default: 28 // 4 weeks default
+    },
+
+    // Daily send limit based on current warmup day
+    dailyLimit: {
+      type: Number,
+      default: 10
+    },
+
+    // Emails sent today during warmup
+    sentToday: {
+      type: Number,
+      default: 0
+    },
+
+    // Last reset date for sentToday counter
+    lastResetDate: {
+      type: Date
+    },
+
+    // Warmup schedule type: conservative (6 weeks), standard (4 weeks), aggressive (2 weeks)
+    scheduleType: {
+      type: String,
+      enum: ['conservative', 'standard', 'aggressive'],
+      default: 'standard'
+    },
+
+    // Custom schedule (array of daily limits)
+    customSchedule: [{
+      day: Number,
+      limit: Number
+    }],
+
+    // Warmup progress history
+    history: [{
+      date: {
+        type: Date,
+        default: Date.now
+      },
+      day: Number,
+      emailsSent: Number,
+      limit: Number,
+      bounceRate: Number,
+      spamRate: Number
+    }],
+
+    // Warmup completion date
+    completedAt: {
+      type: Date
+    },
+
+    // Suggested warmup (shown for domains < 30 days old)
+    suggestionDismissed: {
+      type: Boolean,
+      default: false
+    }
   }
 }, {
   timestamps: true
@@ -442,6 +529,137 @@ emailDomainSchema.methods.canCreateAccount = function(quotaMB = 1024) {
   }
 
   return { allowed: true };
+};
+
+// Get warmup schedule based on type
+emailDomainSchema.methods.getWarmupSchedule = function() {
+  const schedules = {
+    conservative: [
+      // Week 1
+      { day: 1, limit: 5 }, { day: 2, limit: 5 }, { day: 3, limit: 10 }, 
+      { day: 4, limit: 10 }, { day: 5, limit: 15 }, { day: 6, limit: 15 }, { day: 7, limit: 20 },
+      // Week 2
+      { day: 8, limit: 25 }, { day: 9, limit: 30 }, { day: 10, limit: 35 }, 
+      { day: 11, limit: 40 }, { day: 12, limit: 45 }, { day: 13, limit: 50 }, { day: 14, limit: 55 },
+      // Week 3
+      { day: 15, limit: 60 }, { day: 16, limit: 70 }, { day: 17, limit: 80 }, 
+      { day: 18, limit: 90 }, { day: 19, limit: 100 }, { day: 20, limit: 115 }, { day: 21, limit: 130 },
+      // Week 4
+      { day: 22, limit: 150 }, { day: 23, limit: 175 }, { day: 24, limit: 200 }, 
+      { day: 25, limit: 230 }, { day: 26, limit: 260 }, { day: 27, limit: 300 }, { day: 28, limit: 350 },
+      // Week 5
+      { day: 29, limit: 400 }, { day: 30, limit: 450 }, { day: 31, limit: 500 }, 
+      { day: 32, limit: 550 }, { day: 33, limit: 600 }, { day: 34, limit: 700 }, { day: 35, limit: 800 },
+      // Week 6
+      { day: 36, limit: 900 }, { day: 37, limit: 1000 }, { day: 38, limit: 1100 }, 
+      { day: 39, limit: 1200 }, { day: 40, limit: 1400 }, { day: 41, limit: 1600 }, { day: 42, limit: 2000 }
+    ],
+    standard: [
+      // Week 1
+      { day: 1, limit: 10 }, { day: 2, limit: 15 }, { day: 3, limit: 20 }, 
+      { day: 4, limit: 30 }, { day: 5, limit: 40 }, { day: 6, limit: 50 }, { day: 7, limit: 65 },
+      // Week 2
+      { day: 8, limit: 80 }, { day: 9, limit: 100 }, { day: 10, limit: 120 }, 
+      { day: 11, limit: 150 }, { day: 12, limit: 180 }, { day: 13, limit: 220 }, { day: 14, limit: 270 },
+      // Week 3
+      { day: 15, limit: 330 }, { day: 16, limit: 400 }, { day: 17, limit: 480 }, 
+      { day: 18, limit: 570 }, { day: 19, limit: 680 }, { day: 20, limit: 800 }, { day: 21, limit: 950 },
+      // Week 4
+      { day: 22, limit: 1100 }, { day: 23, limit: 1300 }, { day: 24, limit: 1500 }, 
+      { day: 25, limit: 1750 }, { day: 26, limit: 2000 }, { day: 27, limit: 2300 }, { day: 28, limit: 2500 }
+    ],
+    aggressive: [
+      // Week 1
+      { day: 1, limit: 25 }, { day: 2, limit: 50 }, { day: 3, limit: 100 }, 
+      { day: 4, limit: 150 }, { day: 5, limit: 200 }, { day: 6, limit: 300 }, { day: 7, limit: 400 },
+      // Week 2
+      { day: 8, limit: 500 }, { day: 9, limit: 650 }, { day: 10, limit: 800 }, 
+      { day: 11, limit: 1000 }, { day: 12, limit: 1300 }, { day: 13, limit: 1600 }, { day: 14, limit: 2000 }
+    ]
+  };
+
+  if (this.warmup.customSchedule && this.warmup.customSchedule.length > 0) {
+    return this.warmup.customSchedule;
+  }
+
+  return schedules[this.warmup.scheduleType] || schedules.standard;
+};
+
+// Check if domain needs warmup suggestion
+emailDomainSchema.methods.needsWarmupSuggestion = function() {
+  // Domain is less than 30 days old
+  const domainAge = Math.floor((Date.now() - this.createdAt) / (1000 * 60 * 60 * 24));
+  
+  // Show suggestion if domain is new, warmup not started, and not dismissed
+  return domainAge < 30 && 
+         this.warmup.status === 'not_started' && 
+         !this.warmup.suggestionDismissed &&
+         this.verified;
+};
+
+// Get current warmup daily limit
+emailDomainSchema.methods.getCurrentWarmupLimit = function() {
+  if (!this.warmup.enabled || this.warmup.status !== 'in_progress') {
+    return null; // No limit enforced
+  }
+
+  const schedule = this.getWarmupSchedule();
+  const currentDaySchedule = schedule.find(s => s.day === this.warmup.currentDay);
+  
+  return currentDaySchedule ? currentDaySchedule.limit : schedule[schedule.length - 1].limit;
+};
+
+// Advance warmup to next day
+emailDomainSchema.methods.advanceWarmupDay = async function() {
+  if (this.warmup.status !== 'in_progress') return;
+
+  const schedule = this.getWarmupSchedule();
+  
+  // Record today's stats
+  this.warmup.history.push({
+    date: new Date(),
+    day: this.warmup.currentDay,
+    emailsSent: this.warmup.sentToday,
+    limit: this.warmup.dailyLimit,
+    bounceRate: 0, // To be updated from email stats
+    spamRate: 0
+  });
+
+  // Advance to next day
+  this.warmup.currentDay += 1;
+  this.warmup.sentToday = 0;
+  this.warmup.lastResetDate = new Date();
+
+  // Update daily limit
+  const nextDaySchedule = schedule.find(s => s.day === this.warmup.currentDay);
+  if (nextDaySchedule) {
+    this.warmup.dailyLimit = nextDaySchedule.limit;
+  }
+
+  // Check if warmup is complete
+  if (this.warmup.currentDay > schedule.length) {
+    this.warmup.status = 'completed';
+    this.warmup.completedAt = new Date();
+  }
+
+  return this.save();
+};
+
+// Start warmup
+emailDomainSchema.methods.startWarmup = async function(scheduleType = 'standard') {
+  this.warmup.enabled = true;
+  this.warmup.status = 'in_progress';
+  this.warmup.startDate = new Date();
+  this.warmup.currentDay = 1;
+  this.warmup.scheduleType = scheduleType;
+  this.warmup.sentToday = 0;
+  this.warmup.lastResetDate = new Date();
+
+  const schedule = this.getWarmupSchedule();
+  this.warmup.dailyLimit = schedule[0].limit;
+  this.warmup.totalDays = schedule.length;
+
+  return this.save();
 };
 
 module.exports = mongoose.model('EmailDomain', emailDomainSchema);

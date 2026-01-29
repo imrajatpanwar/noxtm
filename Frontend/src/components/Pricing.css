@@ -2,7 +2,7 @@
 .pricing-container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 60px 20px;
+  padding: 40px 20px;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100vh;
   background: #fff;
@@ -11,14 +11,14 @@
 /* Header */
 .pricing-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 28px;
 }
 
 .pricing-header h1 {
-  font-size: 42px;
+  font-size: 40px;
   font-weight: 600;
   color: #000;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   letter-spacing: -0.5px;
 }
 
@@ -66,24 +66,24 @@
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 16px;
-  padding: 32px 28px;
-  transition: box-shadow 0.3s ease;
+  padding: 24px 24px;
+  transition: border-color 0.3s ease;
 }
 
 .pricing-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #636363;
 }
 
 /* Card Top */
 .card-top {
-  margin-bottom: 16px;
+  margin-bottom: 5px;
 }
 
 .plan-title {
   font-size: 20px;
   font-weight: 600;
   color: #000;
-  margin: 0 0 4px 0;
+  margin: 0 0 0px 0;
 }
 
 .plan-subtitle {
@@ -97,7 +97,7 @@
 .card-price {
   display: flex;
   align-items: baseline;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .currency {
@@ -123,7 +123,7 @@
 /* Get Started Button */
 .get-started-btn {
   width: 100%;
-  padding: 14px 24px;
+  padding: 10px 21px;
   background: #000;
   color: #fff;
   border: none;
@@ -132,7 +132,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-bottom: 28px;
+  margin-bottom: 14px;
 }
 
 .get-started-btn:hover {

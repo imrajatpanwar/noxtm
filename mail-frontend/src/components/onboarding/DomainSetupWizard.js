@@ -18,7 +18,7 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
   const [domainId, setDomainId] = useState(null);
   const [dnsRecords, setDnsRecords] = useState(null);
   const [awsSesInfo, setAwsSesInfo] = useState(null);
-  const [verificationResults, setVerificationResults] = useState(null);
+  const [, setVerificationResults] = useState(null);
 
   // CRITICAL: Restore token when wizard mounts (in case it was cleared)
   useEffect(() => {
@@ -59,7 +59,7 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
 
     try {
       // Validate domain format
-      const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+      const domainRegex = /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
       if (!domainRegex.test(domainName)) {
         setError('Please enter a valid domain name (e.g., yourcompany.com)');
         setLoading(false);
@@ -154,13 +154,6 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
       setError(err.response?.data?.message || 'Failed to verify DNS');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Skip wizard (admins only)
-  const handleSkipWizard = () => {
-    if (onSkip) {
-      onSkip();
     }
   };
 
