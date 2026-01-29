@@ -1,0 +1,838 @@
+.mail-settings-page {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mail-settings-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 14px;
+  color: #718096;
+}
+
+/* Header */
+.mail-settings-header {
+  margin-bottom: 16px;
+}
+
+.mail-settings-header h2 {
+  margin: 0 0 2px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.mail-settings-header p {
+  margin: 0;
+  font-size: 13px;
+  color: #718096;
+}
+
+/* Tabs */
+.mail-settings-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  padding: 3px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.mail-settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-settings-tab:hover {
+  color: #1a1a1a;
+}
+
+.mail-settings-tab.active {
+  background: white;
+  color: #1a1a1a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Settings Content */
+.mail-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Credit Balance Card */
+.mail-credit-balance-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  color: #1a1a1a;
+}
+
+.mail-balance-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.mail-balance-icon {
+  width: 48px;
+  height: 48px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mail-balance-icon svg {
+  color: #1a1a1a;
+}
+
+.mail-balance-info {
+  flex: 1;
+}
+
+.mail-balance-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mail-balance-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: #1a1a1a;
+}
+
+.mail-balance-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.mail-buy-credits-btn {
+  padding: 10px 20px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-buy-credits-btn:hover {
+  background: #333;
+  transform: translateY(-1px);
+}
+
+.mail-usage-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.mail-usage-stat {
+  text-align: center;
+}
+
+.mail-usage-stat .mail-stat-label {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.mail-usage-stat .mail-stat-value {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Pricing Section */
+.mail-pricing-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 28px;
+}
+
+.mail-pricing-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-pricing-section h4 {
+  margin: 28px 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-pricing-subtitle {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.mail-pricing-highlight {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 24px;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+}
+
+.mail-price-badge {
+  text-align: center;
+  padding: 20px 32px;
+  background: #1a1a1a;
+  color: white;
+  border-radius: 12px;
+}
+
+.mail-price-amount {
+  display: block;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mail-price-unit {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.mail-pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mail-pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.mail-pricing-features svg {
+  color: #22c55e;
+}
+
+/* Email Packages */
+.mail-email-packages {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.mail-package-card {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.mail-package-card:hover {
+  border-color: #1a1a1a;
+  transform: translateY(-2px);
+}
+
+.mail-package-card.popular {
+  border-color: #1a1a1a;
+  background: white;
+}
+
+.mail-popular-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.mail-package-emails {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.mail-package-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.mail-package-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #22c55e;
+  margin-bottom: 12px;
+}
+
+.mail-package-btn {
+  width: 100%;
+  padding: 8px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mail-package-btn:hover {
+  background: #333;
+}
+
+/* Purchase History */
+.mail-purchase-history-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.mail-purchase-history-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-history-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.mail-history-date {
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.mail-history-details {
+  color: #64748b;
+}
+
+.mail-no-history {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Account Section */
+.mail-account-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.mail-account-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+}
+
+.mail-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mail-form-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.mail-form-group input,
+.mail-form-group select,
+.mail-form-group textarea {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1a1a1a;
+  transition: border-color 0.2s;
+}
+
+.mail-form-group input:focus,
+.mail-form-group select:focus,
+.mail-form-group textarea:focus {
+  outline: none;
+  border-color: #1a1a1a;
+}
+
+.mail-form-group input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.mail-save-btn {
+  width: fit-content;
+  padding: 10px 20px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 4px;
+}
+
+.mail-save-btn:hover {
+  background: #333;
+}
+
+/* Danger Zone */
+.mail-danger-zone {
+  background: white;
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.mail-danger-zone h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.mail-danger-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mail-danger-info h4 {
+  margin: 0 0 2px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-danger-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.mail-delete-btn {
+  padding: 8px 16px;
+  background: white;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-delete-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Preferences Section */
+.mail-preferences-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.mail-preferences-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-preference-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mail-preference-item:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.mail-preference-item:first-of-type {
+  padding-top: 0;
+}
+
+.mail-preference-info h4 {
+  margin: 0 0 2px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-preference-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Toggle Switch */
+.mail-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.mail-toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mail-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  border-radius: 24px;
+  transition: 0.3s;
+}
+
+/* Ensure no ::after pseudo-element creates extra dots */
+.mail-toggle-slider::after {
+  display: none !important;
+  content: none !important;
+}
+
+.mail-toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mail-toggle-switch input:checked+.mail-toggle-slider {
+  background-color: #22c55e;
+}
+
+.mail-toggle-switch input:checked+.mail-toggle-slider::before {
+  transform: translateX(20px);
+}
+
+/* Purchase Modal */
+.mail-purchase-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.mail-purchase-modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.mail-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mail-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.mail-close-btn {
+  width: 32px;
+  height: 32px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-close-btn:hover {
+  background: #e2e8f0;
+  color: #1a1a1a;
+}
+
+.mail-modal-content {
+  padding: 24px;
+}
+
+.mail-purchase-input-group {
+  margin-bottom: 24px;
+}
+
+.mail-purchase-input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.mail-purchase-input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.mail-purchase-input-group input:focus {
+  outline: none;
+  border-color: #1a1a1a;
+}
+
+.mail-input-hint {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.mail-price-summary {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.mail-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.mail-summary-row.mail-total {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.mail-payment-methods {
+  margin-bottom: 24px;
+}
+
+.mail-payment-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.mail-payment-options {
+  display: flex;
+  gap: 12px;
+}
+
+.mail-payment-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-payment-option:has(input:checked) {
+  border-color: #1a1a1a;
+  background: #f8fafc;
+}
+
+.mail-payment-option input {
+  display: none;
+}
+
+.mail-payment-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.mail-purchase-btn {
+  width: 100%;
+  padding: 16px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mail-purchase-btn:hover {
+  background: #333;
+}
+
+.mail-purchase-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.mail-secure-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .mail-email-packages {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .mail-settings-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .mail-usage-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mail-email-packages {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mail-pricing-highlight {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .mail-pricing-features {
+    grid-template-columns: 1fr;
+  }
+
+  .mail-balance-header {
+    flex-direction: column;
+  }
+
+  .mail-buy-credits-btn {
+    width: 100%;
+  }
+}

@@ -109,7 +109,10 @@ router.post('/', async (req, res) => {
       emailTemplate,
       recipients,
       schedule,
-      scheduledTime
+      scheduledTime,
+      trackingEnabled,
+      trackOpens,
+      trackClicks
     } = req.body;
 
     // Use content if body not provided (frontend compatibility)
@@ -138,7 +141,10 @@ router.post('/', async (req, res) => {
       emailTemplate,
       companyId,
       createdBy: userId,
-      lastModifiedBy: userId
+      lastModifiedBy: userId,
+      trackingEnabled: trackingEnabled || false,
+      trackOpens: trackingEnabled ? (trackOpens !== false) : false,
+      trackClicks: trackingEnabled ? (trackClicks !== false) : false
     });
 
     // If recipients provided, add them directly

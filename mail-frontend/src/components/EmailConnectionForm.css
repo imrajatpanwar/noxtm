@@ -1,34 +1,33 @@
+/* Email Connection Form - Modern Black & White Theme */
 .email-connection-form {
-  max-width: 450px;
-  margin: 40px auto;
-  padding: 32px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 40px 36px 32px;
 }
 
 .form-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 25px;
 }
 
 .form-header .header-icon {
-  font-size: 48px;
-  color: #1a73e8;
-  margin-bottom: 12px;
+  font-size: 52px;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+  stroke-width: 1.5;
 }
 
 .form-header h3 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #202124;
-  margin-bottom: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0px 0;
+  letter-spacing: -0.3px;
 }
 
 .form-description {
   font-size: 14px;
-  color: #5f6368;
-  line-height: 1.5;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
 }
 
 .form-group {
@@ -38,101 +37,173 @@
 .form-group label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 14px;
-  font-weight: 500;
-  color: #202124;
-  margin-bottom: 6px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
 }
 
 .label-icon {
   font-size: 16px;
-  color: #5f6368;
+  color: #64748b;
 }
 
 .form-group input {
   width: 100%;
-  padding: 12px 14px;
-  font-size: 14px;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
-  transition: border-color 0.2s;
+  padding: 14px 16px;
+  font-size: 15px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.form-group input::placeholder {
+  color: #94a3b8;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
+  background: white;
 }
 
 .form-group input:disabled {
-  background-color: #f8f9fa;
+  background-color: #f1f5f9;
   cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Password Input with Toggle */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 48px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.password-toggle-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.password-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Header text spacing */
+.header-text-spacer {
+  margin-left: 3px;
 }
 
 .error-message {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  background-color: #fce8e6;
-  color: #d93025;
-  border-radius: 6px;
-  font-size: 13px;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
   margin-bottom: 20px;
+  border: 1px solid #fecaca;
+}
+
+.error-message svg {
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
 .btn-connect {
   flex: 1;
-  padding: 12px 24px;
-  background-color: #1a73e8;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-connect:hover:not(:disabled) {
-  background-color: #1557b0;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-connect:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-connect:disabled {
-  background-color: #dadce0;
+  background: #94a3b8;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-cancel {
-  padding: 12px 24px;
-  background-color: white;
-  color: #5f6368;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 14px 28px;
+  background: white;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background-color: #f8f9fa;
-  border-color: #5f6368;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .form-footer {
-  margin-top: 20px;
+  margin-top: 10px;
   text-align: center;
+  padding-top: 5px;
+  border-top: 1px solid #f1f1f1;
 }
 
 .form-footer small {
-  color: #5f6368;
+  color: #a7a7a7;
   font-size: 12px;
+  font-weight: 500;
 }

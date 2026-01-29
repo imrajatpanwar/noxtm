@@ -737,4 +737,257 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+// ==========================================
+// DOMAIN WARMUP ENDPOINTS
+// ==========================================
+
+// Get warmup status for a domain
+router.get('/:id/warmup', isAuthenticated, async (req, res) => {
+  try {
+    const domain = await EmailDomain.findById(req.params.id);
+    
+    if (!domain) {
+      return res.status(404).json({ success: false, message: 'Domain not found' });
+    }
+
+    const userId = req.user.userId || req.user._id;
+    if (domain.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Calculate domain age
+    const domainAge = Math.floor((Date.now() - domain.createdAt) / (1000 * 60 * 60 * 24));
+    
+    // Get warmup schedule
+    const schedule = domain.getWarmupSchedule();
+    
+    // Check if suggestion should be shown
+    const showSuggestion = domain.needsWarmupSuggestion();
+
+    // Calculate progress
+    let progress = 0;
+    if (domain.warmup.status === 'completed') {
+      progress = 100;
+    } else if (domain.warmup.status === 'in_progress' && domain.warmup.totalDays > 0) {
+      progress = Math.round((domain.warmup.currentDay / domain.warmup.totalDays) * 100);
+    }
+
+    res.json({
+      success: true,
+      warmup: {
+        enabled: domain.warmup.enabled,
+        status: domain.warmup.status,
+        startDate: domain.warmup.startDate,
+        currentDay: domain.warmup.currentDay,
+        totalDays: domain.warmup.totalDays,
+        dailyLimit: domain.warmup.dailyLimit,
+        sentToday: domain.warmup.sentToday,
+        scheduleType: domain.warmup.scheduleType,
+        progress,
+        history: domain.warmup.history.slice(-14), // Last 14 days
+        completedAt: domain.warmup.completedAt
+      },
+      schedule,
+      domainAge,
+      showSuggestion,
+      domain: {
+        name: domain.domain,
+        verified: domain.verified,
+        createdAt: domain.createdAt,
+        totalEmailsSent: domain.totalEmailsSent
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching warmup status:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch warmup status', error: error.message });
+  }
+});
+
+// Start domain warmup
+router.post('/:id/warmup/start', isAuthenticated, async (req, res) => {
+  try {
+    const { scheduleType = 'standard' } = req.body;
+    
+    const domain = await EmailDomain.findById(req.params.id);
+    
+    if (!domain) {
+      return res.status(404).json({ success: false, message: 'Domain not found' });
+    }
+
+    const userId = req.user.userId || req.user._id;
+    if (domain.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!domain.verified) {
+      return res.status(400).json({ success: false, message: 'Domain must be verified before starting warmup' });
+    }
+
+    if (domain.warmup.status === 'in_progress') {
+      return res.status(400).json({ success: false, message: 'Warmup is already in progress' });
+    }
+
+    // Start the warmup
+    await domain.startWarmup(scheduleType);
+
+    // Create audit log
+    const user = await User.findById(userId);
+    await EmailAuditLog.log({
+      action: 'warmup_started',
+      resourceType: 'email_domain',
+      resourceId: domain._id,
+      resourceIdentifier: domain.domain,
+      performedBy: user._id,
+      performedByEmail: user.email,
+      performedByName: user.fullName,
+      description: `Started ${scheduleType} warmup for domain: ${domain.domain}`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      companyId: user.companyId
+    });
+
+    res.json({
+      success: true,
+      message: `Warmup started with ${scheduleType} schedule`,
+      warmup: domain.warmup
+    });
+  } catch (error) {
+    console.error('Error starting warmup:', error);
+    res.status(500).json({ success: false, message: 'Failed to start warmup', error: error.message });
+  }
+});
+
+// Pause/resume domain warmup
+router.patch('/:id/warmup', isAuthenticated, async (req, res) => {
+  try {
+    const { action, dismissSuggestion } = req.body;
+    
+    const domain = await EmailDomain.findById(req.params.id);
+    
+    if (!domain) {
+      return res.status(404).json({ success: false, message: 'Domain not found' });
+    }
+
+    const userId = req.user.userId || req.user._id;
+    if (domain.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Handle dismissing warmup suggestion
+    if (dismissSuggestion) {
+      domain.warmup.suggestionDismissed = true;
+      await domain.save();
+      return res.json({ success: true, message: 'Warmup suggestion dismissed' });
+    }
+
+    // Handle pause/resume
+    if (action === 'pause' && domain.warmup.status === 'in_progress') {
+      domain.warmup.status = 'paused';
+      await domain.save();
+      return res.json({ success: true, message: 'Warmup paused', warmup: domain.warmup });
+    }
+
+    if (action === 'resume' && domain.warmup.status === 'paused') {
+      domain.warmup.status = 'in_progress';
+      await domain.save();
+      return res.json({ success: true, message: 'Warmup resumed', warmup: domain.warmup });
+    }
+
+    if (action === 'stop') {
+      domain.warmup.enabled = false;
+      domain.warmup.status = 'not_started';
+      domain.warmup.currentDay = 0;
+      domain.warmup.sentToday = 0;
+      await domain.save();
+      return res.json({ success: true, message: 'Warmup stopped', warmup: domain.warmup });
+    }
+
+    res.status(400).json({ success: false, message: 'Invalid action' });
+  } catch (error) {
+    console.error('Error updating warmup:', error);
+    res.status(500).json({ success: false, message: 'Failed to update warmup', error: error.message });
+  }
+});
+
+// Get warmup recommendations for a domain
+router.get('/:id/warmup/recommendations', isAuthenticated, async (req, res) => {
+  try {
+    const domain = await EmailDomain.findById(req.params.id);
+    
+    if (!domain) {
+      return res.status(404).json({ success: false, message: 'Domain not found' });
+    }
+
+    const userId = req.user.userId || req.user._id;
+    if (domain.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const domainAge = Math.floor((Date.now() - domain.createdAt) / (1000 * 60 * 60 * 24));
+    
+    const recommendations = [];
+    
+    // New domain warning
+    if (domainAge < 7) {
+      recommendations.push({
+        type: 'warning',
+        title: 'Very New Domain',
+        message: 'Your domain is less than a week old. We strongly recommend starting with the conservative warmup schedule to build reputation.',
+        action: 'start_warmup',
+        scheduleType: 'conservative'
+      });
+    } else if (domainAge < 30) {
+      recommendations.push({
+        type: 'info',
+        title: 'New Domain Detected',
+        message: 'Your domain is new. A warmup schedule will help establish sending reputation and improve deliverability.',
+        action: 'start_warmup',
+        scheduleType: 'standard'
+      });
+    }
+
+    // Check sending patterns
+    if (domain.totalEmailsSent > 100 && domainAge < 14) {
+      recommendations.push({
+        type: 'danger',
+        title: 'High Volume Warning',
+        message: 'You are sending a high volume of emails from a new domain. This may trigger spam filters and damage your reputation.',
+        action: 'reduce_volume'
+      });
+    }
+
+    // Warmup not started
+    if (domain.warmup.status === 'not_started' && !domain.warmup.suggestionDismissed && domainAge < 60) {
+      recommendations.push({
+        type: 'suggestion',
+        title: 'Start Warmup',
+        message: 'Starting a warmup schedule will gradually increase your sending limit and build domain reputation.',
+        action: 'start_warmup',
+        scheduleType: domainAge < 14 ? 'conservative' : 'standard'
+      });
+    }
+
+    // Best practices
+    recommendations.push({
+      type: 'tip',
+      title: 'Best Practices',
+      message: 'Always use double opt-in, maintain clean lists, and monitor bounce rates to maintain good deliverability.'
+    });
+
+    res.json({
+      success: true,
+      domainAge,
+      recommendations,
+      currentStatus: {
+        verified: domain.verified,
+        warmupStatus: domain.warmup.status,
+        totalSent: domain.totalEmailsSent
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch recommendations', error: error.message });
+  }
+});
+
 module.exports = router;

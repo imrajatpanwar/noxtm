@@ -28,6 +28,14 @@ const contactListSchema = new mongoose.Schema({
     phone: String,
     designation: String,
     location: String,
+    // Email validation fields
+    status: {
+      type: String,
+      enum: ['pending', 'valid', 'invalid'],
+      default: 'pending'
+    },
+    validationReason: String, // Reason for invalid status
+    validatedAt: Date,
     // Custom variables for email personalization
     variables: {
       type: Map,
@@ -44,6 +52,21 @@ const contactListSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+
+  // Validation Status
+  validated: {
+    type: Boolean,
+    default: false
+  },
+  validCount: {
+    type: Number,
+    default: 0
+  },
+  invalidCount: {
+    type: Number,
+    default: 0
+  },
+  lastValidatedAt: Date,
 
   // Source Information
   source: {

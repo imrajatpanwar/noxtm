@@ -1,0 +1,274 @@
+/* ===========================================
+   Global Button Styles for Noxtm Mail
+   Premium Black & White Theme
+   =========================================== */
+
+/* Base Button Reset */
+.noxtm-btn,
+button[class*="btn-"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    white-space: nowrap;
+}
+
+/* ===========================================
+   Primary Button - Premium Black
+   =========================================== */
+.noxtm-btn-primary,
+.btn-primary,
+.mbox-btn-primary {
+    background-color: #0a0a0a !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.noxtm-btn-primary::before,
+.btn-primary::before,
+.mbox-btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.noxtm-btn-primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.mbox-btn-primary:hover:not(:disabled) {
+    background-color: #1a1a1a !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.noxtm-btn-primary:active:not(:disabled),
+.btn-primary:active:not(:disabled),
+.mbox-btn-primary:active:not(:disabled) {
+    background-color: #000000 !important;
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.noxtm-btn-primary:disabled,
+.btn-primary:disabled,
+.mbox-btn-primary:disabled {
+    background-color: #a3a3a3 !important;
+    color: #e5e5e5 !important;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    opacity: 0.7;
+}
+
+/* ===========================================
+   Secondary Button - Outlined
+   =========================================== */
+.noxtm-btn-secondary,
+.btn-secondary {
+    background-color: #ffffff !important;
+    color: #0a0a0a !important;
+    border: 1.5px solid #d4d4d4 !important;
+    padding: 11px 22px;
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.noxtm-btn-secondary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+    background-color: #f5f5f5 !important;
+    border-color: #a3a3a3 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.noxtm-btn-secondary:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+    background-color: #e5e5e5 !important;
+    transform: translateY(0);
+}
+
+.noxtm-btn-secondary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #fafafa !important;
+}
+
+/* ===========================================
+   Cancel Button
+   =========================================== */
+.noxtm-btn-cancel,
+.btn-cancel {
+    background-color: #ffffff !important;
+    color: #404040 !important;
+    border: 1.5px solid #d4d4d4 !important;
+    padding: 11px 20px;
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: 10px;
+}
+
+.noxtm-btn-cancel:hover:not(:disabled),
+.btn-cancel:hover:not(:disabled) {
+    background-color: #f5f5f5 !important;
+    border-color: #a3a3a3 !important;
+}
+
+.noxtm-btn-cancel:active:not(:disabled),
+.btn-cancel:active:not(:disabled) {
+    background-color: #e5e5e5 !important;
+}
+
+/* ===========================================
+   Danger Button - Red
+   =========================================== */
+.noxtm-btn-danger,
+.btn-danger {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.noxtm-btn-danger:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
+    background-color: #b91c1c !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    transform: translateY(-1px);
+}
+
+.noxtm-btn-danger:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+    background-color: #991b1b !important;
+    transform: translateY(0);
+}
+
+.noxtm-btn-danger:disabled,
+.btn-danger:disabled {
+    background-color: #fca5a5 !important;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* ===========================================
+   Button Sizes
+   =========================================== */
+.noxtm-btn-sm,
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+}
+
+.noxtm-btn-lg,
+.btn-lg,
+.btn-large {
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+/* ===========================================
+   Icon-only Button
+   =========================================== */
+.noxtm-btn-icon {
+    padding: 10px;
+    min-width: 40px;
+    min-height: 40px;
+}
+
+/* ===========================================
+   Link-style Button
+   =========================================== */
+.noxtm-btn-link,
+.btn-link {
+    background: transparent !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    padding: 8px 12px;
+    text-decoration: underline;
+    box-shadow: none !important;
+}
+
+.noxtm-btn-link:hover:not(:disabled),
+.btn-link:hover:not(:disabled) {
+    color: #404040 !important;
+}
+
+/* ===========================================
+   Ghost Button
+   =========================================== */
+.noxtm-btn-ghost,
+.btn-ghost {
+    background: transparent !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    padding: 10px 16px;
+    box-shadow: none !important;
+}
+
+.noxtm-btn-ghost:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+    background-color: #f5f5f5 !important;
+}
+
+/* ===========================================
+   Generic .btn base class
+   =========================================== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===========================================
+   Focus States for Accessibility
+   =========================================== */
+.noxtm-btn:focus-visible,
+.btn:focus-visible,
+button[class*="btn-"]:focus-visible {
+    outline: 2px solid #0a0a0a;
+    outline-offset: 2px;
+}

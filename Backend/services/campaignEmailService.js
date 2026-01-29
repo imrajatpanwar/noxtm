@@ -2,6 +2,8 @@ const { sendEmailViaSES } = require('../utils/awsSesHelper');
 const EmailLog = require('../models/EmailLog');
 const Campaign = require('../models/Campaign');
 const EmailTemplate = require('../models/EmailTemplate');
+const EmailTracking = require('../models/EmailTracking');
+const { processEmailForTracking, generateTrackingId } = require('../utils/emailTrackingInjector');
 
 /**
  * Send campaign emails
@@ -94,6 +96,31 @@ async function sendToRecipient(campaign, recipient) {
     body = body.replace(/{{email}}/g, recipient.email);
     body = body.replace(/{{companyName}}/g, recipient.companyName || '');
 
+    // Inject tracking if enabled
+    let trackingId = null;
+    if (campaign.trackingEnabled) {
+      trackingId = generateTrackingId();
+      
+      // Create tracking record
+      await EmailTracking.create({
+        campaignId: campaign._id,
+        companyId: campaign.companyId,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name || '',
+        trackingId,
+        status: 'sent'
+      });
+      
+      // Process email with tracking pixel and link tracking
+      const trackingOptions = {
+        trackOpens: campaign.trackOpens !== false,
+        trackClicks: campaign.trackClicks !== false,
+        addUnsubscribe: true
+      };
+      
+      body = processEmailForTracking(body, trackingId, trackingOptions);
+    }
+
     // Send via SES
     const result = await sendEmailViaSES({
       from: `${campaign.fromName} <${campaign.fromEmail}>`,
@@ -117,7 +144,8 @@ async function sendToRecipient(campaign, recipient) {
       domain: campaign.fromEmail.split('@')[1],
       metadata: {
         campaignId: campaign._id.toString(),
-        campaignName: campaign.name
+        campaignName: campaign.name,
+        trackingId: trackingId || null
       }
     });
 
@@ -125,6 +153,13 @@ async function sendToRecipient(campaign, recipient) {
     recipient.status = 'sent';
     recipient.sentAt = new Date();
     recipient.emailLogId = emailLog._id;
+    if (trackingId) {
+      recipient.trackingId = trackingId;
+    }
+
+    // Update campaign stats
+    campaign.stats.sent = (campaign.stats.sent || 0) + 1;
+    campaign.stats.pending = Math.max(0, (campaign.stats.pending || 0) - 1);
 
   } catch (error) {
     console.error(`Failed to send to ${recipient.email}:`, error);

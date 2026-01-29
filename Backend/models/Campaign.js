@@ -78,7 +78,8 @@ const campaignSchema = new mongoose.Schema({
     emailLogId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EmailLog'
-    }
+    },
+    trackingId: String
   }],
 
   // Contact Lists
@@ -103,6 +104,20 @@ const campaignSchema = new mongoose.Schema({
 
   sentAt: Date,
 
+  // Tracking settings
+  trackingEnabled: {
+    type: Boolean,
+    default: false
+  },
+  trackOpens: {
+    type: Boolean,
+    default: true
+  },
+  trackClicks: {
+    type: Boolean,
+    default: true
+  },
+
   // Statistics
   stats: {
     totalRecipients: {
@@ -122,6 +137,18 @@ const campaignSchema = new mongoose.Schema({
       default: 0
     },
     pending: {
+      type: Number,
+      default: 0
+    },
+    opened: {
+      type: Number,
+      default: 0
+    },
+    clicked: {
+      type: Number,
+      default: 0
+    },
+    unsubscribed: {
       type: Number,
       default: 0
     }

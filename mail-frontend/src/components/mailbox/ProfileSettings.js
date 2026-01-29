@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../config/api';
+import { getGravatarUrl, hasGravatar, openGravatarSetup } from '../../utils/gravatar';
+import './ProfileSettings.css';
 
 const buildFallbackAvatar = (name, email) => {
   const label = name || email || 'User';
@@ -57,6 +59,11 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
   // Storage usage state
   const [storageUsage, setStorageUsage] = useState(null);
   const [storageLoading, setStorageLoading] = useState(false);
+
+  // Gravatar state
+  const [gravatarChecking, setGravatarChecking] = useState(false);
+  const [hasCustomGravatar, setHasCustomGravatar] = useState(false);
+  const [gravatarUrl, setGravatarUrl] = useState(null);
 
   // Password strength checker function
   const checkPasswordStrength = (password) => {
@@ -129,6 +136,24 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
     }
   }, [account?._id]);
 
+  // Check Gravatar on mount
+  useEffect(() => {
+    const checkUserGravatar = async () => {
+      const email = user?.email || account?.email;
+      if (!email) return;
+
+      setGravatarChecking(true);
+      const url = getGravatarUrl(email, 200);
+      setGravatarUrl(url);
+
+      const hasCustom = await hasGravatar(email);
+      setHasCustomGravatar(hasCustom);
+      setGravatarChecking(false);
+    };
+
+    checkUserGravatar();
+  }, [user?.email, account?.email]);
+
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -180,7 +205,6 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
         setDisplayNameSuccess('Display name updated successfully!');
         setEditingDisplayName(false);
         setTimeout(() => setDisplayNameSuccess(null), 3000);
-        // Refresh the page or update account state
         window.location.reload();
       }
     } catch (err) {
@@ -372,537 +396,485 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
   };
 
   return (
-    <div className="mailbox-profile-settings">
-      <div className="mailbox-settings-heading">
-        <div>
-          <h3>Mailbox Settings</h3>
-          <p>Manage the avatar and metadata used inside the emails sent from this hosted mailbox.</p>
+    <div className="mbox-settings">
+      {/* Header Section */}
+      <div className="mbox-settings-header">
+        <div className="mbox-settings-header-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </div>
+        <div className="mbox-settings-header-text">
+          <h2>Mailbox Settings</h2>
+          <p>Manage your mailbox profile, signature, and preferences</p>
         </div>
       </div>
 
-      <div className="mailbox-avatar-section">
-        <img src={avatarSrc} alt="Profile avatar" className="mailbox-settings-avatar" />
-        <div className="mailbox-avatar-meta">
-          <div className="mailbox-avatar-text">
-            <strong>{displayName}</strong>
-            <span>{account?.email || user?.email || '—'}</span>
-          </div>
-          <div className="mailbox-avatar-actions">
-            <button type="button" className="mailbox-upload-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? 'Uploading…' : 'Upload Avatar'}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            {uploadError && <p className="mailbox-settings-error">{uploadError}</p>}
-            {uploadSuccess && <p className="mailbox-settings-success">{uploadSuccess}</p>}
-          </div>
+      {/* Profile Card */}
+      <div className="mbox-profile-card">
+        <div className="mbox-profile-avatar-wrapper">
+          <img src={avatarSrc} alt="Profile avatar" className="mbox-profile-avatar" />
+          <button
+            type="button"
+            className="mbox-avatar-upload-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
         </div>
-      </div>
-
-      <div className="mailbox-settings-grid">
-        <div className="mailbox-settings-row">
-          <span className="label">Mailbox</span>
-          <strong>{account?.email || 'Not selected'}</strong>
-        </div>
-        <div className="mailbox-settings-row">
-          <span className="label">Display name</span>
-          {editingDisplayName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <input
-                type="text"
-                value={newDisplayName}
-                onChange={(e) => setNewDisplayName(e.target.value)}
-                placeholder="Enter display name"
-                style={{
-                  padding: '6px 10px',
-                  fontSize: '13px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  flex: 1,
-                  maxWidth: '300px'
-                }}
-                autoFocus
-              />
-              <button
-                onClick={handleDisplayNameSave}
-                disabled={displayNameSaving}
-                className="mailbox-upload-btn"
-                style={{ margin: 0, padding: '6px 12px', fontSize: '13px' }}
-              >
-                {displayNameSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                onClick={handleDisplayNameCancel}
-                disabled={displayNameSaving}
-                style={{
-                  margin: 0,
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  background: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong>{account?.displayName || 'Not set'}</strong>
-              <button
-                onClick={handleDisplayNameEdit}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: '12px',
-                  background: '#3B82F6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Edit
-              </button>
-            </div>
+        <div className="mbox-profile-info">
+          <h3>{displayName}</h3>
+          <span className="mbox-profile-email">{account?.email || user?.email || '—'}</span>
+          {(uploadError || uploadSuccess) && (
+            <p className={uploadError ? 'mbox-error-text' : 'mbox-success-text'}>
+              {uploadError || uploadSuccess}
+            </p>
           )}
         </div>
-        {displayNameError && (
-          <div className="mailbox-settings-row">
-            <span className="label"></span>
-            <p className="mailbox-settings-error">{displayNameError}</p>
-          </div>
-        )}
-        {displayNameSuccess && (
-          <div className="mailbox-settings-row">
-            <span className="label"></span>
-            <p className="mailbox-settings-success">{displayNameSuccess}</p>
-          </div>
-        )}
-        <div className="mailbox-settings-row">
-          <span className="label">Domain</span>
-          <strong>{account?.domain || '—'}</strong>
-        </div>
-        <div className="mailbox-settings-row">
-          <span className="label">IMAP</span>
-          <strong>{account?.imapEnabled ? 'Enabled' : 'Disabled'}</strong>
-        </div>
-        <div className="mailbox-settings-row">
-          <span className="label">SMTP</span>
-          <strong>{account?.smtpEnabled ? 'Enabled' : 'Disabled'}</strong>
-        </div>
-        <div className="mailbox-settings-row">
-          <span className="label">Quota (MB)</span>
-          {editingQuota ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <input
-                type="number"
-                value={newQuota}
-                onChange={(e) => setNewQuota(e.target.value)}
-                placeholder="Enter quota in MB"
-                min="0"
-                style={{
-                  padding: '6px 10px',
-                  fontSize: '13px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  flex: 1,
-                  maxWidth: '150px'
-                }}
-                autoFocus
-              />
-              <button
-                onClick={handleQuotaSave}
-                disabled={quotaSaving}
-                className="mailbox-upload-btn"
-                style={{ margin: 0, padding: '6px 12px', fontSize: '13px' }}
-              >
-                {quotaSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                onClick={handleQuotaCancel}
-                disabled={quotaSaving}
-                style={{
-                  margin: 0,
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  background: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong>{account?.quota ?? 'Not set'}</strong>
-              <button
-                onClick={handleQuotaEdit}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: '12px',
-                  background: '#3B82F6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Edit
-              </button>
-            </div>
-          )}
-        </div>
-        {quotaError && (
-          <div className="mailbox-settings-row">
-            <span className="label"></span>
-            <p className="mailbox-settings-error">{quotaError}</p>
-          </div>
-        )}
-        {quotaSuccess && (
-          <div className="mailbox-settings-row">
-            <span className="label"></span>
-            <p className="mailbox-settings-success">{quotaSuccess}</p>
-          </div>
-        )}
       </div>
 
-      <div className="mailbox-signature-section">
-        <h4 style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>Email Signature</h4>
-        <p style={{ marginBottom: '12px', fontSize: '13px', color: '#666' }}>
-          This signature will be automatically appended to the end of all outgoing messages.
+      {/* Account Details Grid */}
+      <div className="mbox-section">
+        <div className="mbox-section-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <h4>Account Details</h4>
+        </div>
+        <div className="mbox-details-grid">
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">Mailbox</span>
+            <span className="mbox-detail-value">{account?.email || 'Not selected'}</span>
+          </div>
+
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">Display Name</span>
+            {editingDisplayName ? (
+              <div className="mbox-edit-field">
+                <input
+                  type="text"
+                  value={newDisplayName}
+                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  placeholder="Enter display name"
+                  autoFocus
+                />
+                <button onClick={handleDisplayNameSave} disabled={displayNameSaving} className="mbox-btn-save">
+                  {displayNameSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={handleDisplayNameCancel} disabled={displayNameSaving} className="mbox-btn-cancel">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="mbox-detail-value-editable">
+                <span>{account?.displayName || 'Not set'}</span>
+                <button onClick={handleDisplayNameEdit} className="mbox-btn-edit">Edit</button>
+              </div>
+            )}
+            {displayNameError && <p className="mbox-error-text">{displayNameError}</p>}
+            {displayNameSuccess && <p className="mbox-success-text">{displayNameSuccess}</p>}
+          </div>
+
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">Domain</span>
+            <span className="mbox-detail-value">{account?.domain || '—'}</span>
+          </div>
+
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">IMAP Status</span>
+            <span className={`mbox-status-badge ${account?.imapEnabled ? 'enabled' : 'disabled'}`}>
+              {account?.imapEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">SMTP Status</span>
+            <span className={`mbox-status-badge ${account?.smtpEnabled ? 'enabled' : 'disabled'}`}>
+              {account?.smtpEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+
+          <div className="mbox-detail-item">
+            <span className="mbox-detail-label">Quota (MB)</span>
+            {editingQuota ? (
+              <div className="mbox-edit-field">
+                <input
+                  type="number"
+                  value={newQuota}
+                  onChange={(e) => setNewQuota(e.target.value)}
+                  placeholder="Enter quota"
+                  min="0"
+                  autoFocus
+                />
+                <button onClick={handleQuotaSave} disabled={quotaSaving} className="mbox-btn-save">
+                  {quotaSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={handleQuotaCancel} disabled={quotaSaving} className="mbox-btn-cancel">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="mbox-detail-value-editable">
+                <span>{account?.quota ?? 'Not set'}</span>
+                <button onClick={handleQuotaEdit} className="mbox-btn-edit">Edit</button>
+              </div>
+            )}
+            {quotaError && <p className="mbox-error-text">{quotaError}</p>}
+            {quotaSuccess && <p className="mbox-success-text">{quotaSuccess}</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Storage Usage */}
+      <div className="mbox-section">
+        <div className="mbox-section-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          </svg>
+          <h4>Storage Usage</h4>
+        </div>
+        <div className="mbox-storage-card">
+          {storageLoading ? (
+            <div className="mbox-loading">Loading storage information...</div>
+          ) : storageUsage ? (
+            <>
+              <div className="mbox-storage-stats">
+                <div className="mbox-storage-stat">
+                  <span className="mbox-storage-value">{storageUsage.used} MB</span>
+                  <span className="mbox-storage-label">Used</span>
+                </div>
+                <div className="mbox-storage-stat">
+                  <span className="mbox-storage-value">{storageUsage.available} MB</span>
+                  <span className="mbox-storage-label">Available</span>
+                </div>
+                <div className="mbox-storage-stat">
+                  <span className="mbox-storage-value">{storageUsage.quota} MB</span>
+                  <span className="mbox-storage-label">Total</span>
+                </div>
+              </div>
+              <div className="mbox-storage-bar">
+                <div
+                  className={`mbox-storage-fill ${storageUsage.percentage > 90 ? 'critical' : storageUsage.percentage > 70 ? 'warning' : 'normal'}`}
+                  style={{ width: `${Math.min(storageUsage.percentage, 100)}%` }}
+                />
+              </div>
+              <p className="mbox-storage-percentage">{storageUsage.percentage}% of storage used</p>
+            </>
+          ) : (
+            <p className="mbox-muted-text">Unable to load storage information</p>
+          )}
+        </div>
+      </div>
+
+      {/* Email Signature */}
+      <div className="mbox-section">
+        <div className="mbox-section-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+          </svg>
+          <h4>Email Signature</h4>
+        </div>
+        <p className="mbox-section-description">
+          This signature will be automatically appended to all outgoing emails.
         </p>
         <textarea
+          className="mbox-signature-textarea"
           value={signature}
           onChange={(e) => setSignature(e.target.value)}
           placeholder="Enter your email signature here..."
-          rows={6}
-          style={{
-            width: '100%',
-            padding: '10px',
-            fontSize: '13px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-            marginBottom: '10px'
-          }}
+          rows={5}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={handleSignatureSave}
-            disabled={signatureSaving}
-            className="mailbox-upload-btn"
-            style={{ margin: 0 }}
-          >
+        <div className="mbox-signature-actions">
+          <button onClick={handleSignatureSave} disabled={signatureSaving} className="mbox-btn-primary">
             {signatureSaving ? 'Saving...' : 'Save Signature'}
           </button>
-          {signatureError && <p className="mailbox-settings-error">{signatureError}</p>}
-          {signatureSuccess && <p className="mailbox-settings-success">{signatureSuccess}</p>}
+          {signatureError && <p className="mbox-error-text">{signatureError}</p>}
+          {signatureSuccess && <p className="mbox-success-text">{signatureSuccess}</p>}
         </div>
       </div>
 
-      {/* Storage Usage Section */}
-      <div className="mailbox-storage-section" style={{ marginTop: '30px' }}>
-        <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>Storage Usage</h4>
-        {storageLoading ? (
-          <p style={{ fontSize: '13px', color: '#666' }}>Loading...</p>
-        ) : storageUsage ? (
-          <div>
-            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-              <span>{storageUsage.used} MB used</span>
-              <span>{storageUsage.quota} MB total</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: '#e5e7eb',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              marginBottom: '8px'
-            }}>
-              <div style={{
-                width: `${Math.min(storageUsage.percentage, 100)}%`,
-                height: '100%',
-                backgroundColor: storageUsage.percentage > 90 ? '#ef4444' : storageUsage.percentage > 70 ? '#f59e0b' : '#10b981',
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-            <p style={{ fontSize: '12px', color: '#666' }}>
-              {storageUsage.available} MB available ({storageUsage.percentage}% used)
-            </p>
-          </div>
-        ) : (
-          <p style={{ fontSize: '13px', color: '#666' }}>Unable to load storage information</p>
-        )}
+      {/* Gravatar Sender Avatar */}
+      <div className="mbox-section">
+        <div className="mbox-section-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          <h4>Sender Avatar (Gravatar)</h4>
+        </div>
+        <p className="mbox-section-description">
+          Your sender avatar appears next to your name in email clients like Gmail and Outlook.
+          Set up a free Gravatar account to display your profile picture.
+        </p>
+
+        <div className="mbox-gravatar-status">
+          {gravatarChecking ? (
+            <div className="mbox-loading">Checking Gravatar status...</div>
+          ) : (
+            <>
+              <div className="mbox-gravatar-preview">
+                {gravatarUrl && (
+                  <img
+                    src={gravatarUrl}
+                    alt="Gravatar preview"
+                    className="mbox-gravatar-image"
+                    onError={(e) => {
+                      e.target.src = buildFallbackAvatar(displayName, user?.email || account?.email);
+                    }}
+                  />
+                )}
+                <div className="mbox-gravatar-info">
+                  <div className="mbox-gravatar-status-badge">
+                    {hasCustomGravatar ? (
+                      <span className="mbox-status-badge enabled">✓ Active</span>
+                    ) : (
+                      <span className="mbox-status-badge disabled">Not Set Up</span>
+                    )}
+                  </div>
+                  <p className="mbox-gravatar-email">{user?.email || account?.email}</p>
+                </div>
+              </div>
+
+              <div className="mbox-gravatar-actions">
+                {hasCustomGravatar ? (
+                  <>
+                    <p className="mbox-success-text" style={{ marginBottom: '12px' }}>
+                      ✓ Your Gravatar is set up! Recipients will see your profile picture when you send emails.
+                    </p>
+                    <button
+                      onClick={() => openGravatarSetup(user?.email || account?.email)}
+                      className="mbox-btn-secondary"
+                    >
+                      Update on Gravatar.com
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="mbox-info-box">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                      <div>
+                        <strong>How to set up Gravatar:</strong>
+                        <ol style={{ marginTop: '8px', marginBottom: '0', paddingLeft: '20px' }}>
+                          <li>Click "Set Up Gravatar" below</li>
+                          <li>Create a free account using <strong>{user?.email || account?.email}</strong></li>
+                          <li>Upload your profile picture</li>
+                          <li>Return here and refresh to verify</li>
+                        </ol>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => openGravatarSetup(user?.email || account?.email)}
+                      className="mbox-btn-primary"
+                    >
+                      Set Up Gravatar
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Password Change Section */}
-      <div className="mailbox-password-section" style={{ marginTop: '30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: '600' }}>Change Password</h4>
+      {/* Collapsible Sections */}
+      <div className="mbox-collapsible-sections">
+        {/* Password Change */}
+        <div className="mbox-collapsible">
           <button
+            className={`mbox-collapsible-header ${showPasswordSection ? 'active' : ''}`}
             onClick={() => setShowPasswordSection(!showPasswordSection)}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              background: '#3B82F6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
           >
-            {showPasswordSection ? 'Hide' : 'Show'}
+            <div className="mbox-collapsible-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span>Change Password</span>
+            </div>
+            <svg className={`mbox-chevron ${showPasswordSection ? 'rotated' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
+          {showPasswordSection && (
+            <div className="mbox-collapsible-content">
+              <div className="mbox-form-group">
+                <label>New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 8 characters)"
+                />
+                {passwordStrength && (
+                  <div className={`mbox-password-strength ${passwordStrength}`}>
+                    <div className="mbox-strength-bar">
+                      <div className={`mbox-strength-fill ${passwordStrength}`} />
+                    </div>
+                    <span>Password strength: {passwordStrength}</span>
+                  </div>
+                )}
+              </div>
+              <div className="mbox-form-group">
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <button onClick={handlePasswordSave} disabled={passwordSaving} className="mbox-btn-primary">
+                {passwordSaving ? 'Updating...' : 'Update Password'}
+              </button>
+              {passwordError && <p className="mbox-error-text">{passwordError}</p>}
+              {passwordSuccess && <p className="mbox-success-text">{passwordSuccess}</p>}
+            </div>
+          )}
         </div>
 
-        {showPasswordSection && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>
-                New Password
+        {/* Email Forwarding */}
+        <div className="mbox-collapsible">
+          <button
+            className={`mbox-collapsible-header ${showForwardingSection ? 'active' : ''}`}
+            onClick={() => setShowForwardingSection(!showForwardingSection)}
+          >
+            <div className="mbox-collapsible-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15 17 20 12 15 7" />
+                <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+              </svg>
+              <span>Email Forwarding</span>
+            </div>
+            <svg className={`mbox-chevron ${showForwardingSection ? 'rotated' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {showForwardingSection && (
+            <div className="mbox-collapsible-content">
+              <label className="mbox-toggle-row">
+                <span>Enable email forwarding</span>
+                <div className="mbox-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={forwardingEnabled}
+                    onChange={(e) => setForwardingEnabled(e.target.checked)}
+                  />
+                  <span className="mbox-toggle-slider" />
+                </div>
               </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  fontSize: '13px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px'
-                }}
-              />
-              {passwordStrength && (
-                <p style={{
-                  marginTop: '4px',
-                  fontSize: '12px',
-                  color: passwordStrength === 'strong' ? '#10b981' : passwordStrength === 'medium' ? '#f59e0b' : '#ef4444'
-                }}>
-                  Password strength: {passwordStrength}
-                </p>
+              {forwardingEnabled && (
+                <div className="mbox-form-group">
+                  <label>Forward to</label>
+                  <input
+                    type="email"
+                    value={forwardTo}
+                    onChange={(e) => setForwardTo(e.target.value)}
+                    placeholder="email@example.com"
+                  />
+                </div>
+              )}
+              <button onClick={handleForwardingSave} disabled={forwardingSaving} className="mbox-btn-primary">
+                {forwardingSaving ? 'Saving...' : 'Save Forwarding Settings'}
+              </button>
+              {forwardingError && <p className="mbox-error-text">{forwardingError}</p>}
+              {forwardingSuccess && <p className="mbox-success-text">{forwardingSuccess}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Blocked Senders */}
+        <div className="mbox-collapsible">
+          <button
+            className={`mbox-collapsible-header ${showBlockedSendersSection ? 'active' : ''}`}
+            onClick={() => setShowBlockedSendersSection(!showBlockedSendersSection)}
+          >
+            <div className="mbox-collapsible-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+              <span>Blocked Senders</span>
+              {blockedSenders.length > 0 && (
+                <span className="mbox-badge">{blockedSenders.length}</span>
               )}
             </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  fontSize: '13px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px'
-                }}
-              />
-            </div>
-
-            <button
-              onClick={handlePasswordSave}
-              disabled={passwordSaving}
-              className="mailbox-upload-btn"
-              style={{ margin: 0 }}
-            >
-              {passwordSaving ? 'Updating...' : 'Update Password'}
-            </button>
-
-            {passwordError && <p className="mailbox-settings-error" style={{ marginTop: '10px' }}>{passwordError}</p>}
-            {passwordSuccess && <p className="mailbox-settings-success" style={{ marginTop: '10px' }}>{passwordSuccess}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Email Forwarding Section */}
-      <div className="mailbox-forwarding-section" style={{ marginTop: '30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: '600' }}>Email Forwarding</h4>
-          <button
-            onClick={() => setShowForwardingSection(!showForwardingSection)}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              background: '#3B82F6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            {showForwardingSection ? 'Hide' : 'Show'}
+            <svg className={`mbox-chevron ${showBlockedSendersSection ? 'rotated' : ''}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
-        </div>
-
-        {showForwardingSection && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                <input
-                  type="checkbox"
-                  checked={forwardingEnabled}
-                  onChange={(e) => setForwardingEnabled(e.target.checked)}
-                  style={{ width: '16px', height: '16px' }}
-                />
-                <span>Enable email forwarding</span>
-              </label>
-            </div>
-
-            {forwardingEnabled && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>
-                  Forward to
-                </label>
-                <input
-                  type="email"
-                  value={forwardTo}
-                  onChange={(e) => setForwardTo(e.target.value)}
-                  placeholder="email@example.com"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    fontSize: '13px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
-                />
+          {showBlockedSendersSection && (
+            <div className="mbox-collapsible-content">
+              <div className="mbox-form-group">
+                <label>Add email to block list</label>
+                <div className="mbox-input-with-button">
+                  <input
+                    type="email"
+                    value={newBlockedEmail}
+                    onChange={(e) => setNewBlockedEmail(e.target.value)}
+                    placeholder="spam@example.com"
+                  />
+                  <button onClick={handleAddBlockedSender} disabled={blockedSendersLoading} className="mbox-btn-primary">
+                    {blockedSendersLoading ? 'Adding...' : 'Block'}
+                  </button>
+                </div>
               </div>
-            )}
-
-            <button
-              onClick={handleForwardingSave}
-              disabled={forwardingSaving}
-              className="mailbox-upload-btn"
-              style={{ margin: 0 }}
-            >
-              {forwardingSaving ? 'Saving...' : 'Save Forwarding Settings'}
-            </button>
-
-            {forwardingError && <p className="mailbox-settings-error" style={{ marginTop: '10px' }}>{forwardingError}</p>}
-            {forwardingSuccess && <p className="mailbox-settings-success" style={{ marginTop: '10px' }}>{forwardingSuccess}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* Blocked Senders Section */}
-      <div className="mailbox-blocked-senders-section" style={{ marginTop: '30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '14px', fontWeight: '600' }}>Blocked Senders</h4>
-          <button
-            onClick={() => setShowBlockedSendersSection(!showBlockedSendersSection)}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              background: '#3B82F6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            {showBlockedSendersSection ? 'Hide' : 'Show'}
-          </button>
-        </div>
-
-        {showBlockedSendersSection && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>
-                Add email to block list
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="email"
-                  value={newBlockedEmail}
-                  onChange={(e) => setNewBlockedEmail(e.target.value)}
-                  placeholder="spam@example.com"
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    fontSize: '13px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
-                />
-                <button
-                  onClick={handleAddBlockedSender}
-                  disabled={blockedSendersLoading}
-                  className="mailbox-upload-btn"
-                  style={{ margin: 0 }}
-                >
-                  {blockedSendersLoading ? 'Adding...' : 'Block'}
-                </button>
-              </div>
-            </div>
-
-            {blockedSenders.length > 0 ? (
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
-                  Blocked emails ({blockedSenders.length}):
-                </p>
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {blockedSenders.length > 0 ? (
+                <div className="mbox-blocked-list">
                   {blockedSenders.map((email, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '8px 12px',
-                        marginBottom: '4px',
-                        background: '#f9fafb',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      <span style={{ fontSize: '13px' }}>{email}</span>
+                    <div key={index} className="mbox-blocked-item">
+                      <span>{email}</span>
                       <button
                         onClick={() => handleRemoveBlockedSender(email)}
                         disabled={blockedSendersLoading}
-                        style={{
-                          padding: '4px 10px',
-                          fontSize: '12px',
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
+                        className="mbox-btn-unblock"
                       >
                         Unblock
                       </button>
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-                No blocked senders yet
-              </p>
-            )}
-
-            {blockedSendersError && <p className="mailbox-settings-error">{blockedSendersError}</p>}
-            {blockedSendersSuccess && <p className="mailbox-settings-success">{blockedSendersSuccess}</p>}
-          </div>
-        )}
+              ) : (
+                <p className="mbox-muted-text">No blocked senders yet</p>
+              )}
+              {blockedSendersError && <p className="mbox-error-text">{blockedSendersError}</p>}
+              {blockedSendersSuccess && <p className="mbox-success-text">{blockedSendersSuccess}</p>}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="mailbox-settings-footer-note">
-        The image above is automatically embedded in every new email you send. Upload a square picture for best results.
+      {/* Footer Note */}
+      <div className="mbox-footer-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span>Your avatar is automatically embedded in every new email you send. Upload a square image for best results.</span>
       </div>
     </div>
   );

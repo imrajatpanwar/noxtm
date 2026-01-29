@@ -114,7 +114,7 @@ router.post('/', async (req, res) => {
     const userId = req.user._id || req.user.userId;
     const companyId = req.user.companyId;
 
-    const { name, description, source } = req.body;
+    const { name, description, source, contacts } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -126,11 +126,23 @@ router.post('/', async (req, res) => {
     const contactList = new ContactList({
       name,
       description,
-      source: source || { type: 'custom' },
+      source: source || { type: 'manual' },
       companyId,
       createdBy: userId,
       lastModifiedBy: userId
     });
+
+    // Add contacts if provided
+    if (contacts && Array.isArray(contacts) && contacts.length > 0) {
+      contactList.contacts = contacts.map(c => ({
+        email: (typeof c === 'string' ? c : c.email).toLowerCase().trim(),
+        name: typeof c === 'object' ? c.name : '',
+        status: 'pending',
+        sourceType: 'manual',
+        addedAt: new Date()
+      }));
+      contactList.contactCount = contactList.contacts.length;
+    }
 
     await contactList.save();
 
@@ -677,6 +689,233 @@ router.post('/import/trade-shows/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to import from trade show',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/contact-lists/:id/validate
+ * Validate all emails in a contact list
+ */
+router.post('/:id/validate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id || req.user.userId;
+    const companyId = req.user.companyId;
+
+    const contactList = await ContactList.findOne({ _id: id, companyId });
+
+    if (!contactList) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact list not found'
+      });
+    }
+
+    // Disposable email domains (common ones)
+    const disposableDomains = [
+      'tempmail.com', 'throwaway.email', 'guerrillamail.com', 'mailinator.com',
+      'yopmail.com', '10minutemail.com', 'trashmail.com', 'fakeinbox.com',
+      'sharklasers.com', 'getairmail.com', 'discard.email', 'temp-mail.org'
+    ];
+
+    // Role-based email prefixes (risky for marketing)
+    const roleBasedPrefixes = [
+      'info', 'support', 'admin', 'contact', 'sales', 'marketing',
+      'help', 'noreply', 'no-reply', 'webmaster', 'postmaster', 'abuse'
+    ];
+
+    let validCount = 0;
+    let invalidCount = 0;
+
+    for (let contact of contactList.contacts) {
+      const email = contact.email.toLowerCase();
+      const [localPart, domain] = email.split('@');
+      
+      let isValid = true;
+      let reason = null;
+
+      // Check email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        isValid = false;
+        reason = 'invalid_format';
+      }
+      // Check for disposable domains
+      else if (disposableDomains.some(d => domain.includes(d))) {
+        isValid = false;
+        reason = 'disposable';
+      }
+      // Check for role-based emails
+      else if (roleBasedPrefixes.includes(localPart)) {
+        isValid = false;
+        reason = 'role_based';
+      }
+      // Check for suspicious patterns
+      else if (localPart.length < 2 || localPart.length > 64) {
+        isValid = false;
+        reason = 'syntax_error';
+      }
+      // Check for common typos in popular domains
+      else if (['gmial.com', 'gamil.com', 'gmal.com', 'yahooo.com', 'hotmal.com'].includes(domain)) {
+        isValid = false;
+        reason = 'dns_error';
+      }
+      // Check for numeric-only local parts (often spam traps)
+      else if (/^\d+$/.test(localPart)) {
+        isValid = false;
+        reason = 'spam_trap';
+      }
+
+      contact.status = isValid ? 'valid' : 'invalid';
+      contact.validationReason = reason;
+      contact.validatedAt = new Date();
+
+      if (isValid) {
+        validCount++;
+      } else {
+        invalidCount++;
+      }
+    }
+
+    // Check for duplicates
+    const emailCounts = {};
+    contactList.contacts.forEach(c => {
+      emailCounts[c.email] = (emailCounts[c.email] || 0) + 1;
+    });
+    
+    contactList.contacts.forEach(c => {
+      if (emailCounts[c.email] > 1 && c.status === 'valid') {
+        c.status = 'invalid';
+        c.validationReason = 'duplicate';
+        validCount--;
+        invalidCount++;
+      }
+    });
+
+    contactList.validated = true;
+    contactList.validCount = validCount;
+    contactList.invalidCount = invalidCount;
+    contactList.lastValidatedAt = new Date();
+    contactList.lastModifiedBy = userId;
+
+    await contactList.save();
+
+    res.json({
+      success: true,
+      message: 'Email validation completed',
+      data: {
+        total: contactList.contacts.length,
+        valid: validCount,
+        invalid: invalidCount,
+        validated: true
+      }
+    });
+  } catch (error) {
+    console.error('Validate emails error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to validate emails',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/contact-lists/:id/remove-invalid
+ * Remove all invalid emails from a contact list
+ */
+router.post('/:id/remove-invalid', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id || req.user.userId;
+    const companyId = req.user.companyId;
+
+    const contactList = await ContactList.findOne({ _id: id, companyId });
+
+    if (!contactList) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact list not found'
+      });
+    }
+
+    const originalCount = contactList.contacts.length;
+    const invalidCount = contactList.contacts.filter(c => c.status === 'invalid').length;
+
+    // Remove invalid contacts
+    contactList.contacts = contactList.contacts.filter(c => c.status !== 'invalid');
+    contactList.contactCount = contactList.contacts.length;
+    contactList.invalidCount = 0;
+    contactList.lastModifiedBy = userId;
+
+    await contactList.save();
+
+    res.json({
+      success: true,
+      message: `Removed ${invalidCount} invalid emails`,
+      data: {
+        removed: invalidCount,
+        remaining: contactList.contacts.length,
+        originalCount
+      }
+    });
+  } catch (error) {
+    console.error('Remove invalid emails error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove invalid emails',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/contact-lists/:id/contacts/:contactId
+ * Remove a single contact from a list
+ */
+router.delete('/:id/contacts/:contactId', async (req, res) => {
+  try {
+    const { id, contactId } = req.params;
+    const userId = req.user._id || req.user.userId;
+    const companyId = req.user.companyId;
+
+    const contactList = await ContactList.findOne({ _id: id, companyId });
+
+    if (!contactList) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact list not found'
+      });
+    }
+
+    const originalCount = contactList.contacts.length;
+    contactList.contacts = contactList.contacts.filter(c => c._id.toString() !== contactId);
+
+    if (contactList.contacts.length === originalCount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contact not found'
+      });
+    }
+
+    // Update counts
+    contactList.contactCount = contactList.contacts.length;
+    contactList.validCount = contactList.contacts.filter(c => c.status === 'valid').length;
+    contactList.invalidCount = contactList.contacts.filter(c => c.status === 'invalid').length;
+    contactList.lastModifiedBy = userId;
+
+    await contactList.save();
+
+    res.json({
+      success: true,
+      message: 'Contact removed successfully'
+    });
+  } catch (error) {
+    console.error('Remove contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove contact',
       error: error.message
     });
   }

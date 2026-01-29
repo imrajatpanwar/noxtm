@@ -88,6 +88,19 @@ const userSchema = new mongoose.Schema({
     default: false
   },
 
+  timezone: { type: String, default: 'UTC' },
+
+  // Mail preferences
+  mailPreferences: {
+    defaultTracking: { type: Boolean, default: true },
+    emailNotifications: { type: Boolean, default: true },
+    weeklyReports: { type: Boolean, default: false },
+    lowCreditAlert: { type: Boolean, default: true },
+    defaultFromName: { type: String, default: '' },
+    defaultReplyTo: { type: String, default: '' },
+    emailSignature: { type: String, default: '' }
+  },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

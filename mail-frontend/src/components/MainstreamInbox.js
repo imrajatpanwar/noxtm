@@ -112,8 +112,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
 
       [...ownedAccounts, ...connectedAccounts].forEach(account => {
         if (account.accountType === 'noxtm-hosted' &&
-            account.imapSettings &&
-            account.imapSettings.encryptedPassword) {
+          account.imapSettings &&
+          account.imapSettings.encryptedPassword) {
           accountMap.set(account._id, account);
         }
       });
@@ -533,11 +533,11 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     if (email.preview) {
       // Remove [html content] and [plain content] tags from preview
       let cleanPreview = email.preview.replace(/\s*-?\s*\[(html|plain)\s+content\]/gi, '').trim();
-      
+
       // Remove empty parentheses and brackets patterns like "( )", "- ( )", etc.
       cleanPreview = cleanPreview.replace(/\s*-?\s*\(\s*\)\s*/g, '').trim();
       cleanPreview = cleanPreview.replace(/^\s*-\s+/, '').trim(); // Remove leading dash
-      
+
       // Only remove standalone URLs (tracking links that are the only content)
       const urlPattern = /^https?:\/\/[^\s]+$/;
       if (urlPattern.test(cleanPreview)) {
@@ -554,13 +554,13 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         }
         return '';
       }
-      
+
       // If after cleaning we have meaningful content, return it
       if (cleanPreview && cleanPreview.length >= 3 && !/^[\s\-()]+$/.test(cleanPreview)) {
         return cleanPreview.substring(0, 150);
       }
     }
-    
+
     // Fallback to text/html if preview not available or empty
     const body = email.text || email.html || '';
     if (body) {
@@ -572,7 +572,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         return text.substring(0, 150);
       }
     }
-    
+
     return '';
   };
 
@@ -625,7 +625,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             <MdPersonAdd /> Create Email
           </button>
           <div className="mail-account-dropdown-gmail">
-            <button 
+            <button
               className="account-avatar-button"
               onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
             >
@@ -644,7 +644,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                       <div className="account-dropdown-user-email">{user?.email || ''}</div>
                     </div>
                   </div>
-                  <div 
+                  <div
                     className="account-dropdown-link"
                     onClick={() => {
                       setAccountDropdownOpen(false);
@@ -899,8 +899,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
               <div className="mail-sender-info-gmail">
                 <div className="mail-email-avatar-gmail large">
                   {selectedEmail.from?.avatar ? (
-                    <img 
-                      src={selectedEmail.from.avatar} 
+                    <img
+                      src={selectedEmail.from.avatar}
                       alt={selectedEmail.from?.name || selectedEmail.from?.address}
                       style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       onError={(e) => {
@@ -1026,126 +1026,126 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         ) : (
           /* Email List in Full Width */
           <div className="mail-email-list-fullwidth">
-          {activeTab === 'settings' ? (
-            <ProfileSettings
-              account={selectedAccount}
-              user={currentUser}
-              onAvatarUpload={handleAvatarUpload}
-              uploading={avatarUploadState.uploading}
-              uploadError={avatarUploadState.error}
-              uploadSuccess={avatarUploadState.success}
-            />
-          ) : loading && emails.length === 0 ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Loading emails...</p>
-            </div>
-          ) : error ? (
-            <div className="error-state">
-              <p>{error}</p>
-              <button onClick={fetchEmails} className="retry-btn">Retry</button>
-            </div>
-          ) : !selectedAccount ? (
-            <div className="empty-state">
-              {accountsLoading ? (
-                // Show loading state while fetching accounts - prevents form flash
-                <div className="loading-state">
-                  <div className="spinner"></div>
-                  <p>Loading accounts...</p>
-                </div>
-              ) : accounts.length === 0 ? (
-                // Check if user is a workspace member
-                currentUser?.companyId ? (
-                  <div className="empty-state-connect">
-                    <EmailConnectionForm
-                      onSuccess={(account) => {
-                        // Refresh accounts list
-                        fetchHostedAccounts();
-                        // Auto-select the newly connected account
-                        setSelectedAccount(account);
-                      }}
-                      onCancel={null}
-                    />
-                  </div>
-                ) : (
-                  <div className="empty-state-create">
-                    <h3>No Email Accounts Found</h3>
-                    <p>You don't have any email accounts yet on your verified domain.</p>
-                    <p>Create an email account to start sending and receiving emails.</p>
-                    <button
-                      onClick={() => onNavigateToDomains && onNavigateToDomains()}
-                      className="btn-create-email"
-                      style={{
-                        marginTop: '15px',
-                        padding: '10px 20px',
-                        backgroundColor: '#1a73e8',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Go to Domain Management
-                    </button>
-                  </div>
-                )
-              ) : (
-                <p>No email account selected</p>
-              )}
-            </div>
-          ) : emails.length === 0 ? (
-            <div className="empty-state">
-              <p>No emails found in {activeTab === 'sent' ? 'Sent' : 'Inbox'}</p>
-              <small>Try refreshing or selecting a different account</small>
-            </div>
-          ) : (
-            emails.map((email, index) => {
-              const preview = getEmailPreview(email);
-              return (
-              <div
-                key={email.uid || index}
-                className={`gmail-email-item ${selectedEmail === email ? 'selected' : ''} ${email.seen ? '' : 'unread'} ${selectedEmails.has(email.uid) ? 'checked' : ''}`}
-                onClick={() => handleEmailClick(email)}
-              >
-                <div className="email-checkbox">
-                  <Checkbox
-                    checked={selectedEmails.has(email.uid)}
-                    onChange={() => handleCheckboxClick(email.uid)}
-                  />
-                </div>
-
-                <div className="email-star">
-                  <IconButton
-                    icon={starredEmails.has(email.uid) ? MdStar : MdStarBorder}
-                    onClick={() => handleStarToggle(email.uid)}
-                    className={starredEmails.has(email.uid) ? 'starred' : ''}
-                  />
-                </div>
-
-                <div className="mail-email-sender-gmail">
-                  {activeTab === 'sent'
-                    ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown'))
-                    : (email.from?.name || email.from?.address?.split('@')[0] || 'Unknown')}
-                </div>
-
-                <div className="mail-email-content-gmail">
-                  <span className="mail-email-subject-gmail">
-                    {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
-                  </span>
-                  <span className="mail-email-preview-gmail">
-                    {preview ? ' - ' + preview : ''}
-                  </span>
-                </div>
-
-                <div className="mail-email-timestamp-gmail">
-                  {formatDate(email.date)}
-                  {email.hasAttachments && <MdAttachFile className="attachment-icon-gmail" />}
-                </div>
+            {activeTab === 'settings' ? (
+              <ProfileSettings
+                account={selectedAccount}
+                user={currentUser}
+                onAvatarUpload={handleAvatarUpload}
+                uploading={avatarUploadState.uploading}
+                uploadError={avatarUploadState.error}
+                uploadSuccess={avatarUploadState.success}
+              />
+            ) : loading && emails.length === 0 ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading emails...</p>
               </div>
-              );
-            })
-          )}
+            ) : error ? (
+              <div className="error-state">
+                <p>{error}</p>
+                <button onClick={fetchEmails} className="retry-btn">Retry</button>
+              </div>
+            ) : !selectedAccount ? (
+              <div className="empty-state">
+                {accountsLoading ? (
+                  // Show loading state while fetching accounts - prevents form flash
+                  <div className="loading-state">
+                    <div className="spinner"></div>
+                    <p>Loading accounts...</p>
+                  </div>
+                ) : accounts.length === 0 ? (
+                  // Check if user is a workspace member
+                  currentUser?.companyId ? (
+                    <div className="empty-state-connect">
+                      <EmailConnectionForm
+                        onSuccess={(account) => {
+                          // Refresh accounts list
+                          fetchHostedAccounts();
+                          // Auto-select the newly connected account
+                          setSelectedAccount(account);
+                        }}
+                        onCancel={null}
+                      />
+                    </div>
+                  ) : (
+                    <div className="empty-state-create">
+                      <h3>No Email Accounts Found</h3>
+                      <p>You don't have any email accounts yet on your verified domain.</p>
+                      <p>Create an email account to start sending and receiving emails.</p>
+                      <button
+                        onClick={() => onNavigateToDomains && onNavigateToDomains()}
+                        className="btn-create-email"
+                        style={{
+                          marginTop: '15px',
+                          padding: '10px 20px',
+                          backgroundColor: '#1a73e8',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        Go to Domain Management
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <p>No email account selected</p>
+                )}
+              </div>
+            ) : emails.length === 0 ? (
+              <div className="empty-state">
+                <p>No emails found in {activeTab === 'sent' ? 'Sent' : 'Inbox'}</p>
+                <small>Try refreshing or selecting a different account</small>
+              </div>
+            ) : (
+              emails.map((email, index) => {
+                const preview = getEmailPreview(email);
+                return (
+                  <div
+                    key={email.uid || index}
+                    className={`gmail-email-item ${selectedEmail === email ? 'selected' : ''} ${email.seen ? '' : 'unread'} ${selectedEmails.has(email.uid) ? 'checked' : ''}`}
+                    onClick={() => handleEmailClick(email)}
+                  >
+                    <div className="email-checkbox">
+                      <Checkbox
+                        checked={selectedEmails.has(email.uid)}
+                        onChange={() => handleCheckboxClick(email.uid)}
+                      />
+                    </div>
+
+                    <div className="email-star">
+                      <IconButton
+                        icon={starredEmails.has(email.uid) ? MdStar : MdStarBorder}
+                        onClick={() => handleStarToggle(email.uid)}
+                        className={starredEmails.has(email.uid) ? 'starred' : ''}
+                      />
+                    </div>
+
+                    <div className="mail-email-sender-gmail">
+                      {activeTab === 'sent'
+                        ? (typeof email.to?.[0] === 'string' ? email.to[0] : (email.to?.[0]?.name || email.to?.[0]?.address || 'Unknown'))
+                        : (email.from?.name || email.from?.address?.split('@')[0] || 'Unknown')}
+                    </div>
+
+                    <div className="mail-email-content-gmail">
+                      <span className="mail-email-subject-gmail">
+                        {(email.subject || '(No Subject)').replace(/\s*-\s*\[(html|plain)\s+content\]/gi, '')}
+                      </span>
+                      <span className="mail-email-preview-gmail">
+                        {preview ? ' - ' + preview : ''}
+                      </span>
+                    </div>
+
+                    <div className="mail-email-timestamp-gmail">
+                      {formatDate(email.date)}
+                      {email.hasAttachments && <MdAttachFile className="attachment-icon-gmail" />}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
       </div>
@@ -1221,9 +1221,9 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
 
       {/* Login Mail Modal */}
       {loginMailModalOpen && (
-        <div className="modal-overlay" onClick={() => setLoginMailModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={() => setLoginMailModalOpen(false)}>
+        <div className="mln-modal-overlay" onClick={() => setLoginMailModalOpen(false)}>
+          <div className="mln-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="mln-modal-close-btn" onClick={() => setLoginMailModalOpen(false)}>
               <MdClose />
             </button>
             <EmailConnectionForm
