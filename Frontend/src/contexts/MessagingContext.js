@@ -9,18 +9,16 @@ export const MessagingContext = createContext({
   onlineUsers: [],
   unreadCount: 0,
   typingUsers: {},
-  incrementUnread: () => {},
-  resetUnread: () => {},
-  setUserOnline: () => {},
-  setUserOffline: () => {}
+  incrementUnread: () => { },
+  resetUnread: () => { },
+  setUserOnline: () => { },
+  setUserOffline: () => { }
 });
 
 // Helper function to get the Socket.IO server URL
 const getSocketUrl = () => {
-  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  // In production, use relative path (same as API config)
-  // Socket.IO will connect to the same host/port as the frontend
-  return isDevelopment ? 'http://localhost:5000' : window.location.origin;
+  // Use environment variable if set, otherwise fallback to same origin
+  return process.env.REACT_APP_API_URL || window.location.origin;
 };
 
 export function MessagingProvider({ children }) {
@@ -170,269 +168,268 @@ export function MessagingProvider({ children }) {
       // Start loading conversations in the background (non-blocking)
       loadConversationsAsync();
 
-    const registerUserOnline = () => {
-      // Get current user from localStorage
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      if (userData.id || userData._id) {
-        const userId = (userData.id || userData._id).toString();
-        // Emit user-online event
-        newSocket.emit('user-online', userId);
-        console.log('👤 MessagingContext: User online event sent:', userId);
+      const registerUserOnline = () => {
+        // Get current user from localStorage
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.id || userData._id) {
+          const userId = (userData.id || userData._id).toString();
+          // Emit user-online event
+          newSocket.emit('user-online', userId);
+          console.log('👤 MessagingContext: User online event sent:', userId);
 
-        // Store userId in socket for later reference
-        newSocket.userId = userId;
-      }
-    };
-
-    newSocket.on('connect', () => {
-      console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Socket connected! Ready to receive messages 🚀`);
-      setIsConnected(true);
-      registerUserOnline();
-    });
-
-    newSocket.on('reconnect', (attemptNumber) => {
-      console.log(`🔄 MessagingContext: Reconnected after ${attemptNumber} attempts`);
-      setIsConnected(true);
-      registerUserOnline();
-
-      // Dispatch reconnection event for components to rejoin rooms
-      window.dispatchEvent(new CustomEvent('socket:reconnected'));
-    });
-
-    newSocket.on('disconnect', (reason) => {
-      console.log('❌ MessagingContext: Disconnected from Socket.IO. Reason:', reason);
-      setIsConnected(false);
-      window.dispatchEvent(new CustomEvent('socket:disconnected', { detail: { reason } }));
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.error('🔴 Socket connection error:', error.message);
-      console.error('Error details:', error);
-    });
-
-    newSocket.on('error', (error) => {
-      console.error('🔴 Socket error:', error);
-    });
-
-    // Listen for initial online users list
-    newSocket.on('online-users-list', (data) => {
-      console.log('📋 MessagingContext: Received online users list:', data.onlineUsers);
-      // Convert all IDs to strings for consistent comparison
-      const onlineUserIds = (data.onlineUsers || []).map(id => id.toString());
-      setOnlineUsers(onlineUserIds);
-    });
-
-    // Listen for user status changes
-    newSocket.on('user-status-changed', (data) => {
-      console.log('👤 MessagingContext: User status changed:', data);
-      const { userId, status } = data;
-      const userIdStr = userId.toString();
-
-      if (status === 'online') {
-        setOnlineUsers(prev => {
-          if (!prev.includes(userIdStr)) {
-            console.log('➕ Adding user to online list:', userIdStr);
-            return [...prev, userIdStr];
-          }
-          return prev;
-        });
-      } else if (status === 'offline') {
-        console.log('➖ Removing user from online list:', userIdStr);
-        setOnlineUsers(prev => prev.filter(id => id !== userIdStr));
-      }
-    });
-
-    // Listen for typing indicators
-    newSocket.on('user-typing', (data) => {
-      const { conversationId, userId, userName, isTyping } = data;
-      console.log('⌨️ MessagingContext: User typing:', { conversationId, userId, isTyping });
-
-      setTypingUsers(prev => {
-        const newTypingUsers = { ...prev };
-        if (isTyping) {
-          newTypingUsers[conversationId] = {
-            userId,
-            userName,
-            timestamp: Date.now()
-          };
-        } else {
-          delete newTypingUsers[conversationId];
+          // Store userId in socket for later reference
+          newSocket.userId = userId;
         }
-        return newTypingUsers;
+      };
+
+      newSocket.on('connect', () => {
+        console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Socket connected! Ready to receive messages 🚀`);
+        setIsConnected(true);
+        registerUserOnline();
       });
 
-      // Auto-clear typing indicator after 3 seconds
-      if (isTyping) {
-        setTimeout(() => {
-          setTypingUsers(prev => {
-            const newTypingUsers = { ...prev };
-            if (newTypingUsers[conversationId]?.userId === userId) {
-              delete newTypingUsers[conversationId];
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log(`🔄 MessagingContext: Reconnected after ${attemptNumber} attempts`);
+        setIsConnected(true);
+        registerUserOnline();
+
+        // Dispatch reconnection event for components to rejoin rooms
+        window.dispatchEvent(new CustomEvent('socket:reconnected'));
+      });
+
+      newSocket.on('disconnect', (reason) => {
+        console.log('❌ MessagingContext: Disconnected from Socket.IO. Reason:', reason);
+        setIsConnected(false);
+        window.dispatchEvent(new CustomEvent('socket:disconnected', { detail: { reason } }));
+      });
+
+      newSocket.on('connect_error', (error) => {
+        console.error('🔴 Socket connection error:', error.message);
+        console.error('Error details:', error);
+      });
+
+      newSocket.on('error', (error) => {
+        console.error('🔴 Socket error:', error);
+      });
+
+      // Listen for initial online users list
+      newSocket.on('online-users-list', (data) => {
+        console.log('📋 MessagingContext: Received online users list:', data.onlineUsers);
+        // Convert all IDs to strings for consistent comparison
+        const onlineUserIds = (data.onlineUsers || []).map(id => id.toString());
+        setOnlineUsers(onlineUserIds);
+      });
+
+      // Listen for user status changes
+      newSocket.on('user-status-changed', (data) => {
+        console.log('👤 MessagingContext: User status changed:', data);
+        const { userId, status } = data;
+        const userIdStr = userId.toString();
+
+        if (status === 'online') {
+          setOnlineUsers(prev => {
+            if (!prev.includes(userIdStr)) {
+              console.log('➕ Adding user to online list:', userIdStr);
+              return [...prev, userIdStr];
             }
-            return newTypingUsers;
+            return prev;
           });
-        }, 3000);
-      }
-    });
+        } else if (status === 'offline') {
+          console.log('➖ Removing user from online list:', userIdStr);
+          setOnlineUsers(prev => prev.filter(id => id !== userIdStr));
+        }
+      });
 
-    // Listen for new messages (for unread count and toast notifications)
-    newSocket.on('new-message', (data) => {
-      console.log('📩 MessagingContext: New message received', data);
+      // Listen for typing indicators
+      newSocket.on('user-typing', (data) => {
+        const { conversationId, userId, userName, isTyping } = data;
+        console.log('⌨️ MessagingContext: User typing:', { conversationId, userId, isTyping });
 
-      // Get current user
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const currentUserId = (userData.id || userData._id)?.toString();
-      const messageSenderId = data.message.sender._id?.toString();
-      const isOwnMessage = currentUserId && messageSenderId && currentUserId === messageSenderId;
+        setTypingUsers(prev => {
+          const newTypingUsers = { ...prev };
+          if (isTyping) {
+            newTypingUsers[conversationId] = {
+              userId,
+              userName,
+              timestamp: Date.now()
+            };
+          } else {
+            delete newTypingUsers[conversationId];
+          }
+          return newTypingUsers;
+        });
 
-      // DEBUG: Log message arrival details
-      console.log('🔍 Debug - Current user ID:', currentUserId);
-      console.log('🔍 Debug - Message sender ID:', messageSenderId);
-      console.log('🔍 Debug - Is own message?', isOwnMessage);
-      console.log('🔍 Debug - Notifications enabled?', chatSettingsRef.current.notifications);
-      console.log('🔍 Debug - Should show toast?', !isOwnMessage && chatSettingsRef.current.notifications);
+        // Auto-clear typing indicator after 3 seconds
+        if (isTyping) {
+          setTimeout(() => {
+            setTypingUsers(prev => {
+              const newTypingUsers = { ...prev };
+              if (newTypingUsers[conversationId]?.userId === userId) {
+                delete newTypingUsers[conversationId];
+              }
+              return newTypingUsers;
+            });
+          }, 3000);
+        }
+      });
 
-      // Only dispatch if message is NOT from current user
-      if (!isOwnMessage) {
-        console.log('📬 Dispatching unread message event for Sidebar badge');
-        window.dispatchEvent(new CustomEvent('messaging:newMessage', {
-          detail: data
-        }));
+      // Listen for new messages (for unread count and toast notifications)
+      newSocket.on('new-message', (data) => {
+        console.log('📩 MessagingContext: New message received', data);
 
-        // Show toast notification if notifications are enabled
-        // BUT NOT if the user is currently viewing this conversation
-        const activeConvId = sessionStorage.getItem('activeConversationId');
-        const isOnDashboard = window.location.pathname.includes('/dashboard');
-        const isViewingThisConversation = isOnDashboard && activeConvId === data.conversationId;
-        
-        console.log('🔍 Toast Check - On Dashboard:', isOnDashboard);
-        console.log('🔍 Toast Check - Active Conversation ID:', activeConvId);
-        console.log('🔍 Toast Check - Message Conversation ID:', data.conversationId);
-        console.log('🔍 Toast Check - Is Viewing This Conversation:', isViewingThisConversation);
-        console.log('🔍 Toast Check - Notifications Enabled:', chatSettingsRef.current.notifications);
-        console.log('🔍 Toast Check - SHOULD SHOW TOAST:', chatSettingsRef.current.notifications && !isViewingThisConversation);
-        
-        if (chatSettingsRef.current.notifications && !isViewingThisConversation) {
-          console.log('🔔 ✅ SHOWING toast notification for new message');
-          console.log('🔍 Available conversations:', conversationsRef.current.length);
-          console.log('🔍 Looking for conversation ID:', data.conversationId);
+        // Get current user
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        const currentUserId = (userData.id || userData._id)?.toString();
+        const messageSenderId = data.message.sender._id?.toString();
+        const isOwnMessage = currentUserId && messageSenderId && currentUserId === messageSenderId;
 
-          // Find the conversation to get its name
-          const conversation = conversationsRef.current.find(c => c._id === data.conversationId);
-          console.log('🔍 Found conversation:', conversation ? 'YES' : 'NO');
+        // DEBUG: Log message arrival details
+        console.log('🔍 Debug - Current user ID:', currentUserId);
+        console.log('🔍 Debug - Message sender ID:', messageSenderId);
+        console.log('🔍 Debug - Is own message?', isOwnMessage);
+        console.log('🔍 Debug - Notifications enabled?', chatSettingsRef.current.notifications);
+        console.log('🔍 Debug - Should show toast?', !isOwnMessage && chatSettingsRef.current.notifications);
 
-          // Smart fallback for conversation name:
-          // 1. Try conversation.name (for group chats)
-          // 2. Try to find the other participant's name (for 1-on-1 chats)
-          // 3. Use sender's name directly as fallback
-          // 4. Last resort: "New Message"
-          let conversationName = 'New Message';
+        // Only dispatch if message is NOT from current user
+        if (!isOwnMessage) {
+          console.log('📬 Dispatching unread message event for Sidebar badge');
+          window.dispatchEvent(new CustomEvent('messaging:newMessage', {
+            detail: data
+          }));
 
-          if (conversation?.name) {
-            // Group chat with a name
-            conversationName = conversation.name;
-          } else if (conversation?.participants) {
-            // 1-on-1 chat: find the other person
-            const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
-            if (otherParticipant?.fullName) {
-              conversationName = otherParticipant.fullName;
+          // Show toast notification if notifications are enabled
+          // BUT NOT if the user is currently viewing this conversation
+          const activeConvId = sessionStorage.getItem('activeConversationId');
+          const isOnDashboard = window.location.pathname.includes('/dashboard');
+          const isViewingThisConversation = isOnDashboard && activeConvId === data.conversationId;
+
+          console.log('🔍 Toast Check - On Dashboard:', isOnDashboard);
+          console.log('🔍 Toast Check - Active Conversation ID:', activeConvId);
+          console.log('🔍 Toast Check - Message Conversation ID:', data.conversationId);
+          console.log('🔍 Toast Check - Is Viewing This Conversation:', isViewingThisConversation);
+          console.log('🔍 Toast Check - Notifications Enabled:', chatSettingsRef.current.notifications);
+          console.log('🔍 Toast Check - SHOULD SHOW TOAST:', chatSettingsRef.current.notifications && !isViewingThisConversation);
+
+          if (chatSettingsRef.current.notifications && !isViewingThisConversation) {
+            console.log('🔔 ✅ SHOWING toast notification for new message');
+            console.log('🔍 Available conversations:', conversationsRef.current.length);
+            console.log('🔍 Looking for conversation ID:', data.conversationId);
+
+            // Find the conversation to get its name
+            const conversation = conversationsRef.current.find(c => c._id === data.conversationId);
+            console.log('🔍 Found conversation:', conversation ? 'YES' : 'NO');
+
+            // Smart fallback for conversation name:
+            // 1. Try conversation.name (for group chats)
+            // 2. Try to find the other participant's name (for 1-on-1 chats)
+            // 3. Use sender's name directly as fallback
+            // 4. Last resort: "New Message"
+            let conversationName = 'New Message';
+
+            if (conversation?.name) {
+              // Group chat with a name
+              conversationName = conversation.name;
+            } else if (conversation?.participants) {
+              // 1-on-1 chat: find the other person
+              const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
+              if (otherParticipant?.fullName) {
+                conversationName = otherParticipant.fullName;
+              }
+            } else if (data.message.sender?.fullName) {
+              // Fallback: use sender's name directly from the message data
+              conversationName = data.message.sender.fullName;
             }
-          } else if (data.message.sender?.fullName) {
-            // Fallback: use sender's name directly from the message data
-            conversationName = data.message.sender.fullName;
-          }
 
-          // Truncate message content for preview
-          const messagePreview = data.message.content.length > 50
-            ? data.message.content.substring(0, 50) + '...'
-            : data.message.content;
+            // Truncate message content for preview
+            const messagePreview = data.message.content.length > 50
+              ? data.message.content.substring(0, 50) + '...'
+              : data.message.content;
 
-          // Get avatar URL
-          const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          const apiBaseUrl = isDevelopment ? 'http://localhost:5000' : '';
-          let avatarUrl = data.message.sender.profileImage || data.message.sender.avatarUrl || data.message.sender.image;
-          
-          // Fix relative URLs
-          if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('data:')) {
-            avatarUrl = `${apiBaseUrl}${avatarUrl}`;
-          }
+            // Get avatar URL
+            const apiBaseUrl = process.env.REACT_APP_API_URL || '';
+            let avatarUrl = data.message.sender.profileImage || data.message.sender.avatarUrl || data.message.sender.image;
 
-          // Show custom toast with sender info and message preview
-          console.log('📢 CALLING showMessageToast NOW!');
-          showMessageToast({
-            title: conversationName !== data.message.sender.fullName ? conversationName : 'New Message',
-            description: messagePreview,
-            sender: data.message.sender.fullName,
-            timestamp: data.message.createdAt,
-            avatarUrl: avatarUrl,
-            button: {
-              label: 'Reply',
-              onClick: () => {
-                // Navigate to dashboard messaging section
-                const currentPath = window.location.pathname;
-                
-                // If not on dashboard, navigate to dashboard first
-                if (!currentPath.includes('/dashboard')) {
-                  window.location.href = '/dashboard';
-                  
-                  // Wait for dashboard to load, then navigate to messaging
-                  setTimeout(() => {
+            // Fix relative URLs
+            if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('data:')) {
+              avatarUrl = `${apiBaseUrl}${avatarUrl}`;
+            }
+
+            // Show custom toast with sender info and message preview
+            console.log('📢 CALLING showMessageToast NOW!');
+            showMessageToast({
+              title: conversationName !== data.message.sender.fullName ? conversationName : 'New Message',
+              description: messagePreview,
+              sender: data.message.sender.fullName,
+              timestamp: data.message.createdAt,
+              avatarUrl: avatarUrl,
+              button: {
+                label: 'Reply',
+                onClick: () => {
+                  // Navigate to dashboard messaging section
+                  const currentPath = window.location.pathname;
+
+                  // If not on dashboard, navigate to dashboard first
+                  if (!currentPath.includes('/dashboard')) {
+                    window.location.href = '/dashboard';
+
+                    // Wait for dashboard to load, then navigate to messaging
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('dashboard:navigateToMessaging'));
+
+                      // Then open the specific conversation
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('messaging:openConversation', {
+                          detail: { conversationId: data.conversationId }
+                        }));
+                      }, 100);
+                    }, 500);
+                  } else {
+                    // Already on dashboard, just navigate to messaging and open conversation
                     window.dispatchEvent(new CustomEvent('dashboard:navigateToMessaging'));
-                    
-                    // Then open the specific conversation
+
                     setTimeout(() => {
                       window.dispatchEvent(new CustomEvent('messaging:openConversation', {
                         detail: { conversationId: data.conversationId }
                       }));
                     }, 100);
-                  }, 500);
-                } else {
-                  // Already on dashboard, just navigate to messaging and open conversation
-                  window.dispatchEvent(new CustomEvent('dashboard:navigateToMessaging'));
-                  
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('messaging:openConversation', {
-                      detail: { conversationId: data.conversationId }
-                    }));
-                  }, 100);
+                  }
                 }
               }
-            }
-          });
+            });
 
-          // Play notification sound
-          playNotificationSound();
+            // Play notification sound
+            playNotificationSound();
 
-          console.log('✅ Toast shown for message from:', data.message.sender.fullName, 'in:', conversationName);
+            console.log('✅ Toast shown for message from:', data.message.sender.fullName, 'in:', conversationName);
+          }
+        } else {
+          console.log('📭 Skipping badge update (message from current user)');
         }
-      } else {
-        console.log('📭 Skipping badge update (message from current user)');
-      }
-    });
+      });
 
-    // Listen for message edits
-    newSocket.on('message-edited', (data) => {
-      console.log('✏️ MessagingContext: Message edited', data);
-      window.dispatchEvent(new CustomEvent('messaging:messageEdited', {
-        detail: data
-      }));
-    });
+      // Listen for message edits
+      newSocket.on('message-edited', (data) => {
+        console.log('✏️ MessagingContext: Message edited', data);
+        window.dispatchEvent(new CustomEvent('messaging:messageEdited', {
+          detail: data
+        }));
+      });
 
-    // Listen for message deletes
-    newSocket.on('message-deleted', (data) => {
-      console.log('🗑️ MessagingContext: Message deleted', data);
-      window.dispatchEvent(new CustomEvent('messaging:messageDeleted', {
-        detail: data
-      }));
-    });
+      // Listen for message deletes
+      newSocket.on('message-deleted', (data) => {
+        console.log('🗑️ MessagingContext: Message deleted', data);
+        window.dispatchEvent(new CustomEvent('messaging:messageDeleted', {
+          detail: data
+        }));
+      });
 
-    // Listen for message reactions
-    newSocket.on('message-reaction', (data) => {
-      console.log('👍 MessagingContext: Message reaction', data);
-      window.dispatchEvent(new CustomEvent('messaging:messageReaction', {
-        detail: data
-      }));
-    });
+      // Listen for message reactions
+      newSocket.on('message-reaction', (data) => {
+        console.log('👍 MessagingContext: Message reaction', data);
+        window.dispatchEvent(new CustomEvent('messaging:messageReaction', {
+          detail: data
+        }));
+      });
 
     };
 

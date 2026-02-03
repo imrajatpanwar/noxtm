@@ -1,0 +1,387 @@
+/* LinkedIn Manager Styles */
+
+.linkedin-manager {
+    padding: 0;
+}
+
+.linkedin-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.linkedin-manager-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.linkedin-manager-title h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+    letter-spacing: -0.3px;
+}
+
+.linkedin-icon {
+    font-size: 28px;
+    color: #0077b5;
+}
+
+.linkedin-manager-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: white;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-refresh:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-refresh .spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.btn-connect {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #111827;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-connect:hover {
+    background: #374151;
+}
+
+.extension-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.extension-status.connected {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Extension Notice */
+.extension-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.extension-notice svg {
+    font-size: 20px;
+    color: #d97706;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.extension-notice strong {
+    display: block;
+    color: #92400e;
+    margin-bottom: 4px;
+}
+
+.extension-notice p {
+    margin: 0;
+    font-size: 13px;
+    color: #92400e;
+}
+
+.extension-notice .extension-path {
+    margin-top: 8px;
+}
+
+.extension-notice code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Content */
+.linkedin-manager-content {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.loading-state {
+    padding: 48px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.empty-state {
+    padding: 64px;
+    text-align: center;
+}
+
+.empty-state .empty-icon {
+    font-size: 48px;
+    color: #d1d5db;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* Table */
+.linkedin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.linkedin-table th,
+.linkedin-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.linkedin-table th {
+    background: #f9fafb;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.linkedin-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.linkedin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.account-name-cell {
+    min-width: 200px;
+}
+
+.account-name {
+    font-weight: 500;
+    color: #111827;
+}
+
+.profile-name {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.last-used {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.expired {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.unknown {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Inline Edit */
+.edit-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.edit-inline input {
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    outline: none;
+    min-width: 150px;
+}
+
+.edit-inline input:focus {
+    border-color: #111827;
+}
+
+/* Actions */
+.actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-login {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #0077b5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-login:hover {
+    background: #005f91;
+}
+
+.btn-login:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-icon.edit {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-icon.edit:hover {
+    background: #e5e7eb;
+}
+
+.btn-icon.delete {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.btn-icon.delete:hover {
+    background: #fee2e2;
+}
+
+.btn-icon.save {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.btn-icon.save:hover {
+    background: #a7f3d0;
+}
+
+.btn-icon.cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.btn-icon.cancel:hover {
+    background: #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .linkedin-manager-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .linkedin-manager-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .linkedin-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .actions-cell {
+        flex-wrap: wrap;
+    }
+}

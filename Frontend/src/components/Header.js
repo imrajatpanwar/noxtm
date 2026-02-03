@@ -1,23 +1,55 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
 import NotificationCenter from './NotificationCenter';
 import './header.css';
 
 function Header({ user, onLogout }) {
   const navigate = useNavigate();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   const handleLogin = () => {
-    // Navigate to login page instead of simulating login
     navigate('/login');
   };
 
   const handleLogout = () => {
-    // Call the logout function passed from App.js
     if (onLogout) {
       onLogout();
     }
-    // Redirect to home page after logout
     navigate('/');
+  };
+
+  const handleSettings = () => {
+    // Navigate to dashboard first, then dispatch event to change section
+    navigate('/dashboard');
+    // Use setTimeout to ensure navigation completes before event dispatch
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('dashboard:navigateToSettings'));
+    }, 50);
+    setShowDropdown(false);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get user initials for avatar
+  const getInitials = () => {
+    if (!user?.name) return 'U';
+    const names = user.name.split(' ');
+    if (names.length >= 2) {
+      return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return names[0][0].toUpperCase();
   };
 
   return (
@@ -50,9 +82,37 @@ function Header({ user, onLogout }) {
           ) : (
             <>
               <NotificationCenter />
-              <button className="login-btn" onClick={handleLogout}>
-                Logout
-              </button>
+              <div className="profile-container" ref={dropdownRef}>
+                <button
+                  className="profile-circle"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  {getInitials()}
+                </button>
+
+                {showDropdown && (
+                  <div className="profile-dropdown">
+                    <div className="profile-dropdown-header">
+                      <div className="profile-dropdown-avatar">
+                        {getInitials()}
+                      </div>
+                      <div className="profile-dropdown-info">
+                        <span className="profile-dropdown-name">{user?.name || 'User'}</span>
+                        <span className="profile-dropdown-email">{user?.email || ''}</span>
+                      </div>
+                    </div>
+                    <div className="profile-dropdown-divider"></div>
+                    <button className="profile-dropdown-item" onClick={handleSettings}>
+                      <FiSettings size={16} />
+                      <span>Settings</span>
+                    </button>
+                    <button className="profile-dropdown-item logout" onClick={handleLogout}>
+                      <FiLogOut size={16} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </nav>

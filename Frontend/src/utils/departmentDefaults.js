@@ -142,6 +142,45 @@ export const DEPARTMENT_DEFAULTS = {
     seoManagement: false,
     internalPolicies: true,
     settingsConfiguration: false
+  },
+  'Content Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: false,
+    settingsConfiguration: false
+  },
+  'Legal Team': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: true,
+    financeManagement: true,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false
+  },
+  'Quality Assurance': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false
   }
 };
 
@@ -156,7 +195,10 @@ export const DEPARTMENTS = [
   'HR Team',
   'Finance Team',
   'Support Team',
-  'Operations Team'
+  'Operations Team',
+  'Content Team',
+  'Legal Team',
+  'Quality Assurance'
 ];
 
 export const PERMISSION_LABELS = {
@@ -172,3 +214,202 @@ export const PERMISSION_LABELS = {
   internalPolicies: 'Internal Policies',
   settingsConfiguration: 'Settings & Configuration'
 };
+
+// Role-based permission defaults
+export const ROLE_DEFAULTS = {
+  'Admin': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: true,
+    financeManagement: true,
+    seoManagement: true,
+    internalPolicies: true,
+    settingsConfiguration: true,
+    canInvite: true,
+    canManageMembers: true
+  },
+  'Manager': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: true,
+    settingsConfiguration: false,
+    canInvite: true,
+    canManageMembers: true
+  },
+  'Team Lead': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Senior Employee': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Employee': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'HR Manager': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: true,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: true,
+    canInvite: true,
+    canManageMembers: true
+  },
+  'Finance Manager': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: true,
+    seoManagement: false,
+    internalPolicies: true,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Marketing Lead': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: true,
+    marketing: true,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: true,
+    internalPolicies: false,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Developer': {
+    dashboard: true,
+    dataCenter: true,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Intern': {
+    dashboard: true,
+    dataCenter: false,
+    projects: false,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  },
+  'Contractor': {
+    dashboard: true,
+    dataCenter: false,
+    projects: true,
+    teamCommunication: true,
+    digitalMediaManagement: false,
+    marketing: false,
+    hrManagement: false,
+    financeManagement: false,
+    seoManagement: false,
+    internalPolicies: false,
+    settingsConfiguration: false,
+    canInvite: false,
+    canManageMembers: false
+  }
+};
+
+export const ROLES = [
+  'Admin',
+  'Manager',
+  'Team Lead',
+  'Senior Employee',
+  'Employee',
+  'HR Manager',
+  'Finance Manager',
+  'Marketing Lead',
+  'Developer',
+  'Intern',
+  'Contractor'
+];
+
+// Role descriptions for UI
+export const ROLE_DESCRIPTIONS = {
+  'Admin': 'Full access to all features and settings',
+  'Manager': 'Can manage team members and most features',
+  'Team Lead': 'Leads a team with project access',
+  'Senior Employee': 'Experienced employee with extended access',
+  'Employee': 'Standard employee access',
+  'HR Manager': 'Human resources management access',
+  'Finance Manager': 'Financial data and reporting access',
+  'Marketing Lead': 'Marketing and SEO focused access',
+  'Developer': 'Development and data center access',
+  'Intern': 'Limited access for learning',
+  'Contractor': 'External contractor with project access'
+};
+

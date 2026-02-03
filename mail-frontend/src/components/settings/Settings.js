@@ -3,7 +3,7 @@ import api from '../../config/api';
 import './Settings.css';
 
 function Settings() {
-  const [activeTab, setActiveTab] = useState('billing');
+  const [activeTab, setActiveTab] = useState('workspace');
   const [loading, setLoading] = useState(true);
   const [billingData, setBillingData] = useState(null);
   const [emailUsage, setEmailUsage] = useState(null);
@@ -11,6 +11,19 @@ function Settings() {
   const [purchasing, setPurchasing] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Workspace state
+  const [workspaceData, setWorkspaceData] = useState({
+    name: '',
+    description: '',
+    type: 'Business',
+    plan: 'Free',
+    storageUsed: 0,
+    storageTotal: 10,
+    teamMembers: 0
+  });
+  const [editingWorkspace, setEditingWorkspace] = useState(false);
+  const [workspaceForm, setWorkspaceForm] = useState({});
 
   // Preferences state
   const [preferences, setPreferences] = useState({
@@ -41,7 +54,8 @@ function Settings() {
         fetchBillingData(),
         fetchEmailUsage(),
         fetchPreferences(),
-        fetchAccountData()
+        fetchAccountData(),
+        fetchWorkspaceData()
       ]);
       setLoading(false);
     };
@@ -108,6 +122,60 @@ function Settings() {
     } catch (error) {
       console.error('Error fetching account:', error);
     }
+  };
+
+  const fetchWorkspaceData = async () => {
+    try {
+      const res = await api.get('/users/me');
+      if (res.data.success && res.data.user) {
+        const user = res.data.user;
+        const company = user.company || {};
+        setWorkspaceData({
+          name: company.name || 'My Workspace',
+          description: company.description || 'Primary workspace for team collaboration',
+          type: company.type || 'Business',
+          plan: company.plan || 'Free',
+          storageUsed: company.storageUsed || 0,
+          storageTotal: company.storageTotal || 10,
+          teamMembers: company.teamMembers || 1
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching workspace:', error);
+    }
+  };
+
+  const handleEditWorkspace = () => {
+    setWorkspaceForm({
+      name: workspaceData.name,
+      description: workspaceData.description,
+      type: workspaceData.type
+    });
+    setEditingWorkspace(true);
+  };
+
+  const handleCancelWorkspaceEdit = () => {
+    setEditingWorkspace(false);
+    setWorkspaceForm({});
+  };
+
+  const handleSaveWorkspace = async () => {
+    setSaving(true);
+    try {
+      await api.put('/company/settings', workspaceForm);
+      setWorkspaceData(prev => ({ ...prev, ...workspaceForm }));
+      setEditingWorkspace(false);
+      alert('Workspace updated successfully!');
+    } catch (error) {
+      console.error('Error saving workspace:', error);
+      alert('Failed to update workspace.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleWorkspaceFormChange = (key, value) => {
+    setWorkspaceForm(prev => ({ ...prev, [key]: value }));
   };
 
   const calculatePrice = (emails) => {
@@ -201,6 +269,16 @@ function Settings() {
       {/* Settings Tabs */}
       <div className="mail-settings-tabs">
         <button
+          className={`mail-settings-tab ${activeTab === 'workspace' ? 'active' : ''}`}
+          onClick={() => setActiveTab('workspace')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          Workspace
+        </button>
+        <button
           className={`mail-settings-tab ${activeTab === 'billing' ? 'active' : ''}`}
           onClick={() => setActiveTab('billing')}
         >
@@ -231,6 +309,105 @@ function Settings() {
           Preferences
         </button>
       </div>
+
+      {/* Workspace Tab - Minimal Design */}
+      {activeTab === 'workspace' && (
+        <div className="mail-settings-content">
+          {/* Minimal Workspace Card */}
+          <div className="ws-card">
+            <div className="ws-header">
+              <h3>Workspace</h3>
+              {!editingWorkspace ? (
+                <button className="ws-edit-btn" onClick={handleEditWorkspace}>
+                  Edit
+                </button>
+              ) : (
+                <div className="ws-actions">
+                  <button className="ws-save-btn" onClick={handleSaveWorkspace} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button className="ws-cancel-btn" onClick={handleCancelWorkspaceEdit} disabled={saving}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="ws-grid">
+              <div className="ws-field">
+                <label>Name</label>
+                {editingWorkspace ? (
+                  <input
+                    type="text"
+                    value={workspaceForm.name || ''}
+                    onChange={(e) => handleWorkspaceFormChange('name', e.target.value)}
+                  />
+                ) : (
+                  <p>{workspaceData.name}</p>
+                )}
+              </div>
+
+              <div className="ws-field">
+                <label>Type</label>
+                {editingWorkspace ? (
+                  <select
+                    value={workspaceForm.type || 'Business'}
+                    onChange={(e) => handleWorkspaceFormChange('type', e.target.value)}
+                  >
+                    <option value="Personal">Personal</option>
+                    <option value="Business">Business</option>
+                    <option value="Enterprise">Enterprise</option>
+                  </select>
+                ) : (
+                  <p>{workspaceData.type}</p>
+                )}
+              </div>
+
+              <div className="ws-field ws-full">
+                <label>Description</label>
+                {editingWorkspace ? (
+                  <input
+                    type="text"
+                    value={workspaceForm.description || ''}
+                    onChange={(e) => handleWorkspaceFormChange('description', e.target.value)}
+                  />
+                ) : (
+                  <p>{workspaceData.description || '—'}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="ws-divider"></div>
+
+            <div className="ws-grid">
+              <div className="ws-field">
+                <label>Plan</label>
+                <p className="ws-plan">{workspaceData.plan}</p>
+              </div>
+
+              <div className="ws-field">
+                <label>Team Members</label>
+                <p>{workspaceData.teamMembers}</p>
+              </div>
+
+              <div className="ws-field">
+                <label>Storage</label>
+                <p>{workspaceData.storageUsed}GB / {workspaceData.storageTotal}GB</p>
+              </div>
+
+              <div className="ws-field">
+                <label>Usage</label>
+                <div className="ws-progress">
+                  <div
+                    className="ws-progress-bar"
+                    style={{ width: `${Math.min((workspaceData.storageUsed / workspaceData.storageTotal) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Billing Tab */}
       {activeTab === 'billing' && (

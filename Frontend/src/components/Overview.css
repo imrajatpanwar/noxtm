@@ -1,0 +1,472 @@
+/* Overview Layout */
+.overview-wrapper {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.overview-left,
+.overview-right {
+    min-height: 400px;
+}
+
+/* Revenue Graph Card */
+.revenue-graph-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.revenue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.revenue-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.revenue-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+}
+
+.revenue-amount {
+    font-size: 32px;
+    font-weight: 600;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.period-selector select {
+    padding: 8px 32px 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Switzer', sans-serif;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: all 0.2s ease;
+}
+
+.period-selector select:hover {
+    border-color: #1a1a1a;
+}
+
+.period-selector select:focus {
+    outline: none;
+    border-color: #1a1a1a;
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.1);
+}
+
+/* Graph Container */
+.graph-container {
+    display: flex;
+    gap: 12px;
+    height: 220px;
+}
+
+.y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 28px;
+    min-width: 36px;
+}
+
+.y-axis span {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: 'Switzer', sans-serif;
+    text-align: right;
+}
+
+.graph-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.graph-svg-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.graph-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.graph-svg .data-point {
+    transition: r 0.15s ease;
+}
+
+.graph-svg .data-point:hover {
+    r: 5;
+}
+
+.x-axis {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
+    margin-top: 4px;
+}
+
+.x-axis span {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: 'Switzer', sans-serif;
+    text-align: center;
+    flex: 1;
+}
+
+/* Graph Tooltip */
+.graph-tooltip {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.tooltip-content {
+    background: #1a1a1a;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Switzer', sans-serif;
+    white-space: nowrap;
+    margin-bottom: 8px;
+}
+
+.tooltip-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 200px;
+    background: repeating-linear-gradient(to bottom,
+            #666 0,
+            #666 4px,
+            transparent 4px,
+            transparent 8px);
+    opacity: 0.5;
+}
+
+/* Hover overlay for tooltip detection */
+.graph-hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.hover-zone {
+    flex: 1;
+    cursor: crosshair;
+}
+
+/* Task Manager Section */
+.overview-right {
+    display: flex;
+    flex-direction: column;
+}
+
+.task-manager-header-section {
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    margin: 0;
+}
+
+/* Override Task Manager Widget Styles for Black/White Theme */
+.overview-right .task-manager.widget-mode {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    flex: 1;
+}
+
+.overview-right .widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.overview-right .widget-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    margin: 0;
+}
+
+.overview-right .create-btn-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.overview-right .create-btn-sm:hover {
+    background: #333333;
+    transform: scale(1.05);
+}
+
+/* Widget Stats */
+.overview-right .widget-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.overview-right .stat-item {
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.overview-right .stat-item:hover {
+    background: #f5f5f5;
+    border-color: #e5e5e5;
+}
+
+.overview-right .stat-count {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    line-height: 1.2;
+}
+
+.overview-right .stat-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+    font-family: 'Switzer', sans-serif;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Widget Tasks List */
+.overview-right .widget-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.overview-right .widget-task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #fafafa;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.overview-right .widget-task-item:hover {
+    background: #f0f0f0;
+    border-color: #e5e5e5;
+    transform: translateX(4px);
+}
+
+.overview-right .widget-task-item .task-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.overview-right .widget-task-item .task-time {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: 'Switzer', sans-serif;
+}
+
+/* Status Badge Override */
+.overview-right .status-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Switzer', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* Empty State */
+.overview-right .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.overview-right .empty-state p {
+    color: #6b7280;
+    font-size: 14px;
+    font-family: 'Switzer', sans-serif;
+    margin-bottom: 16px;
+}
+
+.overview-right .empty-state button {
+    padding: 10px 20px;
+    background: #1a1a1a;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Switzer', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.overview-right .empty-state button:hover {
+    background: #333333;
+}
+
+/* Loading and Error States */
+.overview-right .loading-state,
+.overview-right .error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    font-size: 14px;
+    color: #6b7280;
+    font-family: 'Switzer', sans-serif;
+}
+
+.overview-right .error-state {
+    color: #dc2626;
+}
+
+/* Alert styles */
+.alert {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    font-weight: 500;
+    font-family: 'Switzer', sans-serif;
+    font-size: 14px;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .overview-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .overview-left,
+    .overview-right {
+        min-height: auto;
+    }
+
+    .revenue-graph-card {
+        padding: 20px;
+    }
+
+    .graph-container {
+        height: 200px;
+    }
+
+    .overview-right .widget-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .overview-wrapper {
+        padding: 16px;
+    }
+
+    .revenue-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .revenue-amount {
+        font-size: 28px;
+    }
+
+    .graph-container {
+        height: 180px;
+    }
+
+    .y-axis {
+        min-width: 28px;
+    }
+
+    .y-axis span,
+    .x-axis span {
+        font-size: 10px;
+    }
+}
