@@ -4,6 +4,7 @@ import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
+import TaskManager from './TaskManager';
 import LeadsFlow from './LeadsFlow';
 import ClientLeads from './ClientLeads';
 import EmailSetup from './EmailSetup';
@@ -12,7 +13,7 @@ import ConversionTracking from './ConversionTracking';
 import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
 import CaseStudies from './CaseStudies';
-import Services from './Services';
+
 import EmailMarketing from './EmailMarketing';
 import CampaignSetup from './CampaignSetup';
 import EmailTemplate from './EmailTemplate';
@@ -21,7 +22,6 @@ import WhatsAppMarketing from './WhatsAppMarketing';
 import ReferralClient from './ReferralClient';
 import Credentials from './Credentials';
 import Messaging from './Messaging';
-import Meeting from './Meeting';
 import HrOverview from './HrOverview';
 import InterviewManagement from './InterviewManagement';
 import LetterTemplates from './LetterTemplates';
@@ -42,7 +42,6 @@ import UsersRoles from './UsersRoles';
 import WebsiteAnalytics from './WebsiteAnalytics';
 import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
-import ProfileSettings from './ProfileSettings';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
 import OurClients from './OurClients';
@@ -50,6 +49,7 @@ import LeadsDirectory from './LeadsDirectory';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
 import AIChatWidget from './AIChatWidget';
+import LinkedInManager from './LinkedInManager';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -163,6 +163,16 @@ function Dashboard({ user, onLogout }) {
     return () => window.removeEventListener('dashboard:navigateToMessaging', handleNavigateToMessaging);
   }, []);
 
+  // Listen for navigation to settings from header profile dropdown
+  useEffect(() => {
+    const handleNavigateToSettings = () => {
+      setActiveSection('workspace-settings');
+    };
+
+    window.addEventListener('dashboard:navigateToSettings', handleNavigateToSettings);
+    return () => window.removeEventListener('dashboard:navigateToSettings', handleNavigateToSettings);
+  }, []);
+
   const handleSectionChange = (section) => {
     setActiveSection(section);
   };
@@ -178,6 +188,8 @@ function Dashboard({ user, onLogout }) {
     switch (activeSection) {
       case 'overview':
         return <Overview user={user} dashboardData={dashboardData} error={error} />;
+      case 'task-manager':
+        return <TaskManager />;
       case 'leads-flow':
         return <LeadsFlow />;
       case 'client-management':
@@ -202,8 +214,6 @@ function Dashboard({ user, onLogout }) {
         return <ProjectDelivered />;
       case 'case-studies':
         return <CaseStudies />;
-      case 'services':
-        return <Services />;
       case 'email-marketing':
         return <EmailMarketing />;
       case 'email-setup':
@@ -220,11 +230,8 @@ function Dashboard({ user, onLogout }) {
         return <ReferralClient />;
       case 'credentials':
         return <Credentials />;
-      // Team Communication
       case 'message':
         return <Messaging />;
-      case 'meeting':
-        return <Meeting />;
       // HR Management
       case 'hr-overview':
         return <HrOverview />;
@@ -269,10 +276,10 @@ function Dashboard({ user, onLogout }) {
         return <WebsiteAnalytics />;
       case 'seo-insights':
         return <SeoInsights />;
+      case 'linkedin':
+        return <LinkedInManager />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
-      case 'profile-settings':
-        return <ProfileSettings user={user} />;
       default:
         return (
           <div className="dashboard-card">

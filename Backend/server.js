@@ -149,6 +149,18 @@ app.use('/api/ai', aiRoutes);
 const billingRoutes = require('./routes/billing');
 app.use('/api/billing', billingRoutes);
 
+// LinkedIn Sessions routes
+const linkedinSessionsRoutes = require('./routes/linkedin-sessions');
+app.use('/api/linkedin-sessions', linkedinSessionsRoutes);
+
+// Google OAuth routes
+const googleAuthRoutes = require('./routes/google-auth');
+app.use('/api/auth', googleAuthRoutes);
+
+// Task Manager routes
+const tasksRoutes = require('./routes/tasks');
+app.use('/api/tasks', tasksRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
@@ -4041,6 +4053,10 @@ app.use('/api/sla-policies', slaPoliciesRoutes);
 
 // AWS SES User Domain Management (with built-in rate limiting)
 app.use('/api/user-domains', authenticateToken, userVerifiedDomainsRoutes);
+
+// ===== LINKEDIN SESSION MANAGEMENT =====
+const linkedInSessionsRoutes = require('./routes/linkedin-sessions');
+app.use('/api/linkedin-sessions', linkedInSessionsRoutes);
 
 // API-only backend - no frontend serving
 // Frontend is served on a different port

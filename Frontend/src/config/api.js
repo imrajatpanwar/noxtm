@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 // Create axios instance with proper configuration
-// Use environment-based URL configuration
-const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const BACKEND_URL = isDevelopment ? 'https://noxtm.com/api' : '/api';
+// Use environment variable for API URL, fallback to relative path for production
+const API_BASE = process.env.REACT_APP_API_URL || '';
+const BACKEND_URL = API_BASE ? `${API_BASE}/api` : '/api';
 
 const api = axios.create({
   baseURL: BACKEND_URL,

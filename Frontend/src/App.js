@@ -27,12 +27,13 @@ import CampaignDashboard from './components/CampaignDashboard';
 import CampaignWizard from './components/CampaignWizard';
 import CampaignDetails from './components/CampaignDetails';
 import ContactListManager from './components/ContactListManager';
+import AuthCallback from './components/AuthCallback';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback'];
+  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback'];
 
   // Also hide footer on invite pages
   if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
@@ -439,6 +440,7 @@ function App() {
                 <Route path="/invite/:token" element={<JoinCompany />} />
                 <Route path="/extension-login" element={<ExtensionLogin />} />
                 <Route path="/extension-auth-callback" element={<ExtensionAuthCallback />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
               </Routes>
               <ConditionalFooter />
             </div>

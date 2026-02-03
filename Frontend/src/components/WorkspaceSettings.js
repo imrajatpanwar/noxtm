@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
+import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS, ROLE_DEFAULTS, ROLES, ROLE_DESCRIPTIONS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
+import api from '../config/api';
 import exhibitosLogo from './assets/exhibitos.svg';
 import botgitLogo from './assets/botgit-logo.svg';
 import './WorkspaceSettings.css';
@@ -47,6 +48,13 @@ function WorkspaceSettings({ user, onLogout }) {
   const [editPermissions, setEditPermissions] = useState({});
   const [savingPermissions, setSavingPermissions] = useState(false);
 
+  // Profile state
+  const [profileData, setProfileData] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({});
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+
   const handleEditToggle = () => {
     if (isEditing) {
       setEditedWorkspace({ ...workspaceData });
@@ -81,17 +89,11 @@ function WorkspaceSettings({ user, onLogout }) {
       }
 
       console.log('Fetching company members...');
-      const response = await fetch('/api/company/members', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
+      const response = await api.get('/company/members');
+      const data = response.data;
       console.log('Response data:', data);
 
-      if (response.ok && data.success) {
+      if (data.success) {
         setCompanyMembers(data.members || []);
         if (data.companyName) {
           setWorkspaceData(prev => ({ ...prev, name: data.companyName }));
@@ -100,14 +102,14 @@ function WorkspaceSettings({ user, onLogout }) {
       } else {
         console.log('No company members:', data.message);
         setCompanyMembers([]);
-        // Don't show error toast if user simply doesn't have a company
-        if (response.status !== 404) {
-          toast.error(data.message || 'Failed to load company members');
-        }
       }
     } catch (error) {
       console.error('Error fetching company members:', error);
-      toast.error('Failed to load company members: ' + error.message);
+      // Don't show error toast if user simply doesn't have a company (404)
+      if (error.response?.status !== 404) {
+        toast.error(error.response?.data?.message || 'Failed to load company members');
+      }
+      setCompanyMembers([]);
     } finally {
       setLoadingMembers(false);
     }
@@ -123,15 +125,11 @@ function WorkspaceSettings({ user, onLogout }) {
       }
 
       console.log('Fetching company details...');
-      const response = await fetch('/api/company/details', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
+      const response = await api.get('/company/details');
+      const data = response.data;
       console.log('Company details response:', data);
 
-      if (response.ok && data.success) {
+      if (data.success) {
         setCompanyDetails(data.company);
         console.log('Company details loaded:', data.company);
       } else {
@@ -158,23 +156,16 @@ function WorkspaceSettings({ user, onLogout }) {
 
     setGeneratingInvite(true);
     try {
-      const response = await fetch('/api/company/invite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          email: inviteEmail,
-          roleInCompany: inviteRole,
-          department: inviteDepartment,
-          customPermissions: customPermissions
-        })
+      const response = await api.post('/company/invite', {
+        email: inviteEmail,
+        roleInCompany: inviteRole,
+        department: inviteDepartment,
+        customPermissions: customPermissions
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (response.ok && data.success) {
+      if (data.success) {
         setInviteLink(data.inviteUrl);
         setInviteExpiresAt(data.expiresAt);
         toast.success(data.message || 'Invitation created successfully');
@@ -183,7 +174,7 @@ function WorkspaceSettings({ user, onLogout }) {
       }
     } catch (error) {
       console.error('Error generating invite:', error);
-      toast.error('Failed to generate invite link');
+      toast.error(error.response?.data?.message || 'Failed to generate invite link');
     } finally {
       setGeneratingInvite(false);
     }
@@ -204,16 +195,10 @@ function WorkspaceSettings({ user, onLogout }) {
     }
 
     try {
-      const response = await fetch(`/api/company/members/${memberId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.delete(`/company/members/${memberId}`);
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (data.success) {
         toast.success('Member removed successfully');
         fetchCompanyMembers(); // Refresh the list
       } else {
@@ -221,7 +206,7 @@ function WorkspaceSettings({ user, onLogout }) {
       }
     } catch (error) {
       console.error('Error removing member:', error);
-      toast.error('Failed to remove member');
+      toast.error(error.response?.data?.message || 'Failed to remove member');
     }
   };
 
@@ -241,7 +226,20 @@ function WorkspaceSettings({ user, onLogout }) {
   // Handle department change - update default permissions
   const handleDepartmentChange = (department) => {
     setInviteDepartment(department);
-    setCustomPermissions(DEPARTMENT_DEFAULTS[department] || {});
+    // Merge department permissions with current role permissions
+    const deptPerms = DEPARTMENT_DEFAULTS[department] || {};
+    const rolePerms = ROLE_DEFAULTS[inviteRole] || {};
+    setCustomPermissions({ ...deptPerms, ...rolePerms });
+  };
+
+  // Handle role change - update permissions based on role
+  const handleRoleChange = (role) => {
+    setInviteRole(role);
+    // Merge role permissions with current department permissions
+    const rolePerms = ROLE_DEFAULTS[role] || {};
+    const deptPerms = DEPARTMENT_DEFAULTS[inviteDepartment] || {};
+    // Role permissions take priority
+    setCustomPermissions({ ...deptPerms, ...rolePerms });
   };
 
   // Handle permission toggle
@@ -265,18 +263,13 @@ function WorkspaceSettings({ user, onLogout }) {
 
     setSavingPermissions(true);
     try {
-      const response = await fetch(`/api/company/members/${selectedMember._id}/permissions`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ permissions: editPermissions })
+      const response = await api.put(`/company/members/${selectedMember._id}/permissions`, {
+        permissions: editPermissions
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (response.ok && data.success) {
+      if (data.success) {
         toast.success('Permissions updated successfully');
         setShowEditPermissionsModal(false);
         fetchCompanyMembers(); // Refresh members list
@@ -285,7 +278,7 @@ function WorkspaceSettings({ user, onLogout }) {
       }
     } catch (error) {
       console.error('Error updating permissions:', error);
-      toast.error('Failed to update permissions');
+      toast.error(error.response?.data?.message || 'Failed to update permissions');
     } finally {
       setSavingPermissions(false);
     }
@@ -299,142 +292,204 @@ function WorkspaceSettings({ user, onLogout }) {
     }));
   };
 
-  // Load members when Members tab is active
+  // Fetch profile data
+  const fetchProfile = useCallback(async () => {
+    setLoadingProfile(true);
+    try {
+      const response = await api.get('/profile');
+      console.log('Fetched profile data:', response.data);
+      setProfileData(response.data);
+      setEditedProfile({
+        fullName: response.data?.fullName || '',
+        email: response.data?.email || '',
+        phone: response.data?.phone || '',
+        businessEmail: response.data?.businessEmail || '',
+        joiningDate: response.data?.joiningDate || '',
+        qualification: response.data?.qualification || '',
+        institute: response.data?.institute || '',
+        yearOfPassing: response.data?.yearOfPassing || '',
+        emergencyContactName: response.data?.emergencyContact?.name || '',
+        emergencyContactRelation: response.data?.emergencyContact?.relation || '',
+        emergencyContactPhone: response.data?.emergencyContact?.phone || '',
+        emergencyContactAddress: response.data?.emergencyContact?.address || '',
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile data');
+    } finally {
+      setLoadingProfile(false);
+    }
+  }, []);
+
+  // Handle profile edit toggle
+  const handleProfileEditToggle = () => {
+    if (isEditingProfile) {
+      // Reset to original data
+      setEditedProfile({
+        fullName: profileData?.fullName || '',
+        email: profileData?.email || '',
+        phone: profileData?.phone || '',
+        businessEmail: profileData?.businessEmail || '',
+        joiningDate: profileData?.joiningDate || '',
+        qualification: profileData?.qualification || '',
+        institute: profileData?.institute || '',
+        yearOfPassing: profileData?.yearOfPassing || '',
+        emergencyContactName: profileData?.emergencyContact?.name || '',
+        emergencyContactRelation: profileData?.emergencyContact?.relation || '',
+        emergencyContactPhone: profileData?.emergencyContact?.phone || '',
+        emergencyContactAddress: profileData?.emergencyContact?.address || '',
+      });
+    }
+    setIsEditingProfile(!isEditingProfile);
+  };
+
+  // Handle profile input change
+  const handleProfileInputChange = (field, value) => {
+    setEditedProfile(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const updateData = {
+        fullName: editedProfile.fullName,
+        phone: editedProfile.phone,
+        businessEmail: editedProfile.businessEmail,
+        qualification: editedProfile.qualification,
+        institute: editedProfile.institute,
+        yearOfPassing: editedProfile.yearOfPassing,
+        emergencyContact: {
+          name: editedProfile.emergencyContactName,
+          relation: editedProfile.emergencyContactRelation,
+          phone: editedProfile.emergencyContactPhone,
+          address: editedProfile.emergencyContactAddress,
+        }
+      };
+
+      const response = await api.put('/profile', updateData);
+      if (response.data) {
+        setProfileData(response.data);
+        toast.success('Profile updated successfully');
+        setIsEditingProfile(false);
+        // Update localStorage if needed
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          userData.fullName = editedProfile.fullName;
+          localStorage.setItem('user', JSON.stringify(userData));
+          window.dispatchEvent(new Event('userUpdated'));
+        }
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // Load members when Members tab is active, load profile when Profile tab is active
   useEffect(() => {
     if (activeTab === 'members') {
       fetchCompanyMembers();
       fetchCompanyDetails();
+    } else if (activeTab === 'profile') {
+      fetchProfile();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchProfile]);
 
   const renderGeneralSettings = () => (
     <div className="workspace-tab-content">
-      <div className="workspace-info-card">
-        <div className="workspace-info-header">
-          <h3>🏢 Workspace Information</h3>
-          {!isEditing && (
-            <button className="btn-edit" onClick={handleEditToggle}>
-              <FiEdit3 /> Edit Workspace
+      {/* Minimal Workspace Card */}
+      <div className="ws-minimal-card">
+        <div className="ws-minimal-header">
+          <h3>Workspace</h3>
+          {!isEditing ? (
+            <button className="ws-minimal-edit-btn" onClick={handleEditToggle}>
+              Edit
             </button>
+          ) : (
+            <div className="ws-minimal-actions">
+              <button className="ws-minimal-save-btn" onClick={handleSave}>
+                <FiSave /> Save
+              </button>
+              <button className="ws-minimal-cancel-btn" onClick={handleEditToggle}>
+                Cancel
+              </button>
+            </div>
           )}
         </div>
-        
+
         {!isEditing ? (
-          <div className="workspace-info-grid">
-            <div className="info-item">
-              <label>Workspace Name</label>
-              <div className="info-value">{workspaceData.name}</div>
+          <div className="ws-minimal-grid">
+            <div className="ws-minimal-field">
+              <label>Name</label>
+              <p>{workspaceData.name}</p>
             </div>
-            <div className="info-item">
+            <div className="ws-minimal-field">
+              <label>Type</label>
+              <p>{workspaceData.type}</p>
+            </div>
+            <div className="ws-minimal-field ws-minimal-full">
               <label>Description</label>
-              <div className="info-value">{workspaceData.description}</div>
-            </div>
-            <div className="info-item">
-              <label>Workspace Type</label>
-              <div className="info-value workspace-badge">{workspaceData.type}</div>
-            </div>
-            <div className="info-item">
-              <label>Current Plan</label>
-              <div className="info-value plan-badge">{workspaceData.plan}</div>
-            </div>
-            <div className="info-item">
-              <label>Storage Usage</label>
-              <div className="info-value">{workspaceData.storage}</div>
-            </div>
-            <div className="info-item">
-              <label>Team Members</label>
-              <div className="info-value">{workspaceData.members} members</div>
+              <p>{workspaceData.description || '—'}</p>
             </div>
           </div>
         ) : (
-          <div className="workspace-edit-form">
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Workspace Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editedWorkspace.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-textarea"
-                  value={editedWorkspace.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows="3"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Workspace Type</label>
-                <select
-                  className="form-select"
-                  value={editedWorkspace.type}
-                  onChange={(e) => handleInputChange('type', e.target.value)}
-                >
-                  <option value="Business">Business</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Enterprise">Enterprise</option>
-                  <option value="Educational">Educational</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Plan</label>
-                <select
-                  className="form-select"
-                  value={editedWorkspace.plan}
-                  onChange={(e) => handleInputChange('plan', e.target.value)}
-                >
-                  <option value="Free">Free</option>
-                  <option value="Professional">Professional</option>
-                  <option value="Business">Business</option>
-                  <option value="Enterprise">Enterprise</option>
-                </select>
-              </div>
+          <div className="ws-minimal-grid">
+            <div className="ws-minimal-field">
+              <label>Name</label>
+              <input
+                type="text"
+                value={editedWorkspace.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+              />
             </div>
-            <div className="form-actions">
-              <button className="btn-cancel" onClick={handleEditToggle}>
-                <FiX /> Cancel
-              </button>
-              <button className="btn-save" onClick={handleSave}>
-                <FiSave /> Save Changes
-              </button>
+            <div className="ws-minimal-field">
+              <label>Type</label>
+              <select
+                value={editedWorkspace.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+              >
+                <option value="Business">Business</option>
+                <option value="Personal">Personal</option>
+                <option value="Enterprise">Enterprise</option>
+                <option value="Educational">Educational</option>
+              </select>
+            </div>
+            <div className="ws-minimal-field ws-minimal-full">
+              <label>Description</label>
+              <input
+                type="text"
+                value={editedWorkspace.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+              />
             </div>
           </div>
         )}
-      </div>
 
-      <div className="workspace-stats-grid">
-        <div className="stats-card">
-          <div className="stats-icon">
-            <FiUsers />
+        <div className="ws-minimal-divider"></div>
+
+        <div className="ws-minimal-grid">
+          <div className="ws-minimal-field">
+            <label>Plan</label>
+            <p className="ws-minimal-plan">{workspaceData.plan}</p>
           </div>
-          <div className="stats-content">
-            <h4>Team Members</h4>
-            <div className="stats-number">{workspaceData.members}</div>
-            <p>Active collaborators</p>
+          <div className="ws-minimal-field">
+            <label>Team Members</label>
+            <p>{workspaceData.members}</p>
           </div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-icon">
-            <FiDatabase />
+          <div className="ws-minimal-field">
+            <label>Projects</label>
+            <p>{workspaceData.projects}</p>
           </div>
-          <div className="stats-content">
-            <h4>Projects</h4>
-            <div className="stats-number">{workspaceData.projects}</div>
-            <p>Active projects</p>
-          </div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-icon">
-            <FiMonitor />
-          </div>
-          <div className="stats-content">
-            <h4>Storage</h4>
-            <div className="stats-number">8.5GB</div>
-            <p>of 10GB used</p>
+          <div className="ws-minimal-field">
+            <label>Storage</label>
+            <p>{workspaceData.storage}</p>
           </div>
         </div>
       </div>
@@ -475,203 +530,279 @@ function WorkspaceSettings({ user, onLogout }) {
 
     return (
       <div className="workspace-tab-content">
-        <div className="members-header">
-          <div>
-            <h3>👥 Company Members</h3>
-            {companyDetails && (
-              <p className="members-subtitle">
-                {companyDetails.companyName} • {companyMembers.length} member{companyMembers.length !== 1 ? 's' : ''}
-              </p>
-            )}
+        <div className="members-section">
+          <div className="members-header-card">
+            <div className="members-header-content">
+              <div className="members-header-left">
+                <div className="members-header-icon">
+                  <FiUsers />
+                </div>
+                <div className="members-header-text">
+                  <h3>Company Members</h3>
+                  {companyDetails && (
+                    <p className="members-subtitle">
+                      {companyDetails.companyName}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="members-header-right">
+                {companyMembers.length > 0 && (
+                  <div className="members-count-badge">
+                    {companyMembers.length} member{companyMembers.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+                {isOwnerOrAdmin() && (
+                  <button className="btn-primary" onClick={() => setShowInviteModal(true)}>
+                    <FiPlus /> Invite
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          {isOwnerOrAdmin() && (
-            <button className="btn-primary" onClick={() => setShowInviteModal(true)}>
-              <FiPlus /> Invite Members
-            </button>
-          )}
-        </div>
 
-        {loadingMembers ? (
-          <div className="loading-members">Loading members...</div>
-        ) : !user?.companyId ? (
-          <div className="no-members">
-            <h4>No Company Associated</h4>
-            <p>You need to set up a company first to manage members.</p>
-            <p>Subscribe to the Noxtm plan and complete company setup to get started.</p>
-          </div>
-        ) : companyMembers.length === 0 ? (
-          <div className="no-members">
-            <h4>No Members Yet</h4>
-            <p>Start by inviting team members to your company.</p>
-          </div>
-        ) : (
-          <div className="members-list">
-            {companyMembers.map(member => (
-              <div key={member._id} className="member-item">
-                <div className="member-avatar">
-                  {member.profileImage ? (
-                    <img src={member.profileImage} alt={member.fullName} />
-                  ) : (
-                    getInitials(member.fullName)
-                  )}
-                </div>
-                <div className="member-info">
-                  <div className="member-name">{member.fullName || 'Unknown'}</div>
-                  <div className="member-email">{member.email || 'No email'}</div>
-                  {member.department && (
-                    <div className="member-department">{member.department}</div>
-                  )}
-                </div>
-                <div className="member-role-badge">{member.roleInCompany || 'Employee'}</div>
-                <div className={`member-status ${member.status?.toLowerCase() || 'active'}`}>
-                  {member.status || 'Active'}
-                </div>
-                <div className="member-actions">
+          {loadingMembers ? (
+            <div className="members-loading">
+              <div className="loading-spinner"></div>
+              <span>Loading members...</span>
+            </div>
+          ) : !user?.companyId ? (
+            <div className="members-empty-state">
+              <div className="empty-state-icon">
+                <FiBriefcase />
+              </div>
+              <h4>No Company Associated</h4>
+              <p>You need to set up a company first to manage members.</p>
+              <p className="empty-state-hint">Subscribe to the Noxtm plan and complete company setup to get started.</p>
+            </div>
+          ) : companyMembers.length === 0 ? (
+            <div className="members-empty-state">
+              <div className="empty-state-icon">
+                <FiUsers />
+              </div>
+              <h4>No Members Yet</h4>
+              <p>Start by inviting team members to your company.</p>
+              {isOwnerOrAdmin() && (
+                <button className="btn-primary mt-16" onClick={() => setShowInviteModal(true)}>
+                  <FiPlus /> Invite First Member
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="members-grid">
+              {companyMembers.map(member => (
+                <div key={member._id} className="member-card">
+                  <div className="member-card-header">
+                    <div className="member-avatar-lg">
+                      {member.profileImage ? (
+                        <img src={member.profileImage} alt={member.fullName} />
+                      ) : (
+                        getInitials(member.fullName)
+                      )}
+                      <span className={`member-status-dot ${member.status?.toLowerCase() || 'active'}`}></span>
+                    </div>
+                    <div className="member-card-info">
+                      <h4 className="member-card-name">{member.fullName || 'Unknown'}</h4>
+                      <p className="member-card-email">{member.email || 'No email'}</p>
+                    </div>
+                  </div>
+                  <div className="member-card-meta">
+                    <div className="member-meta-item">
+                      <FiBriefcase className="meta-icon" />
+                      <span>{member.roleInCompany || 'Employee'}</span>
+                    </div>
+                    {member.department && (
+                      <div className="member-meta-item">
+                        <FiDatabase className="meta-icon" />
+                        <span>{member.department}</span>
+                      </div>
+                    )}
+                  </div>
                   {isOwnerOrAdmin() && member._id !== companyDetails?.owner?._id && (
-                    <>
+                    <div className="member-card-actions">
                       <button
-                        className="btn-edit"
+                        className="btn-icon-action"
                         onClick={() => handleEditMemberPermissions(member)}
                         title="Edit permissions"
                       >
-                        <FiEdit3 />
+                        <FiShield />
                       </button>
                       <button
-                        className="btn-remove"
+                        className="btn-icon-action btn-icon-danger"
                         onClick={() => handleRemoveMember(member._id, member.fullName)}
                         title="Remove member"
                       >
                         <FiTrash2 />
                       </button>
-                    </>
+                    </div>
+                  )}
+                  {member._id === companyDetails?.owner?._id && (
+                    <div className="member-card-owner-badge">
+                      <span>Owner</span>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Invite Modal */}
         {showInviteModal && (
           <div className="modal-overlay" onClick={handleCloseInviteModal}>
-            <div className="modal-content invite-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3><FiMail /> Invite New Member</h3>
+            <div className="modal-content invite-modal-redesigned" onClick={(e) => e.stopPropagation()}>
+              <div className="invite-modal-header">
+                <div className="invite-modal-header-icon">
+                  <FiMail />
+                </div>
+                <div className="invite-modal-header-text">
+                  <h3>Invite New Member</h3>
+                  <p>Send an invitation to join your company</p>
+                </div>
                 <button className="btn-close" onClick={handleCloseInviteModal}>
                   <FiX />
                 </button>
               </div>
 
               {!inviteLink ? (
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input
-                      type="email"
-                      className="form-input"
-                      placeholder="colleague@company.com"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      disabled={generatingInvite}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Role in Company</label>
-                    <select
-                      className="form-select"
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
-                      disabled={generatingInvite}
-                    >
-                      <option value="Employee">Employee</option>
-                      <option value="Manager">Manager</option>
-                    </select>
-                    <p className="form-hint">
-                      Managers can invite and manage other members
-                    </p>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select
-                      className="form-select"
-                      value={inviteDepartment}
-                      onChange={(e) => handleDepartmentChange(e.target.value)}
-                      disabled={generatingInvite}
-                    >
-                      {DEPARTMENTS.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
-                    </select>
-                    <p className="form-hint">
-                      Default permissions will be set based on department
-                    </p>
-                  </div>
-
-                  <div className="permissions-section">
-                    <div
-                      className="permissions-header"
-                      onClick={() => setShowPermissions(!showPermissions)}
-                    >
-                      <label className="form-label">Custom Permissions (Optional)</label>
-                      {showPermissions ? <FiChevronUp /> : <FiChevronDown />}
+                <>
+                  <div className="invite-modal-body">
+                    <div className="invite-form-group">
+                      <label className="invite-form-label">
+                        <FiMail className="label-icon" />
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        className="invite-form-input"
+                        placeholder="colleague@company.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        disabled={generatingInvite}
+                      />
                     </div>
 
-                    {showPermissions && (
-                      <div className="permissions-grid">
-                        {Object.keys(PERMISSION_LABELS).map(key => (
-                          <div key={key} className="permission-checkbox-item">
-                            <input
-                              type="checkbox"
-                              id={`perm-${key}`}
-                              checked={customPermissions[key] || false}
-                              onChange={() => handlePermissionToggle(key)}
-                              disabled={generatingInvite}
-                            />
-                            <label htmlFor={`perm-${key}`}>
-                              {PERMISSION_LABELS[key]}
-                            </label>
-                          </div>
-                        ))}
+                    <div className="invite-form-row">
+                      <div className="invite-form-group">
+                        <label className="invite-form-label">
+                          <FiBriefcase className="label-icon" />
+                          Role
+                        </label>
+                        <select
+                          className="invite-form-select"
+                          value={inviteRole}
+                          onChange={(e) => handleRoleChange(e.target.value)}
+                          disabled={generatingInvite}
+                        >
+                          {ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <span className="invite-form-hint">
+                          {ROLE_DESCRIPTIONS[inviteRole] || 'Select a role'}
+                        </span>
                       </div>
-                    )}
+
+                      <div className="invite-form-group">
+                        <label className="invite-form-label">
+                          <FiDatabase className="label-icon" />
+                          Department
+                        </label>
+                        <select
+                          className="invite-form-select"
+                          value={inviteDepartment}
+                          onChange={(e) => handleDepartmentChange(e.target.value)}
+                          disabled={generatingInvite}
+                        >
+                          {DEPARTMENTS.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                          ))}
+                        </select>
+                        <span className="invite-form-hint">
+                          Sets default permissions
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="invite-permissions-section">
+                      <button
+                        type="button"
+                        className={`invite-permissions-toggle ${showPermissions ? 'active' : ''}`}
+                        onClick={() => setShowPermissions(!showPermissions)}
+                      >
+                        <div className="toggle-left">
+                          <FiShield className="toggle-icon" />
+                          <span>Custom Permissions</span>
+                          <span className="toggle-optional">Optional</span>
+                        </div>
+                        {showPermissions ? <FiChevronUp /> : <FiChevronDown />}
+                      </button>
+
+                      {showPermissions && (
+                        <div className="invite-permissions-grid">
+                          {Object.keys(PERMISSION_LABELS).map(key => (
+                            <label key={key} className="invite-permission-item">
+                              <input
+                                type="checkbox"
+                                checked={customPermissions[key] || false}
+                                onChange={() => handlePermissionToggle(key)}
+                                disabled={generatingInvite}
+                              />
+                              <span className="permission-checkbox"></span>
+                              <span className="permission-label">{PERMISSION_LABELS[key]}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="modal-actions">
+                  <div className="invite-modal-footer">
                     <button
-                      className="btn-cancel"
+                      className="invite-btn-cancel"
                       onClick={handleCloseInviteModal}
                       disabled={generatingInvite}
                     >
                       Cancel
                     </button>
                     <button
-                      className="btn-primary"
+                      className="invite-btn-primary"
                       onClick={handleGenerateInvite}
                       disabled={generatingInvite}
                     >
-                      {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
+                      {generatingInvite ? (
+                        <>
+                          <span className="btn-spinner"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FiPlus />
+                          Generate Invite Link
+                        </>
+                      )}
                     </button>
                   </div>
-                </div>
+                </>
               ) : (
-                <div className="modal-body">
-                  <div className="invite-success">
-                    <FiCheck className="success-icon" />
+                <div className="invite-modal-body">
+                  <div className="invite-success-state">
+                    <div className="success-icon-circle">
+                      <FiCheck />
+                    </div>
                     <h4>Invitation Created!</h4>
-                    <p>Share this link with {inviteEmail}</p>
+                    <p>Share this link with <strong>{inviteEmail}</strong></p>
                   </div>
 
-                  <div className="invite-link-container">
+                  <div className="invite-link-box">
                     <input
                       type="text"
-                      className="form-input invite-link-input"
+                      className="invite-link-field"
                       value={inviteLink}
                       readOnly
                     />
                     <button
-                      className={`btn-copy ${copied ? 'copied' : ''}`}
+                      className={`invite-copy-btn ${copied ? 'copied' : ''}`}
                       onClick={handleCopyInviteLink}
                     >
                       {copied ? <FiCheck /> : <FiCopy />}
@@ -680,14 +811,15 @@ function WorkspaceSettings({ user, onLogout }) {
                   </div>
 
                   {inviteExpiresAt && (
-                    <p className="invite-expiry">
-                      This link expires on {new Date(inviteExpiresAt).toLocaleDateString()} at {new Date(inviteExpiresAt).toLocaleTimeString()}
+                    <p className="invite-expiry-text">
+                      <FiCalendar className="expiry-icon" />
+                      Expires: {new Date(inviteExpiresAt).toLocaleDateString()} at {new Date(inviteExpiresAt).toLocaleTimeString()}
                     </p>
                   )}
 
-                  <div className="modal-actions">
+                  <div className="invite-modal-actions">
                     <button
-                      className="btn-primary full-width"
+                      className="invite-btn-primary full-width"
                       onClick={handleCloseInviteModal}
                     >
                       Done
@@ -762,14 +894,14 @@ function WorkspaceSettings({ user, onLogout }) {
   const renderSecuritySettings = () => (
     <div className="workspace-tab-content">
       <h3>🔒 Security & Permissions</h3>
-      
+
       <div className="security-grid">
         <div className="security-card">
           <h4>Access Control</h4>
           <p>Manage workspace access permissions and user roles.</p>
           <button className="btn-secondary">Configure Access</button>
         </div>
-        
+
         <div className="security-card">
           <h4>Two-Factor Authentication</h4>
           <p>Require 2FA for all workspace members.</p>
@@ -778,13 +910,13 @@ function WorkspaceSettings({ user, onLogout }) {
             <span className="toggle-slider"></span>
           </label>
         </div>
-        
+
         <div className="security-card">
           <h4>Data Encryption</h4>
           <p>All workspace data is encrypted at rest and in transit.</p>
           <div className="security-status enabled">Enabled</div>
         </div>
-        
+
         <div className="security-card">
           <h4>Audit Logs</h4>
           <p>Track all workspace activities and changes.</p>
@@ -931,6 +1063,291 @@ function WorkspaceSettings({ user, onLogout }) {
     );
   };
 
+  // Render Profile Settings
+  const renderProfileSettings = () => {
+    const getInitials = (name) => {
+      if (!name) return 'U';
+      const parts = name.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    };
+
+    const formatDate = (dateString) => {
+      if (!dateString) return 'Not set';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    };
+
+    if (loadingProfile) {
+      return (
+        <div className="workspace-tab-content">
+          <div className="loading-members">Loading profile...</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="workspace-tab-content">
+        {/* Profile Header with Avatar */}
+        <div className="profile-header-card">
+          <div className="profile-avatar-section">
+            <div className="profile-avatar-large">
+              {profileData?.avatarUrl || profileData?.profileImage ? (
+                <img
+                  src={profileData?.avatarUrl || profileData?.profileImage}
+                  alt={profileData?.fullName || 'User'}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <span>{getInitials(profileData?.fullName)}</span>
+              )}
+            </div>
+            <div className="profile-name-section">
+              <h2>{profileData?.fullName || 'User'}</h2>
+              <p className="profile-email">{profileData?.email}</p>
+              <span className="profile-role-badge">{profileData?.role || 'User'}</span>
+            </div>
+          </div>
+          {!isEditingProfile && (
+            <button className="btn-edit" onClick={handleProfileEditToggle}>
+              <FiEdit3 /> Edit Profile
+            </button>
+          )}
+        </div>
+
+        {/* Profile Details Card */}
+        <div className="workspace-info-card">
+          <div className="workspace-info-header">
+            <h3><FiUser /> Personal Details</h3>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="workspace-info-grid">
+              <div className="info-item">
+                <label>Full Name</label>
+                <div className="info-value">{profileData?.fullName || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Email</label>
+                <div className="info-value">{profileData?.email || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Phone Number</label>
+                <div className="info-value">{profileData?.phone || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Business Email</label>
+                <div className="info-value">{profileData?.businessEmail || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Joining Date</label>
+                <div className="info-value">{formatDate(profileData?.joiningDate || profileData?.createdAt)}</div>
+              </div>
+              <div className="info-item">
+                <label>Role</label>
+                <div className="info-value workspace-badge">{profileData?.role || 'User'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="workspace-edit-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.fullName}
+                    onChange={(e) => handleProfileInputChange('fullName', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email (Read-only)</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={editedProfile.email}
+                    disabled
+                    style={{ opacity: 0.7 }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={editedProfile.phone}
+                    onChange={(e) => handleProfileInputChange('phone', e.target.value)}
+                    placeholder="+91 XXXXXXXXXX"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Business Email</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={editedProfile.businessEmail}
+                    onChange={(e) => handleProfileInputChange('businessEmail', e.target.value)}
+                    placeholder="work@company.com"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Education Card */}
+        <div className="workspace-info-card">
+          <div className="workspace-info-header">
+            <h3><FiBriefcase /> Education & Qualifications</h3>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="workspace-info-grid">
+              <div className="info-item">
+                <label>Highest Qualification</label>
+                <div className="info-value">{profileData?.qualification || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Institute / University</label>
+                <div className="info-value">{profileData?.institute || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Year of Passing</label>
+                <div className="info-value">{profileData?.yearOfPassing || 'Not set'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="workspace-edit-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Highest Qualification</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.qualification}
+                    onChange={(e) => handleProfileInputChange('qualification', e.target.value)}
+                    placeholder="e.g., BCA, MCA, B.Tech"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Institute / University</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.institute}
+                    onChange={(e) => handleProfileInputChange('institute', e.target.value)}
+                    placeholder="University name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Year of Passing</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.yearOfPassing}
+                    onChange={(e) => handleProfileInputChange('yearOfPassing', e.target.value)}
+                    placeholder="e.g., 2024"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Emergency Contact Card */}
+        <div className="workspace-info-card">
+          <div className="workspace-info-header">
+            <h3><FiPhone /> Emergency Contact</h3>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="workspace-info-grid">
+              <div className="info-item">
+                <label>Name</label>
+                <div className="info-value">{profileData?.emergencyContact?.name || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Relation</label>
+                <div className="info-value">{profileData?.emergencyContact?.relation || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Contact Number</label>
+                <div className="info-value">{profileData?.emergencyContact?.phone || 'Not set'}</div>
+              </div>
+              <div className="info-item">
+                <label>Address</label>
+                <div className="info-value">{profileData?.emergencyContact?.address || 'Not set'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="workspace-edit-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Contact Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.emergencyContactName}
+                    onChange={(e) => handleProfileInputChange('emergencyContactName', e.target.value)}
+                    placeholder="Emergency contact name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Relation</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editedProfile.emergencyContactRelation}
+                    onChange={(e) => handleProfileInputChange('emergencyContactRelation', e.target.value)}
+                    placeholder="e.g., Father, Mother, Spouse"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Contact Number</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={editedProfile.emergencyContactPhone}
+                    onChange={(e) => handleProfileInputChange('emergencyContactPhone', e.target.value)}
+                    placeholder="+91 XXXXXXXXXX"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Address</label>
+                  <textarea
+                    className="form-textarea"
+                    value={editedProfile.emergencyContactAddress}
+                    onChange={(e) => handleProfileInputChange('emergencyContactAddress', e.target.value)}
+                    placeholder="Full address"
+                    rows="2"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Save/Cancel buttons when editing */}
+        {isEditingProfile && (
+          <div className="form-actions" style={{ marginTop: '1.5rem' }}>
+            <button className="btn-cancel" onClick={handleProfileEditToggle}>
+              <FiX /> Cancel
+            </button>
+            <button className="btn-save" onClick={handleSaveProfile} disabled={savingProfile}>
+              <FiSave /> {savingProfile ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="workspace-settings">
       <div className="workspace-header">
@@ -939,19 +1356,25 @@ function WorkspaceSettings({ user, onLogout }) {
       </div>
 
       <div className="workspace-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
           onClick={() => setActiveTab('general')}
         >
           <FiSettings /> General
         </button>
-        <button 
+        <button
+          className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
+          onClick={() => setActiveTab('profile')}
+        >
+          <FiUser /> Profile
+        </button>
+        <button
           className={`tab-button ${activeTab === 'members' ? 'active' : ''}`}
           onClick={() => setActiveTab('members')}
         >
           <FiUsers /> Members
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
         >
@@ -967,6 +1390,7 @@ function WorkspaceSettings({ user, onLogout }) {
 
       <div className="workspace-content">
         {activeTab === 'general' && renderGeneralSettings()}
+        {activeTab === 'profile' && renderProfileSettings()}
         {activeTab === 'members' && renderMembersSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}

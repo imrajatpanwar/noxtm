@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authenticateToken: auth } = require('../middleware/auth');
 const Company = require('../models/Company');
 const User = require('../models/User');
 
@@ -8,7 +8,7 @@ const User = require('../models/User');
 router.get('/info', auth, async (req, res) => {
   try {
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
@@ -30,8 +30,8 @@ router.get('/info', auth, async (req, res) => {
         emailCredits: company.billing.emailCredits || 0,
         totalPurchased: company.billing.totalPurchased || 0,
         totalUsed: company.billing.totalUsed || 0,
-        lastPurchase: company.billing.purchaseHistory?.length > 0 
-          ? company.billing.purchaseHistory[company.billing.purchaseHistory.length - 1].date 
+        lastPurchase: company.billing.purchaseHistory?.length > 0
+          ? company.billing.purchaseHistory[company.billing.purchaseHistory.length - 1].date
           : null
       }
     });
@@ -45,7 +45,7 @@ router.get('/info', auth, async (req, res) => {
 router.get('/usage', auth, async (req, res) => {
   try {
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
@@ -95,14 +95,14 @@ router.post('/purchase', auth, async (req, res) => {
     const { emailCredits, amount } = req.body;
 
     if (!emailCredits || emailCredits < 1000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Minimum purchase is 1,000 email credits' 
+      return res.status(400).json({
+        success: false,
+        message: 'Minimum purchase is 1,000 email credits'
       });
     }
 
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
@@ -123,12 +123,12 @@ router.post('/purchase', auth, async (req, res) => {
     // Add credits
     company.billing.emailCredits = (company.billing.emailCredits || 0) + emailCredits;
     company.billing.totalPurchased = (company.billing.totalPurchased || 0) + emailCredits;
-    
+
     // Add to purchase history
     if (!company.billing.purchaseHistory) {
       company.billing.purchaseHistory = [];
     }
-    
+
     company.billing.purchaseHistory.push({
       date: new Date(),
       emailCredits,
@@ -157,7 +157,7 @@ router.post('/purchase', auth, async (req, res) => {
 router.get('/history', auth, async (req, res) => {
   try {
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
@@ -178,16 +178,16 @@ router.post('/deduct', auth, async (req, res) => {
     const { emailCount, campaignId } = req.body;
 
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
 
     const currentCredits = company.billing?.emailCredits || 0;
-    
+
     if (currentCredits < emailCount) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: 'Insufficient email credits',
         required: emailCount,
         available: currentCredits
@@ -216,13 +216,13 @@ router.get('/check/:count', auth, async (req, res) => {
   try {
     const count = parseInt(req.params.count);
     const company = await Company.findById(req.user.company);
-    
+
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
     }
 
     const currentCredits = company.billing?.emailCredits || 0;
-    
+
     res.json({
       success: true,
       hasEnoughCredits: currentCredits >= count,

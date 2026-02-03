@@ -1,15 +1,25 @@
+/* ========================================
+   Client Management - Premium Clean Design
+   ======================================== */
+
 .cm-container {
-  padding: 30px;
+  padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  font-family: 'Switzer', sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
+/* ========================================
+   Header Section
+   ======================================== */
 
 .cm-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .cm-title-section {
@@ -17,15 +27,15 @@
 }
 
 .cm-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #171717;
+  margin: 0 0 6px 0;
 }
 
 .cm-subtitle {
-  font-size: 0.95rem;
-  color: #6b7280;
+  font-size: 14px;
+  color: #737373;
   margin: 0;
 }
 
@@ -33,81 +43,98 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
-  background: #111827;
+  padding: 10px 20px;
+  background: #171717;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cm-add-btn:hover {
-  background: #1f2937;
-  transform: translateY(-2px);
+  background: #262626;
 }
 
-/* Search */
+/* ========================================
+   Search Section
+   ======================================== */
+
 .cm-search-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .cm-search-box {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  max-width: 500px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  max-width: 400px;
+  transition: all 0.15s;
+}
+
+.cm-search-box:focus-within {
+  border-color: #171717;
 }
 
 .cm-search-box svg {
-  color: #9ca3af;
-  font-size: 1.1rem;
+  color: #a3a3a3;
+  font-size: 16px;
 }
 
 .cm-search-box input {
   flex: 1;
   border: none;
   outline: none;
-  font-size: 0.95rem;
+  font-size: 14px;
   font-family: 'Switzer', sans-serif;
+  color: #171717;
 }
 
-/* Clients List */
+.cm-search-box input::placeholder {
+  color: #a3a3a3;
+}
+
+/* ========================================
+   Clients List
+   ======================================== */
+
 .cm-clients-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .cm-client-card {
   background: white;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
   overflow: hidden;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .cm-client-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #d4d4d4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .cm-client-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 16px 20px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .cm-client-header:hover {
-  background: #f9fafb;
+  background: #fafafa;
 }
 
 .cm-client-info {
@@ -117,74 +144,78 @@
 .cm-client-main {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .cm-client-main h3 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  color: #171717;
   margin: 0;
 }
 
 .cm-client-name {
-  font-size: 0.9rem;
-  color: #6b7280;
+  font-size: 13px;
+  color: #737373;
   font-weight: 500;
 }
 
 .cm-client-contact {
   display: flex;
-  gap: 24px;
-  font-size: 0.85rem;
-  color: #6b7280;
+  gap: 20px;
+  font-size: 13px;
+  color: #737373;
 }
 
 .cm-client-contact span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .cm-client-contact svg {
-  font-size: 0.9rem;
+  font-size: 14px;
+  color: #a3a3a3;
 }
 
 .cm-client-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .cm-invoice-badge {
-  padding: 6px 12px;
-  background: #d1fae5;
-  color: #065f46;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  padding: 4px 10px;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .cm-client-actions svg {
-  font-size: 1.3rem;
-  color: #6b7280;
+  font-size: 18px;
+  color: #737373;
 }
 
-/* Client Details */
+/* ========================================
+   Client Details
+   ======================================== */
+
 .cm-client-details {
-  padding: 24px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  padding: 20px;
+  border-top: 1px solid #e5e5e5;
+  background: #fafafa;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .cm-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
 .cm-detail-item {
@@ -194,93 +225,97 @@
 }
 
 .cm-detail-label {
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: #737373;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .cm-detail-value {
-  font-size: 0.95rem;
-  color: #111827;
+  font-size: 14px;
+  color: #171717;
   font-weight: 500;
 }
 
-/* Activity Thread */
+/* ========================================
+   Activity Thread
+   ======================================== */
+
 .cm-activity-section {
   background: white;
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 6px;
+  padding: 16px;
+  border: 1px solid #e5e5e5;
 }
 
 .cm-activity-section h4 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #171717;
+  margin: 0 0 14px 0;
 }
 
 .cm-messages {
-  max-height: 300px;
+  max-height: 250px;
   overflow-y: auto;
-  margin-bottom: 16px;
-  padding-right: 8px;
+  margin-bottom: 14px;
+  padding-right: 6px;
 }
 
 .cm-messages::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .cm-messages::-webkit-scrollbar-track {
-  background: #f3f4f6;
-  border-radius: 3px;
+  background: #f5f5f5;
+  border-radius: 2px;
 }
 
 .cm-messages::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  background: #d4d4d4;
+  border-radius: 2px;
 }
 
 .cm-no-messages {
   text-align: center;
-  color: #9ca3af;
-  font-size: 0.9rem;
-  padding: 20px;
+  color: #a3a3a3;
+  font-size: 13px;
+  padding: 16px;
 }
 
 .cm-message {
   padding: 12px;
-  background: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  border-left: 3px solid #111827;
+  background: #fafafa;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border-left: 3px solid #171717;
 }
 
 .cm-message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .cm-message-author {
-  font-size: 0.85rem;
+  font-size: 13px;
   font-weight: 600;
-  color: #111827;
+  color: #171717;
 }
 
 .cm-message-time {
-  font-size: 0.75rem;
-  color: #9ca3af;
+  font-size: 11px;
+  color: #a3a3a3;
 }
 
 .cm-message-text {
-  font-size: 0.9rem;
-  color: #374151;
+  font-size: 13px;
+  color: #525252;
   margin: 0;
   line-height: 1.5;
 }
@@ -292,183 +327,193 @@
 
 .cm-add-message input {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 13px;
   font-family: 'Switzer', sans-serif;
   outline: none;
-  transition: border 0.2s;
+  transition: border 0.15s;
 }
 
 .cm-add-message input:focus {
-  border-color: #111827;
+  border-color: #171717;
 }
 
 .cm-add-message button {
-  padding: 10px 16px;
-  background: #111827;
+  padding: 10px 14px;
+  background: #171717;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   display: flex;
   align-items: center;
 }
 
 .cm-add-message button:hover {
-  background: #1f2937;
+  background: #262626;
 }
 
-/* Quote Section */
+/* ========================================
+   Quote Section
+   ======================================== */
+
 .cm-quote-section {
   background: white;
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 6px;
+  padding: 16px;
+  border: 1px solid #e5e5e5;
 }
 
 .cm-quote-section h4 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #171717;
+  margin: 0 0 14px 0;
 }
 
 .cm-generate-quote-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  background: #111827;
+  padding: 10px 16px;
+  background: #171717;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cm-generate-quote-btn:hover {
-  background: #1f2937;
-  transform: translateY(-2px);
+  background: #262626;
 }
 
 .cm-quote-summary {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .cm-quote-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cm-quote-item {
   display: flex;
   justify-content: space-between;
   padding: 10px 12px;
-  background: #f9fafb;
+  background: #fafafa;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 13px;
 }
 
 .cm-quote-total {
   display: flex;
   justify-content: space-between;
   padding: 12px;
-  background: #f3f4f6;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #111827;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #171717;
 }
 
 .cm-quote-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
-  color: #6b7280;
+  font-size: 13px;
+  color: #737373;
 }
 
 .cm-status-badge {
   padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: capitalize;
 }
 
 .cm-status-badge.pending {
   background: #fef3c7;
-  color: #92400e;
+  color: #b45309;
 }
 
 .cm-status-badge.approved {
-  background: #d1fae5;
-  color: #065f46;
+  background: #dcfce7;
+  color: #15803d;
 }
 
 .cm-status-badge.rejected {
   background: #fee2e2;
-  color: #991b1b;
+  color: #dc2626;
 }
 
 .cm-download-pdf-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  background: #10b981;
+  padding: 10px 16px;
+  background: #171717;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   width: fit-content;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cm-download-pdf-btn:hover {
-  background: #059669;
-  transform: translateY(-2px);
+  background: #262626;
 }
 
-/* No Data */
+/* ========================================
+   No Data State
+   ======================================== */
+
 .cm-no-data {
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 60px 20px;
   text-align: center;
+  border: 1px solid #e5e5e5;
 }
 
 .cm-no-data svg {
-  color: #d1d5db;
-  margin-bottom: 16px;
+  color: #d4d4d4;
+  margin-bottom: 14px;
 }
 
 .cm-no-data h3 {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: #374151;
-  margin: 0 0 8px 0;
+  color: #525252;
+  margin: 0 0 6px 0;
 }
 
 .cm-no-data p {
-  font-size: 0.9rem;
-  color: #9ca3af;
+  font-size: 14px;
+  color: #a3a3a3;
   margin: 0;
 }
 
-/* Modal */
+/* ========================================
+   Modal Styles
+   ======================================== */
+
 .cm-modal-overlay {
   position: fixed;
   top: 0;
@@ -486,32 +531,45 @@
 .cm-modal {
   background: white;
   border-radius: 12px;
-  max-width: 600px;
+  max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  animation: cmModalSlideIn 0.2s ease;
+}
+
+@keyframes cmModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .cm-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .cm-modal-header h2 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #111827;
+  font-size: 18px;
+  font-weight: 600;
+  color: #171717;
   margin: 0;
 }
 
 .cm-modal-close {
-  background: none;
+  background: #f5f5f5;
   border: none;
-  font-size: 2rem;
-  color: #9ca3af;
+  font-size: 18px;
+  color: #737373;
   cursor: pointer;
   width: 32px;
   height: 32px;
@@ -519,19 +577,19 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .cm-modal-close:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: #e5e5e5;
+  color: #171717;
 }
 
 .cm-modal-form {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .cm-form-group {
@@ -541,30 +599,30 @@
 }
 
 .cm-form-group label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  color: #525252;
 }
 
 .cm-form-group input,
 .cm-form-group textarea {
-  padding: 10px 14px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-family: 'Switzer', sans-serif;
   outline: none;
-  transition: border 0.2s;
+  transition: border 0.15s;
 }
 
 .cm-form-group input:focus,
 .cm-form-group textarea:focus {
-  border-color: #111827;
+  border-color: #171717;
 }
 
 .cm-modal-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
   margin-top: 8px;
 }
@@ -572,31 +630,86 @@
 .cm-btn-cancel {
   padding: 10px 20px;
   background: white;
-  color: #374151;
-  border: 1px solid #e5e7eb;
+  color: #525252;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cm-btn-cancel:hover {
-  background: #f9fafb;
+  background: #f5f5f5;
 }
 
 .cm-btn-submit {
   padding: 10px 20px;
-  background: #111827;
+  background: #171717;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: 'Switzer', sans-serif;
 }
 
 .cm-btn-submit:hover {
-  background: #1f2937;
+  background: #262626;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .cm-container {
+    padding: 16px;
+  }
+
+  .cm-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cm-add-btn {
+    justify-content: center;
+  }
+
+  .cm-search-box {
+    max-width: 100%;
+  }
+
+  .cm-client-header {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .cm-client-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .cm-client-contact {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .cm-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cm-modal {
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .cm-modal-overlay {
+    padding: 0;
+  }
 }

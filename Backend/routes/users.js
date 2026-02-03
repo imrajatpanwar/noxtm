@@ -9,7 +9,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId)
       .select('-password')
       .populate('companyId', 'name');
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -31,15 +31,45 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all company members (for task assignment)
+router.get('/company-members', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.userId).select('companyId');
+
+    if (!currentUser || !currentUser.companyId) {
+      return res.status(400).json({ success: false, message: 'User company not found' });
+    }
+
+    const members = await User.find({ companyId: currentUser.companyId })
+      .select('_id fullName email role profilePicture')
+      .sort({ fullName: 1 });
+
+    res.json({
+      success: true,
+      members: members.map(member => ({
+        _id: member._id,
+        id: member._id,
+        name: member.fullName,
+        email: member.email,
+        role: member.role,
+        avatar: member.profilePicture
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching company members:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Update current user info
 router.put('/me', authenticateToken, async (req, res) => {
   try {
     const { name, timezone } = req.body;
-    
+
     const updateData = {};
     if (name) updateData.fullName = name;
     if (timezone) updateData.timezone = timezone;
-    
+
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       { $set: updateData },
@@ -66,13 +96,13 @@ router.put('/me', authenticateToken, async (req, res) => {
 router.get('/preferences', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('mailPreferences');
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     const prefs = user.mailPreferences || {};
-    
+
     res.json({
       success: true,
       preferences: {

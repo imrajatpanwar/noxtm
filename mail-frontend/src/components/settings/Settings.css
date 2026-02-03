@@ -798,10 +798,180 @@
   color: #94a3b8;
 }
 
+/* ========================================
+   Minimal Workspace Styles
+   ======================================== */
+
+.ws-card {
+  background: white;
+  border-radius: 12px;
+  padding: 28px 32px;
+  border: 1px solid #e5e7eb;
+}
+
+.ws-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.ws-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.3px;
+}
+
+.ws-edit-btn {
+  padding: 8px 20px;
+  background: #111827;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ws-edit-btn:hover {
+  background: #374151;
+}
+
+.ws-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ws-save-btn {
+  padding: 8px 20px;
+  background: #111827;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ws-save-btn:hover:not(:disabled) {
+  background: #374151;
+}
+
+.ws-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ws-cancel-btn {
+  padding: 8px 20px;
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ws-cancel-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.ws-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.ws-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ws-field.ws-full {
+  grid-column: span 2;
+}
+
+.ws-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ws-field p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.ws-field input,
+.ws-field select {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  outline: none;
+  background: white;
+  transition: border-color 0.15s ease;
+}
+
+.ws-field input:focus,
+.ws-field select:focus {
+  border-color: #111827;
+}
+
+.ws-plan {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #111827;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  width: fit-content;
+}
+
+.ws-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 28px 0;
+}
+
+.ws-progress {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ws-progress-bar {
+  height: 100%;
+  background: #111827;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .mail-email-packages {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ws-grid {
+    gap: 20px;
   }
 }
 
@@ -834,5 +1004,36 @@
 
   .mail-buy-credits-btn {
     width: 100%;
+  }
+
+  /* Minimal Workspace Responsive */
+  .ws-card {
+    padding: 20px;
+  }
+
+  .ws-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .ws-edit-btn,
+  .ws-save-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ws-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .ws-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ws-field.ws-full {
+    grid-column: span 1;
   }
 }
