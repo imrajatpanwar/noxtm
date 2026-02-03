@@ -64,16 +64,32 @@ const StatusBadge = ({ status }) => {
 // User avatar component
 const UserAvatar = ({ user, size = 28 }) => {
     if (!user) return null;
-    const initials = user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+    // Handle different name field possibilities
+    const displayName = user.fullName || user.name || user.email?.split('@')[0] || 'User';
+    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+    // Generate consistent color from name
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
+    const colorIndex = displayName.charCodeAt(0) % colors.length;
+    const bgColor = colors[colorIndex];
+
+    // Handle different profile image field possibilities
+    const profileImg = user.profileImage || user.avatar || user.profilePicture;
 
     return (
         <div
             className="user-avatar"
-            style={{ width: size, height: size, fontSize: size * 0.4 }}
-            title={user.fullName}
+            style={{
+                width: size,
+                height: size,
+                fontSize: size * 0.4,
+                background: profileImg ? 'transparent' : bgColor
+            }}
+            title={displayName}
         >
-            {user.profileImage ? (
-                <img src={user.profileImage} alt={user.fullName} />
+            {profileImg ? (
+                <img src={profileImg} alt={displayName} />
             ) : (
                 <span>{initials}</span>
             )}
@@ -207,6 +223,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     const [assignees, setAssignees] = useState([]);
     const [dueDate, setDueDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -244,6 +261,15 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
         );
     };
 
+    const removeAssignee = (userId, e) => {
+        e.stopPropagation();
+        setAssignees(prev => prev.filter(id => id !== userId));
+    };
+
+    const getSelectedUsers = () => {
+        return companyUsers.filter(user => assignees.includes(user._id));
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -252,7 +278,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
                 <div className="modal-header">
                     <h2>Create New Task</h2>
                     <button className="close-btn" onClick={onClose}>
-                        <FiX size={20} />
+                        <FiX size={18} />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit}>
@@ -273,7 +299,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Add a description..."
-                            rows={3}
+                            rows={2}
                         />
                     </div>
                     <div className="form-row">
@@ -297,20 +323,50 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
                     </div>
                     <div className="form-group">
                         <label>Assign to</label>
-                        <div className="assignee-selector">
-                            {companyUsers.map(user => (
-                                <div
-                                    key={user._id}
-                                    className={`assignee-option ${assignees.includes(user._id) ? 'selected' : ''}`}
-                                    onClick={() => toggleAssignee(user._id)}
-                                >
-                                    <UserAvatar user={user} size={24} />
-                                    <span>{user.fullName}</span>
-                                    {assignees.includes(user._id) && <FiCheck size={16} />}
+                        <div className="assignee-dropdown">
+                            <div className="selected-assignees">
+                                {getSelectedUsers().map(user => (
+                                    <div
+                                        key={user._id}
+                                        className="selected-assignee-chip"
+                                        title={user.fullName}
+                                    >
+                                        <UserAvatar user={user} size={36} />
+                                        <span
+                                            className="remove-assignee"
+                                            onClick={(e) => removeAssignee(user._id, e)}
+                                        >
+                                            <FiX />
+                                        </span>
+                                    </div>
+                                ))}
+                                {companyUsers.length > 0 && (
+                                    <button
+                                        type="button"
+                                        className="add-assignee-btn"
+                                        onClick={() => setShowDropdown(!showDropdown)}
+                                    >
+                                        <FiPlus size={16} />
+                                    </button>
+                                )}
+                            </div>
+                            {showDropdown && (
+                                <div className="assignee-dropdown-menu">
+                                    {companyUsers.map(user => (
+                                        <div
+                                            key={user._id}
+                                            className={`assignee-option ${assignees.includes(user._id) ? 'selected' : ''}`}
+                                            onClick={() => toggleAssignee(user._id)}
+                                        >
+                                            <UserAvatar user={user} size={28} />
+                                            <span>{user.fullName || user.name || user.email}</span>
+                                            {assignees.includes(user._id) && <FiCheck size={16} />}
+                                        </div>
+                                    ))}
+                                    {companyUsers.length === 0 && (
+                                        <div className="no-users">No team members available</div>
+                                    )}
                                 </div>
-                            ))}
-                            {companyUsers.length === 0 && (
-                                <div className="no-users">No team members available</div>
                             )}
                         </div>
                     </div>
