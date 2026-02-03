@@ -49,10 +49,12 @@ router.get('/company-members', authenticateToken, async (req, res) => {
       members: members.map(member => ({
         _id: member._id,
         id: member._id,
+        fullName: member.fullName,
         name: member.fullName,
         email: member.email,
         role: member.role,
-        avatar: member.profilePicture
+        avatar: member.profilePicture,
+        profileImage: member.profilePicture
       }))
     });
   } catch (error) {
