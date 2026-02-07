@@ -83,7 +83,9 @@ function NoxtmChatAdmin() {
         toast.success('Settings saved');
       }
     } catch (err) {
-      toast.error('Failed to save settings');
+      const errorMsg = err.response?.data?.message || 'Failed to save settings';
+      console.error('Config save error:', err.response?.data || err.message);
+      toast.error(errorMsg);
     } finally {
       setSavingConfig(false);
     }
