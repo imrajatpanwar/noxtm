@@ -53,6 +53,67 @@ function Login({ onLogin }) {
     }
   }, []);
 
+  // Google One Tap Sign-in
+  useEffect(() => {
+    // Only initialize if user is not already logged in
+    if (localStorage.getItem('token')) return;
+
+    if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id: '765005911235-ntg3ieuf0okgj7b4d7ve3bn4dr1gunjv.apps.googleusercontent.com',
+        callback: handleGoogleOneTap,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      // Show the One Tap prompt
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.log('[GOOGLE ONE TAP] Prompt not shown:', notification.getNotDisplayedReason());
+        }
+      });
+    }
+  }, []);
+
+  const handleGoogleOneTap = async (response) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Send the credential to our backend for verification
+      const res = await fetch(`${API_URL}/api/auth/google/one-tap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Check for mail redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectParam = urlParams.get('redirect');
+        
+        if (redirectParam === 'mail') {
+          const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
+          window.location.href = `${mailBaseUrl}?auth_token=${encodeURIComponent(data.token)}`;
+        } else {
+          window.location.href = '/dashboard';
+        }
+      } else {
+        setError(data.message || 'Google sign-in failed');
+      }
+    } catch (err) {
+      setError('Failed to authenticate with Google');
+      console.error('[GOOGLE ONE TAP] Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
