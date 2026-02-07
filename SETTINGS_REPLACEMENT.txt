@@ -1,0 +1,129 @@
+        {/* === Settings Tab === */}
+        {activeTab === 'settings' && config && (
+          <div className="nca-settings nca-settings-compact">
+            <div className="nca-auto-save-indicator">{sav ingConfig ? 'Saving...' : 'Auto-save enabled'}</div>
+            
+            {/* LEFT COLUMN: Bot Identity & Behavior */}
+            <div className="nca-settings-section">
+              <h3>🤖 Bot Identity & Behavior</h3>
+              
+              {/* Appearance compact */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Appearance</div>
+                <div className="nca-compact-row">
+                  <input type="text" value={config.botName || ''} onChange={(e) => setConfig({ ...config, botName: e.target.value })} placeholder="Bot Name" />
+                  <input type="text" value={config.botTitle || ''} onChange={(e) => setConfig({ ...config, botTitle: e.target.value })} placeholder="Title/Badge" />
+                </div>
+              </div>
+
+              {/* Identity & Personality */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Identity</div>
+                <textarea value={config.botIdentity || ''} onChange={(e) => setConfig({ ...config, botIdentity: e.target.value })} placeholder="Who is the bot? (e.g., founder, support rep...)" rows={2} />
+                <select className="nca-setting-select" value={config.personality || 'professional'} onChange={(e) => setConfig({ ...config, personality: e.target.value })}>
+                  <option value="professional">Professional</option>
+                  <option value="friendly">Friendly</option>
+                  <option value="casual">Casual</option>
+                  <option value="formal">Formal</option>
+                  <option value="witty">Witty</option>
+                  <option value="empathetic">Empathetic</option>
+                  <option value="motivational">Motivational</option>
+                  <option value="strict">Strict</option>
+                </select>
+              </div>
+
+              {/* Emotional Tuning */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Emotional Tuning</div>
+                <div className="nca-compact-slider">
+                  <label>Emotional <span>{config.emotionalScale ?? 5}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.emotionalScale ?? 5} onChange={(e) => setConfig({ ...config, emotionalScale: parseInt(e.target.value) })} />
+                </div>
+                <div className="nca-compact-slider">
+                  <label>Humor <span>{config.humorLevel ?? 3}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.humorLevel ?? 3} onChange={(e) => setConfig({ ...config, humorLevel: parseInt(e.target.value) })} />
+                </div>
+                <div className="nca-compact-slider">
+                  <label>Empathy <span>{config.empathyLevel ?? 7}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.empathyLevel ?? 7} onChange={(e) => setConfig({ ...config, empathyLevel: parseInt(e.target.value) })} />
+                </div>
+                <div className="nca-compact-slider">
+                  <label>Formality <span>{config.formality ?? 5}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.formality ?? 5} onChange={(e) => setConfig({ ...config, formality: parseInt(e.target.value) })} />
+                </div>
+              </div>
+
+              {/* Intelligence */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Intelligence & Behavior</div>
+                <div className="nca-compact-slider">
+                  <label>Creativity <span>{config.creativityLevel ?? 5}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.creativityLevel ?? 5} onChange={(e) => setConfig({ ...config, creativityLevel: parseInt(e.target.value) })} />
+                </div>
+                <div className="nca-compact-slider">
+                  <label>Confidence <span>{config.confidenceLevel ?? 7}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.confidenceLevel ?? 7} onChange={(e) => setConfig({ ...config, confidenceLevel: parseInt(e.target.value) })} />
+                </div>
+                <div className="nca-compact-slider">
+                  <label>Proactiveness <span>{config.proactiveness ?? 5}</span></label>
+                  <input type="range" className="nca-slider" min={0} max={10} value={config.proactiveness ?? 5} onChange={(e) => setConfig({ ...config, proactiveness: parseInt(e.target.value) })} />
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Response Settings & Advanced */}
+            <div className="nca-settings-section">
+              <h3>⚙️ Response Settings & Advanced</h3>
+              
+              {/* General */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">General</div>
+                <div className="nca-compact-row">
+                  <div className="nca-toggle-compact">
+                    <span>Enabled</span>
+                    <button className="nca-toggle" onClick={() => setConfig({ ...config, enabled: !config.enabled })}>
+                      {config.enabled ? <FiToggleRight size={24} className="nca-toggle-on" /> : <FiToggleLeft size={24} className="nca-toggle-off" />}
+                    </button>
+                  </div>
+                  <input type="number" className="nca-setting-number" value={config.maxMessagesPerDay || 100} onChange={(e) => setConfig({ ...config, maxMessagesPerDay: parseInt(e.target.value) || 100 })} placeholder="Max/day" min={1} max={1000} />
+                </div>
+                <textarea value={config.welcomeMessage || ''} onChange={(e) => setConfig({ ...config, welcomeMessage: e.target.value })} placeholder="Welcome message..." rows={2} />
+              </div>
+
+              {/* Response Format */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Response Format</div>
+                <div className="nca-compact-row">
+                  <input type="number" className="nca-setting-number" value={config.maxWordCount || 200} onChange={(e) => setConfig({ ...config, maxWordCount: Math.min(2000, Math.max(10, parseInt(e.target.value) || 200)) })} placeholder="Max words" min={10} max={2000} />
+                  <input type="text" value={config.responseLanguage || 'English'} onChange={(e) => setConfig({ ...config, responseLanguage: e.target.value })} placeholder="Language" />
+                  <div className="nca-toggle-compact">
+                    <span>Emojis</span>
+                    <button className="nca-toggle" onClick={() => setConfig({ ...config, useEmojis: !config.useEmojis })}>
+                      {config.useEmojis ? <FiToggleRight size={24} className="nca-toggle-on" /> : <FiToggleLeft size={24} className="nca-toggle-off" />}
+                    </button>
+                  </div>
+                </div>
+                <select className="nca-setting-select" value={config.angerState || 'calm'} onChange={(e) => setConfig({ ...config, angerState: e.target.value })}>
+                  <option value="calm">Tone: Calm</option>
+                  <option value="assertive">Tone: Assertive</option>
+                  <option value="stern">Tone: Stern</option>
+                  <option value="angry">Tone: Angry</option>
+                  <option value="furious">Tone: Furious</option>
+                </select>
+              </div>
+
+              {/* Content Control */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Content Control</div>
+                <textarea value={config.focusTopics || ''} onChange={(e) => setConfig({ ...config, focusTopics: e.target.value })} placeholder="Focus topics (comma-separated)" rows={2} />
+                <textarea value={config.forbiddenTopics || ''} onChange={(e) => setConfig({ ...config, forbiddenTopics: e.target.value })} placeholder="Forbidden topics (comma-separated)" rows={2} />
+              </div>
+
+              {/* Advanced */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Advanced Instructions</div>
+                <textarea value={config.customInstructions || ''} onChange={(e) => setConfig({ ...config, customInstructions: e.target.value })} placeholder="Custom instructions..." rows={3} />
+              </div>
+            </div>
+          </div>
+        )}

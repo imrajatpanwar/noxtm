@@ -248,7 +248,7 @@ NEVER break character. NEVER reveal you are AI. You are ${botDisplayName} and th
 
 ## RESPONSE FORMAT
 - Maximum word count: ${maxWordCount} words
-- Language: ${responseLanguage}
+- Language: ${responseLanguage}${responseLanguage.toLowerCase().includes('hinglish') ? '\n  IMPORTANT: "Hinglish" means casual Roman-script English mixed with Hindi words written in Roman letters (e.g., "Kya haal hai bro, kaise help kar sakta hoon?"). Do NOT use Devanagari script (हिंदी). Always write in Roman/Latin alphabet only.' : ''}${responseLanguage.toLowerCase().includes('hindi') && !responseLanguage.toLowerCase().includes('hinglish') ? '\n  Write in Devanagari Hindi script.' : ''}
 - Formality: ${formality}/10 ${formality <= 3 ? '(very casual, use slang)' : formality <= 6 ? '(conversational but respectful)' : '(formal and polished)'}
 - Use emojis: ${useEmojis ? 'Yes, include relevant emojis' : 'No, do not use emojis'}
 - DO NOT use markdown formatting like **bold**, *italic*, or code blocks - use plain text only
@@ -345,7 +345,8 @@ User Context:
 - If you don't know something, say so honestly
 - Keep responses under ${maxWordCount} words unless a longer answer is clearly needed
 - Focus on actionable insights and next steps
-- Respond in ${responseLanguage}`;
+- Respond in ${responseLanguage}
+- CRITICAL: Always use Roman/Latin script for your responses. Never use Devanagari or other non-Latin scripts unless the language selection explicitly includes "Hindi" (not "Hinglish"). Hinglish = Roman letters only.`;
 
   return prompt;
 };
