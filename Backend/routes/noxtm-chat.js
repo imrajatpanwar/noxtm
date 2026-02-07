@@ -113,7 +113,8 @@ router.post('/send', authenticateToken, async (req, res) => {
       { role: 'user', content: sanitized }
     ];
 
-    const aiResponse = await callClaude(messages, 'claude-3-haiku-20240307');
+    const effectiveMaxWords = botConfig?.maxWordCount || 200;
+    const aiResponse = await callClaude(messages, 'claude-3-haiku-20240307', effectiveMaxWords);
 
     // Save assistant response
     const assistantMsg = await NoxtmChatMessage.create({

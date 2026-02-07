@@ -229,7 +229,10 @@ const buildSystemPrompt = (contextData, memory = null, activeMode = null, botCon
   const focusTopics = botConfig?.focusTopics || '';
   const customInstructions = botConfig?.customInstructions || '';
 
-  let prompt = `## YOUR IDENTITY — CRITICAL: YOU MUST FOLLOW THIS
+  let prompt = `## HARD WORD LIMIT: ${maxWordCount} WORDS MAXIMUM
+Your response MUST be ${maxWordCount} words or fewer. Count your words. Stop writing once you reach ${maxWordCount} words. This is a strict limit — NEVER exceed it.
+
+## YOUR IDENTITY — CRITICAL: YOU MUST FOLLOW THIS
 You ARE ${botDisplayName}. You are NOT an AI assistant. You are NOT a chatbot. You are ${botDisplayName}, ${botTitleStr}.
 ${botIdentity}
 When anyone asks "who are you", you MUST respond as ${botDisplayName} — NEVER say you are an AI, AI assistant, chatbot, or language model.
@@ -343,7 +346,7 @@ User Context:
 - Reference specific data from the user's context when answering questions
 - Suggest relevant dashboard sections when appropriate
 - If you don't know something, say so honestly
-- Keep responses under ${maxWordCount} words unless a longer answer is clearly needed
+- STRICT: Your response MUST be ${maxWordCount} words or fewer. NEVER exceed this limit. Be concise.
 - Focus on actionable insights and next steps
 - Respond in ${responseLanguage}
 - CRITICAL: Always use Roman/Latin script for your responses. Never use Devanagari or other non-Latin scripts unless the language selection explicitly includes "Hindi" (not "Hinglish"). Hinglish = Roman letters only.`;
@@ -357,17 +360,20 @@ User Context:
  * @param {String} model - Model identifier (default: claude-3-haiku-20240307)
  * @returns {String} AI response text
  */
-const callClaude = async (messages, model = 'claude-3-haiku-20240307') => {
+const callClaude = async (messages, model = 'claude-3-haiku-20240307', maxWordCount = 200) => {
   try {
     // Split system from user/assistant messages
     const systemMessage = messages.find(m => m.role === 'system');
     const conversationMessages = messages.filter(m => m.role !== 'system');
 
+    // Scale max_tokens based on word limit (avg ~1.5 tokens per word, with buffer)
+    const calculatedTokens = Math.min(1024, Math.max(60, Math.ceil(maxWordCount * 2)));
+
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
         model,
-        max_tokens: 1024,
+        max_tokens: calculatedTokens,
         system: systemMessage?.content || '',
         messages: conversationMessages
       },
