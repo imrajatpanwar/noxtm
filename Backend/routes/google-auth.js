@@ -175,4 +175,127 @@ router.get('/google/callback', async (req, res) => {
     }
 });
 
+/**
+ * @route   POST /api/auth/google/one-tap
+ * @desc    Handle Google One Tap sign-in
+ * @access  Public
+ */
+router.post('/google/one-tap', async (req, res) => {
+    const { credential } = req.body;
+
+    if (!credential) {
+        return res.status(400).json({ success: false, message: 'No credential provided' });
+    }
+
+    try {
+        // Verify the credential with Google
+        const verifyResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        const googleData = await verifyResponse.json();
+
+        if (googleData.error) {
+            console.error('[GOOGLE ONE TAP] Verification error:', googleData.error);
+            return res.status(401).json({ success: false, message: 'Invalid credential' });
+        }
+
+        // Verify the audience (client ID) matches
+        if (googleData.aud !== GOOGLE_CLIENT_ID) {
+            console.error('[GOOGLE ONE TAP] Client ID mismatch');
+            return res.status(401).json({ success: false, message: 'Invalid client ID' });
+        }
+
+        if (!googleData.email) {
+            console.error('[GOOGLE ONE TAP] No email in token');
+            return res.status(400).json({ success: false, message: 'No email found' });
+        }
+
+        console.log('[GOOGLE ONE TAP] Verified user:', { email: googleData.email, name: googleData.name });
+
+        // Check if user exists
+        let user = await User.findOne({ email: googleData.email });
+
+        if (user) {
+            // Existing user - update Google ID if not set
+            if (!user.googleId) {
+                user.googleId = googleData.sub;
+                user.profileImage = user.profileImage || googleData.picture;
+                await user.save();
+            }
+            console.log('[GOOGLE ONE TAP] Existing user logged in:', user.email);
+        } else {
+            // Create new user
+            const company = new Company({
+                name: `${googleData.name}'s Workspace`,
+                email: googleData.email,
+                createdAt: new Date()
+            });
+            await company.save();
+
+            user = new User({
+                fullName: googleData.name,
+                email: googleData.email,
+                googleId: googleData.sub,
+                profileImage: googleData.picture,
+                role: 'User',
+                companyId: company._id,
+                isEmailVerified: true,
+                permissions: {
+                    dashboard: true,
+                    dataCenter: true,
+                    projects: true,
+                    teamCommunication: true,
+                    digitalMediaManagement: true,
+                    marketing: true,
+                    hrManagement: true,
+                    financeManagement: true,
+                    seoManagement: true,
+                    internalPolicies: true,
+                    settingsConfiguration: false
+                },
+                subscription: {
+                    plan: 'Trial',
+                    status: 'trial',
+                    startDate: new Date(),
+                    endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+                }
+            });
+            await user.save();
+
+            company.owner = user._id;
+            company.members = [{ user: user._id, role: 'Owner', joinedAt: new Date() }];
+            await company.save();
+
+            console.log('[GOOGLE ONE TAP] New user created:', user.email);
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                userId: user._id,
+                email: user.email,
+                role: user.role,
+                companyId: user.companyId
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role,
+                companyId: user.companyId,
+                profileImage: user.profileImage
+            }
+        });
+
+    } catch (error) {
+        console.error('[GOOGLE ONE TAP] Error:', error);
+        res.status(500).json({ success: false, message: 'Server error during authentication' });
+    }
+});
+
 module.exports = router;
