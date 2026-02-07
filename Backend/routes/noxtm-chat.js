@@ -8,10 +8,14 @@ const {
   aggregateUserContext,
   getUserMemory,
   extractAndSaveInsights,
+  extractAndSaveKeypoints,
   buildSystemPrompt,
   callClaude,
   sanitizeUserMessage
 } = require('../utils/aiHelpers');
+
+// In-memory inactivity timers for keypoint extraction
+const keypointTimers = new Map();
 
 // Helper: resolve companyId (from JWT or fallback to User model)
 const resolveCompanyId = async (reqUser) => {
@@ -74,9 +78,11 @@ router.post('/send', authenticateToken, async (req, res) => {
       .map(m => ({ role: m.role, content: m.content }));
 
     // Build AI context + memory
-    const [context, memory] = await Promise.all([
+    const UserKeypoint = require('../models/UserKeypoint');
+    const [context, memory, keypoints] = await Promise.all([
       aggregateUserContext(userId, companyId),
-      getUserMemory(userId)
+      getUserMemory(userId),
+      UserKeypoint.find({ userId }).sort({ createdAt: -1 }).limit(50).lean()
     ]);
 
     // Detect active mode from message (e.g., "Mode: Technical Colleagues")
@@ -102,7 +108,7 @@ router.post('/send', authenticateToken, async (req, res) => {
       }
     }
 
-    let systemPrompt = buildSystemPrompt(context, memory, activeMode, botConfig);
+    let systemPrompt = buildSystemPrompt(context, memory, activeMode, botConfig, keypoints);
     if (systemPromptOverride) {
       systemPrompt = systemPromptOverride + '\n\n' + systemPrompt;
     }
@@ -127,6 +133,19 @@ router.post('/send', authenticateToken, async (req, res) => {
 
     // Auto-learn from conversation (non-blocking)
     extractAndSaveInsights(userId, companyId, sanitized, aiResponse).catch(() => {});
+
+    // Inactivity-based keypoint extraction: reset timer on each message
+    // When user stops chatting for 2 minutes, extract keypoints from recent conversation
+    const timerKey = userId.toString();
+    if (keypointTimers.has(timerKey)) {
+      clearTimeout(keypointTimers.get(timerKey));
+    }
+    keypointTimers.set(timerKey, setTimeout(() => {
+      keypointTimers.delete(timerKey);
+      extractAndSaveKeypoints(userId, companyId).catch(err => {
+        console.error('Keypoint extraction failed:', err.message);
+      });
+    }, 2 * 60 * 1000)); // 2 minutes of inactivity
 
     res.json({
       success: true,
@@ -323,9 +342,11 @@ router.get('/admin/conversations', authenticateToken, async (req, res) => {
 
     const companyId = await resolveCompanyId(req.user);
 
-    // Aggregate conversations by user
-    const conversations = await NoxtmChatMessage.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
+    // Aggregate conversations by user (show all for platform admin)
+    const matchStage = companyId ? { $match: { companyId: new mongoose.Types.ObjectId(companyId) } } : { $match: {} };
+    // If admin's company has no conversations, fall back to showing all
+    let conversations = await NoxtmChatMessage.aggregate([
+      matchStage,
       {
         $group: {
           _id: '$userId',
@@ -361,6 +382,47 @@ router.get('/admin/conversations', authenticateToken, async (req, res) => {
         }
       }
     ]);
+
+    // Fallback: if no conversations found for admin's company, show ALL
+    if (conversations.length === 0 && companyId) {
+      conversations = await NoxtmChatMessage.aggregate([
+        { $match: {} },
+        {
+          $group: {
+            _id: '$userId',
+            messageCount: { $sum: 1 },
+            lastMessage: { $last: '$content' },
+            lastRole: { $last: '$role' },
+            lastMessageAt: { $max: '$createdAt' },
+            firstMessageAt: { $min: '$createdAt' }
+          }
+        },
+        { $sort: { lastMessageAt: -1 } },
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'user'
+          }
+        },
+        { $unwind: '$user' },
+        {
+          $project: {
+            userId: '$_id',
+            fullName: '$user.fullName',
+            email: '$user.email',
+            profileImage: '$user.profileImage',
+            role: '$user.role',
+            messageCount: 1,
+            lastMessage: 1,
+            lastRole: 1,
+            lastMessageAt: 1,
+            firstMessageAt: 1
+          }
+        }
+      ]);
+    }
 
     res.json({ success: true, conversations });
   } catch (error) {
@@ -411,12 +473,28 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+    // Show stats for all messages (platform admin)
+    const filter = companyId ? { companyId } : {};
     const [totalMessages, totalUsers, todayMessages, weekMessages] = await Promise.all([
-      NoxtmChatMessage.countDocuments({ companyId }),
-      NoxtmChatMessage.distinct('userId', { companyId }).then(ids => ids.length),
-      NoxtmChatMessage.countDocuments({ companyId, createdAt: { $gte: today } }),
-      NoxtmChatMessage.countDocuments({ companyId, createdAt: { $gte: thisWeek } })
+      NoxtmChatMessage.countDocuments(filter),
+      NoxtmChatMessage.distinct('userId', filter).then(ids => ids.length),
+      NoxtmChatMessage.countDocuments({ ...filter, createdAt: { $gte: today } }),
+      NoxtmChatMessage.countDocuments({ ...filter, createdAt: { $gte: thisWeek } })
     ]);
+
+    // If admin's company filter returns 0, try without filter
+    if (totalMessages === 0 && companyId) {
+      const [allMessages, allUsers, allToday, allWeek] = await Promise.all([
+        NoxtmChatMessage.countDocuments({}),
+        NoxtmChatMessage.distinct('userId', {}).then(ids => ids.length),
+        NoxtmChatMessage.countDocuments({ createdAt: { $gte: today } }),
+        NoxtmChatMessage.countDocuments({ createdAt: { $gte: thisWeek } })
+      ]);
+      return res.json({
+        success: true,
+        stats: { totalMessages: allMessages, totalUsers: allUsers, todayMessages: allToday, weekMessages: allWeek }
+      });
+    }
 
     res.json({
       success: true,
@@ -425,6 +503,52 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Admin stats error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /api/noxtm-chat/admin/keypoints/:userId
+ * Get all keypoints for a specific user (admin only)
+ */
+router.get('/admin/keypoints/:userId', authenticateToken, async (req, res) => {
+  try {
+    const UserModel = require('mongoose').model('User');
+    const user = await UserModel.findById(req.user.userId);
+    if (!user || user.role !== 'Admin') {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const UserKeypoint = require('../models/UserKeypoint');
+    const keypoints = await UserKeypoint.find({ userId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, keypoints });
+  } catch (error) {
+    console.error('Admin keypoints error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch keypoints' });
+  }
+});
+
+/**
+ * DELETE /api/noxtm-chat/admin/keypoints/:keypointId
+ * Delete a specific keypoint (admin only)
+ */
+router.delete('/admin/keypoints/:keypointId', authenticateToken, async (req, res) => {
+  try {
+    const UserModel = require('mongoose').model('User');
+    const user = await UserModel.findById(req.user.userId);
+    if (!user || user.role !== 'Admin') {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const UserKeypoint = require('../models/UserKeypoint');
+    await UserKeypoint.findByIdAndDelete(req.params.keypointId);
+
+    res.json({ success: true, message: 'Keypoint deleted' });
+  } catch (error) {
+    console.error('Admin delete keypoint error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete keypoint' });
   }
 });
 
