@@ -113,7 +113,8 @@ router.post('/login', async (req, res) => {
       {
         userId: user._id,
         fullName: user.fullName,
-        email: user.email
+        email: user.email,
+        companyId: user.companyId || null
       },
       JWT_SECRET,
       { expiresIn: '7d' } // 7 days for better extension UX
@@ -174,7 +175,8 @@ router.get('/check-session', async (req, res) => {
       {
         userId: user._id,
         fullName: user.fullName,
-        email: user.email
+        email: user.email,
+        companyId: user.companyId || null
       },
       JWT_SECRET,
       { expiresIn: '7d' }
