@@ -388,7 +388,7 @@ function UserVerifiedDomains() {
 
       {/* Add Domain Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => { setShowAddModal(false); setDnsRecords(null); }}>
+        <div className="noxtm-overlay" onClick={() => { setShowAddModal(false); setDnsRecords(null); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <h2>Add New Domain</h2>
@@ -578,7 +578,7 @@ function UserVerifiedDomains() {
 
       {/* Send Email Modal */}
       {showSendModal && selectedDomain && (
-        <div className="modal-overlay" onClick={() => setShowSendModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowSendModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
             <div className="modal-header">
               <h2>Send Email via {selectedDomain.domain}</h2>

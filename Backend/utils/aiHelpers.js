@@ -6,6 +6,7 @@ const Campaign = require('../models/Campaign');
 const Client = require('../models/Client');
 const Lead = require('../models/Lead');
 const EmailAccount = require('../models/EmailAccount');
+const { CoreMemory, ContextMemory, LearnedMemory } = require('../models/NoxtmMemory');
 
 /**
  * Aggregates user context data from various database models
@@ -105,6 +106,80 @@ const aggregateUserContext = async (userId, companyId) => {
 };
 
 /**
+ * Fetches all memory data for a user (core, contexts, learned)
+ * @param {String} userId
+ * @returns {Object} { core, contexts, learned }
+ */
+const getUserMemory = async (userId) => {
+  try {
+    const [core, contexts, learned] = await Promise.all([
+      CoreMemory.findOne({ userId }).lean(),
+      ContextMemory.find({ userId }).lean(),
+      LearnedMemory.find({ userId, active: true }).sort({ createdAt: -1 }).limit(30).lean()
+    ]);
+    return { core, contexts, learned };
+  } catch (err) {
+    console.error('Error fetching user memory:', err);
+    return { core: null, contexts: [], learned: [] };
+  }
+};
+
+/**
+ * Extracts learnable insights from AI response and saves them
+ * @param {String} userId
+ * @param {String} companyId
+ * @param {String} userMessage
+ * @param {String} aiResponse
+ */
+const extractAndSaveInsights = async (userId, companyId, userMessage, aiResponse) => {
+  try {
+    // Simple heuristic: if user corrects or states a preference, save it
+    const correctionPatterns = [
+      /i prefer\s+(.{5,80})/i,
+      /actually,?\s+(.{5,80})/i,
+      /i always\s+(.{5,80})/i,
+      /i never\s+(.{5,80})/i,
+      /don'?t\s+(?:call|use|say)\s+(.{5,80})/i,
+      /my (?:name|title|role) is\s+(.{5,80})/i,
+      /i work (?:on|with|at|in)\s+(.{5,80})/i,
+      /i'?m (?:a |an )?\s*(.{5,80})/i
+    ];
+
+    const msg = userMessage.toLowerCase();
+    let category = 'other';
+    let matched = false;
+
+    for (const pattern of correctionPatterns) {
+      if (pattern.test(userMessage)) {
+        matched = true;
+        if (/prefer|always|never/i.test(msg)) category = 'preference';
+        else if (/actually/i.test(msg)) category = 'correction';
+        else if (/name|role|title|work/i.test(msg)) category = 'fact';
+        else if (/style|tone|formal|casual/i.test(msg)) category = 'style';
+        break;
+      }
+    }
+
+    if (matched) {
+      // Check we don't already have too many learned memories
+      const count = await LearnedMemory.countDocuments({ userId, active: true });
+      if (count < 100) {
+        await LearnedMemory.create({
+          userId,
+          companyId,
+          category,
+          content: userMessage.substring(0, 500),
+          source: 'conversation'
+        });
+      }
+    }
+  } catch (err) {
+    // Non-critical — don't fail the chat
+    console.error('Insight extraction error:', err);
+  }
+};
+
+/**
  * Calculates lead status breakdown
  * @param {Array} leads - Array of lead documents
  * @returns {String} Status breakdown string
@@ -126,12 +201,14 @@ const calculateLeadStatusBreakdown = (leads) => {
 };
 
 /**
- * Builds system prompt with user context
+ * Builds system prompt with user context and personalized memory
  * @param {Object} contextData - Aggregated user context
+ * @param {Object} memory - { core, contexts, learned } memory data (optional)
+ * @param {String} activeMode - Active context mode label (optional)
  * @returns {String} System prompt for AI
  */
-const buildSystemPrompt = (contextData) => {
-  return `You are an AI assistant for the Noxtm Dashboard. You help users understand their data and navigate features.
+const buildSystemPrompt = (contextData, memory = null, activeMode = null) => {
+  let prompt = `You are Noxtm, a personalized AI assistant for the Noxtm Dashboard. You help users understand their data, navigate features, and provide intelligent assistance.
 
 User Context:
 - Name: ${contextData.user.name}
@@ -143,21 +220,117 @@ User Context:
 - Campaigns: ${contextData.campaignCount} total${contextData.recentCampaigns !== 'None' ? ` (Recent: ${contextData.recentCampaigns})` : ''}
 - Clients: ${contextData.clientCount} total${contextData.recentClients !== 'None' ? ` (Recent: ${contextData.recentClients})` : ''}
 - Leads: ${contextData.leadCount} total (${contextData.leadStatusBreakdown})
-- Email Accounts: ${contextData.emailAccountCount} total${contextData.domains !== 'None' ? ` (Domains: ${contextData.domains})` : ''}
+- Email Accounts: ${contextData.emailAccountCount} total${contextData.domains !== 'None' ? ` (Domains: ${contextData.domains})` : ''}`;
 
-Guidelines:
+  // === Core Memory ===
+  if (memory?.core) {
+    const c = memory.core;
+    const parts = [];
+    if (c.name) parts.push(`Name: ${c.name}`);
+    if (c.role) parts.push(`Role/Profession: ${c.role}`);
+    if (c.communicationStyle) parts.push(`Communication Style: ${c.communicationStyle}`);
+    if (c.expertiseAreas) parts.push(`Expertise: ${c.expertiseAreas}`);
+    if (c.preferences) parts.push(`Preferences: ${c.preferences}`);
+    if (c.commonPhrases) parts.push(`Common Phrases: ${c.commonPhrases}`);
+    if (c.workContext) parts.push(`Work Context: ${c.workContext}`);
+    if (c.goals) parts.push(`Goals: ${c.goals}`);
+    if (c.additionalNotes) parts.push(`Additional Notes: ${c.additionalNotes}`);
+
+    if (parts.length > 0) {
+      prompt += `\n\n## CORE MEMORY - About This User\n${parts.join('\n')}`;
+    }
+  }
+
+  // === Active Context Mode ===
+  if (activeMode && memory?.contexts?.length > 0) {
+    const activeCtx = memory.contexts.find(ctx =>
+      ctx.label.toLowerCase() === activeMode.toLowerCase()
+    );
+    if (activeCtx) {
+      prompt += `\n\n## ACTIVE MODE: "${activeCtx.label}"`;
+      if (activeCtx.background) prompt += `\nBackground: ${activeCtx.background}`;
+      if (activeCtx.preferredStyle) prompt += `\nPreferred Style: ${activeCtx.preferredStyle}`;
+      if (activeCtx.commonTopics) prompt += `\nCommon Topics: ${activeCtx.commonTopics}`;
+      if (activeCtx.tone) prompt += `\nTone: ${activeCtx.tone}`;
+      if (activeCtx.notes) prompt += `\nNotes: ${activeCtx.notes}`;
+      prompt += `\nAdapt your communication style according to this active mode.`;
+    }
+  } else if (memory?.contexts?.length > 0) {
+    prompt += `\n\n## AVAILABLE CONTEXT MODES\nThe user can say "Mode: [name]" to activate one of these communication contexts:`;
+    for (const ctx of memory.contexts) {
+      prompt += `\n- ${ctx.label}`;
+    }
+  }
+
+  // === Learned Memories ===
+  if (memory?.learned?.length > 0) {
+    const learnedText = memory.learned
+      .slice(0, 20)
+      .map(m => `- [${m.category}] ${m.content}`)
+      .join('\n');
+    prompt += `\n\n## LEARNED MEMORIES\nThings you've learned about this user from past interactions:\n${learnedText}`;
+  }
+
+  prompt += `\n\n## BEHAVIOR INSTRUCTIONS
+- Mirror the user's communication style when Core Memory specifies one
+- Reference their expertise and background when relevant
+- Adapt responses based on the active mode if one is set
+- Be consistent with their stated values and preferences
+- Learn from corrections — when the user corrects you, remember it
+- If the user says "Mode: [name]", activate that context for the conversation
+
+## GENERAL GUIDELINES
 - Be helpful, concise, and professional
 - Reference specific data from the user's context when answering questions
 - Suggest relevant dashboard sections when appropriate (e.g., "You can view this in the Projects section")
 - If you don't know something, say so honestly
-- Keep responses under 150 words for readability
+- Keep responses under 200 words unless a longer answer is clearly needed
 - Focus on actionable insights and next steps
 - DO NOT use markdown formatting like **bold**, *italic*, or code blocks - use plain text only
 - Avoid special characters like asterisks, underscores, or backticks for formatting`;
+
+  return prompt;
 };
 
 /**
- * Calls OpenRouter API for AI completion
+ * Calls Anthropic Claude API for AI completion
+ * @param {Array} messages - Array of message objects with role and content
+ * @param {String} model - Model identifier (default: claude-3-haiku-20240307)
+ * @returns {String} AI response text
+ */
+const callClaude = async (messages, model = 'claude-3-haiku-20240307') => {
+  try {
+    // Split system from user/assistant messages
+    const systemMessage = messages.find(m => m.role === 'system');
+    const conversationMessages = messages.filter(m => m.role !== 'system');
+
+    const response = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model,
+        max_tokens: 1024,
+        system: systemMessage?.content || '',
+        messages: conversationMessages
+      },
+      {
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    );
+
+    return response.data.content[0].text;
+  } catch (error) {
+    console.error('Claude API error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Calls OpenRouter API for AI completion (legacy fallback)
  * @param {Array} messages - Array of message objects with role and content
  * @param {String} model - Model identifier
  * @returns {String} AI response text
@@ -216,7 +389,10 @@ const sanitizeUserMessage = (message) => {
 
 module.exports = {
   aggregateUserContext,
+  getUserMemory,
+  extractAndSaveInsights,
   buildSystemPrompt,
+  callClaude,
   callOpenRouter,
   sanitizeUserMessage
 };

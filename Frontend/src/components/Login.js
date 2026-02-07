@@ -85,7 +85,7 @@ function Login({ onLogin }) {
         return;
       }
 
-      if (result.user.role === 'Admin' || result.user.role === 'Lord') {
+      if (result.user.role === 'Admin') {
         navigate('/dashboard');
         setLoading(false);
         return;

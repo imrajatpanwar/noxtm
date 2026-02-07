@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     FiSearch, FiPlus, FiFolder, FiUser, FiCalendar, FiDollarSign,
-    FiChevronDown, FiChevronUp, FiEdit2, FiTrash2, FiEye,
+    FiChevronDown, FiChevronUp, FiEdit2, FiTrash2,
     FiCheck, FiClock, FiAlertCircle, FiSend, FiBriefcase,
-    FiMail, FiPhone, FiMapPin, FiFileText, FiFlag, FiX, FiUserPlus
+    FiMail, FiPhone, FiMapPin, FiFileText, FiFlag, FiX, FiUserPlus,
+    FiSettings
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import './ProjectManagement.css';
+import ProjectSettings from './ProjectSettings';
+import api from '../config/api';
 
 const ProjectManagement = () => {
     const [projects, setProjects] = useState([]);
@@ -25,8 +28,10 @@ const ProjectManagement = () => {
     const [expandedProject, setExpandedProject] = useState(null);
     const [activeTab, setActiveTab] = useState('details');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [newNote, setNewNote] = useState('');
+    const [isManager, setIsManager] = useState(false);
 
     // Client search state
     const [clients, setClients] = useState([]);
@@ -72,83 +77,72 @@ const ProjectManagement = () => {
 
     const currencies = ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'];
 
+    // Check if user has manager-level permissions
+    const checkUserRole = useCallback(async () => {
+        try {
+            const response = await api.get('/users/profile');
+            const user = response.data;
+            const managerRoles = ['Owner', 'Manager', 'Admin', 'Business Admin'];
+            const hasManagerRole = managerRoles.includes(user.role) ||
+                managerRoles.includes(user.roleInCompany);
+            setIsManager(hasManagerRole);
+        } catch (error) {
+            console.error('Error checking user role:', error);
+        }
+    }, []);
+
+    // Fetch clients from Our Clients
+    const fetchClients = useCallback(async () => {
+        try {
+            const response = await api.get('/clients');
+            setClients(response.data);
+        } catch (error) {
+            console.error('Error fetching clients:', error);
+        }
+    }, []);
+
+    const fetchProjects = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Please log in to view projects');
+                return;
+            }
+
+            const params = {};
+            if (statusFilter) params.status = statusFilter;
+            if (priorityFilter) params.priority = priorityFilter;
+            if (searchTerm) params.search = searchTerm;
+
+            const response = await api.get('/projects', { params });
+            setProjects(response.data);
+        } catch (error) {
+            const message =
+                error?.response?.data?.message ||
+                error?.message ||
+                'Unknown error';
+            console.error('Error fetching projects:', error);
+            toast.error('Failed to load projects: ' + message);
+        } finally {
+            setLoading(false);
+        }
+    }, [statusFilter, priorityFilter, searchTerm]);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const response = await api.get('/projects/stats');
+            setStats(response.data);
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }, []);
+
     useEffect(() => {
         fetchProjects();
         fetchStats();
         fetchClients();
-    }, [statusFilter, priorityFilter]);
-
-    // Fetch clients from Our Clients
-    const fetchClients = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/clients', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch clients');
-
-            const data = await response.json();
-            setClients(data);
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        }
-    };
-
-    const fetchProjects = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            let url = '/api/projects';
-            const params = new URLSearchParams();
-
-            if (statusFilter) params.append('status', statusFilter);
-            if (priorityFilter) params.append('priority', priorityFilter);
-            if (searchTerm) params.append('search', searchTerm);
-
-            if (params.toString()) {
-                url += '?' + params.toString();
-            }
-
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch projects');
-
-            const data = await response.json();
-            setProjects(data);
-        } catch (error) {
-            console.error('Error fetching projects:', error);
-            toast.error('Failed to load projects');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchStats = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/projects/stats', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to fetch stats');
-
-            const data = await response.json();
-            setStats(data);
-        } catch (error) {
-            console.error('Error fetching stats:', error);
-        }
-    };
+        checkUserRole();
+    }, [fetchProjects, fetchStats, fetchClients, checkUserRole]);
 
     const handleSearch = (e) => {
         setSearchTerm(e.target.value);
@@ -302,7 +296,28 @@ const ProjectManagement = () => {
                 toast.success('Project updated successfully');
             } else {
                 setProjects([savedProject, ...projects]);
-                toast.success('Project created successfully');
+                
+                // Show appropriate message based on onboarding email status
+                if (savedProject._onboardingEmail) {
+                    if (savedProject._onboardingEmail.sent) {
+                        toast.success('Project created and onboarding email sent to client!', {
+                            description: `Welcome email sent to ${formData.client.email}`,
+                            duration: 5000
+                        });
+                    } else if (savedProject._onboardingEmail.reason === 'No client email') {
+                        toast.success('Project created successfully', {
+                            description: 'No client email provided - onboarding email skipped'
+                        });
+                    } else if (savedProject._onboardingEmail.reason) {
+                        toast.success('Project created successfully');
+                        toast.warning('Onboarding email could not be sent', {
+                            description: savedProject._onboardingEmail.reason,
+                            duration: 5000
+                        });
+                    }
+                } else {
+                    toast.success('Project created successfully');
+                }
             }
 
             setShowAddModal(false);
@@ -459,10 +474,28 @@ const ProjectManagement = () => {
                     <h1 className="pm-title">Project Management</h1>
                     <p className="pm-subtitle">Manage your projects and track client work</p>
                 </div>
-                <button className="pm-add-btn" onClick={openAddModal}>
-                    <FiPlus /> New Project
-                </button>
+                <div className="pm-header-actions">
+                    {isManager && (
+                        <button 
+                            className="pm-settings-btn" 
+                            onClick={() => setShowSettingsModal(true)}
+                            title="Project Settings"
+                        >
+                            <FiSettings /> Settings
+                        </button>
+                    )}
+                    <button className="pm-add-btn" onClick={openAddModal}>
+                        <FiPlus /> New Project
+                    </button>
+                </div>
             </div>
+
+            {/* Settings Modal */}
+            {showSettingsModal && (
+                <ProjectSettings 
+                    onClose={() => setShowSettingsModal(false)}
+                />
+            )}
 
             {/* Stats */}
             <div className="pm-stats-grid">
@@ -761,7 +794,7 @@ const ProjectManagement = () => {
 
             {/* Add/Edit Modal */}
             {showAddModal && (
-                <div className="pm-modal-overlay" onClick={() => setShowAddModal(false)}>
+                <div className="noxtm-overlay" onClick={() => setShowAddModal(false)}>
                     <div className="pm-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="pm-modal-header">
                             <h2>{editingProject ? 'Edit Project' : 'New Project'}</h2>

@@ -266,7 +266,7 @@ function EmailTemplates() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
+        <div className="noxtm-overlay" onClick={handleCloseModal}>
           <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
@@ -453,7 +453,7 @@ function EmailTemplates() {
 
       {/* Preview Modal */}
       {showPreviewModal && previewTemplate && (
-        <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowPreviewModal(false)}>
           <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2><FiEye /> Preview: {previewTemplate.name}</h2>

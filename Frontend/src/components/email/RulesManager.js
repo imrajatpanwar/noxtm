@@ -280,7 +280,7 @@ const RulesManager = ({ emailAccountId }) => {
 // Placeholder for RuleBuilderModal - will be created next
 const RuleBuilderModal = ({ rule, emailAccountId, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{rule ? 'Edit Rule' : 'Create New Rule'}</h2>

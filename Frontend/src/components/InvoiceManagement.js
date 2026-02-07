@@ -453,7 +453,7 @@ const InvoiceManagement = () => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="im-modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
+        <div className="noxtm-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
           <div className="im-modal" onClick={(e) => e.stopPropagation()}>
             <div className="im-modal-header">
               <h2>{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</h2>
@@ -617,7 +617,7 @@ const InvoiceManagement = () => {
 
       {/* Preview Modal */}
       {showPreview && (
-        <div className="im-modal-overlay" onClick={() => setShowPreview(null)}>
+        <div className="noxtm-overlay" onClick={() => setShowPreview(null)}>
           <div className="im-preview-modal" onClick={(e) => e.stopPropagation()}>
             <div className="im-modal-header">
               <h2>Invoice Preview</h2>

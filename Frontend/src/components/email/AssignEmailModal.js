@@ -118,7 +118,7 @@ const AssignEmailModal = ({ email, emailAccountId, onClose, onAssigned }) => {
 
   if (loadingMembers) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="noxtm-overlay" onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="loading">Loading team members...</div>
         </div>
@@ -128,7 +128,7 @@ const AssignEmailModal = ({ email, emailAccountId, onClose, onAssigned }) => {
 
   if (teamMembers.length === 0) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="noxtm-overlay" onClick={onClose}>
         <div className="modal-content assign-modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h2>Assign Email</h2>
@@ -149,7 +149,7 @@ const AssignEmailModal = ({ email, emailAccountId, onClose, onAssigned }) => {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content assign-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Assign Email</h2>

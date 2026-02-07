@@ -71,15 +71,28 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors({
-  origin: [
-    'http://noxtm.com',
-    'https://noxtm.com',
-    'http://mail.noxtm.com',     // Mail subdomain
-    'https://mail.noxtm.com',    // Mail subdomain (HTTPS)
-    'chrome-extension://*', // Allow Chrome extension requests
-    'http://localhost:3000', // Main app local development
-    'http://localhost:3001'  // Mail app local development
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'http://noxtm.com',
+      'https://noxtm.com',
+      'http://mail.noxtm.com',
+      'https://mail.noxtm.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002'
+    ];
+    
+    // Check if origin is in allowed list or is a chrome-extension
+    if (allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -121,6 +134,10 @@ app.use('/api/invoices', invoicesRoutes);
 const leadsRoutes = require('./routes/leads');
 app.use('/api/leads', leadsRoutes);
 
+// Lead Campaigns routes
+const leadCampaignsRoutes = require('./routes/lead-campaigns');
+app.use('/api/lead-campaigns', leadCampaignsRoutes);
+
 // Exhibitors routes
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);
@@ -144,6 +161,14 @@ app.use('/api/projects', projectsRoutes);
 // AI Chatbot routes
 const aiRoutes = require('./routes/ai');
 app.use('/api/ai', aiRoutes);
+
+// Noxtm Chat routes (AI chatbot with persistent history)
+const noxtmChatRoutes = require('./routes/noxtm-chat');
+app.use('/api/noxtm-chat', noxtmChatRoutes);
+
+// Noxtm Memory routes (personalized AI memory)
+const noxtmMemoryRoutes = require('./routes/noxtm-memory');
+app.use('/api/noxtm-memory', noxtmMemoryRoutes);
 
 // Billing routes
 const billingRoutes = require('./routes/billing');
@@ -581,8 +606,8 @@ function syncAccessFromPermissions(permissions) {
 
 // Get default permissions based on subscription plan or role
 function getDefaultPermissions(planOrRole) {
-  // Admin and Lord get full access to everything
-  if (planOrRole === 'Admin' || planOrRole === 'Lord') {
+  // Admin gets full access to everything
+  if (planOrRole === 'Admin') {
     return {
       dashboard: true,
       dataCenter: true,
@@ -2012,7 +2037,7 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Validate role if provided, otherwise default to 'User'
-    const validRoles = ['User', 'Admin', 'Lord'];
+    const validRoles = ['User', 'Admin'];
     const userRole = role && validRoles.includes(role) ? role : 'User';
 
     // Get default permissions and access for the role using global helper functions
@@ -2413,7 +2438,8 @@ app.get('/api/company/members', authenticateToken, async (req, res) => {
       fullName: member.user.fullName,
       email: member.user.email,
       role: member.user.role,
-      roleInCompany: member.roleInCompany,
+      roleInCompany: member.roleInCompany === 'Owner' ? 'Owner' : 'Employee',
+      jobTitle: member.jobTitle || '',
       department: member.department,
       profileImage: member.user.profileImage,
       status: member.user.status,
@@ -2589,21 +2615,18 @@ const DEPARTMENT_DEFAULTS = {
 app.post('/api/company/invite', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { email, roleInCompany, department, customPermissions } = req.body;
+    const { email, department, customPermissions, jobTitle } = req.body;
 
     // Validate inputs
     if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       return res.status(400).json({ message: 'Valid email is required' });
     }
 
-    if (!roleInCompany || !['Manager', 'Employee'].includes(roleInCompany)) {
-      return res.status(400).json({ message: 'Valid role is required (Manager or Employee)' });
-    }
-
     const validDepartments = [
       'Management Team', 'Digital Team', 'SEO Team', 'Graphic Design Team',
       'Marketing Team', 'Sales Team', 'Development Team', 'HR Team',
-      'Finance Team', 'Support Team', 'Operations Team'
+      'Finance Team', 'Support Team', 'Operations Team',
+      'Content Team', 'Legal Team', 'Quality Assurance'
     ];
 
     if (!department || !validDepartments.includes(department)) {
@@ -2624,11 +2647,13 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    // Check if user has permission to invite (Owner or Manager)
+    // Check if user has permission to invite (Owner OR custom permission)
     const userMembership = company.members.find(m => m.user.toString() === userId);
-    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
+    const isOwner = !!userMembership && userMembership.roleInCompany === 'Owner';
+    const canInviteByPermission = user.permissions && user.permissions.settingsConfiguration === true;
+    if (!isOwner && !canInviteByPermission) {
       return res.status(403).json({
-        message: 'Only company owners and managers can invite new members'
+        message: 'You do not have permission to invite new members'
       });
     }
 
@@ -2665,14 +2690,41 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
     const crypto = require('crypto');
     const inviteToken = crypto.randomBytes(32).toString('hex');
 
-    // Use custom permissions if provided, otherwise use department defaults
-    const permissions = customPermissions || DEPARTMENT_DEFAULTS[department] || {};
+    // Custom permissions are required and must include at least one enabled module
+    const permissionKeys = [
+      'dashboard',
+      'dataCenter',
+      'projects',
+      'teamCommunication',
+      'digitalMediaManagement',
+      'marketing',
+      'hrManagement',
+      'financeManagement',
+      'seoManagement',
+      'internalPolicies',
+      'settingsConfiguration'
+    ];
+
+    if (!customPermissions || typeof customPermissions !== 'object') {
+      return res.status(400).json({ message: 'Custom permissions are required' });
+    }
+
+    const permissions = {};
+    permissionKeys.forEach((key) => {
+      permissions[key] = customPermissions[key] === true;
+    });
+
+    const hasAtLeastOnePermission = Object.values(permissions).some(v => v === true);
+    if (!hasAtLeastOnePermission) {
+      return res.status(400).json({ message: 'Select at least one permission to send an invite' });
+    }
 
     // Create invitation
     company.invitations.push({
       email: email.toLowerCase(),
       token: inviteToken,
-      roleInCompany,
+      roleInCompany: 'Employee',
+      jobTitle: typeof jobTitle === 'string' ? jobTitle.trim().slice(0, 100) : '',
       department,
       customPermissions: permissions,
       invitedBy: userId,
@@ -2749,7 +2801,9 @@ app.get('/api/company/invite/:token', async (req, res) => {
       valid: true,
       invitation: {
         email: invitation.email,
-        roleInCompany: invitation.roleInCompany,
+        roleInCompany: 'Employee',
+        jobTitle: invitation.jobTitle || '',
+        department: invitation.department || '',
         expiresAt: invitation.expiresAt,
         companyName: company.companyName,
         industry: company.industry,
@@ -2815,7 +2869,8 @@ app.post('/api/company/invite/:token/accept', authenticateToken, async (req, res
     // Add user to company
     company.members.push({
       user: userId,
-      roleInCompany: invitation.roleInCompany,
+      roleInCompany: 'Employee',
+      jobTitle: invitation.jobTitle || '',
       department: invitation.department,
       invitedAt: invitation.createdAt,
       joinedAt: new Date()
@@ -2885,11 +2940,13 @@ app.delete('/api/company/members/:memberId', authenticateToken, async (req, res)
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    // Check if user has permission (Owner or Manager)
+    // Check if user has permission (Owner OR custom permission)
     const userMembership = company.members.find(m => m.user.toString() === userId);
-    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
+    const isOwner = !!userMembership && userMembership.roleInCompany === 'Owner';
+    const canManageByPermission = user.permissions && user.permissions.settingsConfiguration === true;
+    if (!isOwner && !canManageByPermission) {
       return res.status(403).json({
-        message: 'Only company owners and managers can remove members'
+        message: 'You do not have permission to remove members'
       });
     }
 
@@ -2955,11 +3012,13 @@ app.put('/api/company/members/:memberId/permissions', authenticateToken, async (
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    // Check if user has permission (Owner or Manager)
+    // Check if user has permission (Owner OR custom permission)
     const userMembership = company.members.find(m => m.user.toString() === userId);
-    if (!userMembership || !['Owner', 'Manager'].includes(userMembership.roleInCompany)) {
+    const isOwner = !!userMembership && userMembership.roleInCompany === 'Owner';
+    const canManageByPermission = user.permissions && user.permissions.settingsConfiguration === true;
+    if (!isOwner && !canManageByPermission) {
       return res.status(403).json({
-        message: 'Only company owners and managers can update permissions'
+        message: 'You do not have permission to update member permissions'
       });
     }
 

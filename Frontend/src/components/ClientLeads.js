@@ -1,1185 +1,722 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSearch, FiEdit3, FiUser, FiPlus, FiMail, FiPhone, FiMapPin, FiCalendar, FiStar, FiActivity, FiMoreHorizontal, FiDownload, FiUpload } from 'react-icons/fi';
+import {
+  FiSearch, FiEdit3, FiUser, FiPlus, FiMail, FiPhone, FiMapPin,
+  FiCalendar, FiActivity, FiDownload, FiUpload, FiX, FiTrash2,
+  FiChevronRight, FiBriefcase, FiGlobe, FiFileText
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import './ClientLeads.css';
 
+const STATUS_OPTIONS = ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'];
+const STATUS_COLORS = {
+  'Cold Lead': { bg: '#dbeafe', color: '#1d4ed8' },
+  'Warm Lead': { bg: '#fef3c7', color: '#b45309' },
+  'Qualified (SQL)': { bg: '#dcfce7', color: '#15803d' },
+  'Active': { bg: '#f3e8ff', color: '#7c3aed' },
+  'Dead Lead': { bg: '#fee2e2', color: '#dc2626' }
+};
+
 function ClientLeads() {
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [customDateFrom, setCustomDateFrom] = useState('');
-  const [customDateTo, setCustomDateTo] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [filterSource, setFilterSource] = useState('All');
-  const [isLoading, setIsLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [newClient, setNewClient] = useState({
-    name: '',
+
+  const [newLead, setNewLead] = useState({
+    companyName: '',
+    clientName: '',
     email: '',
     phone: '',
-    company: '',
-    source: 'Website',
-    notes: ''
+    designation: '',
+    location: '',
+    requirements: ''
   });
 
-  // Leads from backend API (replaces mock data)
-  const [leads, setLeads] = useState([
-    { 
-      id: 1, 
-      name: 'John Smith', 
-      email: 'john@example.com', 
-      phone: '+1-555-0123', 
-      company: 'Tech Corp',
-      status: 'New', 
-      date: '2024-01-15', 
-      source: 'Website',
-      notes: 'Interested in web development services',
-      lastContact: '2024-01-15',
-      priority: 'Medium'
-    },
-    { 
-      id: 2, 
-      name: 'Sarah Johnson', 
-      email: 'sarah@example.com', 
-      phone: '+1-555-0124', 
-      company: 'Marketing Inc',
-      status: 'In Progress', 
-      date: '2024-01-14', 
-      source: 'Referral',
-      notes: 'Referred by existing client',
-      lastContact: '2024-01-14',
-      priority: 'High'
-    },
-    { 
-      id: 3, 
-      name: 'Mike Davis', 
-      email: 'mike@example.com', 
-      phone: '+1-555-0125', 
-      company: 'StartupXYZ',
-      status: 'Qualified', 
-      date: '2024-01-13', 
-      source: 'Social Media',
-      notes: 'Active on LinkedIn, engaged with our content',
-      lastContact: '2024-01-13',
-      priority: 'High'
-    },
-    { 
-      id: 4, 
-      name: 'Emily Brown', 
-      email: 'emily@example.com', 
-      phone: '+1-555-0126', 
-      company: 'Design Studio',
-      status: 'Converted', 
-      date: '2024-01-12', 
-      source: 'Email Campaign',
-      notes: 'Converted to paying customer',
-      lastContact: '2024-01-12',
-      priority: 'Low'
-    },
-    { 
-      id: 5, 
-      name: 'David Wilson', 
-      email: 'david@example.com', 
-      phone: '+1-555-0127', 
-      company: 'Enterprise Ltd',
-      status: 'New', 
-      date: '2024-01-11', 
-      source: 'Website',
-      notes: 'Downloaded our whitepaper',
-      lastContact: '2024-01-11',
-      priority: 'Medium'
-    },
-    { 
-      id: 6, 
-      name: 'Lisa Anderson', 
-      email: 'lisa@example.com', 
-      phone: '+1-555-0128', 
-      company: 'Consulting Group',
-      status: 'In Progress', 
-      date: '2024-01-10', 
-      source: 'LinkedIn',
-      notes: 'Scheduled demo call for next week',
-      lastContact: '2024-01-10',
-      priority: 'High'
-    },
-    { 
-      id: 7, 
-      name: 'Robert Taylor', 
-      email: 'robert@example.com', 
-      phone: '+1-555-0129', 
-      company: 'Retail Chain',
-      status: 'Qualified', 
-      date: '2024-01-09', 
-      source: 'Referral',
-      notes: 'Large enterprise opportunity',
-      lastContact: '2024-01-09',
-      priority: 'High'
-    },
-    { 
-      id: 8, 
-      name: 'Jennifer Martinez', 
-      email: 'jennifer@example.com', 
-      phone: '+1-555-0130', 
-      company: 'Non-Profit Org',
-      status: 'New', 
-      date: '2024-01-08', 
-      source: 'Website',
-      notes: 'Looking for affordable solutions',
-      lastContact: '2024-01-08',
-      priority: 'Low'
-    },
-  ]);
-
-  // Fetch leads from backend API
+  // Fetch leads from backend
   const fetchLeads = useCallback(async () => {
     try {
-      setIsLoading(true);
-      const response = await api.get('/leads');
+      setLoading(true);
+      const params = {};
+      if (filterStatus !== 'All') params.status = filterStatus;
+      if (searchTerm) params.search = searchTerm;
 
-      if (response.data && response.data.leads) {
-        // Transform backend data to match component structure
-        const transformedLeads = response.data.leads.map(lead => ({
-          id: lead._id,
-          name: lead.name,
-          email: lead.email,
-          phone: lead.phone || '',
-          company: lead.company || '',
-          status: lead.status,
-          date: lead.createdAt ? new Date(lead.createdAt).toISOString().split('T')[0] : '',
-          source: lead.source,
-          notes: lead.notes || '',
-          lastContact: lead.lastContact ? new Date(lead.lastContact).toISOString().split('T')[0] : '',
-          priority: lead.priority || 'Medium'
-        }));
-
-        setLeads(transformedLeads);
-      }
+      const response = await api.get('/leads', { params });
+      // Backend returns array directly
+      const data = Array.isArray(response.data) ? response.data : (response.data?.leads || response.data || []);
+      setLeads(data);
     } catch (error) {
       console.error('Error fetching leads:', error);
-      // Keep mock data on error, don't show error toast on initial load
-      console.log('Using mock data as fallback');
+      toast.error('Failed to load leads');
+      setLeads([]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, []);
+  }, [filterStatus, searchTerm]);
 
-  // Fetch leads on component mount
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
 
-  // Calculate statistics
-  const [stats, setStats] = useState({
-    total: 0,
-    new: 0,
-    inProgress: 0,
-    qualified: 0,
-    converted: 0
-  });
-
-  const updateStats = useCallback(() => {
-    const total = leads.length;
-    const newLeads = leads.filter(lead => lead.status === 'New').length;
-    const inProgress = leads.filter(lead => lead.status === 'In Progress').length;
-    const qualified = leads.filter(lead => lead.status === 'Qualified').length;
-    const converted = leads.filter(lead => lead.status === 'Converted').length;
-
-    setStats({ total, new: newLeads, inProgress, qualified, converted });
-  }, [leads]);
-
-  useEffect(() => {
-    updateStats();
-  }, [leads, updateStats]);
-
-  const filterOptions = [
-    { value: 'all', label: 'All Leads' },
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'last7days', label: 'Last 7 Days (1 Week)' },
-    { value: 'last30days', label: 'Last 30 Days (1 Month)' },
-    { value: 'last90days', label: 'Last 90 Days (3 Months)' },
-    { value: 'thismonth', label: 'This Month' },
-    { value: 'lastmonth', label: 'Last Month' },
-    { value: 'custom', label: 'Custom Date Range' }
-  ];
-
-  const statusOptions = ['All', 'New', 'In Progress', 'Qualified', 'Converted', 'Lost'];
-  const sourceOptions = ['All', 'Website', 'Referral', 'Social Media', 'Email Campaign', 'LinkedIn', 'Other'];
-
-  const handleAddClientClick = () => {
-    setShowAddForm(true);
+  // Stats
+  const stats = {
+    total: leads.length,
+    cold: leads.filter(l => l.status === 'Cold Lead').length,
+    warm: leads.filter(l => l.status === 'Warm Lead').length,
+    qualified: leads.filter(l => l.status === 'Qualified (SQL)').length,
+    active: leads.filter(l => l.status === 'Active').length,
+    dead: leads.filter(l => l.status === 'Dead Lead').length
   };
 
-  const handleAddClient = async (e) => {
+  // Add lead
+  const handleAddLead = async (e) => {
     e.preventDefault();
-    if (newClient.name && newClient.email) {
-      try {
-        setIsLoading(true);
-
-        // Send lead to backend API
-        const response = await api.post('/leads', {
-          name: newClient.name,
-          email: newClient.email,
-          phone: newClient.phone || undefined,
-          company: newClient.company || undefined,
-          source: newClient.source,
-          notes: newClient.notes || undefined,
-          status: 'New',
-          priority: 'Medium'
-        });
-
-        if (response.data && response.data.lead) {
-          // Transform backend data
-          const savedLead = {
-            id: response.data.lead._id,
-            name: response.data.lead.name,
-            email: response.data.lead.email,
-            phone: response.data.lead.phone || '',
-            company: response.data.lead.company || '',
-            status: response.data.lead.status,
-            date: new Date(response.data.lead.createdAt).toISOString().split('T')[0],
-            source: response.data.lead.source,
-            notes: response.data.lead.notes || '',
-            lastContact: new Date(response.data.lead.lastContact).toISOString().split('T')[0],
-            priority: response.data.lead.priority || 'Medium'
-          };
-
-          setLeads([savedLead, ...leads]);
-          setNewClient({ name: '', email: '', phone: '', company: '', source: 'Website', notes: '' });
-          setShowAddForm(false);
-          toast.success('Lead added successfully!');
-        }
-      } catch (error) {
-        console.error('Error adding lead:', error);
-        toast.error(error.response?.data?.message || 'Failed to add lead. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+    if (!newLead.companyName || !newLead.clientName || !newLead.email) return;
+    try {
+      const response = await api.post('/leads', {
+        ...newLead,
+        status: 'Cold Lead'
+      });
+      setLeads([response.data, ...leads]);
+      setNewLead({ companyName: '', clientName: '', email: '', phone: '', designation: '', location: '', requirements: '' });
+      setShowAddForm(false);
+      toast.success('Lead added successfully!');
+    } catch (error) {
+      console.error('Error adding lead:', error);
+      toast.error(error.response?.data?.message || 'Failed to add lead');
     }
   };
 
+  // Update lead status
+  const handleStatusChange = async (leadId, newStatus) => {
+    try {
+      const response = await api.patch(`/leads/${leadId}/status`, { status: newStatus });
+      setLeads(leads.map(l => l._id === leadId ? response.data : l));
+      if (selectedLead?._id === leadId) setSelectedLead(response.data);
+      toast.success('Status updated');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  // Delete lead
+  const handleDeleteLead = async (leadId) => {
+    if (!window.confirm('Delete this lead? This cannot be undone.')) return;
+    try {
+      await api.delete(`/leads/${leadId}`);
+      setLeads(leads.filter(l => l._id !== leadId));
+      if (selectedLead?._id === leadId) {
+        setShowSidePanel(false);
+        setSelectedLead(null);
+      }
+      toast.success('Lead deleted');
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('Failed to delete lead');
+    }
+  };
+
+  // Update lead (full)
+  const handleUpdateLead = async (leadId, data) => {
+    try {
+      const response = await api.put(`/leads/${leadId}`, data);
+      setLeads(leads.map(l => l._id === leadId ? response.data : l));
+      setSelectedLead(response.data);
+      toast.success('Lead updated');
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      toast.error('Failed to update lead');
+    }
+  };
+
+  // CSV Export
+  const handleExport = () => {
+    const csvContent = [
+      ['Company Name', 'Client Name', 'Email', 'Phone', 'Designation', 'Location', 'Status', 'Requirements'],
+      ...leads.map(l => [
+        l.companyName, l.clientName, l.email, l.phone || '', l.designation || '',
+        l.location || '', l.status, l.requirements || ''
+      ])
+    ].map(row => row.map(f => `"${(f || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `leads_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    toast.success('Leads exported');
+  };
+
+  // CSV Import
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const lines = e.target.result.split('\n');
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+        let imported = 0;
+
+        for (const line of lines.slice(1)) {
+          if (!line.trim()) continue;
+          const values = line.split(',').map(v => v.replace(/"/g, '').trim());
+          const row = {};
+          headers.forEach((h, i) => { row[h] = values[i] || ''; });
+
+          const leadData = {
+            companyName: row['company name'] || row['companyname'] || row['company'] || '',
+            clientName: row['client name'] || row['clientname'] || row['name'] || '',
+            email: row['email'] || '',
+            phone: row['phone'] || '',
+            designation: row['designation'] || '',
+            location: row['location'] || '',
+            requirements: row['requirements'] || row['notes'] || '',
+            status: 'Cold Lead'
+          };
+
+          if (leadData.companyName && leadData.clientName && leadData.email) {
+            try {
+              await api.post('/leads', leadData);
+              imported++;
+            } catch (err) {
+              console.error('Failed to import row:', err);
+            }
+          }
+        }
+
+        toast.success(`${imported} leads imported`);
+        fetchLeads();
+      } catch (error) {
+        toast.error('Error importing CSV');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // Open lead detail
   const handleLeadClick = (lead) => {
     setSelectedLead(lead);
     setShowSidePanel(true);
   };
 
-  const handleCloseSidePanel = () => {
-    setShowSidePanel(false);
-    setSelectedLead(null);
-  };
-
-  const handleDeleteLead = async (leadId) => {
-    if (window.confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-      try {
-        setIsLoading(true);
-        await api.delete(`/leads/${leadId}`);
-
-        setLeads(leads.filter(lead => lead.id !== leadId));
-        toast.success('Lead deleted successfully!');
-      } catch (error) {
-        console.error('Error deleting lead:', error);
-        toast.error(error.response?.data?.message || 'Failed to delete lead. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleStatusChange = async (leadId, newStatus) => {
-    try {
-      setIsLoading(true);
-
-      await api.put(`/leads/${leadId}`, { status: newStatus });
-
-      setLeads(leads.map(lead =>
-        lead.id === leadId ? { ...lead, status: newStatus } : lead
-      ));
-      toast.success('Lead status updated successfully!');
-    } catch (error) {
-      console.error('Error updating lead status:', error);
-      toast.error(error.response?.data?.message || 'Failed to update lead status. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleExportLeads = () => {
-    const csvContent = [
-      ['Name', 'Email', 'Phone', 'Company', 'Status', 'Source', 'Date', 'Priority', 'Notes'],
-      ...filteredLeads.map(lead => [
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.company || '',
-        lead.status,
-        lead.source,
-        lead.date,
-        lead.priority,
-        lead.notes || ''
-      ])
-    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Leads exported successfully!');
-  };
-
-  const handleImportLeads = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const csv = e.target.result;
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-        
-        const importedLeads = lines.slice(1)
-          .filter(line => line.trim())
-          .map(line => {
-            const values = line.split(',').map(v => v.replace(/"/g, '').trim());
-            const lead = {};
-            headers.forEach((header, index) => {
-              lead[header.toLowerCase().replace(' ', '')] = values[index] || '';
-            });
-            return {
-              id: leads.length + Math.random(),
-              name: lead.name || '',
-              email: lead.email || '',
-              phone: lead.phone || '',
-              company: lead.company || '',
-              status: lead.status || 'New',
-              source: lead.source || 'Import',
-              date: lead.date || new Date().toISOString().split('T')[0],
-              notes: lead.notes || '',
-              lastContact: lead.date || new Date().toISOString().split('T')[0],
-              priority: lead.priority || 'Medium'
-            };
-          });
-
-        setLeads([...importedLeads, ...leads]);
-        toast.success(`${importedLeads.length} leads imported successfully!`);
-      } catch (error) {
-        toast.error('Error importing leads. Please check your CSV format.');
-        console.error('Import error:', error);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const getFilteredLeads = () => {
-    const today = new Date();
-    let filteredLeads = leads.filter(lead => {
-      const leadDate = new Date(lead.date);
-      
-      // Date filtering
-      let dateMatch = true;
-      switch (selectedFilter) {
-        case 'all':
-          dateMatch = true;
-          break;
-        case 'today':
-          dateMatch = leadDate.toDateString() === today.toDateString();
-          break;
-        case 'yesterday':
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          dateMatch = leadDate.toDateString() === yesterday.toDateString();
-          break;
-        case 'last7days':
-          const weekAgo = new Date(today);
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          dateMatch = leadDate >= weekAgo;
-          break;
-        case 'last30days':
-          const monthAgo = new Date(today);
-          monthAgo.setDate(monthAgo.getDate() - 30);
-          dateMatch = leadDate >= monthAgo;
-          break;
-        case 'last90days':
-          const threeMonthsAgo = new Date(today);
-          threeMonthsAgo.setDate(threeMonthsAgo.getDate() - 90);
-          dateMatch = leadDate >= threeMonthsAgo;
-          break;
-        case 'thismonth':
-          dateMatch = leadDate.getMonth() === today.getMonth() && leadDate.getFullYear() === today.getFullYear();
-          break;
-        case 'lastmonth':
-          const lastMonth = new Date(today);
-          lastMonth.setMonth(lastMonth.getMonth() - 1);
-          dateMatch = leadDate.getMonth() === lastMonth.getMonth() && leadDate.getFullYear() === lastMonth.getFullYear();
-          break;
-        case 'custom':
-          if (customDateFrom && customDateTo) {
-            dateMatch = leadDate >= new Date(customDateFrom) && leadDate <= new Date(customDateTo);
-          }
-          break;
-        default:
-          dateMatch = true;
-      }
-
-      // Search filtering
-      const matchesSearch = searchTerm === '' || 
-        lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.phone?.includes(searchTerm);
-
-      // Status filtering
-      const matchesStatus = filterStatus === 'All' || lead.status === filterStatus;
-
-      // Source filtering
-      const matchesSource = filterSource === 'All' || lead.source === filterSource;
-
-      return dateMatch && matchesSearch && matchesStatus && matchesSource;
-    });
-    
-    return filteredLeads;
-  };
-
-  const filteredLeads = getFilteredLeads();
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'New': return '#3B82F6';
-      case 'In Progress': return '#F59E0B';
-      case 'Qualified': return '#10B981';
-      case 'Converted': return '#8B5CF6';
-      case 'Lost': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High': return '#EF4444';
-      case 'Medium': return '#F59E0B';
-      case 'Low': return '#10B981';
-      default: return '#6B7280';
-    }
-  };
+  const getStatusStyle = (status) => STATUS_COLORS[status] || { bg: '#f5f5f5', color: '#525252' };
 
   return (
-    <div className="client-leads-container">
+    <div className="cl-container">
       {/* Header */}
-      <div className="client-leads-header">
-        <div className="header-content">
-          <div className="header-text">
-            <h1>Client Leads Management</h1>
-            <p>Manage and track your client leads with advanced filtering and analytics.</p>
+      <div className="cl-header">
+        <div>
+          <h1 className="cl-title">Client Leads</h1>
+          <p className="cl-subtitle">Track, manage and convert your leads pipeline</p>
+        </div>
+        <div className="cl-header-actions">
+          <button className="cl-btn-outline" onClick={handleExport}>
+            <FiDownload /> Export
+          </button>
+          <label className="cl-btn-outline cl-import-label">
+            <FiUpload /> Import
+            <input type="file" accept=".csv" onChange={handleImport} hidden />
+          </label>
+          <button className="cl-btn-primary" onClick={() => setShowAddForm(true)}>
+            <FiPlus /> Add Lead
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="cl-stats-grid">
+        <div className="cl-stat-card">
+          <div className="cl-stat-icon" style={{ background: '#eff6ff' }}>
+            <FiUser style={{ color: '#3b82f6' }} />
+          </div>
+          <div className="cl-stat-info">
+            <span className="cl-stat-number">{stats.total}</span>
+            <span className="cl-stat-label">Total Leads</span>
+          </div>
+        </div>
+        <div className="cl-stat-card">
+          <div className="cl-stat-icon" style={{ background: '#dbeafe' }}>
+            <FiActivity style={{ color: '#1d4ed8' }} />
+          </div>
+          <div className="cl-stat-info">
+            <span className="cl-stat-number">{stats.cold}</span>
+            <span className="cl-stat-label">Cold Leads</span>
+          </div>
+        </div>
+        <div className="cl-stat-card">
+          <div className="cl-stat-icon" style={{ background: '#fef3c7' }}>
+            <FiActivity style={{ color: '#b45309' }} />
+          </div>
+          <div className="cl-stat-info">
+            <span className="cl-stat-number">{stats.warm}</span>
+            <span className="cl-stat-label">Warm Leads</span>
+          </div>
+        </div>
+        <div className="cl-stat-card">
+          <div className="cl-stat-icon" style={{ background: '#dcfce7' }}>
+            <FiChevronRight style={{ color: '#15803d' }} />
+          </div>
+          <div className="cl-stat-info">
+            <span className="cl-stat-number">{stats.qualified}</span>
+            <span className="cl-stat-label">Qualified</span>
+          </div>
+        </div>
+        <div className="cl-stat-card">
+          <div className="cl-stat-icon" style={{ background: '#f3e8ff' }}>
+            <FiBriefcase style={{ color: '#7c3aed' }} />
+          </div>
+          <div className="cl-stat-info">
+            <span className="cl-stat-number">{stats.active}</span>
+            <span className="cl-stat-label">Active</span>
           </div>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-title">Total Leads</div>
-            <div className="stat-icon" style={{ backgroundColor: '#3B82F6' }}>
-              <FiUser />
-            </div>
-          </div>
-          <div className="stat-value">{stats.total}</div>
-          <div className="stat-change positive">
-            <span>+12%</span>
-            <span>from last month</span>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-title">New Leads</div>
-            <div className="stat-icon" style={{ backgroundColor: '#10B981' }}>
-              <FiPlus />
-            </div>
-          </div>
-          <div className="stat-value">{stats.new}</div>
-          <div className="stat-change positive">
-            <span>+8%</span>
-            <span>this week</span>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-title">In Progress</div>
-            <div className="stat-icon" style={{ backgroundColor: '#F59E0B' }}>
-              <FiActivity />
-            </div>
-          </div>
-          <div className="stat-value">{stats.inProgress}</div>
-          <div className="stat-change positive">
-            <span>+5%</span>
-            <span>active leads</span>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-title">Converted</div>
-            <div className="stat-icon" style={{ backgroundColor: '#8B5CF6' }}>
-              <FiStar />
-            </div>
-          </div>
-          <div className="stat-value">{stats.converted}</div>
-          <div className="stat-change positive">
-            <span>+15%</span>
-            <span>conversion rate</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Table Header with Search and Filters */}
-      <div className="table-header">
-        <div className="table-header-left">
-          <h3>All leads ({filteredLeads.length})</h3>
-        </div>
-        <div className="table-header-right">
-          <div className="search-container">
-            <FiSearch className="search-icon" />
+      {/* Toolbar */}
+      <div className="cl-toolbar">
+        <div className="cl-toolbar-left">
+          <div className="cl-search-box">
+            <FiSearch />
             <input
               type="text"
               placeholder="Search leads..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
             />
           </div>
-          <div className="filter-controls">
-          <select 
-            value={selectedFilter} 
-            onChange={(e) => setSelectedFilter(e.target.value)}
-              className="filter-select"
-          >
-            {filterOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
-            >
-              {statusOptions.map(status => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-            <select 
-              value={filterSource} 
-              onChange={(e) => setFilterSource(e.target.value)}
-              className="filter-select"
-            >
-              {sourceOptions.map(source => (
-                <option key={source} value={source}>
-                  {source}
-              </option>
-            ))}
+        </div>
+        <div className="cl-toolbar-right">
+          <select className="cl-filter-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <option value="All">All Statuses</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-            <button
-              onClick={handleExportLeads}
-              className="add-lead-btn"
-              style={{ backgroundColor: '#6B7280' }}
-            >
-              <FiDownload />
-              Export
-            </button>
-            <label className="add-lead-btn" style={{ backgroundColor: '#8B5CF6', cursor: 'pointer' }}>
-              <FiUpload />
-              Import
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportLeads}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <button
-              onClick={handleAddClientClick}
-              className="add-lead-btn"
-            >
-              <FiPlus />
-              Add Lead
-            </button>
-          </div>
+          <span className="cl-result-count">{leads.length} lead{leads.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
-      
-      {/* Custom Date Range Section */}
-      {selectedFilter === 'custom' && (
-        <div className="custom-date-range">
-          <h3>Custom Date Range</h3>
-          <div className="date-inputs">
-            <input
-              type="date"
-              value={customDateFrom}
-              onChange={(e) => setCustomDateFrom(e.target.value)}
-              className="date-input"
-              placeholder="From Date"
-            />
-            <span>to</span>
-            <input
-              type="date"
-              value={customDateTo}
-              onChange={(e) => setCustomDateTo(e.target.value)}
-              className="date-input"
-              placeholder="To Date"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Add Lead Form */}
       {showAddForm && (
-        <div className="add-lead-form">
-          <h3>Add New Lead</h3>
-          <form onSubmit={handleAddClient}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Name *</label>
-                <input
-                  type="text"
-                  value={newClient.name}
-                  onChange={(e) => setNewClient({...newClient, name: e.target.value})}
-                  required
-                  className="form-input"
-                  placeholder="Enter lead name"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email *</label>
-                <input
-                  type="email"
-                  value={newClient.email}
-                  onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                  required
-                  className="form-input"
-                  placeholder="Enter email address"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input
-                  type="tel"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                  className="form-input"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Company</label>
-                <input
-                  type="text"
-                  value={newClient.company}
-                  onChange={(e) => setNewClient({...newClient, company: e.target.value})}
-                  className="form-input"
-                  placeholder="Enter company name"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Source</label>
-                <select
-                  value={newClient.source}
-                  onChange={(e) => setNewClient({...newClient, source: e.target.value})}
-                  className="form-select"
-                >
-                  <option value="Website">Website</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Social Media">Social Media</option>
-                  <option value="Email Campaign">Email Campaign</option>
-                  <option value="LinkedIn">LinkedIn</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <input
-                  type="text"
-                  value={newClient.notes}
-                  onChange={(e) => setNewClient({...newClient, notes: e.target.value})}
-                  className="form-input"
-                  placeholder="Add notes about this lead"
-                />
-              </div>
+        <div className="noxtm-overlay" onClick={() => setShowAddForm(false)}>
+          <div className="cl-modal" onClick={e => e.stopPropagation()}>
+            <div className="cl-modal-header">
+              <h2>Add New Lead</h2>
+              <button className="cl-modal-close" onClick={() => setShowAddForm(false)}><FiX /></button>
             </div>
-            <div className="form-actions">
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary"
-              >
-                Add Lead
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleAddLead} className="cl-modal-form">
+              <div className="cl-form-row">
+                <div className="cl-form-group">
+                  <label>Company Name <span className="cl-req">*</span></label>
+                  <input type="text" required placeholder="e.g. Acme Corp" value={newLead.companyName}
+                    onChange={e => setNewLead({ ...newLead, companyName: e.target.value })} />
+                </div>
+                <div className="cl-form-group">
+                  <label>Client Name <span className="cl-req">*</span></label>
+                  <input type="text" required placeholder="e.g. John Smith" value={newLead.clientName}
+                    onChange={e => setNewLead({ ...newLead, clientName: e.target.value })} />
+                </div>
+              </div>
+              <div className="cl-form-row">
+                <div className="cl-form-group">
+                  <label>Email <span className="cl-req">*</span></label>
+                  <input type="email" required placeholder="john@acme.com" value={newLead.email}
+                    onChange={e => setNewLead({ ...newLead, email: e.target.value })} />
+                </div>
+                <div className="cl-form-group">
+                  <label>Phone</label>
+                  <input type="tel" placeholder="+1-555-0123" value={newLead.phone}
+                    onChange={e => setNewLead({ ...newLead, phone: e.target.value })} />
+                </div>
+              </div>
+              <div className="cl-form-row">
+                <div className="cl-form-group">
+                  <label>Designation</label>
+                  <input type="text" placeholder="e.g. CTO" value={newLead.designation}
+                    onChange={e => setNewLead({ ...newLead, designation: e.target.value })} />
+                </div>
+                <div className="cl-form-group">
+                  <label>Location</label>
+                  <input type="text" placeholder="e.g. New York" value={newLead.location}
+                    onChange={e => setNewLead({ ...newLead, location: e.target.value })} />
+                </div>
+              </div>
+              <div className="cl-form-group">
+                <label>Requirements</label>
+                <textarea rows="3" placeholder="Describe what the lead needs..."
+                  value={newLead.requirements}
+                  onChange={e => setNewLead({ ...newLead, requirements: e.target.value })} />
+              </div>
+              <div className="cl-modal-actions">
+                <button type="button" className="cl-btn-cancel" onClick={() => setShowAddForm(false)}>Cancel</button>
+                <button type="submit" className="cl-btn-submit">Add Lead</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
       {/* Leads Table */}
-      <div className="leads-table-container">
-        {isLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
+      <div className="cl-table-wrapper">
+        {loading ? (
+          <div className="cl-loading">
+            <div className="cl-spinner" />
             <p>Loading leads...</p>
           </div>
-        ) : filteredLeads.length > 0 ? (
-          <table className="leads-table">
-              <thead>
+        ) : leads.length === 0 ? (
+          <div className="cl-empty">
+            <FiUser size={44} />
+            <h3>No Leads Found</h3>
+            <p>{searchTerm || filterStatus !== 'All' ? 'Try adjusting your filters' : 'Add your first lead to get started'}</p>
+          </div>
+        ) : (
+          <table className="cl-table">
+            <thead>
               <tr>
-                <th><input type="checkbox" /></th>
-                <th>Lead Details</th>
+                <th>Lead</th>
                 <th>Company</th>
+                <th>Contact</th>
                 <th>Status</th>
-                <th>Source</th>
+                <th>Follow-Up</th>
                 <th>Date</th>
-                <th>Priority</th>
                 <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLeads.map(lead => (
-                <tr key={lead.id} onClick={() => handleLeadClick(lead)}>
-                  <td><input type="checkbox" /></td>
-                  <td>
-                    <div className="lead-details-cell">
-                      <div className="lead-avatar">
-                        {lead.name ? lead.name.charAt(0).toUpperCase() : '👤'}
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map(lead => {
+                const style = getStatusStyle(lead.status);
+                return (
+                  <tr key={lead._id} onClick={() => handleLeadClick(lead)}>
+                    <td>
+                      <div className="cl-lead-cell">
+                        <div className="cl-lead-avatar">
+                          {(lead.clientName || '?')[0].toUpperCase()}
+                        </div>
+                        <div className="cl-lead-name-info">
+                          <span className="cl-lead-name">{lead.clientName}</span>
+                          <span className="cl-lead-email">{lead.email}</span>
+                        </div>
                       </div>
-                      <div className="lead-basic-info">
-                        <h3 className="lead-name">{lead.name}</h3>
-                        <p className="lead-email">{lead.email}</p>
+                    </td>
+                    <td>
+                      <span className="cl-company-name">{lead.companyName}</span>
+                    </td>
+                    <td>
+                      <div className="cl-contact-cell">
+                        {lead.phone && <span><FiPhone size={12} /> {lead.phone}</span>}
+                        {lead.location && <span><FiMapPin size={12} /> {lead.location}</span>}
                       </div>
-                    </div>
-                  </td>
-                  <td>{lead.company || 'N/A'}</td>
-                  <td>
-                    <span 
-                      className="status-badge"
-                      style={{ backgroundColor: getStatusColor(lead.status) }}
-                    >
+                    </td>
+                    <td>
+                      <span className="cl-status-badge" style={{ background: style.bg, color: style.color }}>
                         {lead.status}
                       </span>
                     </td>
-                  <td>
-                    <span className="source-badge">{lead.source}</span>
-                  </td>
-                  <td>{new Date(lead.date).toLocaleDateString()}</td>
-                  <td>
-                    <span 
-                      className="status-badge"
-                      style={{ backgroundColor: getPriorityColor(lead.priority) }}
-                    >
-                      {lead.priority}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="actions-menu">
-                      <button 
-                        className="actions-btn" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLeadClick(lead);
-                        }}
-                      >
-                        <FiMoreHorizontal />
-                      </button>
-                    </div>
-                  </td>
+                    <td>
+                      <span className="cl-followup">{lead.followUp || '—'}</span>
+                    </td>
+                    <td>
+                      <span className="cl-date">{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}</span>
+                    </td>
+                    <td>
+                      <div className="cl-row-actions" onClick={e => e.stopPropagation()}>
+                        <button className="cl-icon-btn" title="Edit" onClick={() => handleLeadClick(lead)}>
+                          <FiEdit3 />
+                        </button>
+                        <button className="cl-icon-btn cl-icon-btn-danger" title="Delete" onClick={() => handleDeleteLead(lead._id)}>
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-        ) : (
-          <div className="no-leads-found">
-            <FiUser className="no-leads-icon" />
-            <h3>No leads found</h3>
-            <p>Try adjusting your search or filter criteria</p>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* Lead Details Side Panel */}
+      {/* Side Panel */}
       {showSidePanel && selectedLead && (
-        <LeadDetailsSidePanel
+        <LeadSidePanel
           lead={selectedLead}
-          onClose={handleCloseSidePanel}
-          isVisible={showSidePanel}
-          onDelete={handleDeleteLead}
+          onClose={() => { setShowSidePanel(false); setSelectedLead(null); }}
           onStatusChange={handleStatusChange}
+          onDelete={handleDeleteLead}
+          onUpdate={handleUpdateLead}
         />
       )}
     </div>
   );
 }
 
-// Lead Details Side Panel Component
-function LeadDetailsSidePanel({ lead, onClose, isVisible, onDelete, onStatusChange }) {
+/* ========== Lead Side Panel ========== */
+function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedLead, setEditedLead] = useState({
-    name: lead.name,
-    email: lead.email,
-    phone: lead.phone,
-    company: lead.company,
-    status: lead.status,
-    source: lead.source,
-    notes: lead.notes,
-    priority: lead.priority
+  const [form, setForm] = useState({
+    companyName: lead.companyName || '',
+    clientName: lead.clientName || '',
+    email: lead.email || '',
+    phone: lead.phone || '',
+    designation: lead.designation || '',
+    location: lead.location || '',
+    requirements: lead.requirements || '',
+    status: lead.status || 'Cold Lead'
   });
 
-  if (!lead) return null;
+  // Sync when lead prop changes
+  useEffect(() => {
+    setForm({
+      companyName: lead.companyName || '',
+      clientName: lead.clientName || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      designation: lead.designation || '',
+      location: lead.location || '',
+      requirements: lead.requirements || '',
+      status: lead.status || 'Cold Lead'
+    });
+    setIsEditing(false);
+  }, [lead]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'New': return '#3B82F6';
-      case 'In Progress': return '#F59E0B';
-      case 'Qualified': return '#10B981';
-      case 'Converted': return '#8B5CF6';
-      case 'Lost': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High': return '#EF4444';
-      case 'Medium': return '#F59E0B';
-      case 'Low': return '#10B981';
-      default: return '#6B7280';
-    }
-  };
-
-  const handleSaveChanges = () => {
-    // In a real app, this would make an API call
-    toast.success('Lead updated successfully!');
+  const handleSave = () => {
+    onUpdate(lead._id, form);
     setIsEditing(false);
   };
 
+  const handleCancel = () => {
+    setForm({
+      companyName: lead.companyName || '',
+      clientName: lead.clientName || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      designation: lead.designation || '',
+      location: lead.location || '',
+      requirements: lead.requirements || '',
+      status: lead.status || 'Cold Lead'
+    });
+    setIsEditing(false);
+  };
+
+  const statusStyle = STATUS_COLORS[lead.status] || { bg: '#f5f5f5', color: '#525252' };
+  const daysActive = lead.createdAt ? Math.max(0, Math.floor((new Date() - new Date(lead.createdAt)) / (1000 * 60 * 60 * 24))) : 0;
+
   return (
     <>
-      {/* Overlay */}
-      <div 
-        className={`side-panel-overlay ${isVisible ? 'visible' : ''}`}
-        onClick={onClose}
-      />
-      
-      {/* Side Panel */}
-      <div className={`user-details-side-panel ${isVisible ? 'visible' : ''}`}>
-        {/* Header */}
-        <div className="side-panel-header">
-          <div className="header-title">
+      <div className="noxtm-overlay--panel" onClick={onClose} />
+      <div className="cl-side-panel">
+        {/* Panel Header */}
+        <div className="cl-panel-header">
+          <div>
             <h3>{isEditing ? 'Edit Lead' : 'Lead Details'}</h3>
-            <span className="user-id">ID: {lead.id}</span>
           </div>
-          <div className="header-actions">
+          <div className="cl-panel-header-actions">
             {!isEditing && (
-              <button 
-                className="edit-btn"
-                onClick={() => setIsEditing(true)}
-                title="Edit Lead"
-              >
-                <FiEdit3 />
-              </button>
+              <button className="cl-icon-btn" onClick={() => setIsEditing(true)} title="Edit"><FiEdit3 /></button>
             )}
-            <button className="close-btn" onClick={onClose}>✕</button>
+            <button className="cl-panel-close" onClick={onClose}><FiX /></button>
           </div>
         </div>
 
-        {/* Lead Profile Section */}
-        <div className="side-panel-content">
-          <div className="user-profile-section">
-            <div className="user-avatar-large">
-              <div className="avatar-icon-large">
-                {lead.name ? lead.name.charAt(0).toUpperCase() : '👤'}
-              </div>
-              <div className={`status-indicator-large ${lead.status?.toLowerCase().replace(' ', '-')}`}></div>
+        {/* Panel Content */}
+        <div className="cl-panel-body">
+          {/* Profile */}
+          <div className="cl-panel-profile">
+            <div className="cl-panel-avatar">
+              {(lead.clientName || '?')[0].toUpperCase()}
             </div>
-            <div className="user-info-text">
+            <div className="cl-panel-profile-info">
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editedLead.name}
-                  onChange={(e) => setEditedLead({...editedLead, name: e.target.value})}
-                  className="edit-input name-input"
-                />
+                <input className="cl-edit-input cl-edit-name" value={form.clientName}
+                  onChange={e => setForm({ ...form, clientName: e.target.value })} />
               ) : (
-                <h2>{lead.name}</h2>
+                <h2>{lead.clientName}</h2>
               )}
-              <div className="user-status-info">
-                <span className="status-dot-green"></span>
-                <span className="status-text">Last contact: {new Date(lead.lastContact).toLocaleDateString()}</span>
-              </div>
-              {isEditing ? (
-                <input
-                  type="email"
-                  value={editedLead.email}
-                  onChange={(e) => setEditedLead({...editedLead, email: e.target.value})}
-                  className="edit-input email-input"
-                />
-              ) : (
-                <p className="user-email-large">
-                  <FiMail className="contact-icon" />
-                  {lead.email}
-                </p>
-              )}
+              <span className="cl-panel-company">{lead.companyName}</span>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="quick-stats">
-            <div className="stat-item">
-              <FiActivity className="stat-icon" />
-              <div className="stat-info">
-                <div className="stat-value">{lead.status}</div>
-                <div className="stat-label">Current Status</div>
+          <div className="cl-panel-stats">
+            <div className="cl-panel-stat">
+              <FiActivity className="cl-panel-stat-icon" />
+              <div>
+                <span className="cl-panel-stat-value">{lead.status}</span>
+                <span className="cl-panel-stat-label">Status</span>
               </div>
             </div>
-            <div className="stat-item">
-              <FiStar className="stat-icon" />
-              <div className="stat-info">
-                <div className="stat-value">{lead.priority}</div>
-                <div className="stat-label">Priority Level</div>
+            <div className="cl-panel-stat">
+              <FiCalendar className="cl-panel-stat-icon" />
+              <div>
+                <span className="cl-panel-stat-value">{daysActive}d</span>
+                <span className="cl-panel-stat-label">Active</span>
               </div>
             </div>
-            <div className="stat-item">
-              <FiCalendar className="stat-icon" />
-              <div className="stat-info">
-                <div className="stat-value">{Math.floor((new Date() - new Date(lead.date)) / (1000 * 60 * 60 * 24))}</div>
-                <div className="stat-label">Days Active</div>
+            <div className="cl-panel-stat">
+              <FiFileText className="cl-panel-stat-icon" />
+              <div>
+                <span className="cl-panel-stat-value">{lead.followUp || '—'}</span>
+                <span className="cl-panel-stat-label">Follow-Up</span>
               </div>
             </div>
           </div>
 
-          {/* Status and Priority Section */}
-          <div className="role-status-section">
-            <div className="role-status-item">
-              <label className="field-label">Status</label>
-              {isEditing ? (
-                <select
-                  value={editedLead.status}
-                  onChange={(e) => setEditedLead({...editedLead, status: e.target.value})}
-                  className="edit-select"
-                >
-                  <option value="New">New</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Qualified">Qualified</option>
-                  <option value="Converted">Converted</option>
-                  <option value="Lost">Lost</option>
-                </select>
-              ) : (
-                <span 
-                  className="role-badge-large"
-                  style={{ backgroundColor: getStatusColor(lead.status) }}
-                >
+          {/* Status */}
+          <div className="cl-panel-section">
+            <h4>Status</h4>
+            {isEditing ? (
+              <select className="cl-edit-select" value={form.status}
+                onChange={e => setForm({ ...form, status: e.target.value })}>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <div className="cl-panel-status-row">
+                <span className="cl-status-badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>
                   {lead.status}
                 </span>
-              )}
-            </div>
-            <div className="role-status-item">
-              <label className="field-label">Priority</label>
-              {isEditing ? (
-                <select
-                  value={editedLead.priority}
-                  onChange={(e) => setEditedLead({...editedLead, priority: e.target.value})}
-                  className="edit-select"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              ) : (
-                <span 
-                  className="status-badge-large"
-                  style={{ backgroundColor: getPriorityColor(lead.priority) }}
-                >
-                  {lead.priority}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div className="details-section">
-            <h4>Contact Information</h4>
-            <div className="contact-grid">
-              <div className="contact-item">
-                <FiMail className="contact-icon" />
-                <div className="contact-info">
-                  <div className="contact-label">Email</div>
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      value={editedLead.email}
-                      onChange={(e) => setEditedLead({...editedLead, email: e.target.value})}
-                      className="edit-input contact-input"
-                    />
-                  ) : (
-                    <div className="contact-value">{lead.email}</div>
-                  )}
-                </div>
-              </div>
-              <div className="contact-item">
-                <FiPhone className="contact-icon" />
-                <div className="contact-info">
-                  <div className="contact-label">Phone</div>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedLead.phone}
-                      onChange={(e) => setEditedLead({...editedLead, phone: e.target.value})}
-                      className="edit-input contact-input"
-                    />
-                  ) : (
-                    <div className="contact-value">{lead.phone}</div>
-                  )}
-                </div>
-              </div>
-              <div className="contact-item">
-                <FiMapPin className="contact-icon" />
-                <div className="contact-info">
-                  <div className="contact-label">Company</div>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedLead.company}
-                      onChange={(e) => setEditedLead({...editedLead, company: e.target.value})}
-                      className="edit-input contact-input"
-                    />
-                  ) : (
-                    <div className="contact-value">{lead.company || 'N/A'}</div>
-                  )}
-                </div>
-              </div>
-              <div className="contact-item">
-                <FiCalendar className="contact-icon" />
-                <div className="contact-info">
-                  <div className="contact-label">Created Date</div>
-                  <div className="contact-value">{new Date(lead.date).toLocaleDateString()}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Lead Information */}
-          <div className="details-section">
-            <h4>Lead Information</h4>
-            <div className="professional-grid">
-              <div className="professional-item">
-                <div className="professional-label">Source</div>
-                {isEditing ? (
-                  <select
-                    value={editedLead.source}
-                    onChange={(e) => setEditedLead({...editedLead, source: e.target.value})}
-                    className="edit-select"
-                  >
-                    <option value="Website">Website</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Social Media">Social Media</option>
-                    <option value="Email Campaign">Email Campaign</option>
-                    <option value="LinkedIn">LinkedIn</option>
-                    <option value="Other">Other</option>
-                  </select>
-                ) : (
-                  <div className="professional-value">{lead.source}</div>
+                {lead.convertedToClient && (
+                  <span className="cl-converted-tag">Converted to Client</span>
                 )}
               </div>
-              <div className="professional-item">
-                <div className="professional-label">Last Contact</div>
-                <div className="professional-value">{new Date(lead.lastContact).toLocaleDateString()}</div>
-              </div>
-              <div className="professional-item">
-                <div className="professional-label">Lead ID</div>
-                <div className="professional-value">#{lead.id}</div>
-              </div>
-              <div className="professional-item">
-                <div className="professional-label">Days Since Created</div>
-                <div className="professional-value">{Math.floor((new Date() - new Date(lead.date)) / (1000 * 60 * 60 * 24))} days</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes Section */}
-          <div className="details-section">
-            <h4>Notes</h4>
-            {isEditing ? (
-              <textarea
-                value={editedLead.notes}
-                onChange={(e) => setEditedLead({...editedLead, notes: e.target.value})}
-                className="edit-input"
-                rows="4"
-                placeholder="Add notes about this lead..."
-              />
-            ) : (
-              <div className="contact-value">{lead.notes || 'No notes available'}</div>
             )}
           </div>
 
-          {/* Action Buttons */}
-          {isEditing ? (
-            <div className="edit-actions">
-              <button 
-                className="save-btn"
-                onClick={handleSaveChanges}
-              >
-                Save Changes
-              </button>
-              <button 
-                className="cancel-btn"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditedLead({
-                    name: lead.name,
-                    email: lead.email,
-                    phone: lead.phone,
-                    company: lead.company,
-                    status: lead.status,
-                    source: lead.source,
-                    notes: lead.notes,
-                    priority: lead.priority
-                  });
-                }}
-              >
-                Cancel
-              </button>
+          {/* Contact Info */}
+          <div className="cl-panel-section">
+            <h4>Contact Information</h4>
+            <div className="cl-panel-info-grid">
+              <div className="cl-panel-info-item">
+                <FiMail className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Email</span>
+                  {isEditing ? (
+                    <input className="cl-edit-input" value={form.email}
+                      onChange={e => setForm({ ...form, email: e.target.value })} />
+                  ) : (
+                    <span className="cl-panel-info-value">{lead.email}</span>
+                  )}
+                </div>
+              </div>
+              <div className="cl-panel-info-item">
+                <FiPhone className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Phone</span>
+                  {isEditing ? (
+                    <input className="cl-edit-input" value={form.phone}
+                      onChange={e => setForm({ ...form, phone: e.target.value })} />
+                  ) : (
+                    <span className="cl-panel-info-value">{lead.phone || '—'}</span>
+                  )}
+                </div>
+              </div>
+              <div className="cl-panel-info-item">
+                <FiBriefcase className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Company</span>
+                  {isEditing ? (
+                    <input className="cl-edit-input" value={form.companyName}
+                      onChange={e => setForm({ ...form, companyName: e.target.value })} />
+                  ) : (
+                    <span className="cl-panel-info-value">{lead.companyName}</span>
+                  )}
+                </div>
+              </div>
+              <div className="cl-panel-info-item">
+                <FiBriefcase className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Designation</span>
+                  {isEditing ? (
+                    <input className="cl-edit-input" value={form.designation}
+                      onChange={e => setForm({ ...form, designation: e.target.value })} />
+                  ) : (
+                    <span className="cl-panel-info-value">{lead.designation || '—'}</span>
+                  )}
+                </div>
+              </div>
+              <div className="cl-panel-info-item">
+                <FiMapPin className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Location</span>
+                  {isEditing ? (
+                    <input className="cl-edit-input" value={form.location}
+                      onChange={e => setForm({ ...form, location: e.target.value })} />
+                  ) : (
+                    <span className="cl-panel-info-value">{lead.location || '—'}</span>
+                  )}
+                </div>
+              </div>
+              <div className="cl-panel-info-item">
+                <FiCalendar className="cl-panel-info-icon" />
+                <div>
+                  <span className="cl-panel-info-label">Created</span>
+                  <span className="cl-panel-info-value">
+                    {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="edit-actions">
-              <button 
-                className="save-btn"
-                onClick={() => onStatusChange(lead.id, 'Converted')}
-                style={{ backgroundColor: '#10B981' }}
-              >
-                Mark as Converted
-              </button>
-              <button 
-                className="cancel-btn"
-                onClick={() => onDelete(lead.id)}
-                style={{ backgroundColor: '#EF4444', color: 'white' }}
-              >
-                Delete Lead
-              </button>
+          </div>
+
+          {/* Social Links */}
+          {lead.social && Object.values(lead.social).some(Boolean) && (
+            <div className="cl-panel-section">
+              <h4>Social Links</h4>
+              <div className="cl-panel-social">
+                {lead.social.linkedin && (
+                  <a href={lead.social.linkedin} target="_blank" rel="noopener noreferrer" className="cl-social-link">
+                    <FiGlobe /> LinkedIn
+                  </a>
+                )}
+                {lead.social.twitter && (
+                  <a href={lead.social.twitter} target="_blank" rel="noopener noreferrer" className="cl-social-link">
+                    <FiGlobe /> Twitter
+                  </a>
+                )}
+                {lead.social.website && (
+                  <a href={lead.social.website} target="_blank" rel="noopener noreferrer" className="cl-social-link">
+                    <FiGlobe /> Website
+                  </a>
+                )}
+              </div>
             </div>
           )}
+
+          {/* Requirements */}
+          <div className="cl-panel-section">
+            <h4>Requirements</h4>
+            {isEditing ? (
+              <textarea className="cl-edit-textarea" rows="4" value={form.requirements}
+                onChange={e => setForm({ ...form, requirements: e.target.value })} />
+            ) : (
+              <p className="cl-panel-requirements">{lead.requirements || 'No requirements specified'}</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="cl-panel-actions">
+            {isEditing ? (
+              <>
+                <button className="cl-btn-submit" onClick={handleSave}>Save Changes</button>
+                <button className="cl-btn-cancel" onClick={handleCancel}>Cancel</button>
+              </>
+            ) : (
+              <>
+                {lead.status !== 'Qualified (SQL)' && (
+                  <button className="cl-btn-convert" onClick={() => onStatusChange(lead._id, 'Qualified (SQL)')}>
+                    Convert to Client
+                  </button>
+                )}
+                <button className="cl-btn-delete" onClick={() => onDelete(lead._id)}>
+                  <FiTrash2 /> Delete Lead
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>

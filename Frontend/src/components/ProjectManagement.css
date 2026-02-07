@@ -34,6 +34,34 @@
     margin: 0;
 }
 
+.pm-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pm-settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: #a3a3a3;
+    border: 1px solid #404040;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Switzer', sans-serif;
+}
+
+.pm-settings-btn:hover {
+    background: #262626;
+    color: #fff;
+    border-color: #525252;
+}
+
 .pm-add-btn {
     display: flex;
     align-items: center;
@@ -691,20 +719,6 @@
    Modal Styles
    ======================================== */
 
-.pm-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
-
 .pm-modal {
     background: white;
     border-radius: 12px;
@@ -1208,9 +1222,5 @@
     .pm-modal {
         max-height: 100%;
         border-radius: 0;
-    }
-
-    .pm-modal-overlay {
-        padding: 0;
     }
 }

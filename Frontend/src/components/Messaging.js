@@ -1118,7 +1118,7 @@ function Messaging() {
 
       {/* Create Group Modal */}
       {showCreateGroupModal && (
-        <div className="popup-x-msg-backdrop" onClick={() => setShowCreateGroupModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowCreateGroupModal(false)}>
           <div className="popup-x-msg-modal" onClick={(e) => e.stopPropagation()}>
             <div className="popup-x-msg-header">
               <h3>Create Group</h3>

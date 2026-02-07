@@ -138,7 +138,7 @@ function TradeShowImport({ onClose, onImportComplete }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Import from Trade Show</h2>

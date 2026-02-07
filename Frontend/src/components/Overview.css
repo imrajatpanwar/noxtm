@@ -7,24 +7,27 @@
 
 .overview-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    grid-template-columns: 2.5fr 0fr;
+    gap: 20px;
     align-items: start;
 }
 
-.overview-left,
+.overview-left {
+    min-height: auto;
+}
+
 .overview-right {
-    min-height: 400px;
+    min-height: auto;
+    max-width: 320px;
 }
 
 /* Revenue Graph Card */
 .revenue-graph-card {
     background: #ffffff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e5e7eb;
-    height: 100%;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid #eaeaea;
     box-sizing: border-box;
 }
 
@@ -87,7 +90,7 @@
 .graph-container {
     display: flex;
     gap: 12px;
-    height: 220px;
+    height: 180px;
 }
 
 .y-axis {
@@ -218,34 +221,48 @@
 /* Override Task Manager Widget Styles for Black/White Theme */
 .overview-right .task-manager.widget-mode {
     background: #ffffff;
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e5e7eb;
-    flex: 1;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid #eaeaea;
 }
 
 .overview-right .widget-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 14px;
+}
+
+.overview-right .widget-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .overview-right .widget-header h3 {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #1a1a1a;
     font-family: 'Switzer', sans-serif;
     margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.overview-right .task-total {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    background: #f5f5f5;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-family: 'Switzer', sans-serif;
 }
 
 .overview-right .create-btn-sm {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
     background: #1a1a1a;
     color: #ffffff;
     border: none;
@@ -253,7 +270,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
 
 .overview-right .create-btn-sm:hover {
@@ -261,78 +278,99 @@
     transform: scale(1.05);
 }
 
-/* Widget Stats */
-.overview-right .widget-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+/* Widget Stats Row - Compact Horizontal */
+.overview-right .widget-stats-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
 }
 
-.overview-right .stat-item {
+.overview-right .stat-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     background: #fafafa;
-    border-radius: 10px;
-    padding: 14px 12px;
-    text-align: center;
+    border-radius: 6px;
+    padding: 6px 8px;
     border: 1px solid #f0f0f0;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
 
-.overview-right .stat-item:hover {
+.overview-right .stat-chip:hover {
     background: #f5f5f5;
     border-color: #e5e5e5;
 }
 
-.overview-right .stat-count {
-    display: block;
-    font-size: 24px;
+.overview-right .stat-chip .stat-count {
+    font-size: 13px;
     font-weight: 700;
     color: #1a1a1a;
     font-family: 'Switzer', sans-serif;
-    line-height: 1.2;
+    line-height: 1;
 }
 
-.overview-right .stat-label {
-    display: block;
-    font-size: 11px;
+.overview-right .stat-chip .stat-label {
+    font-size: 10px;
     font-weight: 500;
-    color: #6b7280;
+    color: #888;
     font-family: 'Switzer', sans-serif;
-    margin-top: 4px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 /* Widget Tasks List */
 .overview-right .widget-tasks {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .overview-right .widget-task-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: #fafafa;
-    border-radius: 10px;
+    gap: 10px;
+    padding: 8px 10px;
+    background: transparent;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
+    transition: all 0.15s ease;
 }
 
 .overview-right .widget-task-item:hover {
-    background: #f0f0f0;
-    border-color: #e5e5e5;
-    transform: translateX(4px);
+    background: #f8f8f8;
+}
+
+.overview-right .task-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #9ca3af;
+    flex-shrink: 0;
+}
+
+.overview-right .task-status-dot[data-status="Todo"] {
+    background: #9ca3af;
+}
+
+.overview-right .task-status-dot[data-status="In Progress"] {
+    background: #3b82f6;
+}
+
+.overview-right .task-status-dot[data-status="In Review"] {
+    background: #8b5cf6;
+}
+
+.overview-right .task-status-dot[data-status="Done"] {
+    background: #22c55e;
 }
 
 .overview-right .widget-task-item .task-title {
     flex: 1;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    color: #1a1a1a;
+    color: #333;
     font-family: 'Switzer', sans-serif;
     white-space: nowrap;
     overflow: hidden;
@@ -340,50 +378,18 @@
 }
 
 .overview-right .widget-task-item .task-time {
-    font-size: 11px;
-    color: #9ca3af;
+    font-size: 10px;
+    color: #aaa;
     font-family: 'Switzer', sans-serif;
 }
 
-/* Status Badge Override */
-.overview-right .status-badge {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: 'Switzer', sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-/* Empty State */
-.overview-right .empty-state {
+/* Empty State Minimal */
+.overview-right .empty-state-minimal {
     text-align: center;
-    padding: 40px 20px;
-}
-
-.overview-right .empty-state p {
-    color: #6b7280;
-    font-size: 14px;
+    padding: 20px 16px;
+    color: #999;
+    font-size: 12px;
     font-family: 'Switzer', sans-serif;
-    margin-bottom: 16px;
-}
-
-.overview-right .empty-state button {
-    padding: 10px 20px;
-    background: #1a1a1a;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    font-family: 'Switzer', sans-serif;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.overview-right .empty-state button:hover {
-    background: #333333;
 }
 
 /* Loading and Error States */

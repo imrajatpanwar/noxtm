@@ -96,7 +96,7 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
   const fullEmail = username ? `${username}@noxtm.com` : '@noxtm.com';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay--high" onClick={onClose}>
       <div className="modal-content create-email-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Create New Email Account</h2>

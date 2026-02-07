@@ -108,10 +108,10 @@ function LeadImport({ onClose, onImportComplete }) {
   const filteredLeads = getFilteredLeads();
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Import from Leads Directory</h2>
+          <h2>Import from Leads Metrics</h2>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
 

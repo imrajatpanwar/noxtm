@@ -9,12 +9,14 @@ const companySchema = new mongoose.Schema({
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     roleInCompany: { type: String, enum: ["Owner", "Manager", "Employee"], default: "Employee" },
+    jobTitle: { type: String, default: '' },
     department: {
       type: String,
       enum: [
         "Management Team", "Digital Team", "SEO Team", "Graphic Design Team",
         "Marketing Team", "Sales Team", "Development Team", "HR Team",
-        "Finance Team", "Support Team", "Operations Team"
+        "Finance Team", "Support Team", "Operations Team",
+        "Content Team", "Legal Team", "Quality Assurance"
       ]
     },
     invitedAt: { type: Date, default: Date.now },
@@ -24,13 +26,15 @@ const companySchema = new mongoose.Schema({
     email: { type: String, required: true },
     token: { type: String, required: true },
     roleInCompany: { type: String, enum: ["Manager", "Employee"], default: "Employee" },
+    jobTitle: { type: String, default: '' },
     department: {
       type: String,
       required: true,
       enum: [
         "Management Team", "Digital Team", "SEO Team", "Graphic Design Team",
         "Marketing Team", "Sales Team", "Development Team", "HR Team",
-        "Finance Team", "Support Team", "Operations Team"
+        "Finance Team", "Support Team", "Operations Team",
+        "Content Team", "Legal Team", "Quality Assurance"
       ]
     },
     customPermissions: {
@@ -64,6 +68,11 @@ const companySchema = new mongoose.Schema({
       totalMB: { type: Number, default: 10240 },
       usedMB: { type: Number, default: 0 }
     }
+  },
+  projectSettings: {
+    onboardingEmailEnabled: { type: Boolean, default: false },
+    senderEmailAccountId: { type: String, default: '' },
+    templateId: { type: String, default: '' }
   },
   billing: {
     emailCredits: { type: Number, default: 0 },

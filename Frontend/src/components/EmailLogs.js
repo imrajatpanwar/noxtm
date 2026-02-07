@@ -315,7 +315,7 @@ function EmailLogs() {
 
       {/* Log Detail Modal */}
       {selectedLog && (
-        <div className="modal-overlay" onClick={() => setSelectedLog(null)}>
+        <div className="noxtm-overlay" onClick={() => setSelectedLog(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Email Details</h3>

@@ -8,8 +8,6 @@ import TaskManager from './TaskManager';
 import LeadsFlow from './LeadsFlow';
 import ClientLeads from './ClientLeads';
 import EmailSetup from './EmailSetup';
-import CampaignMetrics from './CampaignMetrics';
-import ConversionTracking from './ConversionTracking';
 import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
 import CaseStudies from './CaseStudies';
@@ -44,11 +42,11 @@ import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
-import OurClients from './OurClients';
-import LeadsDirectory from './LeadsDirectory';
+import LeadsMetrics from './LeadsMetrics';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
-import AIChatWidget from './AIChatWidget';
+import ChatWidget from './ChatWidget';
+import NoxtmChatAdmin from './NoxtmChatAdmin';
 import LinkedInManager from './LinkedInManager';
 import './Dashboard.css';
 
@@ -139,10 +137,10 @@ function Dashboard({ user, onLogout }) {
       // Check if user has a valid subscription (active or trial)
       const hasValidPlan = currentUser.subscription?.status === 'active' ||
         currentUser.subscription?.status === 'trial';
-      const isAdminUser = currentUser.role === 'Admin' || currentUser.role === 'Lord';
+      const isAdminUser = currentUser.role === 'Admin';
       const isCompanyMember = Boolean(currentUser.companyId);
 
-      // Allow access for: Admin/Lord, Active subscription, or Company member
+      // Allow access for: Admin, Active subscription, or Company member
       if (!isAdminUser && !hasValidPlan && !isCompanyMember) {
         // Redirect to pricing if no valid plan and not a company member
         navigate('/pricing');
@@ -196,14 +194,8 @@ function Dashboard({ user, onLogout }) {
         return <ClientManagement />;
       case 'client-leads':
         return <ClientLeads />;
-      case 'our-clients':
-        return <OurClients />;
-      case 'leads-directory':
-        return <LeadsDirectory />;
-      case 'campaign-metrics':
-        return <CampaignMetrics />;
-      case 'conversion-tracking':
-        return <ConversionTracking />;
+      case 'leads-metrics':
+        return <LeadsMetrics />;
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
       case 'exhibitor-list':
@@ -278,6 +270,8 @@ function Dashboard({ user, onLogout }) {
         return <SeoInsights />;
       case 'linkedin':
         return <LinkedInManager />;
+      case 'noxtm-chat':
+        return <NoxtmChatAdmin />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
       default:
@@ -323,8 +317,8 @@ function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
-      {/* AI Chat Widget */}
-      <AIChatWidget />
+      {/* Chat Widget */}
+      <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
     </div>
   );
 }

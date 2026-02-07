@@ -32,7 +32,7 @@ const tradeShowSchema = new mongoose.Schema({
   },
   industry: {
     type: String,
-    enum: ['Technology', 'Healthcare', 'Manufacturing', 'Retail', 'Other', ''],
+    trim: true,
     default: ''
   },
   eacDeadline: {

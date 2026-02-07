@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiX, FiMessageSquare, FiClock, FiAlertCircle, FiCheck, FiMoreHorizontal, FiUser, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiX, FiMessageSquare, FiClock, FiCheck, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight, FiSearch, FiExternalLink, FiMoreHorizontal } from 'react-icons/fi';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import './TaskManager.css';
@@ -46,16 +46,9 @@ const PriorityBadge = ({ priority }) => {
 
 // Status badge component
 const StatusBadge = ({ status }) => {
-    const colors = {
-        'Todo': { bg: '#f5f5f5', color: '#616161' },
-        'In Progress': { bg: '#e3f2fd', color: '#1565c0' },
-        'In Review': { bg: '#f3e5f5', color: '#7b1fa2' },
-        'Done': { bg: '#e8f5e9', color: '#2e7d32' }
-    };
-    const style = colors[status] || colors['Todo'];
-
+    const statusClass = status?.toLowerCase().replace(/\s+/g, '-') || 'todo';
     return (
-        <span className="status-badge" style={{ backgroundColor: style.bg, color: style.color }}>
+        <span className={`status-badge ${statusClass}`}>
             {status}
         </span>
     );
@@ -98,14 +91,72 @@ const UserAvatar = ({ user, size = 28 }) => {
 };
 
 // Comment thread component
-const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId }) => {
+const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId, companyUsers }) => {
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyContent, setReplyContent] = useState('');
     const [expandedThreads, setExpandedThreads] = useState({});
+    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+    const [mentionSearch, setMentionSearch] = useState('');
+    const [mentionPosition, setMentionPosition] = useState(0);
+    const [mentionInputType, setMentionInputType] = useState('main'); // 'main' or 'reply'
 
     const topLevelComments = comments.filter(c => !c.parentId);
     const getReplies = (parentId) => comments.filter(c => c.parentId === parentId);
+
+    const handleInputChange = (e, isReply = false) => {
+        const value = e.target.value;
+        const cursorPosition = e.target.selectionStart;
+        
+        if (isReply) {
+            setReplyContent(value);
+        } else {
+            setNewComment(value);
+        }
+
+        // Check for @ mention
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+        
+        if (lastAtIndex !== -1) {
+            const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+            // Check if there's a space after @, if yes, don't show dropdown
+            if (!textAfterAt.includes(' ')) {
+                setMentionSearch(textAfterAt);
+                setMentionPosition(lastAtIndex);
+                setShowMentionDropdown(true);
+                setMentionInputType(isReply ? 'reply' : 'main');
+            } else {
+                setShowMentionDropdown(false);
+            }
+        } else {
+            setShowMentionDropdown(false);
+        }
+    };
+
+    const handleMentionSelect = (user) => {
+        const currentValue = mentionInputType === 'reply' ? replyContent : newComment;
+        const beforeMention = currentValue.substring(0, mentionPosition);
+        const afterMention = currentValue.substring(mentionPosition + mentionSearch.length + 1);
+        const newValue = `${beforeMention}@${user.fullName || user.name} ${afterMention}`;
+        
+        if (mentionInputType === 'reply') {
+            setReplyContent(newValue);
+        } else {
+            setNewComment(newValue);
+        }
+        
+        setShowMentionDropdown(false);
+        setMentionSearch('');
+    };
+
+    const filteredUsers = companyUsers?.filter(user => {
+        const searchLower = mentionSearch.toLowerCase();
+        const fullName = (user.fullName || user.name || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        return fullName.includes(searchLower) || email.includes(searchLower);
+    }) || [];
+
 
     const handleSubmitComment = async (e, parentId = null) => {
         e.preventDefault();
@@ -169,13 +220,33 @@ const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId }) => {
 
                 {replyingTo === comment._id && (
                     <form onSubmit={(e) => handleSubmitComment(e, comment._id)} className="reply-form">
-                        <input
-                            type="text"
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Write a reply..."
-                            autoFocus
-                        />
+                        <div className="comment-input-wrapper">
+                            <input
+                                type="text"
+                                value={replyContent}
+                                onChange={(e) => handleInputChange(e, true)}
+                                placeholder="Write a reply..."
+                                autoFocus
+                            />
+                            {showMentionDropdown && mentionInputType === 'reply' && (
+                                <div className="mention-dropdown">
+                                    {filteredUsers.length > 0 ? (
+                                        filteredUsers.map(user => (
+                                            <div
+                                                key={user._id}
+                                                className="mention-option"
+                                                onClick={() => handleMentionSelect(user)}
+                                            >
+                                                <UserAvatar user={user} size={20} />
+                                                <span>{user.fullName || user.name}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="mention-option no-results">No users found</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                         <button type="submit" disabled={!replyContent.trim()}>
                             <FiSend size={14} />
                         </button>
@@ -201,12 +272,32 @@ const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId }) => {
                 )}
             </div>
             <form onSubmit={(e) => handleSubmitComment(e)} className="new-comment-form">
-                <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Add a comment..."
-                />
+                <div className="comment-input-wrapper">
+                    <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => handleInputChange(e, false)}
+                        placeholder="Add a comment..."
+                    />
+                    {showMentionDropdown && mentionInputType === 'main' && (
+                        <div className="mention-dropdown">
+                            {filteredUsers.length > 0 ? (
+                                filteredUsers.map(user => (
+                                    <div
+                                        key={user._id}
+                                        className="mention-option"
+                                        onClick={() => handleMentionSelect(user)}
+                                    >
+                                        <UserAvatar user={user} size={20} />
+                                        <span>{user.fullName || user.name}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="mention-option no-results">No users found</div>
+                            )}
+                        </div>
+                    )}
+                </div>
                 <button type="submit" disabled={!newComment.trim()}>
                     <FiSend size={16} />
                 </button>
@@ -273,7 +364,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="noxtm-overlay" onClick={onClose}>
             <div className="create-task-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Create New Task</h2>
@@ -388,6 +479,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
 const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUserId }) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(task.title);
+    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
 
     const handleStatusChange = async (newStatus) => {
         try {
@@ -395,6 +487,20 @@ const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUs
             onTaskUpdated();
         } catch (error) {
             console.error('Error updating status:', error);
+        }
+    };
+
+    const handleAssigneeToggle = async (userId) => {
+        try {
+            const currentAssigneeIds = task.assignees?.map(a => a._id) || [];
+            const newAssignees = currentAssigneeIds.includes(userId)
+                ? currentAssigneeIds.filter(id => id !== userId)
+                : [...currentAssigneeIds, userId];
+            
+            await api.put(`/tasks/${task._id}`, { assignees: newAssignees });
+            onTaskUpdated();
+        } catch (error) {
+            console.error('Error updating assignees:', error);
         }
     };
 
@@ -426,139 +532,220 @@ const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUs
 
     return (
         <div className="task-detail-panel">
-            <div className="panel-header">
-                <button className="close-btn" onClick={onClose}>
-                    <FiX size={20} />
+            <div className="panel-header-task">
+                <button className="panel-close-btn" onClick={onClose}>
+                    <FiX size={18} />
                 </button>
-                <button className="delete-btn" onClick={handleDelete}>
-                    Delete
-                </button>
+                <div className="panel-header-content">
+                    <div className="panel-title-section">
+                        {isEditingTitle ? (
+                            <input
+                                type="text"
+                                value={editedTitle}
+                                onChange={(e) => setEditedTitle(e.target.value)}
+                                onBlur={handleTitleSave}
+                                onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                                autoFocus
+                                className="panel-title-input"
+                            />
+                        ) : (
+                            <h2 className="panel-title" onClick={() => setIsEditingTitle(true)}>{task.title}</h2>
+                        )}
+                        {task.description && (
+                            <p className="panel-description-header">{task.description}</p>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div className="panel-content">
-                <div className="task-title-section">
-                    {isEditingTitle ? (
-                        <input
-                            type="text"
-                            value={editedTitle}
-                            onChange={(e) => setEditedTitle(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                            autoFocus
-                            className="title-input"
-                        />
-                    ) : (
-                        <h2 onClick={() => setIsEditingTitle(true)}>{task.title}</h2>
-                    )}
+                <div className="panel-field">
+                    <label className="panel-label">
+                        <span className="panel-label-text">STATUS</span>
+                    </label>
+                    <div className="panel-status-buttons">
+                        {['Todo', 'In Progress', 'In Review', 'Done'].map(status => (
+                            <button
+                                key={status}
+                                className={`panel-status-btn ${task.status === status ? 'active' : ''}`}
+                                onClick={() => handleStatusChange(status)}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="task-meta">
-                    <div className="meta-item">
-                        <span className="meta-label">Status</span>
-                        <div className="status-selector">
-                            {['Todo', 'In Progress', 'In Review', 'Done'].map(status => (
-                                <button
-                                    key={status}
-                                    className={`status-option ${task.status === status ? 'active' : ''}`}
-                                    onClick={() => handleStatusChange(status)}
-                                >
-                                    {status}
-                                </button>
-                            ))}
+                <div className="panel-meta-row">
+                    <div className="panel-meta-left">
+                        <div className="panel-field-inline">
+                            <label className="panel-label-inline">PRIORITY</label>
+                            <PriorityBadge priority={task.priority} />
                         </div>
-                    </div>
-                    <div className="meta-item">
-                        <span className="meta-label">Priority</span>
-                        <PriorityBadge priority={task.priority} />
-                    </div>
-                    <div className="meta-item">
-                        <span className="meta-label">Assignees</span>
-                        <div className="assignees-list">
-                            {task.assignees?.length > 0 ? (
-                                task.assignees.map(user => (
-                                    <div key={user._id} className="assignee-chip">
-                                        <UserAvatar user={user} size={20} />
-                                        <span>{user.fullName}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <span className="no-assignees">No assignees</span>
-                            )}
-                        </div>
-                    </div>
-                    {task.dueDate && (
-                        <div className="meta-item">
-                            <span className="meta-label">Due Date</span>
-                            <span className="due-date">
-                                <FiCalendar size={14} />
-                                {new Date(task.dueDate).toLocaleDateString()}
+                        {task.dueDate && (
+                            <div className="panel-field-inline">
+                                <label className="panel-label-inline">DUE DATE</label>
+                                <span className="panel-due-date-inline">
+                                    <FiCalendar size={12} />
+                                    {new Date(task.dueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                                </span>
+                            </div>
+                        )}
+                        <div className="panel-field-inline">
+                            <span className="panel-created-inline">
+                                <FiClock size={12} />
+                                {formatRelativeTime(task.createdAt)} by {task.createdBy?.fullName || 'Unknown'}
                             </span>
                         </div>
-                    )}
-                    <div className="meta-item">
-                        <span className="meta-label">Created</span>
-                        <span className="created-info">
-                            <FiClock size={14} />
-                            {formatRelativeTime(task.createdAt)} by {task.createdBy?.fullName || 'Unknown'}
-                        </span>
                     </div>
                 </div>
 
-                {task.description && (
-                    <div className="task-description">
-                        <h4>Description</h4>
-                        <p>{task.description}</p>
+                <div className="panel-section">
+                    <div className="panel-section-header">
+                        <label className="panel-label">
+                            <span className="panel-label-text">ASSIGNEES</span>
+                        </label>
+                        <button 
+                            className="panel-add-btn" 
+                            onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                            title="Add assignee"
+                        >
+                            <FiPlus />
+                        </button>
                     </div>
-                )}
+                    <div className="panel-assignee-dropdown">
+                            {showAssigneeDropdown && (
+                                <div className="panel-assignee-menu">
+                                    {companyUsers.map(user => {
+                                        const isAssigned = task.assignees?.some(a => a._id === user._id);
+                                        return (
+                                            <div
+                                                key={user._id}
+                                                className={`panel-assignee-option ${isAssigned ? 'selected' : ''}`}
+                                                onClick={() => handleAssigneeToggle(user._id)}
+                                            >
+                                                <UserAvatar user={user} size={20} />
+                                                <span>{user.fullName || user.name || user.email}</span>
+                                                {isAssigned && <FiCheck size={14} style={{ marginLeft: 'auto' }} />}
+                                            </div>
+                                        );
+                                    })}
+                                    {companyUsers.length === 0 && (
+                                        <div className="panel-assignee-option" style={{ cursor: 'default', color: '#9ca3af' }}>
+                                            No team members available
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <div className="panel-field-content">
+                                {task.assignees?.length > 0 ? (
+                                    <div className="panel-assignees">
+                                        {task.assignees.map(user => (
+                                            <div key={user._id} className="panel-assignee">
+                                                <UserAvatar user={user} size={20} />
+                                                <span>{user.fullName}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className="panel-empty-text">No assignees</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
-                <div className="task-comments">
-                    <h4>
-                        <FiMessageSquare size={16} />
-                        Comments ({task.comments?.length || 0})
-                    </h4>
+                <div className="panel-section">
+                    <div className="panel-section-header">
+                        <label className="panel-label">
+                            <FiMessageSquare size={14} />
+                        </label>
+                        <span className="panel-comments-label">COMMENTS ({task.comments?.length || 0})</span>
+                    </div>
                     <CommentThread
                         comments={task.comments || []}
                         taskId={task._id}
                         onCommentAdded={onTaskUpdated}
                         currentUserId={currentUserId}
+                        companyUsers={companyUsers}
                     />
                 </div>
+            </div>
+
+            <div className="panel-delete-section">
+                <button className="panel-delete-btn" onClick={handleDelete}>
+                    Delete Task
+                </button>
             </div>
         </div>
     );
 };
 
-// Task Card Component
-const TaskCard = ({ task, onClick }) => {
+// Task Row Component (List-based design)
+const TaskRow = ({ task, onClick, onStatusChange }) => {
+    const [isChecked, setIsChecked] = useState(task.status === 'Done');
+
+    const handleCheckboxChange = async (e) => {
+        e.stopPropagation();
+        const newStatus = isChecked ? 'Todo' : 'Done';
+        setIsChecked(!isChecked);
+        if (onStatusChange) {
+            await onStatusChange(task._id, newStatus);
+        }
+    };
+
     return (
-        <div className="task-card" onClick={onClick}>
-            <div className="task-card-header">
-                <PriorityBadge priority={task.priority} />
-                <span className="task-time">{formatRelativeTime(task.createdAt)}</span>
-            </div>
-            <h4 className="task-title">{task.title}</h4>
-            {task.description && (
-                <p className="task-description-preview">
-                    {task.description.length > 80
-                        ? task.description.substring(0, 80) + '...'
-                        : task.description}
-                </p>
-            )}
-            <div className="task-card-footer">
-                <div className="task-assignees">
-                    {task.assignees?.slice(0, 3).map((user, idx) => (
-                        <UserAvatar key={user._id} user={user} size={24} />
-                    ))}
-                    {task.assignees?.length > 3 && (
-                        <span className="more-assignees">+{task.assignees.length - 3}</span>
+        <div className="task-row" onClick={onClick}>
+            <input
+                type="checkbox"
+                className="task-row-checkbox"
+                checked={isChecked}
+                onChange={handleCheckboxChange}
+                onClick={(e) => e.stopPropagation()}
+            />
+            <div className="task-row-main">
+                <div className="task-row-content">
+                    <h4 className="task-row-title">{task.title}</h4>
+                    {task.description && (
+                        <p className="task-row-description">
+                            {task.description.length > 100
+                                ? task.description.substring(0, 100) + '...'
+                                : task.description}
+                        </p>
                     )}
                 </div>
+                <div className="task-row-meta">
+                    <PriorityBadge priority={task.priority} />
+                    {task.dueDate && (
+                        <span className="task-row-due">
+                            <FiCalendar size={12} />
+                            {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
+                    <div className="task-row-assignees">
+                        {task.assignees?.slice(0, 2).map((user) => (
+                                <UserAvatar key={user._id} user={user} size={24} />
+                        ))}
+                        {task.assignees?.length > 2 && (
+                            <span className="more-assignees">+{task.assignees.length - 2}</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="task-row-actions">
+                <StatusBadge status={task.status} />
                 {task.comments?.length > 0 && (
-                    <span className="comment-count">
+                    <span className="task-row-comments">
                         <FiMessageSquare size={14} />
                         {task.comments.length}
                     </span>
                 )}
+                <span className="task-row-time">{formatRelativeTime(task.createdAt)}</span>
+                <button className="task-row-action-btn" onClick={(e) => { e.stopPropagation(); onClick(); }} title="Open task">
+                    <FiExternalLink size={16} />
+                </button>
+                <button className="task-row-action-btn" title="More options">
+                    <FiMoreHorizontal size={16} />
+                </button>
             </div>
         </div>
     );
@@ -574,8 +761,10 @@ function TaskManager({ isWidget = false }) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [companyUsers, setCompanyUsers] = useState([]);
     const [stats, setStats] = useState({ Todo: 0, 'In Progress': 0, 'In Review': 0, Done: 0 });
+    const [searchQuery, setSearchQuery] = useState('');
 
-    const statuses = ['Todo', 'In Progress', 'In Review', 'Done'];
+    // Status order: In Review, Todo, In Progress, Done
+    const statuses = ['In Review', 'Todo', 'In Progress', 'Done'];
 
     const fetchTasks = useCallback(async () => {
         try {
@@ -628,8 +817,6 @@ function TaskManager({ isWidget = false }) {
         }
     };
 
-    const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
-
     if (loading) {
         return (
             <div className={`task-manager ${isWidget ? 'widget-mode' : ''}`}>
@@ -648,33 +835,36 @@ function TaskManager({ isWidget = false }) {
 
     // Widget mode - simplified view for Overview
     if (isWidget) {
-        const recentTasks = tasks.slice(0, 5);
+        const recentTasks = tasks.slice(0, 4);
+        const totalTasks = tasks.length;
         return (
             <div className="task-manager widget-mode">
                 <div className="widget-header">
-                    <h3>Task Manager</h3>
+                    <div className="widget-title-row">
+                        <h3>Tasks</h3>
+                        <span className="task-total">{totalTasks}</span>
+                    </div>
                     <button className="create-btn-sm" onClick={() => setIsCreateModalOpen(true)}>
-                        <FiPlus size={16} />
+                        <FiPlus size={14} />
                     </button>
                 </div>
-                <div className="widget-stats">
+                <div className="widget-stats-row">
                     {statuses.map(status => (
-                        <div key={status} className="stat-item">
+                        <div key={status} className="stat-chip">
                             <span className="stat-count">{stats[status]}</span>
-                            <span className="stat-label">{status}</span>
+                            <span className="stat-label">{status === 'In Progress' ? 'Progress' : status === 'In Review' ? 'Review' : status}</span>
                         </div>
                     ))}
                 </div>
                 <div className="widget-tasks">
                     {recentTasks.length === 0 ? (
-                        <div className="empty-state">
-                            <p>No tasks yet</p>
-                            <button onClick={() => setIsCreateModalOpen(true)}>Create your first task</button>
+                        <div className="empty-state-minimal">
+                            <span>No tasks yet</span>
                         </div>
                     ) : (
                         recentTasks.map(task => (
                             <div key={task._id} className="widget-task-item" onClick={() => handleTaskClick(task)}>
-                                <StatusBadge status={task.status} />
+                                <div className="task-status-dot" data-status={task.status}></div>
                                 <span className="task-title">{task.title}</span>
                                 <span className="task-time">{formatRelativeTime(task.createdAt)}</span>
                             </div>
@@ -690,7 +880,7 @@ function TaskManager({ isWidget = false }) {
                 />
 
                 {selectedTask && (
-                    <div className="modal-overlay" onClick={() => setSelectedTask(null)}>
+                    <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
                         <div className="detail-modal" onClick={e => e.stopPropagation()}>
                             <TaskDetailPanel
                                 task={selectedTask}
@@ -706,38 +896,63 @@ function TaskManager({ isWidget = false }) {
         );
     }
 
-    // Full Task Manager view
+    const handleStatusChange = async (taskId, newStatus) => {
+        try {
+            await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+            fetchTasks();
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    };
+
+    // Filter tasks by search query
+    const filteredTasks = tasks.filter(task =>
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    // Full Task Manager view - Single list without status grouping
     return (
-        <div className="task-manager">
+        <div className="task-manager task-manager-list">
             <div className="task-manager-header">
-                <h1>Task Manager</h1>
-                <button className="create-task-btn" onClick={() => setIsCreateModalOpen(true)}>
-                    <FiPlus size={18} />
-                    Create Task
-                </button>
+                <div className="task-header-left">
+                    <h1 style={{ fontSize: '24px', fontWeight: 600 }}>Task Manager</h1>
+                    <p className="task-header-subtitle">Manage and track your team's tasks efficiently.</p>
+                </div>
+                <div className="task-header-right">
+                    <div className="task-search-box">
+                        <FiSearch size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <button className="create-task-btn" onClick={() => setIsCreateModalOpen(true)}>
+                        <FiPlus size={16} />
+                        New
+                    </button>
+                </div>
             </div>
 
-            <div className="kanban-board">
-                {statuses.map(status => (
-                    <div key={status} className="kanban-column">
-                        <div className="column-header">
-                            <h3>{status}</h3>
-                            <span className="task-count">{stats[status]}</span>
+            <div className="task-list-container">
+                <div className="task-list">
+                    {filteredTasks.length > 0 ? (
+                        filteredTasks.map(task => (
+                            <TaskRow
+                                key={task._id}
+                                task={task}
+                                onClick={() => handleTaskClick(task)}
+                                onStatusChange={handleStatusChange}
+                            />
+                        ))
+                    ) : (
+                        <div className="task-list-empty-state">
+                            <p>{searchQuery ? 'No tasks match your search.' : 'No tasks yet. Create your first task!'}</p>
                         </div>
-                        <div className="column-content">
-                            {getTasksByStatus(status).map(task => (
-                                <TaskCard
-                                    key={task._id}
-                                    task={task}
-                                    onClick={() => handleTaskClick(task)}
-                                />
-                            ))}
-                            {getTasksByStatus(status).length === 0 && (
-                                <div className="empty-column">No tasks</div>
-                            )}
-                        </div>
-                    </div>
-                ))}
+                    )}
+                </div>
             </div>
 
             <CreateTaskModal
@@ -748,7 +963,7 @@ function TaskManager({ isWidget = false }) {
             />
 
             {selectedTask && (
-                <div className="task-detail-overlay" onClick={() => setSelectedTask(null)}>
+                <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
                     <div onClick={e => e.stopPropagation()}>
                         <TaskDetailPanel
                             task={selectedTask}

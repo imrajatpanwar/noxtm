@@ -76,7 +76,7 @@ function JoinCompany({ onSignup }) {
     const strength = {
       hasUppercase: /[A-Z]/.test(password),
       hasLowercase: /[a-z]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password),
+      hasSpecialChar: /[^A-Za-z0-9\s]/.test(password),
       minLength: password.length >= 8,
     };
     strength.isValid = Object.values(strength).every(v => v);
@@ -123,8 +123,7 @@ function JoinCompany({ onSignup }) {
       const signupResponse = await api.post('/register', {
         fullName: formData.fullName,
         email: formData.email,
-        password: formData.password,
-        role: 'Employee' // Default role for invited users
+        password: formData.password
       });
 
       const signupData = signupResponse.data;
@@ -241,7 +240,10 @@ function JoinCompany({ onSignup }) {
             )}
             <div className="jc-info-item">
               <span className="jc-info-label">Your Role:</span>
-              <span className="jc-info-value">{invitationData.invitation.roleInCompany}</span>
+              <span className="jc-info-value">
+                Employee
+                {invitationData.invitation.jobTitle ? ` (${invitationData.invitation.jobTitle})` : ''}
+              </span>
             </div>
             <div className="jc-info-item">
               <span className="jc-info-label">Email:</span>

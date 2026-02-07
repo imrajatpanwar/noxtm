@@ -416,7 +416,7 @@ const SLAMonitor = () => {
 
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={handleModalClose}>
+        <div className="noxtm-overlay" onClick={handleModalClose}>
           <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingPolicy ? 'Edit SLA Policy' : 'Create SLA Policy'}</h2>

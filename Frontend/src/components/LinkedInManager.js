@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import './LinkedInManager.css';
 
-// Chrome Extension ID - Update this with your actual extension ID after loading it
-const EXTENSION_ID = 'YOUR_EXTENSION_ID_HERE';
+// Chrome Extension - Auto-detected via content script
+let DETECTED_EXTENSION_ID = null;
 
 function LinkedInManager() {
     const [sessions, setSessions] = useState([]);
@@ -15,25 +15,63 @@ function LinkedInManager() {
     const [editValue, setEditValue] = useState('');
     const [extensionInstalled, setExtensionInstalled] = useState(false);
 
-    // Check if extension is installed
+    // Check if extension is installed via content script DOM attribute or message
     const checkExtension = useCallback(async () => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-            try {
-                chrome.runtime.sendMessage(EXTENSION_ID, { action: 'ping' }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.log('Extension not detected:', chrome.runtime.lastError.message);
-                        setExtensionInstalled(false);
-                    } else if (response && response.success) {
-                        setExtensionInstalled(true);
-                    }
-                });
-            } catch (error) {
-                setExtensionInstalled(false);
-            }
-        } else {
-            setExtensionInstalled(false);
+        // Method 1: Check DOM attribute set by content script
+        const extAttr = document.documentElement.getAttribute('data-noxtm-extension');
+        const extId = document.documentElement.getAttribute('data-noxtm-extension-id');
+        if (extAttr === 'true' && extId) {
+            DETECTED_EXTENSION_ID = extId;
+            setExtensionInstalled(true);
+            return;
         }
+
+        // Method 2: Listen for postMessage from content script
+        // (handled in useEffect below)
+        setExtensionInstalled(false);
     }, []);
+
+    // Listen for extension messages via content script bridge
+    useEffect(() => {
+        const handleMessage = (event) => {
+            if (event.source !== window) return;
+            if (event.data?.type === 'NOXTM_EXTENSION_INSTALLED') {
+                DETECTED_EXTENSION_ID = event.data.extensionId;
+                setExtensionInstalled(true);
+            }
+            if (event.data?.type === 'NOXTM_EXTENSION_AUTH_SYNCED') {
+                setExtensionInstalled(true);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
+    // Helper: send message to extension via content script bridge
+    const sendToExtension = (action, payload = {}) => {
+        return new Promise((resolve) => {
+            const handler = (event) => {
+                if (event.source !== window) return;
+                if (event.data?.type === 'NOXTM_EXTENSION_RESPONSE' && event.data?.action === action) {
+                    window.removeEventListener('message', handler);
+                    resolve(event.data.response);
+                }
+            };
+            window.addEventListener('message', handler);
+
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                window.removeEventListener('message', handler);
+                resolve({ success: false, error: 'Extension communication timed out' });
+            }, 5000);
+
+            window.postMessage({
+                direction: 'from-page',
+                action,
+                payload
+            }, '*');
+        });
+    };
 
     // Fetch all sessions
     const fetchSessions = useCallback(async () => {
@@ -59,39 +97,28 @@ function LinkedInManager() {
     // Handle login via extension
     const handleLogin = async (session) => {
         if (!extensionInstalled) {
-            toast.error('Chrome Extension not installed. Please install the Noxtm LinkedIn Manager extension.');
+            toast.error('Chrome Extension not detected. Please install and reload the page.');
             return;
         }
 
         try {
-            // Send message to extension to inject the cookie
-            chrome.runtime.sendMessage(
-                EXTENSION_ID,
-                {
-                    action: 'login_request',
-                    liAtCookie: session.liAtCookie
-                },
-                async (response) => {
-                    if (chrome.runtime.lastError) {
-                        toast.error('Failed to communicate with extension');
-                        return;
-                    }
+            const response = await sendToExtension('login_request', {
+                liAtCookie: session.liAtCookie
+            });
 
-                    if (response && response.success) {
-                        toast.success(`Logging into ${session.accountName || session.profileName}...`);
+            if (response && response.success) {
+                toast.success(`Logging into ${session.accountName || session.profileName}...`);
 
-                        // Mark session as used
-                        try {
-                            await api.put(`/linkedin-sessions/${session._id}/use`);
-                            fetchSessions(); // Refresh to update lastUsed
-                        } catch (error) {
-                            console.error('Error marking session as used:', error);
-                        }
-                    } else {
-                        toast.error(response?.error || 'Failed to inject session');
-                    }
+                // Mark session as used
+                try {
+                    await api.put(`/linkedin-sessions/${session._id}/use`);
+                    fetchSessions();
+                } catch (error) {
+                    console.error('Error marking session as used:', error);
                 }
-            );
+            } else {
+                toast.error(response?.error || 'Failed to inject session');
+            }
         } catch (error) {
             console.error('Login error:', error);
             toast.error('Failed to login');
@@ -148,27 +175,20 @@ function LinkedInManager() {
         }
     };
 
-    // Send auth token to extension
-    const sendTokenToExtension = () => {
+    // Send auth token to extension via content script bridge
+    const sendTokenToExtension = async () => {
         const token = localStorage.getItem('token');
         if (!token) {
             toast.error('No auth token found. Please login again.');
             return;
         }
 
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage(
-                EXTENSION_ID,
-                { action: 'store_token', token },
-                (response) => {
-                    if (chrome.runtime.lastError) {
-                        toast.error('Failed to connect to extension');
-                    } else if (response && response.success) {
-                        toast.success('Connected to extension!');
-                        setExtensionInstalled(true);
-                    }
-                }
-            );
+        const response = await sendToExtension('store_token', { token });
+        if (response && response.success) {
+            toast.success('Connected to extension!');
+            setExtensionInstalled(true);
+        } else {
+            toast.error('Failed to connect. Make sure the extension is installed and reload the page.');
         }
     };
 
