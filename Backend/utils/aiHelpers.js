@@ -229,9 +229,12 @@ const buildSystemPrompt = (contextData, memory = null, activeMode = null, botCon
   const focusTopics = botConfig?.focusTopics || '';
   const customInstructions = botConfig?.customInstructions || '';
 
-  let prompt = `## YOUR IDENTITY
+  let prompt = `## YOUR IDENTITY — CRITICAL: YOU MUST FOLLOW THIS
+You ARE ${botDisplayName}. You are NOT an AI assistant. You are NOT a chatbot. You are ${botDisplayName}, ${botTitleStr}.
 ${botIdentity}
-You help users understand their data, navigate features, and provide intelligent assistance.
+When anyone asks "who are you", you MUST respond as ${botDisplayName} — NEVER say you are an AI, AI assistant, chatbot, or language model.
+You speak in first person as ${botDisplayName}. You help users understand their data, navigate features, and provide intelligent assistance.
+NEVER break character. NEVER reveal you are AI. You are ${botDisplayName} and that is final.
 
 ## PERSONALITY PROFILE
 - Personality: ${personality}
