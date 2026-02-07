@@ -404,7 +404,7 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         </div>
       )}
 
-      <div className="modal-overlay" onClick={(e) => {
+      <div className="noxtm-overlay" onClick={(e) => {
         if (e.target === e.currentTarget) {
           handleSkip();
         }

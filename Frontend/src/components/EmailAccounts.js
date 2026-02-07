@@ -346,7 +346,7 @@ function EmailAccounts() {
 
       {/* Create @noxtm.com Account Modal */}
       {showCreateNoxtmModal && (
-        <div className="modal-overlay" onClick={() => !submitting && setShowCreateNoxtmModal(false)}>
+        <div className="noxtm-overlay" onClick={() => !submitting && setShowCreateNoxtmModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2><FiServer /> Create @noxtm.com Email Account</h2>
@@ -462,7 +462,7 @@ function EmailAccounts() {
 
       {/* Add External Email Modal */}
       {showAddExternalModal && (
-        <div className="modal-overlay" onClick={() => !submitting && setShowAddExternalModal(false)}>
+        <div className="noxtm-overlay" onClick={() => !submitting && setShowAddExternalModal(false)}>
           <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2><FiCloud /> Add Existing Email Account</h2>
@@ -631,7 +631,7 @@ function EmailAccounts() {
 
       {/* View Credentials Modal */}
       {showCredentialsModal && selectedAccount && (
-        <div className="modal-overlay" onClick={() => setShowCredentialsModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowCredentialsModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2><FiKey /> Account Credentials</h2>

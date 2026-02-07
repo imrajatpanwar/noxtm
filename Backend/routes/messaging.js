@@ -12,6 +12,32 @@ function initializeRoutes(dependencies) {
   const router = express.Router();
   const { User, Company, Conversation, Message, authenticateToken, requireCompanyAccess, io } = dependencies;
 
+  const PERMISSION_KEYS = [
+    'dashboard',
+    'dataCenter',
+    'projects',
+    'teamCommunication',
+    'digitalMediaManagement',
+    'marketing',
+    'hrManagement',
+    'financeManagement',
+    'seoManagement',
+    'internalPolicies',
+    'settingsConfiguration'
+  ];
+
+  function sanitizeInvitationPermissions(rawPermissions) {
+    if (!rawPermissions || typeof rawPermissions !== 'object') return null;
+
+    const sanitized = {};
+    PERMISSION_KEYS.forEach((key) => {
+      sanitized[key] = rawPermissions[key] === true;
+    });
+
+    const hasAtLeastOne = Object.values(sanitized).some(v => v === true);
+    return hasAtLeastOne ? sanitized : null;
+  }
+
   // Store online users (userId -> socketId mapping)
   const onlineUsers = new Map();
 
@@ -327,7 +353,9 @@ function initializeRoutes(dependencies) {
         },
         invitation: {
           email: invitation.email,
-          roleInCompany: invitation.roleInCompany,
+          roleInCompany: 'Employee',
+          jobTitle: invitation.jobTitle || '',
+          department: invitation.department || '',
           expiresAt: invitation.expiresAt
         }
       });
@@ -402,7 +430,9 @@ function initializeRoutes(dependencies) {
       // Add user to company members
       company.members.push({
         user: userId,
-        roleInCompany: invitation.roleInCompany,
+        roleInCompany: 'Employee',
+        jobTitle: invitation.jobTitle || '',
+        department: invitation.department || undefined,
         joinedAt: new Date()
       });
 
@@ -424,19 +454,21 @@ function initializeRoutes(dependencies) {
         trialUsed: user.subscription?.trialUsed || false  // Preserve user's trial history
       };
 
-      // Give user full Noxtm permissions (matching company plan)
-      user.permissions = {
+      // Apply invitation permissions (exactly as assigned at invite time)
+      // For legacy invites without customPermissions, fall back to minimal access.
+      const invitationPermissions = sanitizeInvitationPermissions(invitation.customPermissions);
+      user.permissions = invitationPermissions || {
         dashboard: true,
-        dataCenter: true,
-        projects: true,
-        teamCommunication: true,
-        digitalMediaManagement: true,
-        marketing: true,
-        hrManagement: true,
-        financeManagement: true,
-        seoManagement: true,
-        internalPolicies: true,
-        settingsConfiguration: false // Only owner can change settings
+        dataCenter: false,
+        projects: false,
+        teamCommunication: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
       };
 
       // Update access array from permissions
@@ -462,7 +494,7 @@ function initializeRoutes(dependencies) {
         company: {
           id: company._id,
           companyName: company.companyName,
-          roleInCompany: invitation.roleInCompany
+          roleInCompany: 'Employee'
         },
         user: {
           id: user._id,
@@ -541,7 +573,9 @@ function initializeRoutes(dependencies) {
       // Add user to company members
       company.members.push({
         user: userId,
-        roleInCompany: invitation.roleInCompany,
+        roleInCompany: 'Employee',
+        jobTitle: invitation.jobTitle || '',
+        department: invitation.department || undefined,
         joinedAt: new Date()
       });
 
@@ -563,20 +597,21 @@ function initializeRoutes(dependencies) {
         trialUsed: user.subscription?.trialUsed || false  // Preserve user's trial history
       };
 
-      // Give user full Noxtm permissions (matching company plan)
-      // Company members should have same access as company owner
-      user.permissions = {
+      // Apply invitation permissions (exactly as assigned at invite time)
+      // For legacy invites without customPermissions, fall back to minimal access.
+      const invitationPermissions = sanitizeInvitationPermissions(invitation.customPermissions);
+      user.permissions = invitationPermissions || {
         dashboard: true,
-        dataCenter: true,
-        projects: true,
-        teamCommunication: true,
-        digitalMediaManagement: true,
-        marketing: true,
-        hrManagement: true,
-        financeManagement: true,
-        seoManagement: true,
-        internalPolicies: true,
-        settingsConfiguration: false // Only owner can change settings
+        dataCenter: false,
+        projects: false,
+        teamCommunication: false,
+        digitalMediaManagement: false,
+        marketing: false,
+        hrManagement: false,
+        financeManagement: false,
+        seoManagement: false,
+        internalPolicies: false,
+        settingsConfiguration: false
       };
 
       // Update access array from permissions
@@ -612,7 +647,7 @@ function initializeRoutes(dependencies) {
         company: {
           id: company._id,
           companyName: company.companyName,
-          roleInCompany: invitation.roleInCompany
+          roleInCompany: 'Employee'
         },
         user: {
           id: user._id,

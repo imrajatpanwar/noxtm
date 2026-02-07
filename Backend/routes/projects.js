@@ -3,6 +3,11 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 const Project = require('../models/Project');
+const Company = require('../models/Company');
+const EmailTemplate = require('../models/EmailTemplate');
+const UserVerifiedDomain = require('../models/UserVerifiedDomain');
+const EmailAccount = require('../models/EmailAccount');
+const { sendEmailViaSES } = require('../utils/awsSesHelper');
 
 // Get all projects (with optional filters)
 router.get('/', auth, async (req, res) => {
@@ -122,6 +127,278 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
+// Get project settings
+router.get('/settings', auth, async (req, res) => {
+    try {
+        if (!req.user.companyId) {
+            return res.json({ settings: {
+                onboardingEmailEnabled: false,
+                senderEmailAccountId: '',
+                templateId: ''
+            }});
+        }
+
+        const company = await Company.findById(req.user.companyId);
+        if (!company) {
+            return res.json({ settings: {
+                onboardingEmailEnabled: false,
+                senderEmailAccountId: '',
+                templateId: ''
+            }});
+        }
+
+        res.json({ settings: company.projectSettings || {
+            onboardingEmailEnabled: false,
+            senderEmailAccountId: '',
+            templateId: ''
+        }});
+    } catch (error) {
+        console.error('Error fetching project settings:', error);
+        res.status(500).json({ message: 'Error fetching project settings', error: error.message });
+    }
+});
+
+// Update project settings (Manager only)
+router.put('/settings', auth, async (req, res) => {
+    try {
+        // Check if user has manager permissions
+        const managerRoles = ['Owner', 'Manager', 'Admin', 'Business Admin'];
+        const userRole = req.user.role || req.user.roleInCompany;
+        
+        if (!managerRoles.includes(userRole)) {
+            return res.status(403).json({ message: 'Only managers can modify project settings' });
+        }
+
+        if (!req.user.companyId) {
+            return res.status(400).json({ message: 'Company ID required to save settings' });
+        }
+
+        const { settings } = req.body;
+
+        const company = await Company.findByIdAndUpdate(
+            req.user.companyId,
+            { $set: { projectSettings: settings } },
+            { new: true }
+        );
+
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        res.json({ 
+            success: true, 
+            settings: company.projectSettings,
+            message: 'Project settings updated successfully' 
+        });
+    } catch (error) {
+        console.error('Error updating project settings:', error);
+        res.status(500).json({ message: 'Error updating project settings', error: error.message });
+    }
+});
+
+// Helper function to send onboarding email
+async function sendOnboardingEmail(project, settings, companyId, userId) {
+    try {
+        if (!settings.onboardingEmailEnabled) {
+            return { sent: false, reason: 'Onboarding email disabled' };
+        }
+
+        if (!project.client?.email) {
+            console.log('[ONBOARDING_EMAIL] No client email provided, skipping onboarding email');
+            return { sent: false, reason: 'No client email' };
+        }
+
+        // Get company info
+        const company = await Company.findById(companyId);
+        const companyName = company?.companyName || 'Our Company';
+
+        // Determine sender email
+        let senderEmail = '';
+        let senderName = companyName;
+
+        if (settings.senderEmailAccountId?.startsWith('domain:')) {
+            // Using auto-generated noreply address
+            const domain = settings.senderEmailAccountId.replace('domain:', '');
+            senderEmail = `noreply@${domain}`;
+        } else if (settings.senderEmailAccountId) {
+            // Using specific email account
+            const account = await EmailAccount.findById(settings.senderEmailAccountId);
+            if (account) {
+                senderEmail = account.email;
+                senderName = account.displayName || companyName;
+            }
+        }
+
+        if (!senderEmail) {
+            console.log('[ONBOARDING_EMAIL] No sender email configured');
+            return { sent: false, reason: 'No sender email configured' };
+        }
+
+        // Get or generate email template
+        let subject = '';
+        let body = '';
+
+        if (settings.templateId === 'default-onboarding') {
+            // Use default onboarding template
+            subject = `Welcome to ${companyName} - ${project.projectName}`;
+            body = generateDefaultOnboardingEmail({
+                clientName: project.client.name,
+                projectName: project.projectName,
+                projectDescription: project.description || 'We look forward to working with you on this project.',
+                companyName: companyName,
+                startDate: project.startDate ? new Date(project.startDate).toLocaleDateString() : 'To be confirmed',
+                endDate: project.endDate ? new Date(project.endDate).toLocaleDateString() : 'To be confirmed'
+            });
+        } else if (settings.templateId) {
+            // Use custom template
+            const template = await EmailTemplate.findById(settings.templateId);
+            if (template) {
+                subject = replaceTemplateVariables(template.subject, {
+                    clientName: project.client.name,
+                    projectName: project.projectName,
+                    projectDescription: project.description || '',
+                    companyName: companyName,
+                    startDate: project.startDate ? new Date(project.startDate).toLocaleDateString() : '',
+                    endDate: project.endDate ? new Date(project.endDate).toLocaleDateString() : ''
+                });
+                body = replaceTemplateVariables(template.body, {
+                    clientName: project.client.name,
+                    projectName: project.projectName,
+                    projectDescription: project.description || '',
+                    companyName: companyName,
+                    startDate: project.startDate ? new Date(project.startDate).toLocaleDateString() : '',
+                    endDate: project.endDate ? new Date(project.endDate).toLocaleDateString() : ''
+                });
+            }
+        }
+
+        if (!subject || !body) {
+            console.log('[ONBOARDING_EMAIL] No template content');
+            return { sent: false, reason: 'No template content' };
+        }
+
+        // Send email via AWS SES
+        const fromAddress = `${senderName} <${senderEmail}>`;
+        
+        await sendEmailViaSES({
+            from: fromAddress,
+            to: project.client.email,
+            subject: subject,
+            html: body,
+            text: body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+        });
+
+        console.log(`[ONBOARDING_EMAIL] ✓ Sent onboarding email to ${project.client.email} for project ${project.projectName}`);
+        return { sent: true };
+
+    } catch (error) {
+        console.error('[ONBOARDING_EMAIL] ✗ Failed to send onboarding email:', error.message);
+        return { sent: false, reason: error.message };
+    }
+}
+
+// Helper function to replace template variables
+function replaceTemplateVariables(text, variables) {
+    let result = text;
+    for (const [key, value] of Object.entries(variables)) {
+        const placeholder = new RegExp(`{{${key}}}`, 'g');
+        result = result.replace(placeholder, value || '');
+    }
+    return result;
+}
+
+// Generate default onboarding email HTML
+function generateDefaultOnboardingEmail({ clientName, projectName, projectDescription, companyName, startDate, endDate }) {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fa; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Welcome Aboard! 🎉</h1>
+                            <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">Your project journey begins here</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px; color: #333; font-size: 16px; line-height: 1.6;">
+                                Dear <strong>${clientName}</strong>,
+                            </p>
+                            
+                            <p style="margin: 0 0 20px; color: #555; font-size: 15px; line-height: 1.7;">
+                                Thank you for choosing <strong>${companyName}</strong>! We're thrilled to welcome you as our client and excited to begin working on your project.
+                            </p>
+                            
+                            <!-- Project Card -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%); border-radius: 10px; margin: 25px 0; border: 1px solid #e0e7ff;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <h2 style="margin: 0 0 15px; color: #4f46e5; font-size: 18px; font-weight: 600;">
+                                            📋 Project: ${projectName}
+                                        </h2>
+                                        <p style="margin: 0 0 15px; color: #555; font-size: 14px; line-height: 1.6;">
+                                            ${projectDescription}
+                                        </p>
+                                        <table cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="padding: 5px 15px 5px 0;">
+                                                    <span style="color: #888; font-size: 12px;">START DATE</span><br>
+                                                    <strong style="color: #333; font-size: 14px;">${startDate}</strong>
+                                                </td>
+                                                <td style="padding: 5px 0 5px 15px; border-left: 1px solid #ddd;">
+                                                    <span style="color: #888; font-size: 12px;">TARGET COMPLETION</span><br>
+                                                    <strong style="color: #333; font-size: 14px;">${endDate}</strong>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin: 20px 0; color: #555; font-size: 15px; line-height: 1.7;">
+                                Our team is dedicated to delivering exceptional results. We'll keep you updated on the project progress and are always available if you have any questions.
+                            </p>
+                            
+                            <p style="margin: 20px 0 0; color: #555; font-size: 15px; line-height: 1.7;">
+                                Looking forward to a successful collaboration!
+                            </p>
+                            
+                            <p style="margin: 30px 0 0; color: #333; font-size: 15px;">
+                                Warm regards,<br>
+                                <strong>The ${companyName} Team</strong>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f9fa; padding: 25px 40px; text-align: center; border-top: 1px solid #eee;">
+                            <p style="margin: 0; color: #888; font-size: 12px;">
+                                This email was sent by ${companyName}.<br>
+                                If you have any questions, please reply to this email.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
+}
+
 // Create new project
 router.post('/', auth, async (req, res) => {
     try {
@@ -171,7 +448,32 @@ router.post('/', auth, async (req, res) => {
         const populated = await Project.findById(newProject._id)
             .populate('team', 'fullName email');
 
-        res.status(201).json(populated);
+        // Send onboarding email if enabled (non-blocking)
+        let onboardingEmailResult = null;
+        if (req.user.companyId) {
+            try {
+                const company = await Company.findById(req.user.companyId);
+                if (company?.projectSettings?.onboardingEmailEnabled) {
+                    onboardingEmailResult = await sendOnboardingEmail(
+                        populated,
+                        company.projectSettings,
+                        req.user.companyId,
+                        req.user.userId
+                    );
+                }
+            } catch (emailError) {
+                console.error('[ONBOARDING_EMAIL] Error in onboarding email process:', emailError);
+                onboardingEmailResult = { sent: false, reason: emailError.message };
+            }
+        }
+
+        // Return project with optional email status
+        const response = {
+            ...populated.toObject(),
+            _onboardingEmail: onboardingEmailResult
+        };
+
+        res.status(201).json(response);
     } catch (error) {
         console.error('Error creating project:', error);
         res.status(500).json({ message: 'Error creating project', error: error.message });

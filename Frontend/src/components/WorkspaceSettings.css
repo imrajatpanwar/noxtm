@@ -344,6 +344,130 @@
   border: 1px solid #e2e8f0;
 }
 
+/* Profile Header (Profile tab) */
+.profile-header-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.profile-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #334155, #0f172a 70%);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.profile-avatar-fallback {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  font-family: 'Switzer', sans-serif;
+  text-transform: uppercase;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.profile-name-section {
+  min-width: 0;
+}
+
+.profile-name-section h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  font-family: 'Switzer', sans-serif;
+}
+
+.profile-email {
+  margin: 4px 0 10px;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-family: 'Switzer', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 520px;
+}
+
+.profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'Switzer', sans-serif;
+}
+
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-role-badge.owner {
+  background: #111827;
+}
+
+.profile-role-badge.employee {
+  background: #0f172a;
+}
+
+.profile-title-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'Switzer', sans-serif;
+}
+
+@media (max-width: 640px) {
+  .profile-header-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-email {
+    max-width: 100%;
+  }
+}
+
 .plan-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -1082,20 +1206,6 @@ input:checked+.toggle-slider:before {
 }
 
 /* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
 .modal-content {
   background: white;
   border-radius: 16px;
@@ -1936,13 +2046,14 @@ input:checked+.toggle-slider:before {
    ======================================== */
 
 .invite-modal-redesigned {
-  max-width: 520px;
+  max-width: 640px;
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
-  max-height: 90vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
 }
 
 .invite-modal-header {
@@ -2012,6 +2123,19 @@ input:checked+.toggle-slider:before {
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  overscroll-behavior: contain;
+}
+
+.invite-modal-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  border-radius: 0 0 16px 16px;
+  flex-shrink: 0;
 }
 
 .invite-form-group {
@@ -2080,20 +2204,18 @@ input:checked+.toggle-slider:before {
 .invite-permissions-toggle {
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   padding: 14px 16px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   font-family: 'Switzer', sans-serif;
 }
 
-.invite-permissions-toggle:hover {
-  background: #f1f5f9;
-}
+
 
 .invite-permissions-toggle.active {
   border-color: #1a1a1a;
@@ -2131,10 +2253,10 @@ input:checked+.toggle-slider:before {
 .invite-permissions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 10px 14px;
   margin-top: 12px;
   padding: 16px;
-  background: #fafafa;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
 }
@@ -2143,14 +2265,15 @@ input:checked+.toggle-slider:before {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s ease;
+  user-select: none;
 }
 
 .invite-permission-item:hover {
-  background: #f1f5f9;
+  background: #eef2ff;
 }
 
 .invite-permission-item input[type="checkbox"] {
@@ -2167,6 +2290,7 @@ input:checked+.toggle-slider:before {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  background: #ffffff;
 }
 
 .invite-permission-item input:checked+.permission-checkbox {
@@ -2183,7 +2307,7 @@ input:checked+.toggle-slider:before {
 
 .permission-label {
   font-size: 0.8125rem;
-  color: #475569;
+  color: #334155;
   font-family: 'Switzer', sans-serif;
 }
 

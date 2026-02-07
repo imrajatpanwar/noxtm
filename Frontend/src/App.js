@@ -20,7 +20,6 @@ import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
 import BlogPost from './components/BlogPost';
 import Legal from './components/Legal/Legal';
-import InviteAccept from './components/InviteAccept';
 import ExtensionLogin from './components/ExtensionLogin';
 import ExtensionAuthCallback from './components/ExtensionAuthCallback';
 import CampaignDashboard from './components/CampaignDashboard';
@@ -246,7 +245,7 @@ function App() {
     }
 
     // Admin always has access
-    if (user.role === 'Admin' || user.role === 'Lord') {
+    if (user.role === 'Admin') {
       return false;
     }
 

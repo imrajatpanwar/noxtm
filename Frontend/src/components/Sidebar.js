@@ -18,8 +18,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
-  const [leadMetricsExpanded, setLeadMetricsExpanded] = useState(false);
-  const [clientsExpanded, setClientsExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -255,14 +253,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     setLeadManagementExpanded(!leadManagementExpanded);
   };
 
-  const toggleLeadMetrics = () => {
-    setLeadMetricsExpanded(!leadMetricsExpanded);
-  };
-
-  const toggleClients = () => {
-    setClientsExpanded(!clientsExpanded);
-  };
-
   const toggleSocialMedia = () => {
     setSocialMediaExpanded(!socialMediaExpanded);
   };
@@ -279,16 +269,11 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Data Center
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'Client Management', section: 'client-management', category: 'Data Center' },
     { name: 'Client Leads', section: 'client-leads', category: 'Data Center' },
-    { name: 'Our Clients', section: 'our-clients', category: 'Data Center' },
 
     // Lead Management
     { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
-    { name: 'Leads Directory', section: 'leads-directory', category: 'Lead Management' },
-    { name: 'Lead Metrics', section: 'lead-metrics', category: 'Lead Management' },
-    { name: 'Campaign Metrics', section: 'campaign-metrics', category: 'Lead Management' },
-    { name: 'Conversion Tracking', section: 'conversion-tracking', category: 'Lead Management' },
+    { name: 'Leads Metrics', section: 'leads-metrics', category: 'Lead Management' },
 
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
@@ -304,6 +289,7 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Team Communication
     { name: 'Message', section: 'message', category: 'Team Communication' },
+    { name: 'Noxtm Chat', section: 'noxtm-chat', category: 'Team Communication' },
 
     // Marketing
     { name: 'Case Studies', section: 'case-studies', category: 'Marketing' },
@@ -464,38 +450,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               </div>
 
-              {/* Clients Section */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'clients' ? 'active' : ''}`}
-                  onClick={toggleClients}
-                >
-                  <FiUsers className="sidebar-icon" />
-                  <span>Clients</span>
-                  {clientsExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {clientsExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'client-leads' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('client-leads')}
-                    >
-                      <FiUserCheck className="sidebar-icon" />
-                      <span>Client Leads</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'our-clients' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('our-clients')}
-                    >
-                      <FiUsers className="sidebar-icon" />
-                      <span>Our Clients</span>
-                    </div>
-                  </div>
-                )}
+              {/* Client Leads */}
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
+                onClick={() => onSectionChange('client-leads')}
+              >
+                <FiUserCheck className="sidebar-icon" />
+                <span>Client Leads</span>
               </div>
 
               {/* Lead Management Section */}
@@ -522,43 +483,11 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <span>Leads Flow</span>
                     </div>
                     <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'leads-directory' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('leads-directory')}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'leads-metrics' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('leads-metrics')}
                     >
                       <FiFolder className="sidebar-icon" />
-                      <span>Leads Directory</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Lead Metrics as separate section */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'lead-metrics' ? 'active' : ''}`}
-                  onClick={toggleLeadMetrics}
-                >
-                  <FiBarChart2 className="sidebar-icon" />
-                  <span>Lead Metrics</span>
-                  {leadMetricsExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {leadMetricsExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'campaign-metrics' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('campaign-metrics')}
-                    >
-                      <span>Campaign Metrics</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'conversion-tracking' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('conversion-tracking')}
-                    >
-                      <span>Conversion Tracking</span>
+                      <span>Leads Metrics</span>
                     </div>
                   </div>
                 )}
@@ -606,6 +535,16 @@ function Sidebar({ activeSection, onSectionChange }) {
                     )}
                   </div>
                 </>
+              )}
+
+              {currentUser?.role === 'Admin' && (
+                <div
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-chat' ? 'active' : ''}`}
+                  onClick={() => onSectionChange('noxtm-chat')}
+                >
+                  <FiMessageCircle className="sidebar-icon" />
+                  <span>Noxtm Chat</span>
+                </div>
               )}
 
               {/* Open Mail App - Redirects to mail app with auth token in same tab */}

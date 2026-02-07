@@ -365,7 +365,7 @@ function CampaignDetails() {
 
       {/* Test Email Modal */}
       {showTestModal && (
-        <div className="modal-overlay" onClick={() => setShowTestModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowTestModal(false)}>
           <div className="modal-content-small" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Send Test Email</h2>

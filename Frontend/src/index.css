@@ -153,3 +153,47 @@ code {
   z-index: 10000 !important;
 }
 
+/* ═══ Global Modal Overlay ═══ */
+.noxtm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: noxtm-overlay-fade 0.2s ease;
+}
+
+.noxtm-overlay--panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: noxtm-overlay-fade 0.2s ease;
+}
+
+.noxtm-overlay--high {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: noxtm-overlay-fade 0.2s ease;
+}
+
+@keyframes noxtm-overlay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

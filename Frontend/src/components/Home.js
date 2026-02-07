@@ -323,28 +323,32 @@ function Home({ user }) {
       </div>
 
       {/* Statistics Section - Below Mountain */}
-      <div className="statistics-section">
+      <div className="sr-statistics-section">
         <div className="Container-home">
-          <div className="stats-grid">
-            <div className="stat-item">
-              <h3 className="home-stat-number">581</h3>
-              <p className="stat-label">tasks automated by Noxtm</p>
+          <div className="sr-stats-grid">
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">581</h3>
+              <p className="sr-stat-label">tasks automated</p>
             </div>
-            <div className="stat-item">
-              <h3 className="home-stat-number">&gt;2 million</h3>
-              <p className="stat-label">data processed by our agents each month</p>
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">2M+</h3>
+              <p className="sr-stat-label">data processed</p>
             </div>
-            <div className="stat-item">
-              <h3 className="home-stat-number">62</h3>
-              <p className="stat-label">tools available across 19+ integrations</p>
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">62</h3>
+              <p className="sr-stat-label">integrations</p>
             </div>
-            <div className="stat-item">
-              <h3 className="home-stat-number">02</h3>
-              <p className="stat-label">AI Agent's for repetitive tasks</p>
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">02</h3>
+              <p className="sr-stat-label">AI Agents</p>
             </div>
-            <div className="stat-item">
-              <h3 className="home-stat-number">6hr</h3>
-              <p className="stat-label">Saved per teammate per week</p>
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">6hr</h3>
+              <p className="sr-stat-label">saved weekly</p>
+            </div>
+            <div className="sr-stat-item">
+              <h3 className="sr-stat-number">99.9%</h3>
+              <p className="sr-stat-label">uptime</p>
             </div>
           </div>
         </div>

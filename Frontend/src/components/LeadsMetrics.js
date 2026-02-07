@@ -3,9 +3,9 @@ import { FiSearch, FiLinkedin, FiInstagram, FiFacebook, FiGlobe, FiPlus } from '
 import { FaXTwitter } from 'react-icons/fa6';
 import { toast } from 'sonner';
 // import api from '../config/api'; // Will be used when API endpoints are ready
-import './LeadsDirectory.css';
+import './LeadsMetrics.css';
 
-function LeadsDirectory() {
+function LeadsMetrics() {
   const [leads, setLeads] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -289,7 +289,7 @@ function LeadsDirectory() {
     <div className="ld-container">
       {/* Header */}
       <div className="ld-header">
-        <h1 className="ld-title">Leads Directory</h1>
+        <h1 className="ld-title">Leads Metrics</h1>
         <button className="ld-btn-add" onClick={() => setShowAddModal(true)}>
           <FiPlus /> Add Client
         </button>
@@ -458,7 +458,7 @@ function LeadsDirectory() {
 
       {/* Add Client Modal */}
       {showAddModal && (
-        <div className="ld-modal-overlay" onClick={() => setShowAddModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowAddModal(false)}>
           <div className="ld-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ld-modal-header">
               <h2>Add New Client</h2>
@@ -616,4 +616,4 @@ function LeadsDirectory() {
   );
 }
 
-export default LeadsDirectory;
+export default LeadsMetrics;

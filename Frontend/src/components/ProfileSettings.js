@@ -694,7 +694,7 @@ function ProfileSettings({ user: initialUser, onLogout }) {
 
       {/* Plan Adjustment Modal */}
       {showPlanModal && (
-        <div className="modal-overlay" onClick={() => setShowPlanModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowPlanModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Adjust Subscription Plan</h3>
             <div className="modal-body">
@@ -740,7 +740,7 @@ function ProfileSettings({ user: initialUser, onLogout }) {
 
       {/* Add Card Modal */}
       {showCardModal && (
-        <div className="modal-overlay" onClick={() => setShowCardModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowCardModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Add Payment Method</h3>
             <div className="modal-body">
@@ -763,7 +763,7 @@ function ProfileSettings({ user: initialUser, onLogout }) {
 
       {/* Cancel Subscription Modal */}
       {showCancelModal && (
-        <div className="modal-overlay" onClick={() => setShowCancelModal(false)}>
+        <div className="noxtm-overlay" onClick={() => setShowCancelModal(false)}>
           <div className="modal-content modal-danger" onClick={(e) => e.stopPropagation()}>
             <h3>⚠️ Cancel Subscription</h3>
             <div className="modal-body">

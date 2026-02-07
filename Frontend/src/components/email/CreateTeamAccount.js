@@ -153,7 +153,7 @@ const CreateTeamAccount = ({ onClose, onCreated }) => {
 
   if (loadingDomains) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="noxtm-overlay" onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="loading">Loading domains...</div>
         </div>
@@ -163,7 +163,7 @@ const CreateTeamAccount = ({ onClose, onCreated }) => {
 
   if (verifiedDomains.length === 0) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="noxtm-overlay" onClick={onClose}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h2>Create Team Email Account</h2>
@@ -184,7 +184,7 @@ const CreateTeamAccount = ({ onClose, onCreated }) => {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content create-team-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Create Team Email Account</h2>

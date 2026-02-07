@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiMonitor, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiChevronDown, FiChevronUp, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { DEPARTMENT_DEFAULTS, DEPARTMENTS, PERMISSION_LABELS, ROLE_DEFAULTS, ROLES, ROLE_DESCRIPTIONS } from '../utils/departmentDefaults';
+import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
 import api from '../config/api';
 import exhibitosLogo from './assets/exhibitos.svg';
 import botgitLogo from './assets/botgit-logo.svg';
 import './WorkspaceSettings.css';
+
+const EMPTY_PERMISSIONS = Object.keys(PERMISSION_LABELS).reduce((acc, key) => {
+  acc[key] = false;
+  return acc;
+}, {});
 
 function WorkspaceSettings({ user, onLogout }) {
   const { isModuleInstalled, isModuleInstalling, installModule, uninstallModule } = useModules();
@@ -33,10 +38,9 @@ function WorkspaceSettings({ user, onLogout }) {
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('Employee');
+  const [inviteJobTitle, setInviteJobTitle] = useState('');
   const [inviteDepartment, setInviteDepartment] = useState('Management Team');
-  const [customPermissions, setCustomPermissions] = useState(DEPARTMENT_DEFAULTS['Management Team']);
-  const [showPermissions, setShowPermissions] = useState(false);
+  const [customPermissions, setCustomPermissions] = useState({ ...EMPTY_PERMISSIONS });
   const [generatingInvite, setGeneratingInvite] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -77,7 +81,7 @@ function WorkspaceSettings({ user, onLogout }) {
   };
 
   // Fetch company members
-  const fetchCompanyMembers = async () => {
+  const fetchCompanyMembers = useCallback(async () => {
     setLoadingMembers(true);
     try {
       const token = localStorage.getItem('token');
@@ -113,10 +117,10 @@ function WorkspaceSettings({ user, onLogout }) {
     } finally {
       setLoadingMembers(false);
     }
-  };
+  }, []);
 
   // Fetch company details
-  const fetchCompanyDetails = async () => {
+  const fetchCompanyDetails = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -140,7 +144,7 @@ function WorkspaceSettings({ user, onLogout }) {
       console.error('Error fetching company details:', error);
       setCompanyDetails(null);
     }
-  };
+  }, []);
 
   // Generate invite link
   const handleGenerateInvite = async () => {
@@ -154,12 +158,18 @@ function WorkspaceSettings({ user, onLogout }) {
       return;
     }
 
+    const hasAtLeastOnePermission = Object.values(customPermissions || {}).some(v => v === true);
+    if (!hasAtLeastOnePermission) {
+      toast.error('Select at least one permission to send an invite');
+      return;
+    }
+
     setGeneratingInvite(true);
     try {
       const response = await api.post('/company/invite', {
         email: inviteEmail,
-        roleInCompany: inviteRole,
         department: inviteDepartment,
+        jobTitle: inviteJobTitle,
         customPermissions: customPermissions
       });
 
@@ -214,32 +224,17 @@ function WorkspaceSettings({ user, onLogout }) {
   const handleCloseInviteModal = () => {
     setShowInviteModal(false);
     setInviteEmail('');
-    setInviteRole('Employee');
+    setInviteJobTitle('');
     setInviteDepartment('Management Team');
-    setCustomPermissions(DEPARTMENT_DEFAULTS['Management Team']);
-    setShowPermissions(false);
+    setCustomPermissions({ ...EMPTY_PERMISSIONS });
     setInviteLink('');
     setCopied(false);
     setInviteExpiresAt(null);
   };
 
-  // Handle department change - update default permissions
+  // Handle department change
   const handleDepartmentChange = (department) => {
     setInviteDepartment(department);
-    // Merge department permissions with current role permissions
-    const deptPerms = DEPARTMENT_DEFAULTS[department] || {};
-    const rolePerms = ROLE_DEFAULTS[inviteRole] || {};
-    setCustomPermissions({ ...deptPerms, ...rolePerms });
-  };
-
-  // Handle role change - update permissions based on role
-  const handleRoleChange = (role) => {
-    setInviteRole(role);
-    // Merge role permissions with current department permissions
-    const rolePerms = ROLE_DEFAULTS[role] || {};
-    const deptPerms = DEPARTMENT_DEFAULTS[inviteDepartment] || {};
-    // Role permissions take priority
-    setCustomPermissions({ ...deptPerms, ...rolePerms });
   };
 
   // Handle permission toggle
@@ -399,8 +394,12 @@ function WorkspaceSettings({ user, onLogout }) {
       fetchCompanyDetails();
     } else if (activeTab === 'profile') {
       fetchProfile();
+      if (user?.companyId) {
+        fetchCompanyMembers();
+        fetchCompanyDetails();
+      }
     }
-  }, [activeTab, fetchProfile]);
+  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, user?.companyId]);
 
   const renderGeneralSettings = () => (
     <div className="workspace-tab-content">
@@ -506,7 +505,7 @@ function WorkspaceSettings({ user, onLogout }) {
       return name.substring(0, 2).toUpperCase();
     };
 
-    const isOwnerOrAdmin = () => {
+    const canInviteMembers = () => {
       // If user doesn't have a company, they can't invite
       if (!user?.companyId) return false;
 
@@ -515,17 +514,20 @@ function WorkspaceSettings({ user, onLogout }) {
         return true;
       }
 
-      // Check if user is in members list with Owner or Admin role
+      // If user has custom permission to manage settings, allow inviting
+      if (user?.permissions?.settingsConfiguration === true) {
+        return true;
+      }
+
+      // Check if user is in members list with Owner role
       if (companyMembers.length > 0) {
         const currentUserMember = companyMembers.find(m => m._id === user?._id);
-        if (currentUserMember && ['Owner', 'Admin'].includes(currentUserMember.roleInCompany)) {
+        if (currentUserMember && ['Owner'].includes(currentUserMember.roleInCompany)) {
           return true;
         }
       }
 
-      // If we have companyId but details haven't loaded yet, show the button
-      // The API will validate permissions anyway
-      return user?.companyId ? true : false;
+      return false;
     };
 
     return (
@@ -552,7 +554,7 @@ function WorkspaceSettings({ user, onLogout }) {
                     {companyMembers.length} member{companyMembers.length !== 1 ? 's' : ''}
                   </div>
                 )}
-                {isOwnerOrAdmin() && (
+                {canInviteMembers() && (
                   <button className="btn-primary" onClick={() => setShowInviteModal(true)}>
                     <FiPlus /> Invite
                   </button>
@@ -582,7 +584,7 @@ function WorkspaceSettings({ user, onLogout }) {
               </div>
               <h4>No Members Yet</h4>
               <p>Start by inviting team members to your company.</p>
-              {isOwnerOrAdmin() && (
+              {canInviteMembers() && (
                 <button className="btn-primary mt-16" onClick={() => setShowInviteModal(true)}>
                   <FiPlus /> Invite First Member
                 </button>
@@ -609,7 +611,7 @@ function WorkspaceSettings({ user, onLogout }) {
                   <div className="member-card-meta">
                     <div className="member-meta-item">
                       <FiBriefcase className="meta-icon" />
-                      <span>{member.roleInCompany || 'Employee'}</span>
+                      <span>{member.roleInCompany === 'Owner' ? 'Owner' : (member.jobTitle || 'Employee')}</span>
                     </div>
                     {member.department && (
                       <div className="member-meta-item">
@@ -618,7 +620,7 @@ function WorkspaceSettings({ user, onLogout }) {
                       </div>
                     )}
                   </div>
-                  {isOwnerOrAdmin() && member._id !== companyDetails?.owner?._id && (
+                  {canInviteMembers() && member._id !== companyDetails?.owner?._id && (
                     <div className="member-card-actions">
                       <button
                         className="btn-icon-action"
@@ -649,7 +651,7 @@ function WorkspaceSettings({ user, onLogout }) {
 
         {/* Invite Modal */}
         {showInviteModal && (
-          <div className="modal-overlay" onClick={handleCloseInviteModal}>
+          <div className="noxtm-overlay" onClick={handleCloseInviteModal}>
             <div className="modal-content invite-modal-redesigned" onClick={(e) => e.stopPropagation()}>
               <div className="invite-modal-header">
                 <div className="invite-modal-header-icon">
@@ -686,20 +688,18 @@ function WorkspaceSettings({ user, onLogout }) {
                       <div className="invite-form-group">
                         <label className="invite-form-label">
                           <FiBriefcase className="label-icon" />
-                          Role
+                          Role / Title
                         </label>
-                        <select
-                          className="invite-form-select"
-                          value={inviteRole}
-                          onChange={(e) => handleRoleChange(e.target.value)}
+                        <input
+                          type="text"
+                          className="invite-form-input"
+                          placeholder="e.g. Project Manager, Designer"
+                          value={inviteJobTitle}
+                          onChange={(e) => setInviteJobTitle(e.target.value)}
                           disabled={generatingInvite}
-                        >
-                          {ROLES.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
+                        />
                         <span className="invite-form-hint">
-                          {ROLE_DESCRIPTIONS[inviteRole] || 'Select a role'}
+                          This is a label only. Access is controlled by permissions.
                         </span>
                       </div>
 
@@ -725,35 +725,28 @@ function WorkspaceSettings({ user, onLogout }) {
                     </div>
 
                     <div className="invite-permissions-section">
-                      <button
-                        type="button"
-                        className={`invite-permissions-toggle ${showPermissions ? 'active' : ''}`}
-                        onClick={() => setShowPermissions(!showPermissions)}
-                      >
+                      <div className="invite-permissions-toggle active" style={{ cursor: 'default' }}>
                         <div className="toggle-left">
                           <FiShield className="toggle-icon" />
                           <span>Custom Permissions</span>
-                          <span className="toggle-optional">Optional</span>
+                          <span className="toggle-optional">Required</span>
                         </div>
-                        {showPermissions ? <FiChevronUp /> : <FiChevronDown />}
-                      </button>
+                      </div>
 
-                      {showPermissions && (
-                        <div className="invite-permissions-grid">
-                          {Object.keys(PERMISSION_LABELS).map(key => (
-                            <label key={key} className="invite-permission-item">
-                              <input
-                                type="checkbox"
-                                checked={customPermissions[key] || false}
-                                onChange={() => handlePermissionToggle(key)}
-                                disabled={generatingInvite}
-                              />
-                              <span className="permission-checkbox"></span>
-                              <span className="permission-label">{PERMISSION_LABELS[key]}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
+                      <div className="invite-permissions-grid">
+                        {Object.keys(PERMISSION_LABELS).map(key => (
+                          <label key={key} className="invite-permission-item">
+                            <input
+                              type="checkbox"
+                              checked={customPermissions[key] || false}
+                              onChange={() => handlePermissionToggle(key)}
+                              disabled={generatingInvite}
+                            />
+                            <span className="permission-checkbox"></span>
+                            <span className="permission-label">{PERMISSION_LABELS[key]}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -768,7 +761,7 @@ function WorkspaceSettings({ user, onLogout }) {
                     <button
                       className="invite-btn-primary"
                       onClick={handleGenerateInvite}
-                      disabled={generatingInvite}
+                      disabled={generatingInvite || !Object.values(customPermissions || {}).some(v => v === true)}
                     >
                       {generatingInvite ? (
                         <>
@@ -833,7 +826,7 @@ function WorkspaceSettings({ user, onLogout }) {
 
         {/* Edit Permissions Modal */}
         {showEditPermissionsModal && selectedMember && (
-          <div className="modal-overlay" onClick={() => setShowEditPermissionsModal(false)}>
+          <div className="noxtm-overlay" onClick={() => setShowEditPermissionsModal(false)}>
             <div className="modal-content edit-permissions-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3><FiShield /> Edit Permissions: {selectedMember.fullName}</h3>
@@ -847,7 +840,10 @@ function WorkspaceSettings({ user, onLogout }) {
                   Department: <strong>{selectedMember.department || 'Not assigned'}</strong>
                 </p>
                 <p className="form-hint">
-                  Role: <strong>{selectedMember.roleInCompany || 'Employee'}</strong>
+                  Company Role: <strong>{selectedMember.roleInCompany === 'Owner' ? 'Owner' : 'Employee'}</strong>
+                </p>
+                <p className="form-hint">
+                  Title: <strong>{selectedMember.jobTitle || 'Not set'}</strong>
                 </p>
 
                 <div className="permissions-grid">
@@ -1067,11 +1063,11 @@ function WorkspaceSettings({ user, onLogout }) {
   const renderProfileSettings = () => {
     const getInitials = (name) => {
       if (!name) return 'U';
-      const parts = name.split(' ');
+      const parts = name.trim().split(/\s+/).filter(Boolean);
       if (parts.length >= 2) {
         return (parts[0][0] + parts[1][0]).toUpperCase();
       }
-      return name.substring(0, 2).toUpperCase();
+      return parts[0]?.[0]?.toUpperCase() || 'U';
     };
 
     const formatDate = (dateString) => {
@@ -1092,26 +1088,39 @@ function WorkspaceSettings({ user, onLogout }) {
       );
     }
 
+    const currentMember =
+      companyMembers.find(m => m._id === user?._id) ||
+      companyMembers.find(m => m.email && profileData?.email && m.email.toLowerCase() === profileData.email.toLowerCase());
+
+    const isOwner =
+      (companyDetails?.owner?._id && companyDetails.owner._id === user?._id) ||
+      currentMember?.roleInCompany === 'Owner';
+
+    const companyRoleLabel = user?.companyId ? (isOwner ? 'Owner' : 'Employee') : 'User';
+    const titleLabel = user?.companyId ? (currentMember?.jobTitle || '') : '';
+
     return (
       <div className="workspace-tab-content">
         {/* Profile Header with Avatar */}
         <div className="profile-header-card">
           <div className="profile-avatar-section">
             <div className="profile-avatar-large">
-              {profileData?.avatarUrl || profileData?.profileImage ? (
+              <span className="profile-avatar-fallback">{getInitials(profileData?.fullName)}</span>
+              {(profileData?.avatarUrl || profileData?.profileImage) && (
                 <img
                   src={profileData?.avatarUrl || profileData?.profileImage}
                   alt={profileData?.fullName || 'User'}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
-              ) : (
-                <span>{getInitials(profileData?.fullName)}</span>
               )}
             </div>
             <div className="profile-name-section">
               <h2>{profileData?.fullName || 'User'}</h2>
-              <p className="profile-email">{profileData?.email}</p>
-              <span className="profile-role-badge">{profileData?.role || 'User'}</span>
+              <p className="profile-email">{profileData?.email || 'Not set'}</p>
+              <div className="profile-badges">
+                <span className={`profile-role-badge ${isOwner ? 'owner' : 'employee'}`}>{companyRoleLabel}</span>
+                {!!titleLabel && <span className="profile-title-badge">{titleLabel}</span>}
+              </div>
             </div>
           </div>
           {!isEditingProfile && (
@@ -1150,8 +1159,12 @@ function WorkspaceSettings({ user, onLogout }) {
                 <div className="info-value">{formatDate(profileData?.joiningDate || profileData?.createdAt)}</div>
               </div>
               <div className="info-item">
-                <label>Role</label>
-                <div className="info-value workspace-badge">{profileData?.role || 'User'}</div>
+                <label>Company Role</label>
+                <div className="info-value workspace-badge">{companyRoleLabel}</div>
+              </div>
+              <div className="info-item">
+                <label>Title</label>
+                <div className="info-value">{titleLabel || 'Not set'}</div>
               </div>
             </div>
           ) : (

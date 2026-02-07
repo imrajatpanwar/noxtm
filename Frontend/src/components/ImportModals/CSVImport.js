@@ -64,7 +64,7 @@ function CSVImport({ onClose, onImportComplete }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Import from CSV</h2>

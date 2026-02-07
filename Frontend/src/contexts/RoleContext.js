@@ -180,8 +180,8 @@ export const RoleProvider = ({ children }) => {
   // Function to check if user has active subscription
   const hasActiveSubscription = useCallback(() => {
     if (!currentUser) return false;
-    // Admin and Lord always have access
-    if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
+    // Admin always has access
+    if (currentUser.role === 'Admin') return true;
     // Check if subscription is active or trial
     const status = currentUser.subscription?.status;
     return status === 'active' || status === 'trial';
@@ -226,8 +226,8 @@ export const RoleProvider = ({ children }) => {
   const hasPermission = useCallback((module) => {
     if (!currentUser || !currentUser.role) return false;
 
-    // Admin and Lord have access to everything
-    if (currentUser.role === 'Admin' || currentUser.role === 'Lord') return true;
+    // Admin has access to everything
+    if (currentUser.role === 'Admin') return true;
 
     // For regular users, check their subscription-based permissions
     const userSpecificPermissions = users.find(u => u.id === currentUser.id)?.permissions;

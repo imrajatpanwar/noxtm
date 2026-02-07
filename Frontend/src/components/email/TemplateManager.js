@@ -247,7 +247,7 @@ const TemplateManager = () => {
 // Placeholder for TemplateEditorModal - will be created next
 const TemplateEditorModal = ({ template, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{template ? 'Edit Template' : 'Create New Template'}</h2>

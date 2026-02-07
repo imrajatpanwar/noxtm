@@ -1,12 +1,14 @@
 /* Sidebar Styles */
 .dashboard-sidebar {
   width: 280px;
+  min-width: 280px;
   border-right: 1px solid #e5e7eb;
   padding: 20px 16px 0px;
   position: fixed;
-  height: calc(94vh - 18px);
+  height: calc(100vh - 56px);
+  height: calc(100dvh - 56px);
   overflow-y: auto;
-  top: 60px;
+  top: 56px;
   left: 0;
   z-index: 10;
   scrollbar-width: none;
@@ -288,18 +290,29 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard-sidebar {
-    width: 260px;
+    width: 240px;
+    min-width: 240px;
   }
 }
 
 @media (max-width: 768px) {
   .dashboard-sidebar {
     width: 100%;
-    position: relative;
-    height: auto;
+    min-width: unset;
+    position: fixed;
+    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
+    top: 56px;
+    left: -100%;
     border-right: none;
-    border-bottom: 1px solid #e5e7eb;
     padding: 16px;
+    background: #fff;
+    z-index: 50;
+    transition: left 0.25s ease;
+  }
+
+  .dashboard-sidebar.open {
+    left: 0;
   }
   
   .sidebar-section {

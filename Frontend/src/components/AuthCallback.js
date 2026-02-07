@@ -63,7 +63,7 @@ function AuthCallback({ onAuthCallback }) {
                     );
 
                     // Redirect based on subscription
-                    if (hasValidSubscription || user.role === 'Admin' || user.role === 'Lord') {
+                    if (hasValidSubscription || user.role === 'Admin') {
                         navigate('/dashboard');
                     } else {
                         navigate('/pricing');

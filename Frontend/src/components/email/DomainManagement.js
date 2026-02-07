@@ -263,7 +263,7 @@ const AddDomainModal = ({ onClose, onAdded }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="noxtm-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Add Email Domain</h2>
