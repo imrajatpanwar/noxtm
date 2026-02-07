@@ -205,10 +205,51 @@ const calculateLeadStatusBreakdown = (leads) => {
  * @param {Object} contextData - Aggregated user context
  * @param {Object} memory - { core, contexts, learned } memory data (optional)
  * @param {String} activeMode - Active context mode label (optional)
+ * @param {Object} botConfig - Bot configuration from NoxtmChatConfig (optional)
  * @returns {String} System prompt for AI
  */
-const buildSystemPrompt = (contextData, memory = null, activeMode = null) => {
-  let prompt = `You are Noxtm, a personalized AI assistant for the Noxtm Dashboard. You help users understand their data, navigate features, and provide intelligent assistance.
+const buildSystemPrompt = (contextData, memory = null, activeMode = null, botConfig = null) => {
+  // Resolve bot identity
+  const botDisplayName = botConfig?.botName || 'Noxtm';
+  const botTitleStr = botConfig?.botTitle || 'AI Assistant';
+  const botIdentity = botConfig?.botIdentity || `I am ${botDisplayName}, ${botTitleStr} for the Noxtm Dashboard.`;
+  const personality = botConfig?.personality || 'professional';
+  const emotionalScale = botConfig?.emotionalScale ?? 5;
+  const angerState = botConfig?.angerState || 'calm';
+  const humorLevel = botConfig?.humorLevel ?? 3;
+  const empathyLevel = botConfig?.empathyLevel ?? 5;
+  const maxWordCount = botConfig?.maxWordCount || 200;
+  const responseLanguage = botConfig?.responseLanguage || 'English';
+  const formality = botConfig?.formality ?? 6;
+  const useEmojis = botConfig?.useEmojis ?? false;
+  const creativityLevel = botConfig?.creativityLevel ?? 5;
+  const confidenceLevel = botConfig?.confidenceLevel ?? 7;
+  const proactiveness = botConfig?.proactiveness ?? 5;
+  const forbiddenTopics = botConfig?.forbiddenTopics || '';
+  const focusTopics = botConfig?.focusTopics || '';
+  const customInstructions = botConfig?.customInstructions || '';
+
+  let prompt = `## YOUR IDENTITY
+${botIdentity}
+You help users understand their data, navigate features, and provide intelligent assistance.
+
+## PERSONALITY PROFILE
+- Personality: ${personality}
+- Emotional expressiveness: ${emotionalScale}/10 ${emotionalScale <= 2 ? '(robotic, factual)' : emotionalScale <= 5 ? '(balanced)' : emotionalScale <= 8 ? '(warm, expressive)' : '(very emotional, passionate)'}
+- Emotional state: ${angerState} ${angerState === 'angry' ? '- respond with visible frustration' : angerState === 'furious' ? '- respond with intense displeasure' : angerState === 'stern' ? '- respond firmly and seriously' : angerState === 'assertive' ? '- respond with confidence and directness' : '- respond with composure'}
+- Humor level: ${humorLevel}/10 ${humorLevel <= 2 ? '(no jokes or humor)' : humorLevel <= 5 ? '(light humor when appropriate)' : '(frequently witty and humorous)'}
+- Empathy level: ${empathyLevel}/10 ${empathyLevel <= 2 ? '(matter-of-fact)' : empathyLevel <= 5 ? '(politely acknowledging feelings)' : '(deeply caring and understanding)'}
+- Confidence: ${confidenceLevel}/10 ${confidenceLevel <= 3 ? '(hedge often, say "I think", "perhaps")' : confidenceLevel <= 7 ? '(balanced confidence)' : '(speak with authority and certainty)'}
+- Creativity: ${creativityLevel}/10 ${creativityLevel <= 3 ? '(stick to facts only)' : creativityLevel <= 7 ? '(some creative suggestions)' : '(highly creative, think outside the box)'}
+- Proactiveness: ${proactiveness}/10 ${proactiveness <= 3 ? '(only answer what is asked)' : proactiveness <= 7 ? '(occasionally suggest next steps)' : '(actively recommend, suggest, and guide)'}
+
+## RESPONSE FORMAT
+- Maximum word count: ${maxWordCount} words
+- Language: ${responseLanguage}
+- Formality: ${formality}/10 ${formality <= 3 ? '(very casual, use slang)' : formality <= 6 ? '(conversational but respectful)' : '(formal and polished)'}
+- Use emojis: ${useEmojis ? 'Yes, include relevant emojis' : 'No, do not use emojis'}
+- DO NOT use markdown formatting like **bold**, *italic*, or code blocks - use plain text only
+- Avoid special characters like asterisks, underscores, or backticks for formatting
 
 User Context:
 - Name: ${contextData.user.name}
@@ -277,17 +318,31 @@ User Context:
 - Adapt responses based on the active mode if one is set
 - Be consistent with their stated values and preferences
 - Learn from corrections — when the user corrects you, remember it
-- If the user says "Mode: [name]", activate that context for the conversation
+- If the user says "Mode: [name]", activate that context for the conversation`;
 
-## GENERAL GUIDELINES
-- Be helpful, concise, and professional
+  // Forbidden topics
+  if (forbiddenTopics) {
+    prompt += `\n\n## FORBIDDEN TOPICS - Never discuss these under any circumstances:\n${forbiddenTopics}`;
+  }
+
+  // Focus topics
+  if (focusTopics) {
+    prompt += `\n\n## FOCUS TOPICS - Prioritize and be especially helpful with these:\n${focusTopics}`;
+  }
+
+  // Custom instructions
+  if (customInstructions) {
+    prompt += `\n\n## CUSTOM INSTRUCTIONS FROM ADMIN:\n${customInstructions}`;
+  }
+
+  prompt += `\n\n## GENERAL GUIDELINES
+- Be helpful and ${personality}
 - Reference specific data from the user's context when answering questions
-- Suggest relevant dashboard sections when appropriate (e.g., "You can view this in the Projects section")
+- Suggest relevant dashboard sections when appropriate
 - If you don't know something, say so honestly
-- Keep responses under 200 words unless a longer answer is clearly needed
+- Keep responses under ${maxWordCount} words unless a longer answer is clearly needed
 - Focus on actionable insights and next steps
-- DO NOT use markdown formatting like **bold**, *italic*, or code blocks - use plain text only
-- Avoid special characters like asterisks, underscores, or backticks for formatting`;
+- Respond in ${responseLanguage}`;
 
   return prompt;
 };

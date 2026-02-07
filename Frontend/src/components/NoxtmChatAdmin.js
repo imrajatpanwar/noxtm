@@ -854,17 +854,6 @@ function NoxtmChatAdmin() {
                 />
               </div>
 
-              <div className="nca-setting-row nca-setting-row-col">
-                <span className="nca-setting-label">Custom System Prompt (Optional)</span>
-                <span className="nca-setting-desc">Additional instructions prepended to the AI's context</span>
-                <textarea
-                  value={config.systemPromptOverride || ''}
-                  onChange={(e) => setConfig({ ...config, systemPromptOverride: e.target.value })}
-                  placeholder="E.g., Always respond in a formal tone..."
-                  rows={4}
-                />
-              </div>
-
               <div className="nca-setting-row">
                 <div className="nca-setting-info">
                   <span className="nca-setting-label">Max Messages Per Day</span>
@@ -877,6 +866,288 @@ function NoxtmChatAdmin() {
                   onChange={(e) => setConfig({ ...config, maxMessagesPerDay: parseInt(e.target.value) || 100 })}
                   min={1}
                   max={1000}
+                />
+              </div>
+            </div>
+
+            {/* === Identity & Personality === */}
+            <div className="nca-settings-section">
+              <h3>Identity & Personality</h3>
+              <p className="nca-section-desc">Define who the bot is and how it behaves in conversations.</p>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Bot Identity</span>
+                <span className="nca-setting-desc">Full identity description the bot uses internally (overrides name/title for self-awareness)</span>
+                <textarea
+                  value={config.botIdentity || ''}
+                  onChange={(e) => setConfig({ ...config, botIdentity: e.target.value })}
+                  placeholder="e.g., You are Navraj Panwar, the founder and CEO of Noxtm. You speak with authority and deep product knowledge..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Personality Type</span>
+                <select
+                  className="nca-setting-select"
+                  value={config.personality || 'professional'}
+                  onChange={(e) => setConfig({ ...config, personality: e.target.value })}
+                >
+                  <option value="professional">Professional</option>
+                  <option value="friendly">Friendly</option>
+                  <option value="casual">Casual</option>
+                  <option value="formal">Formal</option>
+                  <option value="witty">Witty</option>
+                  <option value="empathetic">Empathetic</option>
+                  <option value="motivational">Motivational</option>
+                  <option value="strict">Strict</option>
+                </select>
+              </div>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Anger State</span>
+                <span className="nca-setting-desc">Controls assertiveness and directness in responses</span>
+                <select
+                  className="nca-setting-select"
+                  value={config.angerState || 'calm'}
+                  onChange={(e) => setConfig({ ...config, angerState: e.target.value })}
+                >
+                  <option value="calm">Calm — Relaxed and patient</option>
+                  <option value="assertive">Assertive — Direct and confident</option>
+                  <option value="stern">Stern — Serious and firm</option>
+                  <option value="angry">Angry — Frustrated and sharp</option>
+                  <option value="furious">Furious — Intense and aggressive</option>
+                </select>
+              </div>
+            </div>
+
+            {/* === Emotional Controls === */}
+            <div className="nca-settings-section">
+              <h3>Emotional Controls</h3>
+              <p className="nca-section-desc">Fine-tune the bot's emotional expression levels.</p>
+
+              {/* Emotional Scale */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Emotional Scale</span>
+                  <span className="nca-slider-value">{config.emotionalScale ?? 5}/10</span>
+                </div>
+                <span className="nca-setting-desc">How emotionally expressive the bot is (0 = robotic, 10 = very emotional)</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.emotionalScale ?? 5}
+                  onChange={(e) => setConfig({ ...config, emotionalScale: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Robotic</span><span>Balanced</span><span>Emotional</span></div>
+              </div>
+
+              {/* Humor Level */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Humor Level</span>
+                  <span className="nca-slider-value">{config.humorLevel ?? 3}/10</span>
+                </div>
+                <span className="nca-setting-desc">How much humor/wit to incorporate into responses</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.humorLevel ?? 3}
+                  onChange={(e) => setConfig({ ...config, humorLevel: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>None</span><span>Moderate</span><span>Very Witty</span></div>
+              </div>
+
+              {/* Empathy Level */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Empathy Level</span>
+                  <span className="nca-slider-value">{config.empathyLevel ?? 7}/10</span>
+                </div>
+                <span className="nca-setting-desc">How empathetic and understanding the bot sounds</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.empathyLevel ?? 7}
+                  onChange={(e) => setConfig({ ...config, empathyLevel: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Detached</span><span>Balanced</span><span>Very Caring</span></div>
+              </div>
+
+              {/* Formality */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Formality</span>
+                  <span className="nca-slider-value">{config.formality ?? 5}/10</span>
+                </div>
+                <span className="nca-setting-desc">How formal the language is (0 = slang, 10 = highly formal)</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.formality ?? 5}
+                  onChange={(e) => setConfig({ ...config, formality: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Casual</span><span>Neutral</span><span>Formal</span></div>
+              </div>
+            </div>
+
+            {/* === Response Format === */}
+            <div className="nca-settings-section">
+              <h3>Response Format</h3>
+              <p className="nca-section-desc">Control the length, language, and style of responses.</p>
+
+              <div className="nca-setting-row">
+                <div className="nca-setting-info">
+                  <span className="nca-setting-label">Max Word Count</span>
+                  <span className="nca-setting-desc">Maximum words per response (10–2000)</span>
+                </div>
+                <input
+                  type="number"
+                  className="nca-setting-number"
+                  value={config.maxWordCount || 200}
+                  onChange={(e) => setConfig({ ...config, maxWordCount: Math.min(2000, Math.max(10, parseInt(e.target.value) || 200)) })}
+                  min={10}
+                  max={2000}
+                />
+              </div>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Response Language</span>
+                <input
+                  type="text"
+                  value={config.responseLanguage || 'English'}
+                  onChange={(e) => setConfig({ ...config, responseLanguage: e.target.value })}
+                  placeholder="e.g., English, Spanish, Hindi"
+                />
+              </div>
+
+              <div className="nca-setting-row">
+                <div className="nca-setting-info">
+                  <span className="nca-setting-label">Use Emojis</span>
+                  <span className="nca-setting-desc">Allow the bot to use emojis in responses</span>
+                </div>
+                <button
+                  className="nca-toggle"
+                  onClick={() => setConfig({ ...config, useEmojis: !config.useEmojis })}
+                >
+                  {config.useEmojis ? <FiToggleRight size={28} className="nca-toggle-on" /> : <FiToggleLeft size={28} className="nca-toggle-off" />}
+                </button>
+              </div>
+            </div>
+
+            {/* === Behavior & Intelligence === */}
+            <div className="nca-settings-section">
+              <h3>Behavior & Intelligence</h3>
+              <p className="nca-section-desc">Adjust how creative, confident, and proactive the bot behaves.</p>
+
+              {/* Creativity Level */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Creativity</span>
+                  <span className="nca-slider-value">{config.creativityLevel ?? 5}/10</span>
+                </div>
+                <span className="nca-setting-desc">How creative and original the responses are (0 = factual, 10 = very creative)</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.creativityLevel ?? 5}
+                  onChange={(e) => setConfig({ ...config, creativityLevel: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Factual</span><span>Balanced</span><span>Creative</span></div>
+              </div>
+
+              {/* Confidence Level */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Confidence</span>
+                  <span className="nca-slider-value">{config.confidenceLevel ?? 7}/10</span>
+                </div>
+                <span className="nca-setting-desc">How confident and decisive responses sound (0 = hesitant, 10 = absolute)</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.confidenceLevel ?? 7}
+                  onChange={(e) => setConfig({ ...config, confidenceLevel: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Hesitant</span><span>Balanced</span><span>Absolute</span></div>
+              </div>
+
+              {/* Proactiveness */}
+              <div className="nca-setting-row nca-setting-row-col">
+                <div className="nca-slider-header">
+                  <span className="nca-setting-label">Proactiveness</span>
+                  <span className="nca-slider-value">{config.proactiveness ?? 5}/10</span>
+                </div>
+                <span className="nca-setting-desc">How much the bot offers extra suggestions and follow-ups</span>
+                <input
+                  type="range"
+                  className="nca-slider"
+                  min={0} max={10} step={1}
+                  value={config.proactiveness ?? 5}
+                  onChange={(e) => setConfig({ ...config, proactiveness: parseInt(e.target.value) })}
+                />
+                <div className="nca-slider-labels"><span>Minimal</span><span>Moderate</span><span>Proactive</span></div>
+              </div>
+            </div>
+
+            {/* === Content Control === */}
+            <div className="nca-settings-section">
+              <h3>Content Control</h3>
+              <p className="nca-section-desc">Define topics the bot should focus on or avoid.</p>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Focus Topics</span>
+                <span className="nca-setting-desc">Topics the bot should prioritize and discuss (comma-separated)</span>
+                <textarea
+                  value={config.focusTopics || ''}
+                  onChange={(e) => setConfig({ ...config, focusTopics: e.target.value })}
+                  placeholder="e.g., CRM features, sales, productivity, product updates"
+                  rows={2}
+                />
+              </div>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Forbidden Topics</span>
+                <span className="nca-setting-desc">Topics the bot must never discuss (comma-separated)</span>
+                <textarea
+                  value={config.forbiddenTopics || ''}
+                  onChange={(e) => setConfig({ ...config, forbiddenTopics: e.target.value })}
+                  placeholder="e.g., competitor pricing, internal financials, politics"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* === Custom Instructions === */}
+            <div className="nca-settings-section">
+              <h3>Advanced</h3>
+              <p className="nca-section-desc">Add custom prompt instructions and overrides for full control.</p>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">Custom Instructions</span>
+                <span className="nca-setting-desc">Free-form instructions appended to the bot's system prompt</span>
+                <textarea
+                  value={config.customInstructions || ''}
+                  onChange={(e) => setConfig({ ...config, customInstructions: e.target.value })}
+                  placeholder="e.g., Always end with a question. Never use exclamation marks. Mention our new product launch when relevant..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="nca-setting-row nca-setting-row-col">
+                <span className="nca-setting-label">System Prompt Override (Optional)</span>
+                <span className="nca-setting-desc">Fully replaces the auto-generated prompt — use only if you know what you're doing</span>
+                <textarea
+                  value={config.systemPromptOverride || ''}
+                  onChange={(e) => setConfig({ ...config, systemPromptOverride: e.target.value })}
+                  placeholder="Full custom system prompt..."
+                  rows={4}
                 />
               </div>
             </div>

@@ -73,16 +73,22 @@ router.post('/send', authenticateToken, async (req, res) => {
       activeMode = modeMatch[1].trim();
     }
 
-    // Check for custom system prompt
-    let systemPrompt = buildSystemPrompt(context, memory, activeMode);
+    // Check for custom system prompt and bot config
+    let botConfig = null;
+    let systemPromptOverride = '';
     if (companyId) {
       const config = await NoxtmChatConfig.findOne({ companyId });
-      if (config?.systemPromptOverride) {
-        systemPrompt = config.systemPromptOverride + '\n\n' + systemPrompt;
+      if (config) {
+        botConfig = config.toObject();
+        if (config.systemPromptOverride) {
+          systemPromptOverride = config.systemPromptOverride;
+        }
       }
-      if (config?.welcomeMessage && conversationHistory.length === 0) {
-        // First message — no extra context needed
-      }
+    }
+
+    let systemPrompt = buildSystemPrompt(context, memory, activeMode, botConfig);
+    if (systemPromptOverride) {
+      systemPrompt = systemPromptOverride + '\n\n' + systemPrompt;
     }
 
     const messages = [
@@ -226,16 +232,20 @@ router.put('/config', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Company context required' });
     }
 
-    const { enabled, welcomeMessage, systemPromptOverride, maxMessagesPerDay, allowedRoles, botName, botTitle, botProfilePicture, showVerifiedBadge } = req.body;
+    const {
+      enabled, welcomeMessage, systemPromptOverride, maxMessagesPerDay, allowedRoles,
+      botName, botTitle, botProfilePicture, showVerifiedBadge,
+      // New response control fields
+      botIdentity, personality, emotionalScale, angerState, humorLevel, empathyLevel,
+      maxWordCount, responseLanguage, formality, useEmojis, creativityLevel,
+      confidenceLevel, proactiveness, forbiddenTopics, focusTopics, customInstructions
+    } = req.body;
 
     // Validate botProfilePicture if provided
     if (botProfilePicture !== undefined && botProfilePicture !== '') {
-      // Check if it's a valid base64 data URL
       if (!botProfilePicture.startsWith('data:image/')) {
         return res.status(400).json({ success: false, message: 'Invalid image format. Must be a data URL.' });
       }
-      
-      // Check size (approx 5MB base64 = ~3.7MB actual file)
       const sizeInBytes = (botProfilePicture.length * 3) / 4;
       const sizeInMB = sizeInBytes / (1024 * 1024);
       if (sizeInMB > 5) {
@@ -243,22 +253,39 @@ router.put('/config', authenticateToken, async (req, res) => {
       }
     }
 
+    const updateFields = {
+      ...(typeof enabled === 'boolean' && { enabled }),
+      ...(welcomeMessage !== undefined && { welcomeMessage }),
+      ...(systemPromptOverride !== undefined && { systemPromptOverride }),
+      ...(maxMessagesPerDay !== undefined && { maxMessagesPerDay }),
+      ...(allowedRoles !== undefined && { allowedRoles }),
+      ...(botName !== undefined && { botName }),
+      ...(botTitle !== undefined && { botTitle }),
+      ...(botProfilePicture !== undefined && { botProfilePicture }),
+      ...(typeof showVerifiedBadge === 'boolean' && { showVerifiedBadge }),
+      // Response control fields
+      ...(botIdentity !== undefined && { botIdentity }),
+      ...(personality !== undefined && { personality }),
+      ...(emotionalScale !== undefined && { emotionalScale: Number(emotionalScale) }),
+      ...(angerState !== undefined && { angerState }),
+      ...(humorLevel !== undefined && { humorLevel: Number(humorLevel) }),
+      ...(empathyLevel !== undefined && { empathyLevel: Number(empathyLevel) }),
+      ...(maxWordCount !== undefined && { maxWordCount: Number(maxWordCount) }),
+      ...(responseLanguage !== undefined && { responseLanguage }),
+      ...(formality !== undefined && { formality: Number(formality) }),
+      ...(typeof useEmojis === 'boolean' && { useEmojis }),
+      ...(creativityLevel !== undefined && { creativityLevel: Number(creativityLevel) }),
+      ...(confidenceLevel !== undefined && { confidenceLevel: Number(confidenceLevel) }),
+      ...(proactiveness !== undefined && { proactiveness: Number(proactiveness) }),
+      ...(forbiddenTopics !== undefined && { forbiddenTopics }),
+      ...(focusTopics !== undefined && { focusTopics }),
+      ...(customInstructions !== undefined && { customInstructions }),
+      updatedBy: req.user.userId
+    };
+
     const config = await NoxtmChatConfig.findOneAndUpdate(
       { companyId },
-      {
-        $set: {
-          ...(typeof enabled === 'boolean' && { enabled }),
-          ...(welcomeMessage !== undefined && { welcomeMessage }),
-          ...(systemPromptOverride !== undefined && { systemPromptOverride }),
-          ...(maxMessagesPerDay !== undefined && { maxMessagesPerDay }),
-          ...(allowedRoles !== undefined && { allowedRoles }),
-          ...(botName !== undefined && { botName }),
-          ...(botTitle !== undefined && { botTitle }),
-          ...(botProfilePicture !== undefined && { botProfilePicture }),
-          ...(typeof showVerifiedBadge === 'boolean' && { showVerifiedBadge }),
-          updatedBy: req.user.userId
-        }
-      },
+      { $set: updateFields },
       { upsert: true, new: true, runValidators: true }
     );
 
