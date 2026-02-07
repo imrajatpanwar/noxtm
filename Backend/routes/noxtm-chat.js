@@ -228,6 +228,21 @@ router.put('/config', authenticateToken, async (req, res) => {
 
     const { enabled, welcomeMessage, systemPromptOverride, maxMessagesPerDay, allowedRoles, botName, botTitle, botProfilePicture, showVerifiedBadge } = req.body;
 
+    // Validate botProfilePicture if provided
+    if (botProfilePicture !== undefined && botProfilePicture !== '') {
+      // Check if it's a valid base64 data URL
+      if (!botProfilePicture.startsWith('data:image/')) {
+        return res.status(400).json({ success: false, message: 'Invalid image format. Must be a data URL.' });
+      }
+      
+      // Check size (approx 5MB base64 = ~3.7MB actual file)
+      const sizeInBytes = (botProfilePicture.length * 3) / 4;
+      const sizeInMB = sizeInBytes / (1024 * 1024);
+      if (sizeInMB > 5) {
+        return res.status(400).json({ success: false, message: `Image too large (${sizeInMB.toFixed(2)}MB). Maximum 5MB allowed.` });
+      }
+    }
+
     const config = await NoxtmChatConfig.findOneAndUpdate(
       { companyId },
       {
@@ -250,6 +265,9 @@ router.put('/config', authenticateToken, async (req, res) => {
     res.json({ success: true, config });
   } catch (error) {
     console.error('Update config error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: 'Failed to update config' });
   }
 });
