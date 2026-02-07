@@ -411,19 +411,333 @@
   padding: 20px 24px;
   overflow-y: auto;
   height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.nca-settings-compact {
+  position: relative;
+}
+
+.nca-auto-save-indicator {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  font-size: 11px;
+  color: #666;
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border-radius: 12px;
 }
 
 .nca-settings-section {
-  margin-bottom: 24px;
+  background: #fafafa;
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.nca-settings-section h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #222;
+  margin: 0 0 12px;
+}
+
+.nca-settings-group {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.nca-settings-group:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.nca-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.nca-compact-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.nca-compact-row input[type="text"],
+.nca-compact-row input[type="number"] {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+}
+
+.nca-compact-row input[type="text"]:focus,
+.nca-compact-row input[type="number"]:focus {
+  border-color: #111;
+}
+
+.nca-toggle-compact {
+  display: flex;
+  align-items:center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.nca-toggle-compact span {
+  font-size: 12px;
+  color: #555;
+}
+
+.nca-compact-slider {
+  margin-bottom: 10px;
+}
+
+.nca-compact-slider:last-child {
+  margin-bottom: 0;
+}
+
+.nca-compact-slider label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.nca-compact-slider label span {
+  font-weight: 600;
+  color: #111;
+  background: #fff;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.nca-settings-group textarea {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #333;
+  resize: vertical;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 6px;
+}
+
+.nca-settings-group textarea:focus {
+  border-color: #111;
+}
+
+.nca-settings-group textarea:last-child {
+  margin-bottom: 0;
+}
+
+/* Labeled inputs */
+.nca-labeled-input {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nca-labeled-input > label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 0.2px;
+}
+
+.nca-labeled-input input,
+.nca-labeled-input select {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+  background: #fff;
+}
+
+.nca-labeled-input input:focus,
+.nca-labeled-input select:focus {
+  border-color: #111;
+}
+
+.nca-labeled-input textarea {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #333;
+  resize: vertical;
+  font-family: inherit;
+  outline: none;
+}
+
+.nca-labeled-input textarea:focus {
+  border-color: #111;
+}
+
+/* Language chips */
+.nca-lang-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nca-lang-chip {
+  padding: 5px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  background: #fff;
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.nca-lang-chip:hover {
+  border-color: #111;
+  color: #111;
+}
+
+.nca-lang-chip.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* Compact Profile Picture Upload */
+.nca-profile-upload-compact {
+  margin-top: 8px;
+}
+
+.nca-profile-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+  color: #555;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nca-profile-upload-btn:hover {
+  border-color: #111;
+  background: #fafafa;
+  color: #111;
+}
+
+.nca-profile-preview-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.nca-profile-preview-compact img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.nca-profile-actions {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.nca-profile-change,
+.nca-profile-remove {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.nca-profile-change {
+  background: #111;
+  color: #fff;
+}
+
+.nca-profile-change:hover {
+  background: #333;
+}
+
+.nca-profile-remove {
+  background: #f5f5f5;
+  color: #dc2626;
+}
+
+.nca-profile-remove:hover {
+  background: #fee;
+}
+
+.nca-compact-select {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+  background: #fff;
+}
+
+.nca-compact-select:focus {
+  border-color: #111;
 }
 
 .nca-settings-section h3 {
   font-size: 14px;
   font-weight: 700;
   color: #222;
+  margin: 0 0 4px;
+}
+
+.nca-section-desc {
+  font-size: 11px;
+  color: #888;
   margin: 0 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .nca-setting-row {
@@ -507,8 +821,10 @@
 }
 
 .nca-settings-actions {
-  padding: 16px 0 0;
-  border-top: 1px solid #f0f0f0;
+  grid-column: 1 / -1;
+  padding: 4px 0 0;
+  display: flex;
+  justify-content: center;
 }
 
 .nca-save-btn {
@@ -752,6 +1068,7 @@
 
   .nca-settings {
     padding: 16px;
+    grid-template-columns: 1fr;
   }
 }
 
