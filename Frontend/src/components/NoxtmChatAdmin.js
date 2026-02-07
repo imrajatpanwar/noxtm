@@ -14,7 +14,7 @@ function NoxtmChatAdmin() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [autoSaveTimer, setAutoSaveTimer] = useState(null);
+  const [savingConfig, setSavingConfig] = useState(false);
 
   // Memory state
   const [coreMemory, setCoreMemory] = useState({ name: '', role: '', communicationStyle: '', expertiseAreas: '', preferences: '', commonPhrases: '', workContext: '', goals: '', additionalNotes: '' });
@@ -35,30 +35,6 @@ function NoxtmChatAdmin() {
     loadData();
     loadMemoryData();
   }, []);
-
-  // Auto-save config on change
-  useEffect(() => {
-    if (!config || activeTab !== 'settings') return;
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    const timer = setTimeout(() => {
-      saveConfigSilent();
-    }, 1200);
-    setAutoSaveTimer(timer);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [config]);
-
-  // Auto-save config on change
-  useEffect(() => {
-    if (!config || activeTab !== 'settings') return;
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    const timer = setTimeout(() => {
-      saveConfig(true);
-    }, 1000);
-    setAutoSaveTimer(timer);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [config]);
 
   useEffect(() => {
     if (selectedConv) {
@@ -99,27 +75,19 @@ function NoxtmChatAdmin() {
   };
 
   const saveConfig = async () => {
+    setSavingConfig(true);
     try {
       const res = await api.put('/noxtm-chat/config', config);
       if (res.data.success) {
         setConfig(res.data.config);
-        toast.success('Settings saved');
+        toast.success('Settings saved successfully!');
       }
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to save settings';
       console.error('Config save error:', err.response?.data || err.message);
       toast.error(errorMsg);
-    }
-  };
-
-  const saveConfigSilent = async () => {
-    try {
-      const res = await api.put('/noxtm-chat/config', config);
-      if (res.data.success) {
-        setConfig(res.data.config);
-      }
-    } catch (err) {
-      console.error('Auto-save error:', err.response?.data || err.message);
+    } finally {
+      setSavingConfig(false);
     }
   };
 
@@ -779,6 +747,10 @@ function NoxtmChatAdmin() {
         {/* === Settings Tab === */}
         {activeTab === 'settings' && config && (
           <div className="nca-settings nca-settings-compact">
+            <button className="nca-save-settings-btn" onClick={saveConfig} disabled={savingConfig}>
+              <FiSave size={16} />
+              {savingConfig ? 'Saving...' : 'Save Settings'}
+            </button>
             
             {/* LEFT COLUMN: Bot Identity & Behavior */}
             <div className="nca-settings-section">
