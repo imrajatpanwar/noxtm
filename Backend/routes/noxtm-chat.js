@@ -3,6 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const { authenticateToken } = require('../middleware/auth');
 const { NoxtmChatMessage, NoxtmChatConfig } = require('../models/NoxtmChat');
+const User = require('../models/User');
 const {
   aggregateUserContext,
   getUserMemory,
@@ -11,6 +12,18 @@ const {
   callClaude,
   sanitizeUserMessage
 } = require('../utils/aiHelpers');
+
+// Helper: resolve companyId (from JWT or fallback to User model)
+const resolveCompanyId = async (reqUser) => {
+  if (reqUser.companyId) return reqUser.companyId;
+  // Fallback: lookup from User model for old tokens missing companyId
+  try {
+    const user = await User.findById(reqUser.userId).select('companyId').lean();
+    return user?.companyId || null;
+  } catch (e) {
+    return null;
+  }
+};
 
 // ===== USER ENDPOINTS (any authenticated user) =====
 
@@ -22,7 +35,7 @@ router.post('/send', authenticateToken, async (req, res) => {
   try {
     const { message } = req.body;
     const userId = req.user.userId;
-    const companyId = req.user.companyId;
+    const companyId = await resolveCompanyId(req.user);
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ success: false, message: 'Message is required' });
@@ -76,13 +89,16 @@ router.post('/send', authenticateToken, async (req, res) => {
     // Check for custom system prompt and bot config
     let botConfig = null;
     let systemPromptOverride = '';
-    if (companyId) {
-      const config = await NoxtmChatConfig.findOne({ companyId });
-      if (config) {
-        botConfig = config.toObject();
-        if (config.systemPromptOverride) {
-          systemPromptOverride = config.systemPromptOverride;
-        }
+    // Try user's company config first, then fall back to any platform config
+    let config = companyId ? await NoxtmChatConfig.findOne({ companyId }) : null;
+    if (!config) {
+      // Fallback: use the first available config (platform-wide)
+      config = await NoxtmChatConfig.findOne({}).sort({ updatedAt: -1 });
+    }
+    if (config) {
+      botConfig = config.toObject();
+      if (config.systemPromptOverride) {
+        systemPromptOverride = config.systemPromptOverride;
       }
     }
 
@@ -176,25 +192,17 @@ router.delete('/messages', authenticateToken, async (req, res) => {
  */
 router.get('/config', authenticateToken, async (req, res) => {
   try {
-    const companyId = req.user.companyId;
-    if (!companyId) {
-      return res.json({ success: true, config: {
-        enabled: true,
-        welcomeMessage: 'Hi! I\'m Noxtm, your AI assistant. Ask me anything!',
-        botName: 'Navraj Panwar',
-        botTitle: 'Founder',
-        botProfilePicture: '',
-        showVerifiedBadge: true,
-        systemPromptOverride: '',
-        maxMessagesPerDay: 100
-      }});
-    }
+    const companyId = await resolveCompanyId(req.user);
 
-    let config = await NoxtmChatConfig.findOne({ companyId }).lean();
+    // Try user's company config, then fall back to any platform config
+    let config = companyId ? await NoxtmChatConfig.findOne({ companyId }).lean() : null;
+    if (!config) {
+      config = await NoxtmChatConfig.findOne({}).sort({ updatedAt: -1 }).lean();
+    }
     if (!config) {
       config = {
         enabled: true,
-        welcomeMessage: 'Hi! I\'m Noxtm, your AI assistant. I can help you with your dashboard, projects, campaigns, and more. Ask me anything!',
+        welcomeMessage: 'Hi! How can I help you today?',
         botName: 'Navraj Panwar',
         botTitle: 'Founder',
         botProfilePicture: '',
@@ -221,13 +229,12 @@ router.get('/config', authenticateToken, async (req, res) => {
 router.put('/config', authenticateToken, async (req, res) => {
   try {
     // Check admin role
-    const User = require('mongoose').model('User');
-    const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'Admin') {
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || adminUser.role !== 'Admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
-    const companyId = req.user.companyId;
+    const companyId = await resolveCompanyId(req.user);
     if (!companyId) {
       return res.status(400).json({ success: false, message: 'Company context required' });
     }
@@ -305,13 +312,13 @@ router.put('/config', authenticateToken, async (req, res) => {
  */
 router.get('/admin/conversations', authenticateToken, async (req, res) => {
   try {
-    const User = require('mongoose').model('User');
-    const user = await User.findById(req.user.userId);
+    const UserModel = require('mongoose').model('User');
+    const user = await UserModel.findById(req.user.userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
-    const companyId = req.user.companyId;
+    const companyId = await resolveCompanyId(req.user);
 
     // Aggregate conversations by user
     const conversations = await NoxtmChatMessage.aggregate([
@@ -365,8 +372,8 @@ router.get('/admin/conversations', authenticateToken, async (req, res) => {
  */
 router.get('/admin/messages/:userId', authenticateToken, async (req, res) => {
   try {
-    const User = require('mongoose').model('User');
-    const user = await User.findById(req.user.userId);
+    const UserModel2 = require('mongoose').model('User');
+    const user = await UserModel2.findById(req.user.userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
@@ -375,7 +382,7 @@ router.get('/admin/messages/:userId', authenticateToken, async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
-    const targetUser = await User.findById(req.params.userId).select('fullName email profileImage role').lean();
+    const targetUser = await UserModel2.findById(req.params.userId).select('fullName email profileImage role').lean();
 
     res.json({ success: true, messages, user: targetUser });
   } catch (error) {
@@ -390,13 +397,13 @@ router.get('/admin/messages/:userId', authenticateToken, async (req, res) => {
  */
 router.get('/admin/stats', authenticateToken, async (req, res) => {
   try {
-    const User = require('mongoose').model('User');
-    const user = await User.findById(req.user.userId);
+    const UserModel = require('mongoose').model('User');
+    const user = await UserModel.findById(req.user.userId);
     if (!user || user.role !== 'Admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
-    const companyId = req.user.companyId;
+    const companyId = await resolveCompanyId(req.user);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
