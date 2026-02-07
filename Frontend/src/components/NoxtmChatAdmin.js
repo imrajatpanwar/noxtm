@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSettings, FiMessageCircle, FiChevronLeft, FiSearch, FiToggleLeft, FiToggleRight, FiSave, FiPlus, FiTrash2, FiDatabase, FiEdit2, FiX, FiImage } from 'react-icons/fi';
+import { FiSettings, FiMessageCircle, FiChevronLeft, FiSearch, FiToggleLeft, FiToggleRight, FiSave, FiPlus, FiTrash2, FiDatabase, FiEdit2, FiX, FiImage, FiTag } from 'react-icons/fi';
 import api from '../config/api';
 import { toast } from 'sonner';
 import './NoxtmChatAdmin.css';
@@ -28,6 +28,8 @@ function NoxtmChatAdmin() {
   const [newContext, setNewContext] = useState({ label: '', background: '', preferredStyle: '', commonTopics: '', tone: '', notes: '' });
   const [newLearned, setNewLearned] = useState('');
   const [newLearnedCategory, setNewLearnedCategory] = useState('other');
+  const [userKeypoints, setUserKeypoints] = useState([]);
+  const [showKeypoints, setShowKeypoints] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -63,11 +65,19 @@ function NoxtmChatAdmin() {
 
   const loadUserMessages = async (userId) => {
     try {
-      const res = await api.get(`/noxtm-chat/admin/messages/${userId}`);
-      if (res.data.success) {
-        setSelectedMessages(res.data.messages);
-        setSelectedUser(res.data.user);
+      const [msgRes, kpRes] = await Promise.all([
+        api.get(`/noxtm-chat/admin/messages/${userId}`),
+        api.get(`/noxtm-chat/admin/keypoints/${userId}`).catch(() => ({ data: { success: false } }))
+      ]);
+      if (msgRes.data.success) {
+        setSelectedMessages(msgRes.data.messages);
+        setSelectedUser(msgRes.data.user);
         setSelectedConv(userId);
+      }
+      if (kpRes.data.success) {
+        setUserKeypoints(kpRes.data.keypoints || []);
+      } else {
+        setUserKeypoints([]);
       }
     } catch (err) {
       toast.error('Failed to load messages');
@@ -88,6 +98,16 @@ function NoxtmChatAdmin() {
       toast.error(errorMsg);
     } finally {
       setSavingConfig(false);
+    }
+  };
+
+  const deleteKeypoint = async (keypointId) => {
+    try {
+      await api.delete(`/noxtm-chat/admin/keypoints/${keypointId}`);
+      setUserKeypoints(prev => prev.filter(kp => kp._id !== keypointId));
+      toast.success('Keypoint removed');
+    } catch (err) {
+      toast.error('Failed to delete keypoint');
     }
   };
 
@@ -431,7 +451,42 @@ function NoxtmChatAdmin() {
                       <div className="nca-message-header-name">{selectedUser?.fullName || 'Unknown'}</div>
                       <div className="nca-message-header-email">{selectedUser?.email}</div>
                     </div>
+                    {userKeypoints.length > 0 && (
+                      <button
+                        className="nca-keypoints-toggle"
+                        onClick={() => setShowKeypoints(!showKeypoints)}
+                        title="View keypoints"
+                      >
+                        <FiTag size={14} />
+                        <span>{userKeypoints.length} Keypoints</span>
+                      </button>
+                    )}
                   </div>
+
+                  {/* Keypoints Panel */}
+                  {showKeypoints && userKeypoints.length > 0 && (
+                    <div className="nca-keypoints-panel">
+                      <div className="nca-keypoints-header">
+                        <FiTag size={13} />
+                        <span>Auto-extracted Keypoints ({userKeypoints.length}/50)</span>
+                      </div>
+                      <div className="nca-keypoints-list">
+                        {userKeypoints.map(kp => (
+                          <div key={kp._id} className="nca-keypoint-chip">
+                            <span className={`nca-kp-cat nca-kp-cat-${kp.category}`}>{kp.category}</span>
+                            <span className="nca-kp-text">{kp.content}</span>
+                            <button
+                              className="nca-kp-delete"
+                              onClick={() => deleteKeypoint(kp._id)}
+                              title="Remove keypoint"
+                            >
+                              <FiX size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="nca-messages-scroll">
                     {selectedMessages.map(msg => (

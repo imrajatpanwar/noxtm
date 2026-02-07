@@ -208,7 +208,7 @@ const calculateLeadStatusBreakdown = (leads) => {
  * @param {Object} botConfig - Bot configuration from NoxtmChatConfig (optional)
  * @returns {String} System prompt for AI
  */
-const buildSystemPrompt = (contextData, memory = null, activeMode = null, botConfig = null) => {
+const buildSystemPrompt = (contextData, memory = null, activeMode = null, botConfig = null, keypoints = []) => {
   // Resolve bot identity
   const botDisplayName = botConfig?.botName || 'Noxtm';
   const botTitleStr = botConfig?.botTitle || 'AI Assistant';
@@ -330,6 +330,14 @@ User Context:
       .map(m => `- [${m.category}] ${m.content}`)
       .join('\n');
     prompt += `\n\n## LEARNED MEMORIES\nThings you've learned about this user from past interactions:\n${learnedText}`;
+  }
+
+  // === User Keypoints (auto-extracted from conversations) ===
+  if (keypoints && keypoints.length > 0) {
+    const keypointText = keypoints
+      .map(kp => `- [${kp.category}] ${kp.content}`)
+      .join('\n');
+    prompt += `\n\n## USER KEYPOINTS — Important things about this user\nUse these to personalize your responses naturally (don't list them back, just use the knowledge):\n${keypointText}`;
   }
 
   prompt += `\n\n## BEHAVIOR INSTRUCTIONS
@@ -467,10 +475,111 @@ const sanitizeUserMessage = (message) => {
   return sanitized;
 };
 
+/**
+ * Extract keypoints from recent conversation and save per-user (max 50, rolling window)
+ * Called when user stops chatting (inactivity trigger)
+ */
+const extractAndSaveKeypoints = async (userId, companyId) => {
+  const UserKeypoint = require('../models/UserKeypoint');
+  const { NoxtmChatMessage } = require('../models/NoxtmChat');
+
+  try {
+    // Get recent unprocessed messages (last 20 messages)
+    const recentMessages = await NoxtmChatMessage.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    if (recentMessages.length < 2) return; // Need at least 1 exchange
+
+    // Get existing keypoints to avoid duplicates
+    const existingKeypoints = await UserKeypoint.find({ userId })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const existingTexts = existingKeypoints.map(k => k.content).join('\n');
+
+    // Build conversation text for extraction
+    const convText = recentMessages
+      .reverse()
+      .map(m => `${m.role === 'user' ? 'User' : 'Bot'}: ${m.content}`)
+      .join('\n');
+
+    // Use Claude to extract keypoints
+    const extractionPrompt = `Analyze this conversation and extract ONLY the important, memorable keypoints about the USER (not the bot). 
+Focus on: personal info, preferences, interests, opinions, work details, requests, behavior patterns.
+Skip generic greetings and small talk.
+Return ONLY a JSON array of objects like: [{"content": "keypoint text", "category": "interest|preference|personal|work|opinion|request|behavior|other"}]
+Return empty array [] if no meaningful keypoints found.
+Max 5 keypoints per extraction. Keep each keypoint under 200 characters.
+
+EXISTING KEYPOINTS (do NOT duplicate these):
+${existingTexts || 'None yet'}
+
+CONVERSATION:
+${convText}
+
+Return ONLY valid JSON array, nothing else:`;
+
+    const response = await callClaude([
+      { role: 'system', content: 'You extract keypoints from conversations. Return ONLY valid JSON arrays.' },
+      { role: 'user', content: extractionPrompt }
+    ], 'claude-3-haiku-20240307', 500);
+
+    // Parse the response
+    let keypoints = [];
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        keypoints = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr) {
+      console.error('Keypoint parse error:', parseErr);
+      return;
+    }
+
+    if (!Array.isArray(keypoints) || keypoints.length === 0) return;
+
+    // Save keypoints with rolling window (max 50)
+    const currentCount = existingKeypoints.length;
+    const newCount = keypoints.length;
+    const totalAfter = currentCount + newCount;
+
+    // If we'd exceed 50, remove oldest ones
+    if (totalAfter > 50) {
+      const toRemove = totalAfter - 50;
+      const oldestIds = existingKeypoints.slice(0, toRemove).map(k => k._id);
+      await UserKeypoint.deleteMany({ _id: { $in: oldestIds } });
+    }
+
+    // Insert new keypoints
+    const validCategories = ['interest', 'preference', 'personal', 'work', 'opinion', 'request', 'behavior', 'other'];
+    const toInsert = keypoints
+      .filter(kp => kp.content && typeof kp.content === 'string' && kp.content.length > 3)
+      .slice(0, 5)
+      .map(kp => ({
+        userId,
+        companyId: companyId || undefined,
+        content: kp.content.substring(0, 300),
+        category: validCategories.includes(kp.category) ? kp.category : 'other',
+        source: 'auto'
+      }));
+
+    if (toInsert.length > 0) {
+      await UserKeypoint.insertMany(toInsert);
+      console.log(`Extracted ${toInsert.length} keypoints for user ${userId}`);
+    }
+  } catch (err) {
+    console.error('Keypoint extraction error:', err);
+  }
+};
+
 module.exports = {
   aggregateUserContext,
   getUserMemory,
   extractAndSaveInsights,
+  extractAndSaveKeypoints,
   buildSystemPrompt,
   callClaude,
   callOpenRouter,
