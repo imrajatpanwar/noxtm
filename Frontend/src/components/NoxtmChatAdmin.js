@@ -925,6 +925,13 @@ function NoxtmChatAdmin() {
                 <div className="nca-group-label">Advanced Instructions</div>
                 <textarea value={config.customInstructions || ''} onChange={(e) => setConfig({ ...config, customInstructions: e.target.value })} placeholder="Custom instructions..." rows={3} />
               </div>
+
+              {/* Default Excuse */}
+              <div className="nca-settings-group">
+                <div className="nca-group-label">Default Excuse</div>
+                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>When bot can't answer, it uses this human-like excuse instead of AI refusals</div>
+                <textarea value={config.defaultExcuse || ''} onChange={(e) => setConfig({ ...config, defaultExcuse: e.target.value })} placeholder="e.g. Yaar abhi ye mere scope mein nahi hai, kuch aur puch lo!" rows={2} />
+              </div>
             </div>
           </div>
         )}

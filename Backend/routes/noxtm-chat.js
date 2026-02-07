@@ -246,7 +246,8 @@ router.put('/config', authenticateToken, async (req, res) => {
       // New response control fields
       botIdentity, personality, emotionalScale, angerState, humorLevel, empathyLevel,
       maxWordCount, responseLanguage, formality, useEmojis, creativityLevel,
-      confidenceLevel, proactiveness, forbiddenTopics, focusTopics, customInstructions
+      confidenceLevel, proactiveness, forbiddenTopics, focusTopics, customInstructions,
+      defaultExcuse
     } = req.body;
 
     // Validate botProfilePicture if provided
@@ -288,6 +289,7 @@ router.put('/config', authenticateToken, async (req, res) => {
       ...(forbiddenTopics !== undefined && { forbiddenTopics }),
       ...(focusTopics !== undefined && { focusTopics }),
       ...(customInstructions !== undefined && { customInstructions }),
+      ...(defaultExcuse !== undefined && { defaultExcuse }),
       updatedBy: req.user.userId
     };
 

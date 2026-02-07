@@ -56,6 +56,8 @@ const noxtmChatConfigSchema = new mongoose.Schema({
   focusTopics: { type: String, default: '' }, // comma-separated topics the bot should focus on
   // Custom Instructions
   customInstructions: { type: String, default: '' }, // freeform custom instructions
+  // Default Excuse — human-like fallback when bot can't answer something
+  defaultExcuse: { type: String, default: 'Yaar abhi ye mere scope mein nahi hai, but I can help you with something else!' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedAt: { type: Date, default: Date.now }
 });
