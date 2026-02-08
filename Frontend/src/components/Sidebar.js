@@ -439,26 +439,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
-              {/* Client Management Section */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'client-management' ? 'active' : ''}`}
-                  onClick={() => onSectionChange('client-management')}
-                >
-                  <FiUsers className="sidebar-icon" />
-                  <span>Client Management</span>
-                </div>
-              </div>
-
-              {/* Client Leads */}
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
-                onClick={() => onSectionChange('client-leads')}
-              >
-                <FiUserCheck className="sidebar-icon" />
-                <span>Client Leads</span>
-              </div>
-
               {/* Lead Management Section */}
               <div className="sidebar-item-container">
                 <div
@@ -491,6 +471,26 @@ function Sidebar({ activeSection, onSectionChange }) {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Client Leads */}
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
+                onClick={() => onSectionChange('client-leads')}
+              >
+                <FiUserCheck className="sidebar-icon" />
+                <span>Client Leads</span>
+              </div>
+
+              {/* Client Management Section */}
+              <div className="sidebar-item-container">
+                <div
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'client-management' ? 'active' : ''}`}
+                  onClick={() => onSectionChange('client-management')}
+                >
+                  <FiUsers className="sidebar-icon" />
+                  <span>Client Management</span>
+                </div>
               </div>
             </div>
           )}
