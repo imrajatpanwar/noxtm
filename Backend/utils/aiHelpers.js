@@ -298,7 +298,7 @@ User Context:
     if (c.additionalNotes) parts.push(`Additional Notes: ${c.additionalNotes}`);
 
     if (parts.length > 0) {
-      prompt += `\n\n## CORE MEMORY - About This User\n${parts.join('\n')}`;
+      prompt += `\n\n## CORE MEMORY - Your Identity & Knowledge\nThis is who you are and what you know. Use this to stay in character:\n${parts.join('\n')}`;
     }
   }
 

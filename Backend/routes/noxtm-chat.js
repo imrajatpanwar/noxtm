@@ -77,22 +77,7 @@ router.post('/send', authenticateToken, async (req, res) => {
       .slice(0, -1) // exclude the just-saved user message
       .map(m => ({ role: m.role, content: m.content }));
 
-    // Build AI context + memory
-    const UserKeypoint = require('../models/UserKeypoint');
-    const [context, memory, keypoints] = await Promise.all([
-      aggregateUserContext(userId, companyId),
-      getUserMemory(userId),
-      UserKeypoint.find({ userId }).sort({ createdAt: -1 }).limit(50).lean()
-    ]);
-
-    // Detect active mode from message (e.g., "Mode: Technical Colleagues")
-    let activeMode = null;
-    const modeMatch = sanitized.match(/^mode:\s*(.+)/i);
-    if (modeMatch) {
-      activeMode = modeMatch[1].trim();
-    }
-
-    // Check for custom system prompt and bot config
+    // Load bot config FIRST (we need updatedBy to fetch admin memory)
     let botConfig = null;
     let systemPromptOverride = '';
     // Try user's company config first, then fall back to any platform config
@@ -106,6 +91,32 @@ router.post('/send', authenticateToken, async (req, res) => {
       if (config.systemPromptOverride) {
         systemPromptOverride = config.systemPromptOverride;
       }
+    }
+
+    // Build AI context + memory
+    // Core Memory & Context Modes come from the ADMIN (bot owner) who configured them
+    // Learned Memories & Keypoints come from the CHATTING USER
+    const adminUserId = config?.updatedBy;
+    const UserKeypoint = require('../models/UserKeypoint');
+    const [context, adminMemory, userMemory, keypoints] = await Promise.all([
+      aggregateUserContext(userId, companyId),
+      adminUserId ? getUserMemory(adminUserId) : Promise.resolve({ core: null, contexts: [], learned: [] }),
+      getUserMemory(userId),
+      UserKeypoint.find({ userId }).sort({ createdAt: -1 }).limit(50).lean()
+    ]);
+
+    // Merge: admin's core identity + context modes, user's learned memories
+    const memory = {
+      core: adminMemory.core,
+      contexts: adminMemory.contexts,
+      learned: userMemory.learned
+    };
+
+    // Detect active mode from message (e.g., "Mode: Technical Colleagues")
+    let activeMode = null;
+    const modeMatch = sanitized.match(/^mode:\s*(.+)/i);
+    if (modeMatch) {
+      activeMode = modeMatch[1].trim();
     }
 
     let systemPrompt = buildSystemPrompt(context, memory, activeMode, botConfig, keypoints);
