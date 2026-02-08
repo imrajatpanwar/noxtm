@@ -235,12 +235,15 @@ router.get('/messages', authenticateToken, async (req, res) => {
 
     const [messages, total] = await Promise.all([
       NoxtmChatMessage.find({ userId })
-        .sort({ createdAt: 1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
       NoxtmChatMessage.countDocuments({ userId })
     ]);
+
+    // Reverse so messages display oldest→newest in UI
+    messages.reverse();
 
     res.json({
       success: true,
