@@ -5,6 +5,7 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConversationList from './ConversationList';
 import api from '../config/api';
+import { MdSend } from 'react-icons/md';
 import './Messaging.css';
 // Group icon PNG imports
 import groupIcon1 from './image/group-icons/group_icon (1).png';
@@ -48,6 +49,15 @@ function Messaging() {
   const [currentUser, setCurrentUser] = useState(null);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
+  // Noxtm Bot Chat State
+  const [noxtmConfig, setNoxtmConfig] = useState(null);
+  const [noxtmMessages, setNoxtmMessages] = useState([]);
+  const [noxtmInput, setNoxtmInput] = useState('');
+  const [noxtmLoading, setNoxtmLoading] = useState(false);
+  const [isNoxtmBotSelected, setIsNoxtmBotSelected] = useState(false);
+  const noxtmMessagesEndRef = useRef(null);
+  const noxtmInputRef = useRef(null);
+
   // Modal States
   const [showChatSettings, setShowChatSettings] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -86,6 +96,7 @@ function Messaging() {
     }
 
     loadConversations();
+    loadNoxtmConfig();
 
     // Cleanup: Clear active conversation when leaving messaging section
     return () => {
@@ -336,6 +347,80 @@ function Messaging() {
     }
   };
 
+  // === Noxtm Bot Chat Functions ===
+  const loadNoxtmConfig = async () => {
+    try {
+      const res = await api.get('/noxtm-chat/config');
+      if (res.data.success) setNoxtmConfig(res.data.config);
+    } catch (err) {
+      console.error('Failed to load Noxtm config:', err);
+    }
+  };
+
+  const loadNoxtmHistory = async () => {
+    try {
+      const res = await api.get('/noxtm-chat/messages?limit=50');
+      if (res.data.success) setNoxtmMessages(res.data.messages);
+    } catch (err) {
+      console.error('Failed to load Noxtm history:', err);
+    }
+  };
+
+  const handleSelectNoxtmBot = () => {
+    setSelectedConversation(null);
+    setIsNoxtmBotSelected(true);
+    loadNoxtmHistory();
+    setTimeout(() => noxtmInputRef.current?.focus(), 100);
+  };
+
+  const handleSendNoxtm = async () => {
+    if (!noxtmInput.trim() || noxtmLoading) return;
+    const msg = noxtmInput.trim();
+    setNoxtmInput('');
+
+    const tempUserMsg = { _id: 'temp-' + Date.now(), role: 'user', content: msg, createdAt: new Date().toISOString() };
+    setNoxtmMessages(prev => [...prev, tempUserMsg]);
+    setNoxtmLoading(true);
+
+    try {
+      const res = await api.post('/noxtm-chat/send', { message: msg });
+      if (res.data.success) {
+        setNoxtmMessages(prev => {
+          const filtered = prev.filter(m => m._id !== tempUserMsg._id);
+          return [...filtered, res.data.userMessage, res.data.reply];
+        });
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Failed to send message';
+      toast.error(errMsg);
+      setNoxtmMessages(prev => [
+        ...prev,
+        { _id: 'err-' + Date.now(), role: 'assistant', content: errMsg, createdAt: new Date().toISOString() }
+      ]);
+    } finally {
+      setNoxtmLoading(false);
+    }
+  };
+
+  const handleNoxtmKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendNoxtm();
+    }
+  };
+
+  // Auto-scroll noxtm messages
+  useEffect(() => {
+    if (isNoxtmBotSelected) {
+      noxtmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [noxtmMessages, noxtmLoading, isNoxtmBotSelected]);
+
+  // Bot config derived values
+  const botName = noxtmConfig?.botName || 'Navraj Panwar';
+  const botPicture = noxtmConfig?.botProfilePicture || '';
+  const botInitials = botName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
   const loadMessages = async (conversationId) => {
     try {
       setMessagesLoading(true);
@@ -376,6 +461,7 @@ function Messaging() {
   };
 
   const handleSelectConversation = (conversation) => {
+    setIsNoxtmBotSelected(false);
     setSelectedConversation(conversation);
     // Note: Unread count will be reset when messages are loaded and marked as read
   };
@@ -775,6 +861,9 @@ function Messaging() {
           onCreateGroup={handleCreateGroup}
           onOpenChatSettings={handleOpenChatSettings}
           getGroupIconSrc={getGroupIconSrc}
+          noxtmConfig={noxtmConfig}
+          isNoxtmBotSelected={isNoxtmBotSelected}
+          onSelectNoxtmBot={handleSelectNoxtmBot}
         />
       </div>
 
@@ -981,6 +1070,98 @@ function Messaging() {
               </div>
             </div>
           </div>
+        ) : isNoxtmBotSelected ? (
+          /* Noxtm Bot Chat View */
+          <>
+            <div className="messaging-header">
+              <div className="chat-header-info">
+                <div className="chat-avatar-container">
+                  <div className="chat-avatar online">
+                    {botPicture ? (
+                      <img src={botPicture} alt={botName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <span className="avatar-fallback" style={{ display: 'flex' }}>{botInitials}</span>
+                    )}
+                  </div>
+                  <div className="status-dot online" />
+                </div>
+                <div className="chat-header-text">
+                  <h3 className="chat-header-name">{botName}</h3>
+                  <span className="user-status online">Online</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="messaging-body noxtm-bot-messages">
+              {noxtmMessages.length === 0 ? (
+                <div className="noxtm-bot-welcome">
+                  <div className="noxtm-bot-welcome-avatar">
+                    {botPicture ? (
+                      <img src={botPicture} alt={botName} />
+                    ) : (
+                      <span>{botInitials}</span>
+                    )}
+                  </div>
+                  <h4>{botName}</h4>
+                  <p>{noxtmConfig?.welcomeMessage || `Hi! I'm ${botName}. How can I help you?`}</p>
+                </div>
+              ) : (
+                noxtmMessages.map((msg) => (
+                  <div key={msg._id} className={`noxtm-bot-msg ${msg.role}`}>
+                    {msg.role === 'assistant' && (
+                      <div className="noxtm-bot-msg-avatar">
+                        {botPicture ? (
+                          <img src={botPicture} alt={botName} />
+                        ) : (
+                          <span>{botInitials}</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="noxtm-bot-msg-content">
+                      <div className="noxtm-bot-msg-bubble">{msg.content}</div>
+                      <div className="noxtm-bot-msg-time">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              {noxtmLoading && (
+                <div className="noxtm-bot-msg assistant">
+                  <div className="noxtm-bot-msg-avatar">
+                    {botPicture ? <img src={botPicture} alt={botName} /> : <span>{botInitials}</span>}
+                  </div>
+                  <div className="noxtm-bot-msg-content">
+                    <div className="noxtm-bot-typing"><span></span><span></span><span></span></div>
+                  </div>
+                </div>
+              )}
+              <div ref={noxtmMessagesEndRef} />
+            </div>
+
+            <div className="messaging-footer noxtm-bot-footer">
+              <div className="noxtm-bot-input-wrapper">
+                <input
+                  ref={noxtmInputRef}
+                  type="text"
+                  value={noxtmInput}
+                  onChange={(e) => setNoxtmInput(e.target.value)}
+                  onKeyPress={handleNoxtmKeyPress}
+                  placeholder={`Message ${botName.split(' ')[0]}...`}
+                  disabled={noxtmLoading}
+                  maxLength={2000}
+                  className="noxtm-bot-input"
+                />
+                <button
+                  onClick={handleSendNoxtm}
+                  disabled={!noxtmInput.trim() || noxtmLoading}
+                  className="noxtm-bot-send-btn"
+                >
+                  <MdSend size={18} />
+                </button>
+              </div>
+            </div>
+          </>
         ) : selectedConversation ? (
           <>
             {/* Chat Header */}

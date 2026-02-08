@@ -1642,3 +1642,213 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ========================================
+   Noxtm Bot Chat in Messages
+   ======================================== */
+
+.noxtm-bot-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px !important;
+  overflow-y: auto;
+}
+
+.noxtm-bot-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #666;
+  gap: 8px;
+}
+
+.noxtm-bot-welcome-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #171717;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.noxtm-bot-welcome-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noxtm-bot-welcome h4 {
+  margin: 8px 0 0;
+  font-size: 18px;
+  color: #111;
+}
+
+.noxtm-bot-welcome p {
+  font-size: 13px;
+  color: #888;
+  max-width: 300px;
+}
+
+.noxtm-bot-msg {
+  display: flex;
+  gap: 8px;
+  max-width: 75%;
+}
+
+.noxtm-bot-msg.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.noxtm-bot-msg.assistant {
+  align-self: flex-start;
+}
+
+.noxtm-bot-msg-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #171717;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.noxtm-bot-msg-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noxtm-bot-msg-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.noxtm-bot-msg-bubble {
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.noxtm-bot-msg.user .noxtm-bot-msg-bubble {
+  background: #171717;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.noxtm-bot-msg.assistant .noxtm-bot-msg-bubble {
+  background: #f5f5f5;
+  color: #111;
+  border-bottom-left-radius: 4px;
+}
+
+.noxtm-bot-msg-time {
+  font-size: 10px;
+  color: #aaa;
+  padding: 0 4px;
+}
+
+.noxtm-bot-msg.user .noxtm-bot-msg-time {
+  text-align: right;
+}
+
+/* Typing indicator */
+.noxtm-bot-typing {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px;
+  background: #f5f5f5;
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  align-items: center;
+}
+
+.noxtm-bot-typing span {
+  width: 6px;
+  height: 6px;
+  background: #999;
+  border-radius: 50%;
+  animation: noxtmBotDot 1.2s infinite;
+}
+
+.noxtm-bot-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.noxtm-bot-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes noxtmBotDot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+/* Bot input area */
+.noxtm-bot-footer {
+  border-top: 1px solid #e5e5e5;
+}
+
+.noxtm-bot-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.noxtm-bot-input {
+  flex: 1;
+  border: 1px solid #e5e5e5;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Switzer', sans-serif;
+}
+
+.noxtm-bot-input:focus {
+  border-color: #171717;
+}
+
+.noxtm-bot-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #171717;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.noxtm-bot-send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.noxtm-bot-send-btn:hover:not(:disabled) {
+  opacity: 0.8;
+}

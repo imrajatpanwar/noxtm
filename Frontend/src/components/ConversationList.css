@@ -612,3 +612,48 @@
     font-size: 12px;
   }
 }
+
+/* Noxtm Bot Pinned Item */
+.cl-noxtm-bot-pinned {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 4px 8px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  border-radius: 8px;
+  background: #fafbff;
+  border: 1px solid #e8ecf4;
+}
+
+.cl-noxtm-bot-pinned:hover {
+  background: #f0f3ff;
+  border-color: #d0d8f0;
+}
+
+.cl-noxtm-bot-pinned.cl-dm-selected {
+  background: #eef1ff;
+  border-color: #c5ccee;
+}
+
+.cl-noxtm-bot-avatar {
+  background: #171717 !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 600;
+}
+
+.cl-noxtm-bot-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eef1ff;
+  color: #4a5eff;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
