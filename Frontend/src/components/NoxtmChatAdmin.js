@@ -451,40 +451,45 @@ function NoxtmChatAdmin() {
                       <div className="nca-message-header-name">{selectedUser?.fullName || 'Unknown'}</div>
                       <div className="nca-message-header-email">{selectedUser?.email}</div>
                     </div>
-                    {userKeypoints.length > 0 && (
-                      <button
-                        className="nca-keypoints-toggle"
-                        onClick={() => setShowKeypoints(!showKeypoints)}
-                        title="View keypoints"
-                      >
-                        <FiTag size={14} />
-                        <span>{userKeypoints.length} Keypoints</span>
-                      </button>
-                    )}
+                    <button
+                      className="nca-keypoints-toggle"
+                      onClick={() => setShowKeypoints(!showKeypoints)}
+                      title={userKeypoints.length > 0 ? "View keypoints" : "No keypoints yet"}
+                    >
+                      <FiTag size={14} />
+                      <span>{userKeypoints.length} Keypoints</span>
+                    </button>
                   </div>
 
                   {/* Keypoints Panel */}
-                  {showKeypoints && userKeypoints.length > 0 && (
+                  {showKeypoints && (
                     <div className="nca-keypoints-panel">
                       <div className="nca-keypoints-header">
                         <FiTag size={13} />
                         <span>Auto-extracted Keypoints ({userKeypoints.length}/50)</span>
                       </div>
-                      <div className="nca-keypoints-list">
-                        {userKeypoints.map(kp => (
-                          <div key={kp._id} className="nca-keypoint-chip">
-                            <span className={`nca-kp-cat nca-kp-cat-${kp.category}`}>{kp.category}</span>
-                            <span className="nca-kp-text">{kp.content}</span>
-                            <button
-                              className="nca-kp-delete"
-                              onClick={() => deleteKeypoint(kp._id)}
-                              title="Remove keypoint"
-                            >
-                              <FiX size={11} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                      {userKeypoints.length === 0 ? (
+                        <div className="nca-keypoints-empty">
+                          <p>No keypoints extracted yet.</p>
+                          <p className="nca-kp-hint">Keypoints are automatically extracted after 2 minutes of conversation inactivity.</p>
+                        </div>
+                      ) : (
+                        <div className="nca-keypoints-list">
+                          {userKeypoints.map(kp => (
+                            <div key={kp._id} className="nca-keypoint-chip">
+                              <span className={`nca-kp-cat nca-kp-cat-${kp.category}`}>{kp.category}</span>
+                              <span className="nca-kp-text">{kp.content}</span>
+                              <button
+                                className="nca-kp-delete"
+                                onClick={() => deleteKeypoint(kp._id)}
+                                title="Remove keypoint"
+                              >
+                                <FiX size={11} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
