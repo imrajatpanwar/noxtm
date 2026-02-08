@@ -1118,7 +1118,7 @@ function Messaging() {
                       </div>
                     )}
                     <div className="noxtm-bot-msg-content">
-                      <div className="noxtm-bot-msg-bubble">{msg.content}</div>
+                      <div className="noxtm-bot-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                       <div className="noxtm-bot-msg-time">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
