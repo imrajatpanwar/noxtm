@@ -309,7 +309,7 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                 ) : (
                   noxtmMessages.map((msg) => (
                     <div key={msg._id} className={`chat-widget-msg ${msg.role}`}>
-                      <div className="chat-widget-msg-bubble">{msg.content}</div>
+                      <div className="chat-widget-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                       <div className="chat-widget-msg-time">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>

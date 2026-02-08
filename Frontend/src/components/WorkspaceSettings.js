@@ -969,6 +969,15 @@ function WorkspaceSettings({ user, onLogout }) {
         require: 'Chrome Extension',
         lastUpdate: '28 Oct 2025',
         logo: <img src={botgitLogo} alt="BotGit" className="module-logo" />
+      },
+      {
+        id: 'ChatAutomation',
+        name: 'Chat Automation',
+        company: 'Noxtm Productivity',
+        description: 'Enable powerful automation through the Noxtm Chat Bot. Create tasks, assign team members, set priorities and due dates — all by simply chatting with the bot. Just say "create task" and the bot guides you step by step.',
+        require: 'Noxtm Chat',
+        lastUpdate: '08 Feb 2026',
+        logo: <div className="module-logo-placeholder" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 8, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18 }}>CA</div>
       }
     ];
 

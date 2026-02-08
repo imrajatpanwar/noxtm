@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const { authenticateToken } = require('../middleware/auth');
 const { NoxtmChatMessage, NoxtmChatConfig } = require('../models/NoxtmChat');
 const User = require('../models/User');
+const InstalledModule = require('../models/InstalledModule');
+const { detectTaskIntent, startTaskCreation, processTaskStep, getActiveIntent } = require('../services/taskChatService');
 const {
   aggregateUserContext,
   getUserMemory,
@@ -57,6 +59,54 @@ router.post('/send', authenticateToken, async (req, res) => {
         return res.status(403).json({ success: false, message: 'Noxtm Chat is disabled for your workspace' });
       }
     }
+
+    // === CHAT AUTOMATION: Task creation via conversation ===
+    // Only active if user has "ChatAutomation" module installed
+    const hasChatAutomation = await InstalledModule.findOne({
+      userId, moduleId: 'ChatAutomation', status: 'active'
+    }).lean();
+
+    if (hasChatAutomation) {
+      // Check if user has an active task creation flow
+      const activeIntent = await getActiveIntent(userId);
+      if (activeIntent) {
+        const taskResult = await processTaskStep(userId, companyId, sanitized);
+        if (taskResult.handled) {
+          // Save user message
+          const userMsg = await NoxtmChatMessage.create({ userId, companyId, role: 'user', content: sanitized });
+          // Save bot response
+          const assistantMsg = await NoxtmChatMessage.create({
+            userId, companyId, role: 'assistant', content: taskResult.response,
+            metadata: { contextUsed: false, model: 'task-flow' }
+          });
+          return res.json({
+            success: true,
+            userMessage: { _id: userMsg._id, role: 'user', content: sanitized, createdAt: userMsg.createdAt },
+            reply: { _id: assistantMsg._id, role: 'assistant', content: taskResult.response, createdAt: assistantMsg.createdAt },
+            isTaskFlow: true
+          });
+        }
+      }
+
+      // Check if this message triggers a new task creation
+      if (detectTaskIntent(sanitized)) {
+        const taskResult = await startTaskCreation(userId, companyId, sanitized);
+        if (taskResult.handled) {
+          const userMsg = await NoxtmChatMessage.create({ userId, companyId, role: 'user', content: sanitized });
+          const assistantMsg = await NoxtmChatMessage.create({
+            userId, companyId, role: 'assistant', content: taskResult.response,
+            metadata: { contextUsed: false, model: 'task-flow' }
+          });
+          return res.json({
+            success: true,
+            userMessage: { _id: userMsg._id, role: 'user', content: sanitized, createdAt: userMsg.createdAt },
+            reply: { _id: assistantMsg._id, role: 'assistant', content: taskResult.response, createdAt: assistantMsg.createdAt },
+            isTaskFlow: true
+          });
+        }
+      }
+    }
+    // === END CHAT AUTOMATION ===
 
     // Save user message
     const userMsg = await NoxtmChatMessage.create({
