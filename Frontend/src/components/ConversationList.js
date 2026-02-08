@@ -283,7 +283,7 @@ function ConversationList({
             <div className="cl-dm-avatar-wrapper">
               <div className="cl-dm-avatar cl-user-avatar cl-noxtm-bot-avatar">
                 {noxtmConfig?.botProfilePicture ? (
-                  <img src={noxtmConfig.botProfilePicture} alt={noxtmConfig?.botName || 'Bot'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  <img src={noxtmConfig.botProfilePicture} alt={noxtmConfig?.botName || 'Bot'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   (noxtmConfig?.botName || 'NP').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
                 )}
@@ -293,7 +293,6 @@ function ConversationList({
             <div className="cl-conversation-info">
               <div className="cl-dm-conversation-header">
                 <span className="cl-conversation-name">{noxtmConfig?.botName || 'Navraj Panwar'}</span>
-                <span className="cl-noxtm-bot-badge">BOT</span>
               </div>
               <div className="cl-conversation-preview">
                 <span className="cl-last-message">{noxtmConfig?.welcomeMessage?.substring(0, 35) || 'Ask me anything...'}</span>

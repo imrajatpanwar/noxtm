@@ -643,6 +643,7 @@
   color: #fff !important;
   font-size: 13px !important;
   font-weight: 600;
+  border-radius: 50% !important;
 }
 
 .cl-noxtm-bot-badge {
