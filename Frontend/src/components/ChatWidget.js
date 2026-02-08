@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { MdChat, MdClose, MdSend } from 'react-icons/md';
-import { FiMessageCircle, FiChevronLeft, FiTrash2 } from 'react-icons/fi';
+import { FiMessageCircle, FiChevronLeft } from 'react-icons/fi';
 import { MessagingContext } from '../contexts/MessagingContext';
 import api from '../config/api';
 import { toast } from 'sonner';
@@ -147,15 +147,7 @@ const ChatWidget = ({ onNavigateToMessages }) => {
     }
   };
 
-  const clearNoxtmChat = async () => {
-    try {
-      await api.delete('/noxtm-chat/messages');
-      setNoxtmMessages([]);
-      toast.success('Chat history cleared');
-    } catch (err) {
-      toast.error('Failed to clear chat');
-    }
-  };
+
 
   const handleNoxtmKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -226,7 +218,6 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                     <div className="chat-widget-item-name">
                       {botName}
                       <VerifiedBadge size={16} />
-                      <span className="chat-widget-noxtm-badge">{botTitle}</span>
                     </div>
                     <div className="chat-widget-item-preview">
                       {noxtmConfig?.welcomeMessage
@@ -300,11 +291,6 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                   </div>
                 </div>
                 <div className="chat-widget-header-actions">
-                  {noxtmMessages.length > 0 && (
-                    <button className="chat-widget-action-btn" onClick={clearNoxtmChat} title="Clear chat">
-                      <FiTrash2 size={14} />
-                    </button>
-                  )}
                   <button className="chat-widget-close" onClick={() => { setIsOpen(false); setView('list'); }}>
                     <MdClose size={18} />
                   </button>
