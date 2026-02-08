@@ -373,6 +373,19 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+.nca-keypoints-empty {
+  text-align: center;
+  padding: 16px;
+  color: #999;
+  font-size: 12px;
+}
+.nca-keypoints-empty p {
+  margin: 4px 0;
+}
+.nca-kp-hint {
+  font-size: 11px;
+  color: #bbb;
+}
 .nca-keypoint-chip {
   display: flex;
   align-items: center;
