@@ -635,7 +635,7 @@ function initializeRoutes(dependencies) {
       const jwt = require('jsonwebtoken');
       const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
       const authToken = jwt.sign(
-        { userId: user._id, fullName: user.fullName, email: user.email },
+        { userId: user._id, fullName: user.fullName, email: user.email, companyId: user.companyId, role: user.role || 'User' },
         JWT_SECRET,
         { expiresIn: '24h' }
       );

@@ -6,12 +6,13 @@ const {
     getDaysRemaining,
     getCalculatedStatus
 } = require('../utils/subscriptionHelpers');
+const User = require('../models/User');
 
 /**
  * Check if user has an active subscription
- * Admins bypass this check
+ * Admins and company members bypass this check
  */
-const checkActiveSubscription = (req, res, next) => {
+const checkActiveSubscription = async (req, res, next) => {
     if (!req.user) {
         return res.status(401).json({
             success: false,
@@ -22,6 +23,23 @@ const checkActiveSubscription = (req, res, next) => {
     // Admin bypasses subscription checks
     if (req.user.role === ROLES.ADMIN) {
         return next();
+    }
+
+    // Company members (employees) bypass personal subscription - they use company's subscription
+    // Check JWT first, then load from DB if needed
+    if (req.user.companyId) {
+        return next();
+    }
+
+    // If companyId not in JWT, check DB (for older tokens)
+    try {
+        const dbUser = await User.findById(req.user.userId).select('companyId').lean();
+        if (dbUser?.companyId) {
+            req.user.companyId = dbUser.companyId;
+            return next();
+        }
+    } catch (err) {
+        // Continue with normal subscription check
     }
 
     if (hasActiveSubscription(req.user)) {
