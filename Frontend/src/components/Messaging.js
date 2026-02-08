@@ -6,6 +6,7 @@ import MessageInput from './MessageInput';
 import ConversationList from './ConversationList';
 import api from '../config/api';
 import { MdSend } from 'react-icons/md';
+import { FiMoreVertical } from 'react-icons/fi';
 import './Messaging.css';
 // Group icon PNG imports
 import groupIcon1 from './image/group-icons/group_icon (1).png';
@@ -52,6 +53,8 @@ function Messaging() {
   // Noxtm Bot Chat State
   const [noxtmConfig, setNoxtmConfig] = useState(null);
   const [noxtmMessages, setNoxtmMessages] = useState([]);
+  const [showBotMenu, setShowBotMenu] = useState(false);
+  const botMenuRef = useRef(null);
   const [noxtmInput, setNoxtmInput] = useState('');
   const [noxtmLoading, setNoxtmLoading] = useState(false);
   const [isNoxtmBotSelected, setIsNoxtmBotSelected] = useState(false);
@@ -406,6 +409,59 @@ function Messaging() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendNoxtm();
+    }
+  };
+
+  // Close bot menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (botMenuRef.current && !botMenuRef.current.contains(e.target)) {
+        setShowBotMenu(false);
+      }
+    };
+    if (showBotMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showBotMenu]);
+
+  const handleClearBotChat = async () => {
+    setShowBotMenu(false);
+    try {
+      await api.delete('/noxtm-chat/messages');
+      setNoxtmMessages([]);
+      toast.success('Chat cleared');
+    } catch (err) {
+      toast.error('Failed to clear chat');
+    }
+  };
+
+  const handleDeleteBotChat = async () => {
+    setShowBotMenu(false);
+    if (!window.confirm('Delete entire chat history? This cannot be undone.')) return;
+    try {
+      await api.delete('/noxtm-chat/messages');
+      setNoxtmMessages([]);
+      setIsNoxtmBotSelected(false);
+      toast.success('Chat deleted');
+    } catch (err) {
+      toast.error('Failed to delete chat');
+    }
+  };
+
+  const handleMarkBotRead = () => {
+    setShowBotMenu(false);
+    toast.success('Marked as read');
+  };
+
+  const handleBlockBotChat = async () => {
+    setShowBotMenu(false);
+    if (!window.confirm('Block & clear all chat? You can re-open chat anytime.')) return;
+    try {
+      await api.delete('/noxtm-chat/messages');
+      setNoxtmMessages([]);
+      setIsNoxtmBotSelected(false);
+      toast.success('Chat blocked & cleared');
+    } catch (err) {
+      toast.error('Failed to block & clear chat');
     }
   };
 
@@ -1076,9 +1132,9 @@ function Messaging() {
             <div className="messaging-header">
               <div className="chat-header-info">
                 <div className="chat-avatar-container">
-                  <div className="chat-avatar online">
+                  <div className="chat-avatar online" style={{ borderRadius: '50%' }}>
                     {botPicture ? (
-                      <img src={botPicture} alt={botName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      <img src={botPicture} alt={botName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                     ) : (
                       <span className="avatar-fallback" style={{ display: 'flex' }}>{botInitials}</span>
                     )}
@@ -1089,6 +1145,32 @@ function Messaging() {
                   <h3 className="chat-header-name">{botName}</h3>
                   <span className="user-status online">Online</span>
                 </div>
+              </div>
+              <div className="noxtm-bot-header-actions" ref={botMenuRef}>
+                <button className="noxtm-bot-menu-btn" onClick={() => setShowBotMenu(!showBotMenu)}>
+                  <FiMoreVertical size={20} />
+                </button>
+                {showBotMenu && (
+                  <div className="noxtm-bot-dropdown">
+                    <button onClick={handleClearBotChat}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      Clear Chat
+                    </button>
+                    <button onClick={handleDeleteBotChat}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                      Delete Chat
+                    </button>
+                    <button onClick={handleMarkBotRead}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      Mark as Read
+                    </button>
+                    <div className="noxtm-bot-dropdown-divider"></div>
+                    <button className="noxtm-bot-dropdown-danger" onClick={handleBlockBotChat}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                      Block & Clear Chat
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
