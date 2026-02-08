@@ -141,7 +141,8 @@ function ConversationList({
     
     // If profile image is a relative path, prepend the API base URL
     if (profileImage && !profileImage.startsWith('http') && !profileImage.startsWith('data:')) {
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiBaseUrl = isDevelopment ? 'http://localhost:5000' : '';
       profileImage = `${apiBaseUrl}${profileImage}`;
       console.log('Constructed full URL:', profileImage);
     }

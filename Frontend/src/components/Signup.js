@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../config/api';
 import './Signup.css';
+import { API_BASE_URL } from '../config/apiConfig';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = API_BASE_URL;
 
 function Signup({ onSignup }) {
   const [step, setStep] = useState(1); // 1 = form, 2 = verification
