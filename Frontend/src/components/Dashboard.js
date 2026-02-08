@@ -317,8 +317,10 @@ function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
-      {/* Chat Widget */}
-      <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
+      {/* Chat Widget - hide when Messages section is open */}
+      {activeSection !== 'message' && (
+        <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
+      )}
     </div>
   );
 }
