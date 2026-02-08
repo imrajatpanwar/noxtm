@@ -123,7 +123,8 @@ function JoinCompany({ onSignup }) {
       const signupResponse = await api.post('/register', {
         fullName: formData.fullName,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        invitationToken: token
       });
 
       const signupData = signupResponse.data;

@@ -2002,14 +2002,45 @@ app.post('/api/reset-password', async (req, res) => {
 
 // Register
 app.post('/api/register', async (req, res) => {
-  // TEMPORARILY DISABLED - New user signups are currently disabled
-  return res.status(403).json({
-    success: false,
-    message: 'New user registration is temporarily disabled. Please contact administrator.'
-  });
-
   try {
-    const { fullName, email, password, role } = req.body;
+    const { fullName, email, password, role, invitationToken } = req.body;
+
+    // Public registration is disabled UNLESS user has a valid invitation token
+    if (!invitationToken) {
+      return res.status(403).json({
+        success: false,
+        message: 'New user registration is temporarily disabled. Please contact administrator.'
+      });
+    }
+
+    // Verify the invitation token is valid
+    const Company = require('./models/Company');
+    const invitingCompany = await Company.findOne({
+      'invitations.token': invitationToken,
+      'invitations.status': 'pending'
+    });
+    if (!invitingCompany) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid or expired invitation. Please contact your administrator.'
+      });
+    }
+    const invitation = invitingCompany.invitations.find(
+      inv => inv.token === invitationToken && inv.status === 'pending'
+    );
+    if (!invitation || new Date() > invitation.expiresAt) {
+      return res.status(403).json({
+        success: false,
+        message: 'This invitation has expired. Please contact your administrator for a new one.'
+      });
+    }
+    // Ensure the email matches the invitation
+    if (invitation.email.toLowerCase() !== email.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'This invitation was sent to a different email address.'
+      });
+    }
 
     // Validate password strength
     const { validatePassword } = require('./utils/passwordValidator');
