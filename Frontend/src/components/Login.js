@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
+import { API_BASE_URL } from '../config/apiConfig';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = API_BASE_URL;
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
