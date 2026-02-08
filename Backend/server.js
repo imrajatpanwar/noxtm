@@ -3272,8 +3272,11 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     // Admin users bypass subscription check
     if (user.role === 'Admin') {
       console.log('[DASHBOARD API] Admin user - bypassing subscription check:', user.email);
+    } else if (user.companyId) {
+      // Employee/member of a company - they use the company owner's subscription
+      console.log('[DASHBOARD API] Company member - bypassing personal subscription check:', user.email);
     } else if (!hasActiveSubscription(user)) {
-      // Use subscription helper that correctly handles trial users
+      // Solo user with no active subscription
       console.log('[DASHBOARD API] User has no active subscription:', {
         email: user.email,
         plan: user.subscription?.plan,

@@ -17,6 +17,9 @@ function hasActiveSubscription(user) {
   // Admin always bypasses subscription checks
   if (user.role === ROLES.ADMIN) return true;
 
+  // Company members (employees) use the company's subscription
+  if (user.companyId) return true;
+
   const status = user.subscription?.status;
 
   // Active subscription
