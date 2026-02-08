@@ -51,6 +51,7 @@ const leadCampaignSchema = new mongoose.Schema({
     connectionStatus: { type: String, enum: ['connected', 'disconnected', 'error'] }
   },
   csvFileName: { type: String },
+  tradeShow: { type: mongoose.Schema.Types.ObjectId, ref: 'TradeShow', default: null },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   timestamps: true
