@@ -55,8 +55,27 @@ function GlobalTradeShow({ onNavigate }) {
 
   // About panel
   const [aboutPanel, setAboutPanel] = useState({ open: false, data: null });
+  const [showLeadsData, setShowLeadsData] = useState({ campaigns: [], leads: [], totalLeads: 0, loading: false });
 
   useEffect(() => { fetchShows(); fetchUsers(); }, []);
+
+  // Fetch leads when about panel opens
+  useEffect(() => {
+    if (aboutPanel.open && aboutPanel.data?._id) {
+      const fetchShowLeads = async () => {
+        setShowLeadsData(p => ({ ...p, loading: true }));
+        try {
+          const t = localStorage.getItem('token');
+          const r = await fetch(`/api/lead-campaigns/by-trade-show/${aboutPanel.data._id}`, { headers: { Authorization: `Bearer ${t}` } });
+          if (r.ok) {
+            const d = await r.json();
+            setShowLeadsData({ campaigns: d.campaigns || [], leads: d.leads || [], totalLeads: d.totalLeads || 0, loading: false });
+          } else { setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
+        } catch (e) { console.error(e); setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
+      };
+      fetchShowLeads();
+    } else { setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
+  }, [aboutPanel.open, aboutPanel.data?._id]);
 
   useEffect(() => {
     const close = (e) => {
@@ -474,6 +493,54 @@ function GlobalTradeShow({ onNavigate }) {
                     )}
                   </div>
                 )}
+                {/* Linked Leads & Campaigns */}
+                <div className="gts-ps">
+                  <h4><FiLayers size={14} /> Linked Leads</h4>
+                  {showLeadsData.loading ? (
+                    <p style={{ color: '#888', fontSize: 13 }}>Loading leads...</p>
+                  ) : showLeadsData.campaigns.length > 0 ? (
+                    <>
+                      <div className="gts-pst" style={{ marginBottom: 12 }}>
+                        <div className="gts-pst-box"><strong>{showLeadsData.totalLeads}</strong><span>Total Leads</span></div>
+                        <div className="gts-pst-box"><strong>{showLeadsData.campaigns.length}</strong><span>Campaigns</span></div>
+                      </div>
+                      {showLeadsData.campaigns.map(c => (
+                        <div key={c._id} className="gts-lead-camp">
+                          <div className="gts-lead-camp-head">
+                            <span className="gts-lead-camp-name">{c.name}</span>
+                            <span className={`gts-lead-camp-status gts-lcs-${c.status}`}>{c.status}</span>
+                          </div>
+                          <div className="gts-lead-camp-meta">
+                            <span>{c.leads?.length || 0} leads</span>
+                            <span>{c.method}</span>
+                            <span>{c.priority}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {showLeadsData.leads.length > 0 && (
+                        <div className="gts-leads-table">
+                          <div className="gts-leads-thr">
+                            <span>Company</span><span>Contact</span><span>Status</span>
+                          </div>
+                          {showLeadsData.leads.slice(0, 20).map(l => (
+                            <div key={l._id} className="gts-leads-row">
+                              <span>{l.companyName || '—'}</span>
+                              <span>{l.clientName || '—'}</span>
+                              <span className={`gts-ls gts-ls-${(l.status || 'new').toLowerCase()}`}>{l.status || 'new'}</span>
+                            </div>
+                          ))}
+                          {showLeadsData.leads.length > 20 && (
+                            <p style={{ color: '#888', fontSize: 12, textAlign: 'center', marginTop: 8 }}>
+                              +{showLeadsData.leads.length - 20} more leads
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: '#888', fontSize: 13 }}>No lead campaigns linked to this trade show yet.</p>
+                  )}
+                </div>
               </div>
             </div>
           </>

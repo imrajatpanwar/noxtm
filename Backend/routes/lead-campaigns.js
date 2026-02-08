@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const LeadCampaign = require('../models/LeadCampaign');
 const LeadDirectory = require('../models/Lead');
 const User = require('../models/User');
+const TradeShow = require('../models/TradeShow');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
@@ -25,6 +26,7 @@ router.get('/', auth, async (req, res) => {
 
     const campaigns = await LeadCampaign.find(query)
       .populate('assignees.user', 'name email role avatar')
+      .populate('tradeShow', 'shortName fullName showDate location')
       .sort({ createdAt: -1 });
 
     res.json(campaigns);
@@ -77,6 +79,35 @@ router.get('/team/members', auth, async (req, res) => {
   }
 });
 
+// Get campaigns by trade show
+router.get('/by-trade-show/:tradeShowId', auth, async (req, res) => {
+  try {
+    const campaigns = await LeadCampaign.find({
+      userId: req.user.userId,
+      tradeShow: req.params.tradeShowId
+    })
+      .populate('assignees.user', 'name email role avatar')
+      .populate('leads')
+      .populate('tradeShow', 'shortName fullName showDate location')
+      .sort({ createdAt: -1 });
+
+    // Gather all leads from these campaigns
+    const allLeads = [];
+    for (const campaign of campaigns) {
+      if (campaign.leads && campaign.leads.length > 0) {
+        campaign.leads.forEach(lead => {
+          allLeads.push({ ...lead.toObject(), campaignName: campaign.name, campaignId: campaign._id });
+        });
+      }
+    }
+
+    res.json({ campaigns, leads: allLeads, totalLeads: allLeads.length });
+  } catch (error) {
+    console.error('Error fetching campaigns by trade show:', error);
+    res.status(500).json({ message: 'Failed to fetch trade show campaigns', error: error.message });
+  }
+});
+
 // Get single campaign
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -85,7 +116,8 @@ router.get('/:id', auth, async (req, res) => {
       userId: req.user.userId
     })
       .populate('assignees.user', 'name email role avatar')
-      .populate('leads');
+      .populate('leads')
+      .populate('tradeShow', 'shortName fullName showDate location');
 
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
     res.json(campaign);
@@ -98,7 +130,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create campaign
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, assignmentRule, status } = req.body;
+    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, assignmentRule, status, tradeShow } = req.body;
 
     if (!name || !method || !leadType) {
       return res.status(400).json({ message: 'Name, method, and lead type are required' });
@@ -126,6 +158,7 @@ router.post('/', auth, async (req, res) => {
       status: status || 'active',
       assignees: processedAssignees,
       assignmentRule: assignmentRule || 'manual',
+      tradeShow: tradeShow || null,
       userId: req.user.userId
     });
 
@@ -148,13 +181,14 @@ router.put('/:id', auth, async (req, res) => {
 
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
 
-    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'assignmentRule'];
+    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'assignmentRule', 'tradeShow'];
     allowed.forEach(field => {
       if (req.body[field] !== undefined) campaign[field] = req.body[field];
     });
 
     await campaign.save();
     await campaign.populate('assignees.user', 'name email role avatar');
+    await campaign.populate('tradeShow', 'shortName fullName showDate location');
     res.json(campaign);
   } catch (error) {
     console.error('Error updating campaign:', error);

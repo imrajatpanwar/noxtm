@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import api from '../config/api';
 import { toast } from 'sonner';
+import { useModules } from '../contexts/ModuleContext';
 import './LeadsFlow.css';
 
 const LEAD_TYPES = [
@@ -38,6 +39,9 @@ const STATUS_COLORS = {
 };
 
 function LeadsFlow() {
+  const { isModuleInstalled } = useModules();
+  const exhibitOSActive = isModuleInstalled('ExhibitOS');
+
   // Main state
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,13 +50,17 @@ function LeadsFlow() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterMethod, setFilterMethod] = useState('all');
 
+  // Trade shows state
+  const [tradeShows, setTradeShows] = useState([]);
+
   // Wizard state
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardData, setWizardData] = useState({
     method: '', name: '', leadType: '', customLeadType: '',
     tags: [], sourceNotes: '', expectedLeadCount: '',
-    priority: 'medium', assignees: [], assignmentRule: 'manual'
+    priority: 'medium', assignees: [], assignmentRule: 'manual',
+    tradeShow: ''
   });
   const [tagInput, setTagInput] = useState('');
 
@@ -119,13 +127,27 @@ function LeadsFlow() {
 
   useEffect(() => { fetchCampaigns(); fetchStats(); }, [fetchCampaigns, fetchStats]);
 
+  // Fetch trade shows if ExhibitOS is active
+  const fetchTradeShows = useCallback(async () => {
+    if (!exhibitOSActive) return;
+    try {
+      const res = await api.get('/trade-shows');
+      setTradeShows(res.data?.tradeShows || []);
+    } catch (err) {
+      console.error('Error fetching trade shows:', err);
+    }
+  }, [exhibitOSActive]);
+
+  useEffect(() => { if (exhibitOSActive) fetchTradeShows(); }, [exhibitOSActive, fetchTradeShows]);
+
   // Open wizard
   const openWizard = () => {
     setWizardStep(1);
     setWizardData({
       method: '', name: '', leadType: '', customLeadType: '',
       tags: [], sourceNotes: '', expectedLeadCount: '',
-      priority: 'medium', assignees: [], assignmentRule: 'manual'
+      priority: 'medium', assignees: [], assignmentRule: 'manual',
+      tradeShow: ''
     });
     setTagInput('');
     setIsEditing(false);
@@ -163,7 +185,8 @@ function LeadsFlow() {
         priority: wizardData.priority,
         assignees: wizardData.assignees,
         assignmentRule: wizardData.assignmentRule,
-        status: asDraft ? 'draft' : 'active'
+        status: asDraft ? 'draft' : 'active',
+        tradeShow: wizardData.tradeShow || null
       };
 
       let res;
@@ -260,7 +283,8 @@ function LeadsFlow() {
         role: a.role || 'viewer',
         percentage: a.percentage || 0
       })) : [],
-      assignmentRule: campaign.assignmentRule || 'manual'
+      assignmentRule: campaign.assignmentRule || 'manual',
+      tradeShow: campaign.tradeShow?._id || campaign.tradeShow || ''
     });
     setTagInput('');
     setIsEditing(true);
@@ -592,6 +616,25 @@ function LeadsFlow() {
             />
           </div>
         </div>
+        {exhibitOSActive && tradeShows.length > 0 && (
+          <div className="lf-form-group">
+            <label><FiGlobe size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Link to Trade Show</label>
+            <select
+              value={wizardData.tradeShow}
+              onChange={e => setWizardData(prev => ({ ...prev, tradeShow: e.target.value }))}
+            >
+              <option value="">No trade show (general campaign)</option>
+              {tradeShows.map(ts => (
+                <option key={ts._id} value={ts._id}>
+                  {ts.shortName} — {ts.fullName} ({new Date(ts.showDate).toLocaleDateString()})
+                </option>
+              ))}
+            </select>
+            <span className="lf-form-hint" style={{ fontSize: '12px', color: '#737373', marginTop: 4, display: 'block' }}>
+              Leads added to this campaign will be linked to the selected trade show
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -757,6 +800,15 @@ function LeadsFlow() {
                 {wizardData.tags.map((t, i) =>
                   <span key={i} className="lf-tag">{t}</span>
                 )}
+              </span>
+            </div>
+          )}
+          {wizardData.tradeShow && (
+            <div className="lf-review-row">
+              <span className="lf-review-label">Trade Show</span>
+              <span className="lf-review-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiGlobe size={14} style={{ color: '#8b5cf6' }} />
+                {tradeShows.find(ts => ts._id === wizardData.tradeShow)?.shortName || 'Selected'} — {tradeShows.find(ts => ts._id === wizardData.tradeShow)?.fullName || ''}
               </span>
             </div>
           )}
@@ -1184,6 +1236,11 @@ function LeadsFlow() {
                   <div className="lf-cc-title-area">
                     <h4>{c.name}</h4>
                     <span className="lf-cc-type">{c.leadType}</span>
+                    {c.tradeShow && (
+                      <span className="lf-cc-tradeshow-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: 10, marginTop: 4 }}>
+                        <FiGlobe size={11} /> {c.tradeShow.shortName || 'Trade Show'}
+                      </span>
+                    )}
                   </div>
                   <div className="lf-cc-actions" onClick={e => e.stopPropagation()}>
                     <button className="lf-icon-btn" onClick={() => setActiveMenu(activeMenu === c._id ? null : c._id)}>
