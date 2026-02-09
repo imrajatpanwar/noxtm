@@ -59,6 +59,12 @@ function WorkspaceSettings({ user, onLogout }) {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Chrome Extension settings state
+  const [findrCampaigns, setFindrCampaigns] = useState([]);
+  const [selectedFindrCampaign, setSelectedFindrCampaign] = useState('');
+  const [loadingFindrSettings, setLoadingFindrSettings] = useState(false);
+  const [savingFindrSettings, setSavingFindrSettings] = useState(false);
+
   const handleEditToggle = () => {
     if (isEditing) {
       setEditedWorkspace({ ...workspaceData });
@@ -387,6 +393,45 @@ function WorkspaceSettings({ user, onLogout }) {
     }
   };
 
+  // Fetch Chrome Extension (Findr) settings
+  const fetchFindrSettings = useCallback(async () => {
+    // Only fetch if user has dataCenter permission
+    if (!user?.permissions?.dataCenter && user?.role !== 'Admin') {
+      return;
+    }
+
+    setLoadingFindrSettings(true);
+    try {
+      const response = await api.get('/findr/settings');
+      if (response.data?.success) {
+        setFindrCampaigns(response.data.campaigns || []);
+        setSelectedFindrCampaign(response.data.selectedCampaignId || '');
+      }
+    } catch (error) {
+      console.error('Error fetching findr settings:', error);
+    } finally {
+      setLoadingFindrSettings(false);
+    }
+  }, [user?.permissions?.dataCenter, user?.role]);
+
+  // Save Chrome Extension campaign selection
+  const saveFindrSettings = async () => {
+    setSavingFindrSettings(true);
+    try {
+      const response = await api.put('/findr/user-settings', {
+        selectedCampaignId: selectedFindrCampaign || null
+      });
+      if (response.data?.success) {
+        toast.success('Chrome Extension settings saved');
+      }
+    } catch (error) {
+      console.error('Error saving findr settings:', error);
+      toast.error('Failed to save Chrome Extension settings');
+    } finally {
+      setSavingFindrSettings(false);
+    }
+  };
+
   // Load members when Members tab is active, load profile when Profile tab is active
   useEffect(() => {
     if (activeTab === 'members') {
@@ -394,12 +439,13 @@ function WorkspaceSettings({ user, onLogout }) {
       fetchCompanyDetails();
     } else if (activeTab === 'profile') {
       fetchProfile();
+      fetchFindrSettings();
       if (user?.companyId) {
         fetchCompanyMembers();
         fetchCompanyDetails();
       }
     }
-  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, user?.companyId]);
+  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchFindrSettings, user?.companyId]);
 
   const renderGeneralSettings = () => (
     <div className="workspace-tab-content">
@@ -1354,6 +1400,64 @@ function WorkspaceSettings({ user, onLogout }) {
             </div>
           )}
         </div>
+
+        {/* Chrome Extension Settings - only show if user has dataCenter permission */}
+        {(user?.permissions?.dataCenter || user?.role === 'Admin') && (
+          <div className="workspace-info-card" style={{ marginTop: '1.5rem' }}>
+            <div className="workspace-info-header">
+              <h3><FiSettings /> Chrome Extension Settings</h3>
+            </div>
+            <div style={{ padding: '1rem' }}>
+              {loadingFindrSettings ? (
+                <div className="loading-members" style={{ padding: '1rem 0' }}>Loading campaigns...</div>
+              ) : findrCampaigns.length === 0 ? (
+                <div style={{ color: '#6b7280', fontSize: '14px', padding: '1rem 0' }}>
+                  <p>No Chrome Extension campaigns found.</p>
+                  <p style={{ marginTop: '0.5rem', fontSize: '13px' }}>Create a Lead Campaign with "Chrome Extension" method in LeadsFlow to get started.</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '0.5rem', display: 'block' }}>
+                      Default Campaign
+                    </label>
+                    <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '0.75rem' }}>
+                      Select the campaign that will be pre-selected when you open the Chrome Extension.
+                    </p>
+                    <select
+                      value={selectedFindrCampaign}
+                      onChange={(e) => setSelectedFindrCampaign(e.target.value)}
+                      style={{
+                        width: '100%',
+                        maxWidth: '400px',
+                        padding: '0.625rem 0.875rem',
+                        fontSize: '14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        backgroundColor: '#fff'
+                      }}
+                    >
+                      <option value="">Select a campaign</option>
+                      {findrCampaigns.map((campaign) => (
+                        <option key={campaign._id} value={campaign._id}>
+                          {campaign.name} {campaign.tradeShow ? `(${campaign.tradeShow.shortName || campaign.tradeShow.fullName})` : ''} - {campaign.stats?.total || 0} leads
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="btn-primary"
+                    onClick={saveFindrSettings}
+                    disabled={savingFindrSettings}
+                    style={{ padding: '0.5rem 1rem', fontSize: '14px' }}
+                  >
+                    {savingFindrSettings ? 'Saving...' : 'Save Extension Settings'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Save/Cancel buttons when editing */}
         {isEditingProfile && (
