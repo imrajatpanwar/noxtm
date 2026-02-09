@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiMonitor } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -58,12 +58,6 @@ function WorkspaceSettings({ user, onLogout }) {
   const [editedProfile, setEditedProfile] = useState({});
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-
-  // Chrome Extension settings state
-  const [findrCampaigns, setFindrCampaigns] = useState([]);
-  const [selectedFindrCampaign, setSelectedFindrCampaign] = useState('');
-  const [loadingFindrSettings, setLoadingFindrSettings] = useState(false);
-  const [savingFindrSettings, setSavingFindrSettings] = useState(false);
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -393,45 +387,6 @@ function WorkspaceSettings({ user, onLogout }) {
     }
   };
 
-  // Fetch Chrome Extension (Findr) settings
-  const fetchFindrSettings = useCallback(async () => {
-    // Only fetch if user has dataCenter permission
-    if (!user?.permissions?.dataCenter && user?.role !== 'Admin') {
-      return;
-    }
-
-    setLoadingFindrSettings(true);
-    try {
-      const response = await api.get('/findr/settings');
-      if (response.data?.success) {
-        setFindrCampaigns(response.data.campaigns || []);
-        setSelectedFindrCampaign(response.data.selectedCampaignId || '');
-      }
-    } catch (error) {
-      console.error('Error fetching findr settings:', error);
-    } finally {
-      setLoadingFindrSettings(false);
-    }
-  }, [user?.permissions?.dataCenter, user?.role]);
-
-  // Save Chrome Extension campaign selection
-  const saveFindrSettings = async () => {
-    setSavingFindrSettings(true);
-    try {
-      const response = await api.put('/findr/user-settings', {
-        selectedCampaignId: selectedFindrCampaign || null
-      });
-      if (response.data?.success) {
-        toast.success('Chrome Extension settings saved');
-      }
-    } catch (error) {
-      console.error('Error saving findr settings:', error);
-      toast.error('Failed to save Chrome Extension settings');
-    } finally {
-      setSavingFindrSettings(false);
-    }
-  };
-
   // Load data when tabs are active
   useEffect(() => {
     if (activeTab === 'members') {
@@ -443,10 +398,8 @@ function WorkspaceSettings({ user, onLogout }) {
         fetchCompanyMembers();
         fetchCompanyDetails();
       }
-    } else if (activeTab === 'extension') {
-      fetchFindrSettings();
     }
-  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchFindrSettings, user?.companyId]);
+  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, user?.companyId]);
 
   const renderGeneralSettings = () => (
     <div className="workspace-tab-content">
@@ -996,83 +949,6 @@ function WorkspaceSettings({ user, onLogout }) {
     }
   };
 
-  // Render Chrome Extension Settings tab (only visible to Data Center users)
-  const renderExtensionSettings = () => {
-    // Check if user has access
-    if (!user?.permissions?.dataCenter && user?.role !== 'Admin') {
-      return (
-        <div className="workspace-tab-content">
-          <div className="members-empty-state">
-            <div className="empty-state-icon">
-              <FiMonitor />
-            </div>
-            <h4>Access Denied</h4>
-            <p>You need Data Center permission to access Chrome Extension settings.</p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="workspace-tab-content">
-        <div className="ws-minimal-card">
-          <div className="ws-minimal-header">
-            <h3><FiMonitor style={{ marginRight: '8px' }} /> Chrome Extension Settings</h3>
-          </div>
-          <div style={{ padding: '1.5rem' }}>
-            {loadingFindrSettings ? (
-              <div className="loading-members" style={{ padding: '1rem 0' }}>Loading campaigns...</div>
-            ) : findrCampaigns.length === 0 ? (
-              <div style={{ color: '#6b7280', fontSize: '14px', padding: '1rem 0' }}>
-                <p style={{ marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>No Chrome Extension campaigns found.</p>
-                <p style={{ fontSize: '13px' }}>Create a Lead Campaign with "Chrome Extension" method in LeadsFlow to get started.</p>
-              </div>
-            ) : (
-              <>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '0.5rem', display: 'block' }}>
-                    Default Campaign
-                  </label>
-                  <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '0.75rem' }}>
-                    Select the campaign that will be pre-selected when you open the Chrome Extension.
-                  </p>
-                  <select
-                    value={selectedFindrCampaign}
-                    onChange={(e) => setSelectedFindrCampaign(e.target.value)}
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      padding: '0.625rem 0.875rem',
-                      fontSize: '14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      backgroundColor: '#fff'
-                    }}
-                  >
-                    <option value="">Select a campaign</option>
-                    {findrCampaigns.map((campaign) => (
-                      <option key={campaign._id} value={campaign._id}>
-                        {campaign.name} {campaign.tradeShow ? `(${campaign.tradeShow.shortName || campaign.tradeShow.fullName})` : ''} - {campaign.stats?.total || 0} leads
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  className="btn-primary"
-                  onClick={saveFindrSettings}
-                  disabled={savingFindrSettings}
-                  style={{ padding: '0.5rem 1rem', fontSize: '14px' }}
-                >
-                  {savingFindrSettings ? 'Saving...' : 'Save Extension Settings'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderModulesSettings = () => {
     // Define all modules
     const allModules = [
@@ -1532,14 +1408,6 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiPackage /> Modules
         </button>
-        {(user?.permissions?.dataCenter || user?.role === 'Admin') && (
-          <button
-            className={`tab-button ${activeTab === 'extension' ? 'active' : ''}`}
-            onClick={() => setActiveTab('extension')}
-          >
-            <FiMonitor /> Extension
-          </button>
-        )}
       </div>
 
       <div className="workspace-content">
@@ -1548,7 +1416,6 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'members' && renderMembersSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
-        {activeTab === 'extension' && renderExtensionSettings()}
       </div>
     </div>
   );
