@@ -101,6 +101,11 @@ const userSchema = new mongoose.Schema({
     emailSignature: { type: String, default: '' }
   },
 
+  // Chrome Extension (Findr) settings
+  findrSettings: {
+    selectedCampaignId: { type: mongoose.Schema.Types.ObjectId, ref: 'LeadCampaign' }
+  },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

@@ -13,8 +13,8 @@ router.get('/settings', auth, async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        // Get user to check permissions
-        const user = await User.findById(userId).select('permissions role fullName email');
+        // Get user to check permissions and get saved preferences
+        const user = await User.findById(userId).select('permissions role fullName email findrSettings');
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -54,6 +54,7 @@ router.get('/settings', auth, async (req, res) => {
                     hasDataCenterPermission
                 },
                 campaigns: [],
+                selectedCampaignId: null,
                 message: 'No campaigns found. Create a Chrome Extension campaign in the dashboard.'
             });
         }
@@ -79,11 +80,69 @@ router.get('/settings', auth, async (req, res) => {
                 tradeShow: c.tradeShow,
                 owner: c.userId,
                 createdAt: c.createdAt
-            }))
+            })),
+            selectedCampaignId: user.findrSettings?.selectedCampaignId || null
         });
     } catch (error) {
         console.error('Error fetching findr settings:', error);
         res.status(500).json({ message: 'Failed to fetch settings', error: error.message });
+    }
+});
+
+// GET /findr/user-settings - Get user's Chrome Extension preferences
+router.get('/user-settings', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const user = await User.findById(userId)
+            .select('findrSettings')
+            .populate('findrSettings.selectedCampaignId', 'name status');
+
+        res.json({
+            success: true,
+            settings: user?.findrSettings || {}
+        });
+    } catch (error) {
+        console.error('Error fetching user findr settings:', error);
+        res.status(500).json({ message: 'Failed to fetch settings', error: error.message });
+    }
+});
+
+// PUT /findr/user-settings - Update user's Chrome Extension preferences
+router.put('/user-settings', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { selectedCampaignId } = req.body;
+
+        // Validate campaign exists and user has access
+        if (selectedCampaignId) {
+            const campaign = await LeadCampaign.findById(selectedCampaignId);
+            if (!campaign) {
+                return res.status(404).json({ message: 'Campaign not found' });
+            }
+
+            // Check user has access to this campaign
+            const isOwner = campaign.userId.toString() === userId;
+            const isAssignee = campaign.assignees.some(a => a.user?.toString() === userId);
+            if (!isOwner && !isAssignee) {
+                return res.status(403).json({ message: 'You do not have access to this campaign' });
+            }
+        }
+
+        // Update user settings
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { 'findrSettings.selectedCampaignId': selectedCampaignId || null },
+            { new: true }
+        ).select('findrSettings').populate('findrSettings.selectedCampaignId', 'name status');
+
+        res.json({
+            success: true,
+            message: 'Settings updated successfully',
+            settings: user?.findrSettings || {}
+        });
+    } catch (error) {
+        console.error('Error updating user findr settings:', error);
+        res.status(500).json({ message: 'Failed to update settings', error: error.message });
     }
 });
 
