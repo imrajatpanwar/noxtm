@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiMonitor } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -432,18 +432,19 @@ function WorkspaceSettings({ user, onLogout }) {
     }
   };
 
-  // Load members when Members tab is active, load profile when Profile tab is active
+  // Load data when tabs are active
   useEffect(() => {
     if (activeTab === 'members') {
       fetchCompanyMembers();
       fetchCompanyDetails();
     } else if (activeTab === 'profile') {
       fetchProfile();
-      fetchFindrSettings();
       if (user?.companyId) {
         fetchCompanyMembers();
         fetchCompanyDetails();
       }
+    } else if (activeTab === 'extension') {
+      fetchFindrSettings();
     }
   }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchFindrSettings, user?.companyId]);
 
@@ -995,6 +996,83 @@ function WorkspaceSettings({ user, onLogout }) {
     }
   };
 
+  // Render Chrome Extension Settings tab (only visible to Data Center users)
+  const renderExtensionSettings = () => {
+    // Check if user has access
+    if (!user?.permissions?.dataCenter && user?.role !== 'Admin') {
+      return (
+        <div className="workspace-tab-content">
+          <div className="members-empty-state">
+            <div className="empty-state-icon">
+              <FiMonitor />
+            </div>
+            <h4>Access Denied</h4>
+            <p>You need Data Center permission to access Chrome Extension settings.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="workspace-tab-content">
+        <div className="ws-minimal-card">
+          <div className="ws-minimal-header">
+            <h3><FiMonitor style={{ marginRight: '8px' }} /> Chrome Extension Settings</h3>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            {loadingFindrSettings ? (
+              <div className="loading-members" style={{ padding: '1rem 0' }}>Loading campaigns...</div>
+            ) : findrCampaigns.length === 0 ? (
+              <div style={{ color: '#6b7280', fontSize: '14px', padding: '1rem 0' }}>
+                <p style={{ marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>No Chrome Extension campaigns found.</p>
+                <p style={{ fontSize: '13px' }}>Create a Lead Campaign with "Chrome Extension" method in LeadsFlow to get started.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '0.5rem', display: 'block' }}>
+                    Default Campaign
+                  </label>
+                  <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '0.75rem' }}>
+                    Select the campaign that will be pre-selected when you open the Chrome Extension.
+                  </p>
+                  <select
+                    value={selectedFindrCampaign}
+                    onChange={(e) => setSelectedFindrCampaign(e.target.value)}
+                    style={{
+                      width: '100%',
+                      maxWidth: '400px',
+                      padding: '0.625rem 0.875rem',
+                      fontSize: '14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      backgroundColor: '#fff'
+                    }}
+                  >
+                    <option value="">Select a campaign</option>
+                    {findrCampaigns.map((campaign) => (
+                      <option key={campaign._id} value={campaign._id}>
+                        {campaign.name} {campaign.tradeShow ? `(${campaign.tradeShow.shortName || campaign.tradeShow.fullName})` : ''} - {campaign.stats?.total || 0} leads
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={saveFindrSettings}
+                  disabled={savingFindrSettings}
+                  style={{ padding: '0.5rem 1rem', fontSize: '14px' }}
+                >
+                  {savingFindrSettings ? 'Saving...' : 'Save Extension Settings'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderModulesSettings = () => {
     // Define all modules
     const allModules = [
@@ -1401,64 +1479,6 @@ function WorkspaceSettings({ user, onLogout }) {
           )}
         </div>
 
-        {/* Chrome Extension Settings - only show if user has dataCenter permission */}
-        {(user?.permissions?.dataCenter || user?.role === 'Admin') && (
-          <div className="workspace-info-card" style={{ marginTop: '1.5rem' }}>
-            <div className="workspace-info-header">
-              <h3><FiSettings /> Chrome Extension Settings</h3>
-            </div>
-            <div style={{ padding: '1rem' }}>
-              {loadingFindrSettings ? (
-                <div className="loading-members" style={{ padding: '1rem 0' }}>Loading campaigns...</div>
-              ) : findrCampaigns.length === 0 ? (
-                <div style={{ color: '#6b7280', fontSize: '14px', padding: '1rem 0' }}>
-                  <p>No Chrome Extension campaigns found.</p>
-                  <p style={{ marginTop: '0.5rem', fontSize: '13px' }}>Create a Lead Campaign with "Chrome Extension" method in LeadsFlow to get started.</p>
-                </div>
-              ) : (
-                <>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '0.5rem', display: 'block' }}>
-                      Default Campaign
-                    </label>
-                    <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '0.75rem' }}>
-                      Select the campaign that will be pre-selected when you open the Chrome Extension.
-                    </p>
-                    <select
-                      value={selectedFindrCampaign}
-                      onChange={(e) => setSelectedFindrCampaign(e.target.value)}
-                      style={{
-                        width: '100%',
-                        maxWidth: '400px',
-                        padding: '0.625rem 0.875rem',
-                        fontSize: '14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        backgroundColor: '#fff'
-                      }}
-                    >
-                      <option value="">Select a campaign</option>
-                      {findrCampaigns.map((campaign) => (
-                        <option key={campaign._id} value={campaign._id}>
-                          {campaign.name} {campaign.tradeShow ? `(${campaign.tradeShow.shortName || campaign.tradeShow.fullName})` : ''} - {campaign.stats?.total || 0} leads
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    className="btn-primary"
-                    onClick={saveFindrSettings}
-                    disabled={savingFindrSettings}
-                    style={{ padding: '0.5rem 1rem', fontSize: '14px' }}
-                  >
-                    {savingFindrSettings ? 'Saving...' : 'Save Extension Settings'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Save/Cancel buttons when editing */}
         {isEditingProfile && (
           <div className="form-actions" style={{ marginTop: '1.5rem' }}>
@@ -1512,6 +1532,14 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiPackage /> Modules
         </button>
+        {(user?.permissions?.dataCenter || user?.role === 'Admin') && (
+          <button
+            className={`tab-button ${activeTab === 'extension' ? 'active' : ''}`}
+            onClick={() => setActiveTab('extension')}
+          >
+            <FiMonitor /> Extension
+          </button>
+        )}
       </div>
 
       <div className="workspace-content">
@@ -1520,6 +1548,7 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'members' && renderMembersSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
+        {activeTab === 'extension' && renderExtensionSettings()}
       </div>
     </div>
   );
