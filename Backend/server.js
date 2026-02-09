@@ -74,7 +74,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // List of allowed origins
     const allowedOrigins = [
       'http://noxtm.com',
@@ -85,7 +85,7 @@ app.use(cors({
       'http://localhost:3001',
       'http://localhost:3002'
     ];
-    
+
     // Check if origin is in allowed list or is a chrome-extension
     if (allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
       callback(null, true);
@@ -185,6 +185,10 @@ app.use('/api/auth', googleAuthRoutes);
 // Task Manager routes
 const tasksRoutes = require('./routes/tasks');
 app.use('/api/tasks', tasksRoutes);
+
+// Findr Chrome Extension routes
+const findrRoutes = require('./routes/findr');
+app.use('/api/findr', findrRoutes);
 
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port

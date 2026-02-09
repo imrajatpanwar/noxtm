@@ -63,6 +63,18 @@ const leadSchema = new mongoose.Schema({
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client'
+  },
+  // Track which user added this lead (for Data Miner tracking)
+  addedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
+  // Track which campaign this lead belongs to
+  campaignId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'LeadCampaign',
+    index: true
   }
 }, {
   timestamps: true

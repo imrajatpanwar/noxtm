@@ -76,6 +76,7 @@ function LeadsFlow() {
   const [csvMapping, setCsvMapping] = useState({});
   const [importProgress, setImportProgress] = useState(null);
   const [campaignLeads, setCampaignLeads] = useState([]);
+  const [leadsInfo, setLeadsInfo] = useState({ isOwner: true, totalInCampaign: 0, yourLeadsCount: 0 });
 
   // Team members
   const [teamMembers, setTeamMembers] = useState([]);
@@ -258,10 +259,22 @@ function LeadsFlow() {
     setActiveCampaign(campaign);
     setShowCampaignDetail(true);
     try {
-      const res = await api.get(`/lead-campaigns/${campaign._id}/leads`);
-      setCampaignLeads(Array.isArray(res.data) ? res.data : []);
+      // Use findr API to get permission-filtered leads
+      const res = await api.get(`/findr/campaigns/${campaign._id}/leads`);
+      if (res.data && res.data.success) {
+        setCampaignLeads(Array.isArray(res.data.leads) ? res.data.leads : []);
+        setLeadsInfo({
+          isOwner: res.data.isOwner,
+          totalInCampaign: res.data.totalInCampaign || 0,
+          yourLeadsCount: res.data.yourLeadsCount || 0
+        });
+      } else {
+        setCampaignLeads([]);
+        setLeadsInfo({ isOwner: true, totalInCampaign: 0, yourLeadsCount: 0 });
+      }
     } catch (err) {
       setCampaignLeads([]);
+      setLeadsInfo({ isOwner: true, totalInCampaign: 0, yourLeadsCount: 0 });
     }
   };
 
@@ -743,8 +756,8 @@ function LeadsFlow() {
                 <span className="lf-pct-total-num">{getTotalPercentage()}%</span>
                 <span className="lf-pct-total-label">
                   {getTotalPercentage() === 100 ? <><FiCheckCircle size={13} /> Perfectly distributed</> :
-                   getTotalPercentage() > 100 ? <><FiAlertCircle size={13} /> {getTotalPercentage() - 100}% over — reduce allocations</> :
-                   <><FiAlertCircle size={13} /> {100 - getTotalPercentage()}% remaining to assign</>}
+                    getTotalPercentage() > 100 ? <><FiAlertCircle size={13} /> {getTotalPercentage() - 100}% over — reduce allocations</> :
+                      <><FiAlertCircle size={13} /> {100 - getTotalPercentage()}% remaining to assign</>}
                 </span>
               </div>
             </div>
@@ -1090,7 +1103,18 @@ function LeadsFlow() {
         {/* Campaign Leads Table */}
         {campaignLeads.length > 0 && (
           <div className="lf-campaign-leads">
-            <h3>Campaign Leads ({campaignLeads.length})</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0 }}>
+                {leadsInfo.isOwner ? 'All Campaign Leads' : 'Your Leads'}
+                {' '}({campaignLeads.length}{!leadsInfo.isOwner && leadsInfo.totalInCampaign > 0 ? ` of ${leadsInfo.totalInCampaign}` : ''})
+              </h3>
+              {!leadsInfo.isOwner && (
+                <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 12 }}>
+                  <FiUser size={12} style={{ marginRight: 4 }} />
+                  Showing only leads you added
+                </span>
+              )}
+            </div>
             <div className="lf-leads-table-wrap">
               <table className="lf-leads-table">
                 <thead>
@@ -1100,6 +1124,7 @@ function LeadsFlow() {
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Status</th>
+                    {leadsInfo.isOwner && <th>Added By</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1121,16 +1146,27 @@ function LeadsFlow() {
                         <span className="lf-lead-status" style={{
                           background: lead.status === 'Cold Lead' ? '#dbeafe' :
                             lead.status === 'Warm Lead' ? '#fef3c7' :
-                            lead.status === 'Qualified (SQL)' ? '#dcfce7' :
-                            lead.status === 'Active' ? '#f3e8ff' : '#fee2e2',
+                              lead.status === 'Qualified (SQL)' ? '#dcfce7' :
+                                lead.status === 'Active' ? '#f3e8ff' : '#fee2e2',
                           color: lead.status === 'Cold Lead' ? '#1d4ed8' :
                             lead.status === 'Warm Lead' ? '#b45309' :
-                            lead.status === 'Qualified (SQL)' ? '#15803d' :
-                            lead.status === 'Active' ? '#7c3aed' : '#dc2626'
+                              lead.status === 'Qualified (SQL)' ? '#15803d' :
+                                lead.status === 'Active' ? '#7c3aed' : '#dc2626'
                         }}>
                           {lead.status}
                         </span>
                       </td>
+                      {leadsInfo.isOwner && (
+                        <td>
+                          {lead.addedBy ? (
+                            <span style={{ fontSize: 13, color: '#6b7280' }}>
+                              {lead.addedBy.fullName || lead.addedBy.email || 'Unknown'}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 13, color: '#9ca3af' }}>—</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1138,6 +1174,7 @@ function LeadsFlow() {
             </div>
           </div>
         )}
+
       </div>
     );
   };
