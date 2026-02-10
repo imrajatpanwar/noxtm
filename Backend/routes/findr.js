@@ -469,4 +469,17 @@ router.put('/exhibitors/:id', auth, async (req, res) => {
     }
 });
 
+// GET /findr/campaign-status/:id - Lightweight campaign status check for polling
+router.get('/campaign-status/:id', auth, async (req, res) => {
+    try {
+        const campaign = await LeadCampaign.findById(req.params.id).select('status name');
+        if (!campaign) {
+            return res.json({ success: true, status: 'not-found' });
+        }
+        res.json({ success: true, status: campaign.status, name: campaign.name });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;
