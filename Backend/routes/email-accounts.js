@@ -480,21 +480,21 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
     };
 
     const startTime = Date.now();
-    
+
     // Try to get from cache first
     console.log(`🧠 Checking cache for ${account.email} page ${page}`);
     const cached = await getCachedEmailList(accountId, folder, parseInt(page));
-    
+
     if (cached) {
       console.log(`📦 Serving ${cached.emails.length} emails from cache (${Date.now() - startTime}ms)`);
-      
+
       // Schedule background refresh for next pages
       if (parseInt(page) === 1) {
-        syncMultiplePages(accountId, folder, 3).catch(err => 
+        syncMultiplePages(accountId, folder, 3).catch(err =>
           console.error('Background sync scheduling failed:', err)
         );
       }
-      
+
       console.log(`📤 Responding with cached inbox for ${account.email} (page ${page})`);
       return res.json({
         success: true,
@@ -506,23 +506,23 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
         cached: true
       });
     }
-    
+
     console.log(`🔍 Cache MISS - Fetching inbox for ${account.email} from ${imapConfig.host}:${imapConfig.port}`);
 
     const result = await fetchEmails(imapConfig, folder, parseInt(page), parseInt(limit));
-    
+
     const duration = Date.now() - startTime;
     console.log(`✅ Fetched ${result.emails.length} emails in ${duration}ms`);
-    
+
     // Cache the result
     console.log(`🧠 Caching ${result.emails.length} emails for ${account.email} page ${page}`);
     await cacheEmailList(accountId, folder, parseInt(page), result.emails, result.total);
     console.log(`🧠 Cache write complete for ${account.email} page ${page}`);
-    
+
     // Schedule background sync for next pages
     if (parseInt(page) === 1 && result.total > parseInt(limit)) {
       const totalPages = Math.min(3, Math.ceil(result.total / parseInt(limit)));
-      syncMultiplePages(accountId, folder, totalPages).catch(err => 
+      syncMultiplePages(accountId, folder, totalPages).catch(err =>
         console.error('Background sync scheduling failed:', err)
       );
     }
@@ -642,7 +642,7 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
     await cacheEmailBody(accountId, uid, email);
 
     res.json({ success: true, email, cached: false });
-    
+
   } catch (error) {
     console.error('Error fetching email body:', error);
     res.status(500).json({
@@ -876,14 +876,22 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Email account not found or SMTP not configured' });
     }
 
+    // Use 127.0.0.1 when connecting to local mail server (same as IMAP does)
+    const smtpHost = emailAccount.smtpSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (emailAccount.smtpSettings.host || '127.0.0.1');
+    const smtpPort = emailAccount.smtpSettings.port || 587;
+    const smtpUser = emailAccount.smtpSettings.username || emailAccount.email;
+    const smtpPass = decrypt(emailAccount.smtpSettings.encryptedPassword);
+
+    console.log(`📧 SMTP Send: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, from=${fromEmail}`);
+
     // Create SMTP transport
     const transporter = nodemailer.createTransport({
-      host: emailAccount.smtpSettings.host,
-      port: emailAccount.smtpSettings.port,
+      host: smtpHost,
+      port: smtpPort,
       secure: emailAccount.smtpSettings.secure,
       auth: {
-        user: emailAccount.smtpSettings.username,
-        pass: decrypt(emailAccount.smtpSettings.encryptedPassword)
+        user: smtpUser,
+        pass: smtpPass
       },
       tls: {
         rejectUnauthorized: false // Accept self-signed certificates
@@ -1330,9 +1338,9 @@ router.post('/create-hosted', isAuthenticated, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating hosted email account:', error);
-    res.status(500).json({ 
-      message: 'Failed to create email account', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Failed to create email account',
+      error: error.message
     });
   }
 });
