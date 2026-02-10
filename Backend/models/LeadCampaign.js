@@ -7,6 +7,11 @@ const leadCampaignSchema = new mongoose.Schema({
     required: true,
     enum: ['manual', 'csv', 'extension', 'third-party']
   },
+  dataType: {
+    type: String,
+    enum: ['lead-mining', 'exhibitor-list', 'exhibitor-data'],
+    default: 'lead-mining'
+  },
   leadType: {
     type: String,
     required: true,
@@ -29,11 +34,6 @@ const leadCampaignSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     role: { type: String, default: 'member' }
   }],
-  assignmentRule: {
-    type: String,
-    enum: ['manual', 'round-robin', 'equal', 'territory', 'score'],
-    default: 'manual'
-  },
   leads: [{ type: mongoose.Schema.Types.ObjectId, ref: 'LeadDirectory' }],
   stats: {
     total: { type: Number, default: 0 },
