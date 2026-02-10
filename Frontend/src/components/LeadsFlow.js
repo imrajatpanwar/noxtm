@@ -59,8 +59,8 @@ function LeadsFlow() {
   const [wizardData, setWizardData] = useState({
     method: '', name: '', leadType: '', customLeadType: '',
     tags: [], sourceNotes: '', expectedLeadCount: '',
-    priority: 'medium', assignees: [], assignmentRule: 'manual',
-    tradeShow: ''
+    priority: 'medium', assignees: [],
+    tradeShow: '', dataType: 'lead-mining'
   });
   const [tagInput, setTagInput] = useState('');
 
@@ -147,8 +147,8 @@ function LeadsFlow() {
     setWizardData({
       method: '', name: '', leadType: '', customLeadType: '',
       tags: [], sourceNotes: '', expectedLeadCount: '',
-      priority: 'medium', assignees: [], assignmentRule: 'manual',
-      tradeShow: ''
+      priority: 'medium', assignees: [],
+      tradeShow: '', dataType: 'lead-mining'
     });
     setTagInput('');
     setIsEditing(false);
@@ -161,12 +161,7 @@ function LeadsFlow() {
   const canProceed = () => {
     if (wizardStep === 1) return !!wizardData.method;
     if (wizardStep === 2) return !!wizardData.name && !!(wizardData.leadType || wizardData.customLeadType);
-    if (wizardStep === 3) {
-      if (wizardData.assignees.length > 0 && wizardData.assignmentRule === 'manual') {
-        return getTotalPercentage() === 100;
-      }
-      return true;
-    }
+    if (wizardStep === 3) return true;
     return true;
   };
 
@@ -185,9 +180,9 @@ function LeadsFlow() {
         expectedLeadCount: parseInt(wizardData.expectedLeadCount) || 0,
         priority: wizardData.priority,
         assignees: wizardData.assignees,
-        assignmentRule: wizardData.assignmentRule,
         status: asDraft ? 'draft' : 'active',
-        tradeShow: wizardData.tradeShow || null
+        tradeShow: wizardData.tradeShow || null,
+        dataType: wizardData.dataType || 'lead-mining'
       };
 
       let res;
@@ -296,8 +291,8 @@ function LeadsFlow() {
         role: a.role || 'viewer',
         percentage: a.percentage || 0
       })) : [],
-      assignmentRule: campaign.assignmentRule || 'manual',
-      tradeShow: campaign.tradeShow?._id || campaign.tradeShow || ''
+      tradeShow: campaign.tradeShow?._id || campaign.tradeShow || '',
+      dataType: campaign.dataType || 'lead-mining'
     });
     setTagInput('');
     setIsEditing(true);
@@ -664,19 +659,38 @@ function LeadsFlow() {
           <span>You (Campaign Owner) — auto-assigned</span>
         </div>
 
-        <div className="lf-form-group">
-          <label>Assignment Rule</label>
-          <select
-            value={wizardData.assignmentRule}
-            onChange={e => setWizardData(prev => ({ ...prev, assignmentRule: e.target.value }))}
-          >
-            <option value="manual">Manual Selection</option>
-            <option value="round-robin">Round-robin Distribution</option>
-            <option value="equal">Equal Distribution</option>
-            <option value="territory">Based on Territory</option>
-            <option value="score">Based on Lead Score</option>
-          </select>
-        </div>
+        {exhibitOSActive && wizardData.method === 'extension' && (
+          <div className="lf-form-group" style={{ marginBottom: 16 }}>
+            <label><FiGlobe size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Data Type</label>
+            <p className="lf-step-desc" style={{ fontSize: 12, margin: '4px 0 10px' }}>
+              Choose what the assigned team members will do in the Chrome Extension
+            </p>
+            <div className="lf-method-grid" style={{ gridTemplateColumns: '1fr', gap: 10 }}>
+              {[
+                { value: 'lead-mining', label: 'Lead Mining', desc: 'Collect lead data from websites and directories', icon: FiTarget },
+                { value: 'exhibitor-list', label: 'Exhibitor List Miner', desc: 'Extract exhibitor company listings from trade shows', icon: FiFileText },
+                { value: 'exhibitor-data', label: 'Exhibitor Data Miner', desc: 'Extract detailed exhibitor contact data company by company', icon: FiUsers }
+              ].map(dt => {
+                const DtIcon = dt.icon;
+                return (
+                  <div
+                    key={dt.value}
+                    className={`lf-method-card ${wizardData.dataType === dt.value ? 'lf-method-selected' : ''}`}
+                    onClick={() => setWizardData(prev => ({ ...prev, dataType: dt.value }))}
+                    style={{ padding: '12px 16px', cursor: 'pointer' }}
+                  >
+                    <DtIcon size={18} style={{ color: wizardData.dataType === dt.value ? '#171717' : '#737373', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#171717' }}>{dt.label}</div>
+                      <div style={{ fontSize: 12, color: '#737373', marginTop: 2 }}>{dt.desc}</div>
+                    </div>
+                    {wizardData.dataType === dt.value && <FiCheck size={16} style={{ color: '#15803d' }} />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="lf-team-list">
           <label>Add Team Members</label>
@@ -706,63 +720,6 @@ function LeadsFlow() {
             </div>
           )}
         </div>
-
-        {wizardData.assignees.length > 0 && wizardData.assignmentRule === 'manual' && (
-          <div className="lf-percentage-section">
-            <div className="lf-percentage-header">
-              <label><FiBarChart2 size={14} /> Lead Distribution (%)</label>
-              <button type="button" className="lf-btn-auto-distribute" onClick={() => {
-                setWizardData(prev => ({ ...prev, assignees: distributePercentages(prev.assignees) }));
-              }}>
-                <FiTarget size={12} /> Auto-Distribute
-              </button>
-            </div>
-            <div className="lf-percentage-list">
-              {wizardData.assignees.map(a => {
-                const member = teamMembers.find(m => m._id === (a.user || a));
-                if (!member) return null;
-                return (
-                  <div key={a.user} className="lf-percentage-row">
-                    <div className="lf-percentage-member">
-                      <div className="lf-member-avatar-sm">
-                        {member.name?.charAt(0)?.toUpperCase() || 'U'}
-                      </div>
-                      <span className="lf-percentage-name">{member.name}</span>
-                    </div>
-                    <div className="lf-percentage-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={a.percentage || 0}
-                        onChange={e => updateAssigneePercentage(a.user, e.target.value)}
-                        className="lf-percentage-input"
-                        onClick={e => e.stopPropagation()}
-                      />
-                      <span className="lf-percentage-sign">%</span>
-                    </div>
-                    <div className="lf-percentage-bar">
-                      <div className="lf-percentage-bar-fill" style={{ width: `${Math.min(a.percentage || 0, 100)}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className={`lf-percentage-total ${getTotalPercentage() === 100 ? 'lf-pct-valid' : getTotalPercentage() > 100 ? 'lf-pct-over' : 'lf-pct-under'}`}>
-              <div className="lf-pct-total-bar">
-                <div className="lf-pct-total-fill" style={{ width: `${Math.min(getTotalPercentage(), 100)}%` }} />
-              </div>
-              <div className="lf-pct-total-info">
-                <span className="lf-pct-total-num">{getTotalPercentage()}%</span>
-                <span className="lf-pct-total-label">
-                  {getTotalPercentage() === 100 ? <><FiCheckCircle size={13} /> Perfectly distributed</> :
-                    getTotalPercentage() > 100 ? <><FiAlertCircle size={13} /> {getTotalPercentage() - 100}% over — reduce allocations</> :
-                      <><FiAlertCircle size={13} /> {100 - getTotalPercentage()}% remaining to assign</>}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -837,26 +794,12 @@ function LeadsFlow() {
               </span>
             </div>
           )}
-          <div className="lf-review-row">
-            <span className="lf-review-label">Assignment Rule</span>
-            <span className="lf-review-value" style={{ textTransform: 'capitalize' }}>
-              {wizardData.assignmentRule.replace('-', ' ')}
-            </span>
-          </div>
-          {wizardData.assignees.length > 0 && wizardData.assignmentRule === 'manual' && (
-            <div className="lf-review-row lf-review-pct-row">
-              <span className="lf-review-label">Distribution</span>
-              <div className="lf-review-pct-list">
-                {wizardData.assignees.map(a => {
-                  const member = teamMembers.find(m => m._id === (a.user || a));
-                  return member ? (
-                    <div key={a.user} className="lf-review-pct-item">
-                      <span>{member.name}</span>
-                      <span className="lf-review-pct-val">{a.percentage || 0}%</span>
-                    </div>
-                  ) : null;
-                })}
-              </div>
+          {wizardData.method === 'extension' && exhibitOSActive && (
+            <div className="lf-review-row">
+              <span className="lf-review-label">Data Type</span>
+              <span className="lf-review-value" style={{ textTransform: 'capitalize' }}>
+                {wizardData.dataType === 'lead-mining' ? 'Lead Mining' : wizardData.dataType === 'exhibitor-list' ? 'Exhibitor List Miner' : 'Exhibitor Data Miner'}
+              </span>
             </div>
           )}
         </div>

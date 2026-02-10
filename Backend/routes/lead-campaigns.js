@@ -130,7 +130,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create campaign
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, assignmentRule, status, tradeShow } = req.body;
+    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, status, tradeShow, dataType } = req.body;
 
     if (!name || !method || !leadType) {
       return res.status(400).json({ message: 'Name, method, and lead type are required' });
@@ -157,7 +157,7 @@ router.post('/', auth, async (req, res) => {
       priority: priority || 'medium',
       status: status || 'active',
       assignees: processedAssignees,
-      assignmentRule: assignmentRule || 'manual',
+      dataType: (method === 'extension' && dataType) ? dataType : 'lead-mining',
       tradeShow: tradeShow || null,
       userId: req.user.userId
     });
@@ -181,7 +181,7 @@ router.put('/:id', auth, async (req, res) => {
 
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
 
-    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'assignmentRule', 'tradeShow'];
+    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'tradeShow', 'dataType'];
     allowed.forEach(field => {
       if (req.body[field] !== undefined) campaign[field] = req.body[field];
     });

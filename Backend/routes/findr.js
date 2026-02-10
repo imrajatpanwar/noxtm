@@ -82,7 +82,7 @@ router.get('/settings', auth, async (req, res) => {
             .populate('userId', 'fullName email')
             .populate('assignees.user', 'fullName email role')
             .populate('tradeShow', 'shortName fullName')
-            .select('name leadType status tags sourceNotes expectedLeadCount stats tradeShow createdAt')
+            .select('name leadType status tags sourceNotes expectedLeadCount stats tradeShow dataType createdAt')
             .sort({ createdAt: -1 });
 
         // If no campaigns found and user doesn't have dataCenter permission, return empty with warning
@@ -124,6 +124,7 @@ router.get('/settings', auth, async (req, res) => {
                 expectedLeadCount: c.expectedLeadCount,
                 stats: c.stats,
                 tradeShow: c.tradeShow,
+                dataType: c.dataType || 'lead-mining',
                 owner: c.userId,
                 createdAt: c.createdAt
             })),
