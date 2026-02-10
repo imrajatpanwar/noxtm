@@ -813,8 +813,12 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Recipient and subject are required' });
     }
 
-    // FIXED: Use SMTP via mail server instead of AWS SES
-    const nodemailer = require('nodemailer');
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required for sending emails' });
+    }
+
+    // Import AWS SES helper
+    const { sendEmailViaSES } = require('../utils/awsSesHelper');
 
     let senderProfile = null;
     if (mongoose.Types.ObjectId.isValid(req.user.userId)) {
@@ -824,164 +828,79 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
           { projection: { fullName: 1, profileImage: 1, emailAvatar: 1 } }
         );
       } catch (profileError) {
-        console.warn('Unable to load sender profile for avatar rendering:', profileError.message);
+        console.warn('Unable to load sender profile:', profileError.message);
       }
     }
 
-    // Get sender email from selected account or user's verified domain account
-    let fromEmail = process.env.EMAIL_FROM || 'noreply@noxtm.com';
-    if (accountId) {
-      const account = await EmailAccount.findById(accountId);
-      if (account) {
-        fromEmail = account.email;
-      }
-    } else {
-      // No account selected - try to use user's primary email
-      if (senderProfile && senderProfile.email) {
-        fromEmail = senderProfile.email;
-      }
-    }
-
-    const senderName = senderProfile?.fullName || 'NOXTM Mail';
-    const avatarUrl =
-      senderProfile?.emailAvatar ||
-      senderProfile?.profileImage ||
-      process.env.DEFAULT_AVATAR_URL ||
-      fallbackAvatarFor(senderName, fromEmail);
-
-    const originalBody = body || '';
-    const bodyHtml = plainTextToHtml(originalBody);
-    // Send clean HTML without envelope wrapper - let email clients handle sender display
-    const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
-
-    // Build recipients array
-    const recipients = Array.isArray(to) ? to : [to];
-    if (cc) {
-      const ccArray = Array.isArray(cc) ? cc : [cc];
-      recipients.push(...ccArray);
-    }
-    if (bcc) {
-      const bccArray = Array.isArray(bcc) ? bcc : [bcc];
-      recipients.push(...bccArray);
-    }
-
-    // FIXED: Send via SMTP through mail server
-    // Get account for SMTP credentials
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required for sending emails' });
-    }
-
-    console.log(`📧 Looking up email account: ${accountId}`);
+    // Get sender email from selected account
     const emailAccount = await EmailAccount.findById(accountId);
     if (!emailAccount) {
-      console.error(`❌ Email account not found: ${accountId}`);
       return res.status(400).json({ message: 'Email account not found' });
     }
 
-    if (!emailAccount.smtpSettings) {
-      console.error(`❌ SMTP settings not configured for account: ${emailAccount.email}`);
-      return res.status(400).json({ message: 'SMTP not configured for this account' });
-    }
+    const fromEmail = emailAccount.email;
+    const senderName = senderProfile?.fullName || emailAccount.displayName || 'NOXTM Mail';
 
-    if (!emailAccount.smtpSettings.encryptedPassword) {
-      console.error(`❌ SMTP password not found for account: ${emailAccount.email}`);
-      return res.status(400).json({ message: 'SMTP password not configured' });
-    }
+    const originalBody = body || '';
+    const bodyHtml = plainTextToHtml(originalBody);
+    const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
 
-    console.log(`✅ Found email account: ${emailAccount.email}`);
+    console.log(`📧 Sending email via AWS SES: from=${fromEmail}, to=${to}, subject=${subject}`);
 
-    // Use 127.0.0.1 when connecting to local mail server (same as IMAP does)
-    const smtpHost = emailAccount.smtpSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (emailAccount.smtpSettings.host || '127.0.0.1');
-    const smtpPort = emailAccount.smtpSettings.port || 587;
-    const smtpUser = emailAccount.smtpSettings.username || emailAccount.email;
-
-    console.log(`🔐 Decrypting SMTP password for ${emailAccount.email}...`);
-    let smtpPass;
-    try {
-      smtpPass = decrypt(emailAccount.smtpSettings.encryptedPassword);
-      console.log(`✅ Password decrypted successfully (length: ${smtpPass.length})`);
-    } catch (decryptError) {
-      console.error(`❌ Failed to decrypt SMTP password:`, decryptError.message);
-      throw new Error(`Failed to  decrypt password: ${decryptError.message}`);
-    }
-
-    console.log(`📧 SMTP Send: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, from=${fromEmail}`);
-
-    // Create SMTP transport
-    console.log(`🚀 Creating SMTP transporter...`);
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: emailAccount.smtpSettings.secure,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass
-      },
-      tls: {
-        rejectUnauthorized: false // Accept self-signed certificates
-      }
-    });
-    console.log(`✅ SMTP transporter created`);
-
-    // Send email via SMTP
-    console.log(`📤 Sending email to ${to}...`);
-    const info = await transporter.sendMail({
+    // Send via AWS SES
+    const info = await sendEmailViaSES({
       from: `${senderName} <${fromEmail}>`,
       to: Array.isArray(to) ? to : [to],
-      cc: cc,
-      bcc: bcc,
       subject: subject,
       html: bodyHtml,
       text: plainTextVariant
     });
-    console.log(`✅ Email sent successfully! Message ID: ${info.messageId || 'N/A'}`);
+
+    console.log(`✅ Email sent via AWS SES! Message ID: ${info.MessageId || 'N/A'}`);
 
     // Append sent email to IMAP Sent folder
     let savedToSent = false;
-    if (accountId) {
-      try {
-        const account = await EmailAccount.findById(accountId);
-        if (account && account.imapSettings && account.imapSettings.encryptedPassword) {
-          const password = decrypt(account.imapSettings.encryptedPassword);
+    try {
+      if (emailAccount.imapSettings && emailAccount.imapSettings.encryptedPassword) {
+        const password = decrypt(emailAccount.imapSettings.encryptedPassword);
 
-          const imapConfig = {
-            host: account.imapSettings.host || '127.0.0.1',
-            port: account.imapSettings.port || 993,
-            secure: account.imapSettings.secure !== false,
-            username: account.imapSettings.username || account.email,
-            password: password
-          };
+        const imapConfig = {
+          host: emailAccount.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (emailAccount.imapSettings.host || '127.0.0.1'),
+          port: emailAccount.imapSettings.port || 993,
+          secure: emailAccount.imapSettings.secure !== false,
+          username: emailAccount.imapSettings.username || emailAccount.email,
+          password: password
+        };
 
-          const emailMessage = {
-            from: fromEmail,
-            to: Array.isArray(to) ? to : [to],
-            cc: cc || [],
-            bcc: bcc || [],
-            subject: subject,
-            body: bodyHtml,
-            plainText: plainTextVariant,
-            date: new Date(),
-            messageId: info.MessageId
-          };
+        const emailMessage = {
+          from: fromEmail,
+          to: Array.isArray(to) ? to : [to],
+          cc: cc || [],
+          bcc: bcc || [],
+          subject: subject,
+          body: bodyHtml,
+          plainText: plainTextVariant,
+          date: new Date(),
+          messageId: info.MessageId
+        };
 
-          // Append to IMAP Sent folder with 5s timeout
-          const appendPromise = appendEmailToFolder(imapConfig, 'Sent', emailMessage);
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('IMAP append timeout')), 5000)
-          );
+        // Append to IMAP Sent folder with 5s timeout
+        const appendPromise = appendEmailToFolder(imapConfig, 'Sent', emailMessage);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('IMAP append timeout')), 5000)
+        );
 
-          await Promise.race([appendPromise, timeoutPromise]);
+        await Promise.race([appendPromise, timeoutPromise]);
 
-          console.log(`✅ Sent email appended to IMAP Sent folder for ${fromEmail}`);
-          savedToSent = true;
+        console.log(`✅ Sent email appended to IMAP Sent folder for ${fromEmail}`);
+        savedToSent = true;
 
-          // Invalidate Sent folder cache so new email appears immediately
-          await invalidateFolderCache(accountId, 'Sent');
-        }
-      } catch (appendError) {
-        // Don't fail the request if IMAP append fails - email was still sent
-        console.error('⚠️ Failed to append to Sent folder (email was sent via SES):', appendError.message);
+        // Invalidate Sent folder cache so new email appears immediately
+        await invalidateFolderCache(accountId, 'Sent');
       }
+    } catch (appendError) {
+      // Don't fail the request if IMAP append fails - email was still sent
+      console.error('⚠️ Failed to append to Sent folder (email was sent via SES):', appendError.message);
     }
 
     res.json({
@@ -995,22 +914,9 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
     console.error('❌ Error sending email:', error.message);
     console.error('❌ Error stack:', error.stack);
 
-    // Provide more specific error messages
-    let userMessage = 'Failed to send email';
-    if (error.message.includes('decrypt')) {
-      userMessage = 'Email account credentials are invalid or corrupted';
-    } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
-      userMessage = 'Cannot connect to mail server';
-    } else if (error.message.includes('Authentication') || error.message.includes('auth')) {
-      userMessage = 'Email authentication failed - check credentials';
-    } else if (error.code === 'EAUTH') {
-      userMessage = 'SMTP authentication failed';
-    }
-
     res.status(500).json({
-      message: userMessage,
-      error: error.message,
-      errorCode: error.code || 'UNKNOWN'
+      message: 'Failed to send email',
+      error: error.message
     });
   }
 });
