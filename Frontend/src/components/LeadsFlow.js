@@ -60,7 +60,7 @@ function LeadsFlow() {
     method: '', name: '', leadType: '', customLeadType: '',
     tags: [], sourceNotes: '', expectedLeadCount: '',
     priority: 'medium', assignees: [],
-    tradeShow: '', dataType: 'lead-mining'
+    tradeShow: '', dataTypeAssignments: []
   });
   const [tagInput, setTagInput] = useState('');
 
@@ -148,7 +148,7 @@ function LeadsFlow() {
       method: '', name: '', leadType: '', customLeadType: '',
       tags: [], sourceNotes: '', expectedLeadCount: '',
       priority: 'medium', assignees: [],
-      tradeShow: '', dataType: 'lead-mining'
+      tradeShow: '', dataTypeAssignments: []
     });
     setTagInput('');
     setIsEditing(false);
@@ -182,7 +182,7 @@ function LeadsFlow() {
         assignees: wizardData.assignees,
         status: asDraft ? 'draft' : 'active',
         tradeShow: wizardData.tradeShow || null,
-        dataType: wizardData.dataType || 'lead-mining'
+        dataTypeAssignments: wizardData.dataTypeAssignments || []
       };
 
       let res;
@@ -292,7 +292,10 @@ function LeadsFlow() {
         percentage: a.percentage || 0
       })) : [],
       tradeShow: campaign.tradeShow?._id || campaign.tradeShow || '',
-      dataType: campaign.dataType || 'lead-mining'
+      dataTypeAssignments: Array.isArray(campaign.dataTypeAssignments) ? campaign.dataTypeAssignments.map(dta => ({
+        dataType: dta.dataType,
+        assignees: (dta.assignees || []).map(a => a._id || a)
+      })) : []
     });
     setTagInput('');
     setIsEditing(true);
@@ -647,6 +650,43 @@ function LeadsFlow() {
     </div>
   );
 
+  // Toggle data type selection and manage per-type assignees
+  const toggleDataType = (dtValue) => {
+    setWizardData(prev => {
+      const exists = prev.dataTypeAssignments.find(d => d.dataType === dtValue);
+      if (exists) {
+        return { ...prev, dataTypeAssignments: prev.dataTypeAssignments.filter(d => d.dataType !== dtValue) };
+      } else {
+        return { ...prev, dataTypeAssignments: [...prev.dataTypeAssignments, { dataType: dtValue, assignees: [] }] };
+      }
+    });
+  };
+
+  const toggleDataTypeAssignee = (dtValue, userId) => {
+    setWizardData(prev => {
+      const updated = prev.dataTypeAssignments.map(d => {
+        if (d.dataType !== dtValue) return d;
+        const has = d.assignees.includes(userId);
+        return { ...d, assignees: has ? d.assignees.filter(id => id !== userId) : [...d.assignees, userId] };
+      });
+      // Also ensure user is in the campaign-level assignees
+      const allDtUsers = [...new Set(updated.flatMap(d => d.assignees))];
+      const newAssignees = [...prev.assignees];
+      allDtUsers.forEach(uid => {
+        if (!newAssignees.some(a => (a.user || a) === uid)) {
+          newAssignees.push({ user: uid, role: 'member', percentage: 0 });
+        }
+      });
+      return { ...prev, dataTypeAssignments: updated, assignees: newAssignees };
+    });
+  };
+
+  const DATA_TYPE_OPTIONS = [
+    { value: 'lead-mining', label: 'Lead Mining', desc: 'Collect lead data from websites and directories', icon: FiTarget },
+    { value: 'exhibitor-list', label: 'Exhibitor List Miner', desc: 'Extract exhibitor company listings from trade shows', icon: FiFileText },
+    { value: 'exhibitor-data', label: 'Exhibitor Data Miner', desc: 'Extract detailed exhibitor contact data company by company', icon: FiUsers }
+  ];
+
   // Wizard Step 3: Assignment
   const renderStep3 = () => (
     <div className="lf-wizard-step">
@@ -659,67 +699,118 @@ function LeadsFlow() {
           <span>You (Campaign Owner) — auto-assigned</span>
         </div>
 
-        {exhibitOSActive && wizardData.method === 'extension' && (
-          <div className="lf-form-group" style={{ marginBottom: 16 }}>
-            <label><FiGlobe size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Data Type</label>
-            <p className="lf-step-desc" style={{ fontSize: 12, margin: '4px 0 10px' }}>
-              Choose what the assigned team members will do in the Chrome Extension
-            </p>
-            <div className="lf-method-grid" style={{ gridTemplateColumns: '1fr', gap: 10 }}>
-              {[
-                { value: 'lead-mining', label: 'Lead Mining', desc: 'Collect lead data from websites and directories', icon: FiTarget },
-                { value: 'exhibitor-list', label: 'Exhibitor List Miner', desc: 'Extract exhibitor company listings from trade shows', icon: FiFileText },
-                { value: 'exhibitor-data', label: 'Exhibitor Data Miner', desc: 'Extract detailed exhibitor contact data company by company', icon: FiUsers }
-              ].map(dt => {
-                const DtIcon = dt.icon;
-                return (
+        {exhibitOSActive && wizardData.method === 'extension' ? (
+          <>
+            <div className="lf-form-group" style={{ marginBottom: 0 }}>
+              <label><FiGlobe size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Data Types & Assignments</label>
+              <p className="lf-step-desc" style={{ fontSize: 12, margin: '4px 0 12px' }}>
+                Select one or more data types and assign team members to each
+              </p>
+            </div>
+
+            {DATA_TYPE_OPTIONS.map(dt => {
+              const DtIcon = dt.icon;
+              const isActive = wizardData.dataTypeAssignments.some(d => d.dataType === dt.value);
+              const dtAssignment = wizardData.dataTypeAssignments.find(d => d.dataType === dt.value);
+
+              return (
+                <div key={dt.value} style={{
+                  border: isActive ? '2px solid #171717' : '1px solid #e5e5e5',
+                  borderRadius: 10,
+                  marginBottom: 12,
+                  overflow: 'hidden',
+                  transition: 'all 0.2s'
+                }}>
                   <div
-                    key={dt.value}
-                    className={`lf-method-card ${wizardData.dataType === dt.value ? 'lf-method-selected' : ''}`}
-                    onClick={() => setWizardData(prev => ({ ...prev, dataType: dt.value }))}
-                    style={{ padding: '12px 16px', cursor: 'pointer' }}
+                    onClick={() => toggleDataType(dt.value)}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      background: isActive ? '#f5f5f5' : '#fff'
+                    }}
                   >
-                    <DtIcon size={18} style={{ color: wizardData.dataType === dt.value ? '#171717' : '#737373', flexShrink: 0 }} />
+                    <div style={{
+                      width: 20, height: 20, borderRadius: 4,
+                      border: isActive ? 'none' : '2px solid #d4d4d4',
+                      background: isActive ? '#171717' : '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {isActive && <FiCheck size={14} style={{ color: '#fff' }} />}
+                    </div>
+                    <DtIcon size={18} style={{ color: isActive ? '#171717' : '#737373', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 13, color: '#171717' }}>{dt.label}</div>
-                      <div style={{ fontSize: 12, color: '#737373', marginTop: 2 }}>{dt.desc}</div>
+                      <div style={{ fontSize: 12, color: '#737373', marginTop: 1 }}>{dt.desc}</div>
                     </div>
-                    {wizardData.dataType === dt.value && <FiCheck size={16} style={{ color: '#15803d' }} />}
                   </div>
-                );
-              })}
-            </div>
+
+                  {isActive && teamMembers.length > 0 && (
+                    <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #e5e5e5', background: '#fafafa' }}>
+                      <div style={{ fontSize: 12, color: '#525252', marginBottom: 8, fontWeight: 500 }}>
+                        Assign team members for {dt.label}:
+                      </div>
+                      <div className="lf-members-grid">
+                        {teamMembers.map(m => {
+                          const isAssigned = dtAssignment?.assignees?.includes(m._id);
+                          return (
+                            <div
+                              key={m._id}
+                              className={`lf-member-card ${isAssigned ? 'lf-member-selected' : ''}`}
+                              onClick={() => toggleDataTypeAssignee(dt.value, m._id)}
+                              style={{ padding: '8px 10px' }}
+                            >
+                              <div className="lf-member-avatar" style={{ width: 28, height: 28, fontSize: 12 }}>
+                                {(m.fullName || m.name)?.charAt(0)?.toUpperCase() || 'U'}
+                              </div>
+                              <div className="lf-member-info">
+                                <span className="lf-member-name" style={{ fontSize: 12.5 }}>{m.fullName || m.name || 'User'}</span>
+                                <span className="lf-member-role" style={{ fontSize: 11 }}>{m.role || 'Member'}</span>
+                              </div>
+                              {isAssigned && <FiCheck size={13} className="lf-member-check" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          <div className="lf-team-list">
+            <label>Add Team Members</label>
+            {teamMembers.length === 0 ? (
+              <p className="lf-no-team">No other team members found</p>
+            ) : (
+              <div className="lf-members-grid">
+                {teamMembers.map(m => {
+                  const isSelected = wizardData.assignees.some(a => (a.user || a) === m._id);
+                  return (
+                    <div
+                      key={m._id}
+                      className={`lf-member-card ${isSelected ? 'lf-member-selected' : ''}`}
+                      onClick={() => toggleAssignee(m._id)}
+                    >
+                      <div className="lf-member-avatar">
+                        {(m.fullName || m.name)?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                      <div className="lf-member-info">
+                        <span className="lf-member-name">{m.fullName || m.name || 'User'}</span>
+                        <span className="lf-member-role">{m.role || 'Member'}</span>
+                      </div>
+                      {isSelected && <FiCheck size={14} className="lf-member-check" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
-
-        <div className="lf-team-list">
-          <label>Add Team Members</label>
-          {teamMembers.length === 0 ? (
-            <p className="lf-no-team">No other team members found</p>
-          ) : (
-            <div className="lf-members-grid">
-              {teamMembers.map(m => {
-                const isSelected = wizardData.assignees.some(a => (a.user || a) === m._id);
-                return (
-                  <div
-                    key={m._id}
-                    className={`lf-member-card ${isSelected ? 'lf-member-selected' : ''}`}
-                    onClick={() => toggleAssignee(m._id)}
-                  >
-                    <div className="lf-member-avatar">
-                      {m.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div className="lf-member-info">
-                      <span className="lf-member-name">{m.name}</span>
-                      <span className="lf-member-role">{m.role || 'Member'}</span>
-                    </div>
-                    {isSelected && <FiCheck size={14} className="lf-member-check" />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -788,18 +879,37 @@ function LeadsFlow() {
               <span className="lf-review-value lf-review-assignees">
                 {selectedAssignees.map(a => (
                   <span key={a._id} className="lf-assignee-chip">
-                    {a.name?.charAt(0)?.toUpperCase()}{' '}{a.name}
+                    {(a.fullName || a.name)?.charAt(0)?.toUpperCase()}{' '}{a.fullName || a.name}
                   </span>
                 ))}
               </span>
             </div>
           )}
-          {wizardData.method === 'extension' && exhibitOSActive && (
-            <div className="lf-review-row">
-              <span className="lf-review-label">Data Type</span>
-              <span className="lf-review-value" style={{ textTransform: 'capitalize' }}>
-                {wizardData.dataType === 'lead-mining' ? 'Lead Mining' : wizardData.dataType === 'exhibitor-list' ? 'Exhibitor List Miner' : 'Exhibitor Data Miner'}
-              </span>
+          {wizardData.method === 'extension' && exhibitOSActive && wizardData.dataTypeAssignments.length > 0 && (
+            <div className="lf-review-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+              <span className="lf-review-label">Data Type Assignments</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+                {wizardData.dataTypeAssignments.map(dta => {
+                  const dtLabel = dta.dataType === 'lead-mining' ? 'Lead Mining' : dta.dataType === 'exhibitor-list' ? 'Exhibitor List Miner' : 'Exhibitor Data Miner';
+                  const dtMembers = teamMembers.filter(m => dta.assignees.includes(m._id));
+                  return (
+                    <div key={dta.dataType} style={{ background: '#f5f5f5', borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, color: '#171717', marginBottom: 4 }}>{dtLabel}</div>
+                      {dtMembers.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {dtMembers.map(m => (
+                            <span key={m._id} className="lf-assignee-chip" style={{ fontSize: 11.5 }}>
+                              {(m.fullName || m.name)?.charAt(0)?.toUpperCase()} {m.fullName || m.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#a3a3a3' }}>No members assigned</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

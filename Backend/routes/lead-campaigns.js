@@ -71,7 +71,7 @@ router.get('/team/members', auth, async (req, res) => {
       ? { companyId: currentUser.companyId }
       : { _id: req.user.userId };
 
-    const members = await User.find(query).select('name email role avatar');
+    const members = await User.find(query).select('fullName email role avatar');
     res.json(members);
   } catch (error) {
     console.error('Error fetching team members:', error);
@@ -115,7 +115,8 @@ router.get('/:id', auth, async (req, res) => {
       _id: req.params.id,
       userId: req.user.userId
     })
-      .populate('assignees.user', 'name email role avatar')
+      .populate('assignees.user', 'fullName email role avatar')
+      .populate('dataTypeAssignments.assignees', 'fullName email role avatar')
       .populate('leads')
       .populate('tradeShow', 'shortName fullName showDate location');
 
@@ -130,7 +131,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create campaign
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, status, tradeShow, dataType } = req.body;
+    const { name, method, leadType, tags, sourceNotes, expectedLeadCount, priority, assignees, status, tradeShow, dataTypeAssignments } = req.body;
 
     if (!name || !method || !leadType) {
       return res.status(400).json({ message: 'Name, method, and lead type are required' });
@@ -157,13 +158,14 @@ router.post('/', auth, async (req, res) => {
       priority: priority || 'medium',
       status: status || 'active',
       assignees: processedAssignees,
-      dataType: (method === 'extension' && dataType) ? dataType : 'lead-mining',
+      dataTypeAssignments: (method === 'extension' && Array.isArray(dataTypeAssignments)) ? dataTypeAssignments : [],
       tradeShow: tradeShow || null,
       userId: req.user.userId
     });
 
     await campaign.save();
-    await campaign.populate('assignees.user', 'name email role avatar');
+    await campaign.populate('assignees.user', 'fullName email role avatar');
+    await campaign.populate('dataTypeAssignments.assignees', 'fullName email role avatar');
     res.status(201).json(campaign);
   } catch (error) {
     console.error('Error creating campaign:', error);
@@ -181,13 +183,14 @@ router.put('/:id', auth, async (req, res) => {
 
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
 
-    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'tradeShow', 'dataType'];
+    const allowed = ['name', 'leadType', 'tags', 'sourceNotes', 'expectedLeadCount', 'priority', 'status', 'assignees', 'tradeShow', 'dataTypeAssignments'];
     allowed.forEach(field => {
       if (req.body[field] !== undefined) campaign[field] = req.body[field];
     });
 
     await campaign.save();
-    await campaign.populate('assignees.user', 'name email role avatar');
+    await campaign.populate('assignees.user', 'fullName email role avatar');
+    await campaign.populate('dataTypeAssignments.assignees', 'fullName email role avatar');
     await campaign.populate('tradeShow', 'shortName fullName showDate location');
     res.json(campaign);
   } catch (error) {
