@@ -71,7 +71,7 @@ router.get('/settings', auth, async (req, res) => {
         // Find extension campaigns where user is owner OR assignee
         let query = {
             method: 'extension',
-            status: { $in: ['active', 'draft'] },
+            status: { $in: ['active', 'draft', 'paused'] },
             $or: [
                 { userId: userId },  // User owns the campaign
                 { 'assignees.user': userId }  // User is assigned to the campaign
