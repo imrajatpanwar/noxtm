@@ -115,19 +115,31 @@ router.get('/settings', auth, async (req, res) => {
                 isAdmin,
                 hasDataCenterPermission
             },
-            campaigns: campaigns.map(c => ({
-                _id: c._id,
-                name: c.name,
-                leadType: c.leadType,
-                status: c.status,
-                tags: c.tags,
-                expectedLeadCount: c.expectedLeadCount,
-                stats: c.stats,
-                tradeShow: c.tradeShow,
-                dataTypeAssignments: c.dataTypeAssignments || [],
-                owner: c.userId,
-                createdAt: c.createdAt
-            })),
+            campaigns: campaigns.map(c => {
+                const isOwner = c.userId && c.userId._id && c.userId._id.toString() === userId.toString();
+                // Filter dataTypeAssignments: owner sees all, assignees see only their assigned types
+                const filteredDTA = (c.dataTypeAssignments || []).filter(dta => {
+                    if (isOwner) return true;
+                    return dta.assignees && dta.assignees.some(a => {
+                        const aid = a._id ? a._id.toString() : a.toString();
+                        return aid === userId.toString();
+                    });
+                });
+                return {
+                    _id: c._id,
+                    name: c.name,
+                    leadType: c.leadType,
+                    status: c.status,
+                    tags: c.tags,
+                    expectedLeadCount: c.expectedLeadCount,
+                    stats: c.stats,
+                    tradeShow: c.tradeShow,
+                    dataTypeAssignments: filteredDTA,
+                    isOwner,
+                    owner: c.userId,
+                    createdAt: c.createdAt
+                };
+            }),
             selectedCampaignId: user.findrSettings?.selectedCampaignId || null,
             exhibitOSActive,
             tradeShows
