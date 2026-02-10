@@ -871,20 +871,44 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: 'Account ID is required for sending emails' });
     }
 
+    console.log(`📧 Looking up email account: ${accountId}`);
     const emailAccount = await EmailAccount.findById(accountId);
-    if (!emailAccount || !emailAccount.smtpSettings) {
-      return res.status(400).json({ message: 'Email account not found or SMTP not configured' });
+    if (!emailAccount) {
+      console.error(`❌ Email account not found: ${accountId}`);
+      return res.status(400).json({ message: 'Email account not found' });
     }
+
+    if (!emailAccount.smtpSettings) {
+      console.error(`❌ SMTP settings not configured for account: ${emailAccount.email}`);
+      return res.status(400).json({ message: 'SMTP not configured for this account' });
+    }
+
+    if (!emailAccount.smtpSettings.encryptedPassword) {
+      console.error(`❌ SMTP password not found for account: ${emailAccount.email}`);
+      return res.status(400).json({ message: 'SMTP password not configured' });
+    }
+
+    console.log(`✅ Found email account: ${emailAccount.email}`);
 
     // Use 127.0.0.1 when connecting to local mail server (same as IMAP does)
     const smtpHost = emailAccount.smtpSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (emailAccount.smtpSettings.host || '127.0.0.1');
     const smtpPort = emailAccount.smtpSettings.port || 587;
     const smtpUser = emailAccount.smtpSettings.username || emailAccount.email;
-    const smtpPass = decrypt(emailAccount.smtpSettings.encryptedPassword);
+
+    console.log(`🔐 Decrypting SMTP password for ${emailAccount.email}...`);
+    let smtpPass;
+    try {
+      smtpPass = decrypt(emailAccount.smtpSettings.encryptedPassword);
+      console.log(`✅ Password decrypted successfully (length: ${smtpPass.length})`);
+    } catch (decryptError) {
+      console.error(`❌ Failed to decrypt SMTP password:`, decryptError.message);
+      throw new Error(`Failed to  decrypt password: ${decryptError.message}`);
+    }
 
     console.log(`📧 SMTP Send: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, from=${fromEmail}`);
 
     // Create SMTP transport
+    console.log(`🚀 Creating SMTP transporter...`);
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
@@ -897,8 +921,10 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
         rejectUnauthorized: false // Accept self-signed certificates
       }
     });
+    console.log(`✅ SMTP transporter created`);
 
     // Send email via SMTP
+    console.log(`📤 Sending email to ${to}...`);
     const info = await transporter.sendMail({
       from: `${senderName} <${fromEmail}>`,
       to: Array.isArray(to) ? to : [to],
@@ -908,6 +934,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       html: bodyHtml,
       text: plainTextVariant
     });
+    console.log(`✅ Email sent successfully! Message ID: ${info.messageId || 'N/A'}`);
 
     // Append sent email to IMAP Sent folder
     let savedToSent = false;
@@ -965,11 +992,25 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error.message);
+    console.error('❌ Error stack:', error.stack);
+
+    // Provide more specific error messages
+    let userMessage = 'Failed to send email';
+    if (error.message.includes('decrypt')) {
+      userMessage = 'Email account credentials are invalid or corrupted';
+    } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
+      userMessage = 'Cannot connect to mail server';
+    } else if (error.message.includes('Authentication') || error.message.includes('auth')) {
+      userMessage = 'Email authentication failed - check credentials';
+    } else if (error.code === 'EAUTH') {
+      userMessage = 'SMTP authentication failed';
+    }
 
     res.status(500).json({
-      message: 'Failed to send email',
-      error: error.message
+      message: userMessage,
+      error: error.message,
+      errorCode: error.code || 'UNKNOWN'
     });
   }
 });
