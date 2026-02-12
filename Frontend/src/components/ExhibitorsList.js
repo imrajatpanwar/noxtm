@@ -121,8 +121,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
       </div>
 
       {/* Exhibitors Content */}
-      {
-          {loading ? (
+      {loading ? (
             <div className="exl-load"><div className="exl-spin" /><p>Loading exhibitors...</p></div>
           ) : filtered.length > 0 ? (
             <div className="exl-table-wrap">
