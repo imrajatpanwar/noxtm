@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import {
-  FiPlus, FiSearch, FiEdit3, FiTrash2, FiX, FiPin, FiArchive,
+  FiPlus, FiSearch, FiEdit3, FiTrash2, FiX, FiBookmark, FiArchive,
   FiTag, FiClock, FiMoreVertical, FiCheck, FiChevronDown
 } from 'react-icons/fi';
 import api from '../config/api';
@@ -400,7 +400,7 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
           {activeMenu === note._id && (
             <div className="note-card-dropdown">
               <button onClick={(e) => { e.stopPropagation(); onPin(note._id); setActiveMenu(null); }}>
-                <FiPin /> {note.pinned ? 'Unpin' : 'Pin'}
+                <FiBookmark /> {note.pinned ? 'Unpin' : 'Pin'}
               </button>
               <button onClick={(e) => { e.stopPropagation(); onEdit(note); }}>
                 <FiEdit3 /> Edit
@@ -435,7 +435,7 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
         </div>
       </div>
 
-      {note.pinned && <div className="note-pin-indicator"><FiPin /></div>}
+      {note.pinned && <div className="note-pin-indicator"><FiBookmark /></div>}
     </div>
   );
 }
