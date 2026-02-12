@@ -43,14 +43,25 @@ router.post('/add', requireAuth, async (req, res) => {
       });
     }
 
-    // Check if domain already exists
+    // Check if domain already exists for this user
     const existing = await UserVerifiedDomain.findOne({ domain, userId });
     if (existing) {
+      // Domain already added — return the existing record instead of erroring
+      return res.json({
+        success: true,
+        message: 'Domain already added to your account. Please verify DNS records.',
+        domain: existing,
+        dnsRecords: existing.dnsRecords
+      });
+    }
+
+    // Check if domain is owned by another user
+    const ownedByOther = await UserVerifiedDomain.findOne({ domain, userId: { $ne: userId } });
+    if (ownedByOther) {
       return res.status(409).json({
         success: false,
-        error: 'DOMAIN_EXISTS',
-        message: 'This domain is already added to your account',
-        domain: existing
+        error: 'DOMAIN_TAKEN',
+        message: 'This domain is already registered by another account'
       });
     }
 

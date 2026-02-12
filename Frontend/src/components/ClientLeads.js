@@ -382,6 +382,7 @@ function ClientLeads() {
                 <th>Company</th>
                 <th>Contact</th>
                 <th>Status</th>
+                <th>Lead By</th>
                 <th>Follow-Up</th>
                 <th>Date</th>
                 <th></th>
@@ -416,6 +417,28 @@ function ClientLeads() {
                       <span className="cl-status-badge" style={{ background: style.bg, color: style.color }}>
                         {lead.status}
                       </span>
+                    </td>
+                    <td>
+                      <div className="cl-leadby-cell">
+                        {lead.addedBy ? (
+                          <>
+                            {(lead.addedBy.profileImage || lead.addedBy.profilePicture || lead.addedBy.avatar) ? (
+                              <img
+                                src={lead.addedBy.profileImage || lead.addedBy.profilePicture || lead.addedBy.avatar}
+                                alt=""
+                                className="cl-leadby-avatar"
+                                title={lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email?.split('@')[0] || 'Unknown'}
+                              />
+                            ) : (
+                              <div className="cl-leadby-avatar-placeholder" title={lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email?.split('@')[0] || 'Unknown'}>
+                                {(lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email || '?')[0].toUpperCase()}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="cl-leadby-name">—</span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <span className="cl-followup">{lead.followUp || '—'}</span>

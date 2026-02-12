@@ -87,7 +87,13 @@ router.get('/by-trade-show/:tradeShowId', auth, async (req, res) => {
       tradeShow: req.params.tradeShowId
     })
       .populate('assignees.user', 'name email role avatar')
-      .populate('leads')
+      .populate({
+        path: 'leads',
+        populate: {
+          path: 'addedBy',
+          select: 'fullName name email profileImage profilePicture avatar'
+        }
+      })
       .populate('tradeShow', 'shortName fullName showDate location')
       .sort({ createdAt: -1 });
 

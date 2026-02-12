@@ -72,7 +72,11 @@ function Messaging() {
     dataSharing: false,
     readReceipts: true,
     typingIndicator: true,
-    tag: true
+    tag: true,
+    muteChat: false,
+    onlineStatus: true,
+    mediaAutoDownload: true,
+    messagePreview: true
   });
 
   // Create Group State
@@ -313,7 +317,7 @@ function Messaging() {
   }, [socket]);
 
   useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation && !selectedConversation.isNewDm) {
       // Store active conversation ID in sessionStorage to prevent toast notifications
       sessionStorage.setItem('activeConversationId', selectedConversation._id);
       
@@ -516,10 +520,29 @@ function Messaging() {
     }
   };
 
-  const handleSelectConversation = (conversation) => {
+  const handleSelectConversation = async (conversation) => {
     setIsNoxtmBotSelected(false);
+
+    // If this is a new DM without existing conversation, create one first
+    if (conversation.isNewDm && conversation.targetUser) {
+      try {
+        const targetId = conversation.targetUser._id || conversation.targetUser.id;
+        const response = await api.post('/messaging/conversations/direct', {
+          participantId: targetId
+        });
+        const newConv = response.data.conversation || response.data;
+        setSelectedConversation(newConv);
+        // Reload conversations to include the new one
+        const convResponse = await api.get('/messaging/conversations');
+        setConversations(convResponse.data.conversations || []);
+      } catch (error) {
+        console.error('Create DM error:', error);
+        toast.error('Failed to start conversation');
+      }
+      return;
+    }
+
     setSelectedConversation(conversation);
-    // Note: Unread count will be reset when messages are loaded and marked as read
   };
 
   const handleCreateGroup = () => {
@@ -927,10 +950,10 @@ function Messaging() {
       <div className="messaging-main">
         {showChatSettings ? (
           /* Chat Settings View */
-          <div className="settings-main-view">
-            <div className="settings-header">
+          <div className="msg-settings-view">
+            <div className="msg-settings-header">
               <button
-                className="back-button"
+                className="msg-settings-back"
                 onClick={() => setShowChatSettings(false)}
                 title="Back"
               >
@@ -941,113 +964,218 @@ function Messaging() {
               <h2>Chat Settings & Privacy</h2>
             </div>
 
-            <div className="settings-content">
-              {/* Notification Settings */}
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
+            <div className="msg-settings-body">
+              {/* General Section */}
+              <div className="msg-settings-section">
+                <h3 className="msg-settings-section-title">General</h3>
+
+                {/* Notification Settings */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Notifications</span>
+                      <span className="msg-setting-desc">Get notified when a chat arrives</span>
+                    </div>
                   </div>
-                  <div>
-                    <label>Notification Settings</label>
-                    <p>When a chat arrives you will be notified</p>
-                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.notifications ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('notifications')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
                 </div>
-                <button
-                  className={`toggle-switch ${chatSettings.notifications ? 'active' : ''}`}
-                  onClick={() => handleToggleSetting('notifications')}
-                >
-                  <span className="toggle-slider" />
-                </button>
+
+                {/* Mute Chat */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-mute">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Mute All Chats</span>
+                      <span className="msg-setting-desc">Silence all chat notifications</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.muteChat ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('muteChat')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
+                </div>
+
+                {/* Message Preview */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Message Preview</span>
+                      <span className="msg-setting-desc">Show message content in notifications</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.messagePreview ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('messagePreview')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
+                </div>
               </div>
 
-              {/* Data Sharing */}
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                      <polyline points="22,6 12,13 2,6"></polyline>
-                    </svg>
+              {/* Privacy Section */}
+              <div className="msg-settings-section">
+                <h3 className="msg-settings-section-title">Privacy</h3>
+
+                {/* Read Receipts */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-blue">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Read Receipts</span>
+                      <span className="msg-setting-desc">Others can see when you've read their messages</span>
+                    </div>
                   </div>
-                  <div>
-                    <label>Data Sharing</label>
-                    <p>Data sharing for business activities</p>
-                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.readReceipts ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('readReceipts')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
                 </div>
-                <button
-                  className={`toggle-switch ${chatSettings.dataSharing ? 'active' : ''}`}
-                  onClick={() => handleToggleSetting('dataSharing')}
-                >
-                  <span className="toggle-slider" />
-                </button>
+
+                {/* Typing Indicator */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-blue">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Typing Indicator</span>
+                      <span className="msg-setting-desc">Others can see when you're typing</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.typingIndicator ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('typingIndicator')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
+                </div>
+
+                {/* Online Status */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-green">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Online Status</span>
+                      <span className="msg-setting-desc">Show when you're active to others</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.onlineStatus ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('onlineStatus')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
+                </div>
+
+                {/* Tag */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-blue">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Mentions & Tags</span>
+                      <span className="msg-setting-desc">Allow others to tag you in group chats</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.tag ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('tag')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
+                </div>
               </div>
 
-              {/* Read Receipts */}
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </div>
-                  <div>
-                    <label>Read Receipts</label>
-                    <p>Others can see when you've read their messages</p>
-                  </div>
-                </div>
-                <button
-                  className={`toggle-switch ${chatSettings.readReceipts ? 'active' : ''}`}
-                  onClick={() => handleToggleSetting('readReceipts')}
-                >
-                  <span className="toggle-slider" />
-                </button>
-              </div>
+              {/* Data & Storage Section */}
+              <div className="msg-settings-section">
+                <h3 className="msg-settings-section-title">Data & Storage</h3>
 
-              {/* Typing Indicator */}
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
+                {/* Data Sharing */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-orange">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Data Sharing</span>
+                      <span className="msg-setting-desc">Share data for business analytics</span>
+                    </div>
                   </div>
-                  <div>
-                    <label>Typing Indicator</label>
-                    <p>Others can see when you're typing</p>
-                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.dataSharing ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('dataSharing')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
                 </div>
-                <button
-                  className={`toggle-switch ${chatSettings.typingIndicator ? 'active' : ''}`}
-                  onClick={() => handleToggleSetting('typingIndicator')}
-                >
-                  <span className="toggle-slider" />
-                </button>
-              </div>
 
-              {/* Tag */}
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                      <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                    </svg>
+                {/* Media Auto Download */}
+                <div className="msg-setting-row">
+                  <div className="msg-setting-left">
+                    <div className="msg-setting-icon msg-setting-icon-orange">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                    </div>
+                    <div className="msg-setting-text">
+                      <span className="msg-setting-label">Auto-Download Media</span>
+                      <span className="msg-setting-desc">Automatically download images & files</span>
+                    </div>
                   </div>
-                  <div>
-                    <label>Tag</label>
-                    <p>Others can tag you in the group</p>
-                  </div>
+                  <button
+                    className={`msg-toggle ${chatSettings.mediaAutoDownload ? 'msg-toggle-on' : ''}`}
+                    onClick={() => handleToggleSetting('mediaAutoDownload')}
+                  >
+                    <span className="msg-toggle-thumb" />
+                  </button>
                 </div>
-                <button
-                  className={`toggle-switch ${chatSettings.tag ? 'active' : ''}`}
-                  onClick={() => handleToggleSetting('tag')}
-                >
-                  <span className="toggle-slider" />
-                </button>
               </div>
             </div>
           </div>

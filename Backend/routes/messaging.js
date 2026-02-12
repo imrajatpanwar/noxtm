@@ -785,7 +785,7 @@ function initializeRoutes(dependencies) {
       const companyUsers = await User.find({
         companyId: companyId,
         _id: { $ne: user._id } // Exclude current user from the list
-      }).select('fullName email role status');
+      }).select('fullName email role status profileImage');
 
       console.log('📊 Total users with companyId:', companyUsers.length);
 
@@ -806,6 +806,7 @@ function initializeRoutes(dependencies) {
         username: u.fullName,
         email: u.email,
         role: u.role,
+        profileImage: u.profileImage || null,
         roleInCompany: memberRoles[u._id.toString()] || 'Member',
         department: memberRoles[u._id.toString()] || 'Member',
         status: u.status || 'Active',

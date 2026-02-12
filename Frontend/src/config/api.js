@@ -7,6 +7,13 @@ const isDev = process.env.NODE_ENV === 'development';
 const API_BASE = process.env.REACT_APP_API_URL || (isDev ? 'http://localhost:5000' : '');
 const BACKEND_URL = API_BASE ? `${API_BASE}/api` : '/api';
 
+// Debug logging
+console.log('🔧 API Configuration:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+console.log('  API_BASE:', API_BASE);
+console.log('  BACKEND_URL:', BACKEND_URL);
+
 const api = axios.create({
   baseURL: BACKEND_URL,
   timeout: 90000, // 90 seconds - for large mailboxes with UID-based fetching

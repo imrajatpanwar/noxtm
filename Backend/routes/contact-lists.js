@@ -5,6 +5,7 @@ const ContactList = require('../models/ContactList');
 const Lead = require('../models/Lead');
 const TradeShow = require('../models/TradeShow');
 const Exhibitor = require('../models/Exhibitor');
+const Campaign = require('../models/Campaign');
 const { authenticateToken } = require('../middleware/auth');
 const { requireManagerOrOwner } = require('../middleware/campaignAuth');
 const { parseCSV } = require('../utils/csvParser');
@@ -46,10 +47,24 @@ router.get('/', async (req, res) => {
 
     const contactLists = await ContactList.getByCompany(companyId, userRole, filters);
 
+    // Enrich trade show lists with shortName
+    const enriched = await Promise.all(contactLists.map(async (cl) => {
+      const obj = cl.toObject ? cl.toObject() : cl;
+      if (obj.source?.type === 'tradeshow' && obj.source?.tradeShowId) {
+        try {
+          const ts = await TradeShow.findById(obj.source.tradeShowId).select('shortName').lean();
+          if (ts?.shortName) {
+            obj.source.tradeShowName = ts.shortName;
+          }
+        } catch (e) { /* ignore lookup failures */ }
+      }
+      return obj;
+    }));
+
     // Pagination
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
-    const paginatedLists = contactLists.slice(startIndex, endIndex);
+    const paginatedLists = enriched.slice(startIndex, endIndex);
 
     res.json({
       success: true,
@@ -91,9 +106,20 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Enrich trade show list with shortName
+    const listObj = contactList.toObject();
+    if (listObj.source?.type === 'tradeshow' && listObj.source?.tradeShowId) {
+      try {
+        const ts = await TradeShow.findById(listObj.source.tradeShowId).select('shortName').lean();
+        if (ts?.shortName) {
+          listObj.source.tradeShowName = ts.shortName;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     res.json({
       success: true,
-      data: contactList
+      data: listObj
     });
   } catch (error) {
     console.error('Get contact list error:', error);
@@ -500,16 +526,31 @@ router.get('/import/trade-shows', async (req, res) => {
     const companyId = req.user.companyId;
 
     const tradeShows = await TradeShow.find({ companyId })
-      .select('shortName fullName showDate location exhibitors')
+      .select('shortName fullName showDate location exhibitors industry')
       .sort({ showDate: -1 });
 
-    // Get exhibitor counts for each trade show
+    // Get exhibitor counts and email counts for each trade show
     const tradeShowsWithCounts = await Promise.all(
       tradeShows.map(async (show) => {
-        const exhibitorCount = await Exhibitor.countDocuments({ tradeShowId: show._id });
+        const exhibitors = await Exhibitor.find({ tradeShowId: show._id }).select('contacts');
+        const exhibitorCount = exhibitors.length;
+        let emailCount = 0;
+        exhibitors.forEach(ex => {
+          if (ex.contacts) {
+            emailCount += ex.contacts.filter(c => c.email).length;
+          }
+        });
+        const obj = show.toObject();
         return {
-          ...show.toObject(),
-          exhibitorCount
+          _id: obj._id,
+          name: obj.shortName || obj.fullName || 'Trade Show',
+          shortName: obj.shortName || '',
+          fullName: obj.fullName || '',
+          location: obj.location || '',
+          dateFrom: obj.showDate,
+          industry: obj.industry || '',
+          exhibitorCount,
+          emailCount
         };
       })
     );
@@ -550,10 +591,10 @@ router.get('/import/trade-shows/:id/exhibitors', async (req, res) => {
     const exhibitors = await Exhibitor.find({ tradeShowId: id })
       .select('companyName boothNo location companyEmail contacts');
 
-    // Add contact count to each exhibitor
+    // Add contact count (only contacts with email) to each exhibitor
     const exhibitorsWithCounts = exhibitors.map(exhibitor => ({
       ...exhibitor.toObject(),
-      contactCount: exhibitor.contacts ? exhibitor.contacts.length : 0
+      contactCount: exhibitor.contacts ? exhibitor.contacts.filter(c => c.email).length : 0
     }));
 
     res.json({
@@ -642,7 +683,7 @@ router.post('/import/trade-shows/:id', async (req, res) => {
                 ['name', contact.fullName || ''],
                 ['companyName', exhibitor.companyName],
                 ['designation', contact.designation || ''],
-                ['tradeShow', tradeShow.fullName]
+                ['tradeShow', tradeShow.shortName || tradeShow.fullName]
               ])
             });
           }
@@ -658,12 +699,15 @@ router.post('/import/trade-shows/:id', async (req, res) => {
     }
 
     // Create contact list
+    const showName = tradeShow.shortName || tradeShow.fullName || 'Trade Show';
     const contactList = new ContactList({
       name: listName,
       description,
       source: {
         type: 'tradeshow',
-        details: `Imported from ${tradeShow.fullName} - ${exhibitors.length} exhibitors`,
+        tradeShowName: showName,
+        tradeShowId: tradeShow._id.toString(),
+        details: `Imported from ${showName} - ${exhibitors.length} exhibitors`,
         importedAt: new Date()
       },
       companyId,
@@ -691,6 +735,69 @@ router.post('/import/trade-shows/:id', async (req, res) => {
       message: 'Failed to import from trade show',
       error: error.message
     });
+  }
+});
+
+/**
+ * GET /api/contact-lists/:id/pipeline
+ * Get pipeline stats for a contact list (fetched → validated → campaigns → sent)
+ */
+router.get('/:id/pipeline', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const companyId = req.user.companyId;
+
+    const contactList = await ContactList.findOne({ _id: id, companyId })
+      .select('name contactCount validCount invalidCount validated source usedInCampaigns lastUsedAt');
+
+    if (!contactList) {
+      return res.status(404).json({ success: false, message: 'Contact list not found' });
+    }
+
+    // Find campaigns that use this contact list
+    const campaigns = await Campaign.find({
+      contactLists: id,
+      companyId
+    }).select('name status stats recipients');
+
+    let totalSent = 0;
+    let totalFailed = 0;
+    let totalPending = 0;
+    let totalBounced = 0;
+    let totalOpened = 0;
+    let totalClicked = 0;
+
+    campaigns.forEach(c => {
+      totalSent += c.stats?.sent || 0;
+      totalFailed += c.stats?.failed || 0;
+      totalPending += c.stats?.pending || 0;
+      totalBounced += c.stats?.bounced || 0;
+      totalOpened += c.stats?.opened || 0;
+      totalClicked += c.stats?.clicked || 0;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fetched: contactList.contactCount || 0,
+        validated: contactList.validated || false,
+        validCount: contactList.validCount || 0,
+        invalidCount: contactList.invalidCount || 0,
+        source: contactList.source || {},
+        campaignsUsed: campaigns.length,
+        campaignNames: campaigns.map(c => ({ id: c._id, name: c.name, status: c.status })),
+        totalSent,
+        totalFailed,
+        totalPending,
+        totalBounced,
+        totalOpened,
+        totalClicked,
+        totalRemaining: (contactList.validCount || contactList.contactCount || 0) - totalSent
+      }
+    });
+  } catch (error) {
+    console.error('Pipeline stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pipeline stats', error: error.message });
   }
 });
 

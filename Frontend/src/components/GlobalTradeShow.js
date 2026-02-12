@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './GlobalTradeShow.css';
 import noTradeShowImage from './image/no-tradeshow.svg';
 import uploadIcon from './image/upload_icon.svg';
 import defaultAvatar from './image/default-avatar.svg';
+import api from '../config/api';
 import {
   FiDownload, FiPlus, FiX, FiCalendar, FiMapPin,
-  FiSearch, FiInfo, FiChevronRight, FiUpload, FiGrid, FiList, FiTrash2,
-  FiLayers, FiClock, FiShield
+  FiSearch, FiInfo, FiUpload, FiTrash2,
+  FiLayers, FiClock, FiShield, FiFilter,
+  FiChevronDown, FiUsers, FiTrendingUp, FiEdit
 } from 'react-icons/fi';
 
 const INDUSTRY_OPTIONS = [
@@ -20,14 +22,33 @@ const INDUSTRY_OPTIONS = [
   'Beauty Industry', 'Battery Technology Industry', 'Autonomous Vehicle Industry', 'Other Industry'
 ];
 
+const DATE_FILTERS = [
+  { label: 'All Dates', value: 'all' },
+  { label: 'Upcoming', value: 'upcoming' },
+  { label: 'Past', value: 'past' },
+  { label: 'This Month', value: 'thisMonth' },
+  { label: 'Next 3 Months', value: 'next3' },
+  { label: 'Next 6 Months', value: 'next6' }
+];
+
 function GlobalTradeShow({ onNavigate }) {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [companyUsers, setCompanyUsers] = useState([]);
+  const [showsWithLeads, setShowsWithLeads] = useState({});
+  const [showsWithExhibitors, setShowsWithExhibitors] = useState({});
+
+  // Filters
+  const [filterIndustry, setFilterIndustry] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterDate, setFilterDate] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [ddFilterIndustry, setDdFilterIndustry] = useState(false);
+  const [ddFilterDate, setDdFilterDate] = useState(false);
+  const [ddFilterLocation, setDdFilterLocation] = useState(false);
 
   // Form
   const [formData, setFormData] = useState({
@@ -65,12 +86,9 @@ function GlobalTradeShow({ onNavigate }) {
       const fetchShowLeads = async () => {
         setShowLeadsData(p => ({ ...p, loading: true }));
         try {
-          const t = localStorage.getItem('token');
-          const r = await fetch(`/api/lead-campaigns/by-trade-show/${aboutPanel.data._id}`, { headers: { Authorization: `Bearer ${t}` } });
-          if (r.ok) {
-            const d = await r.json();
-            setShowLeadsData({ campaigns: d.campaigns || [], leads: d.leads || [], totalLeads: d.totalLeads || 0, loading: false });
-          } else { setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
+          const r = await api.get(`/lead-campaigns/by-trade-show/${aboutPanel.data._id}`);
+          const d = r.data;
+          setShowLeadsData({ campaigns: d.campaigns || [], leads: d.leads || [], totalLeads: d.totalLeads || 0, loading: false });
         } catch (e) { console.error(e); setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
       };
       fetchShowLeads();
@@ -80,6 +98,7 @@ function GlobalTradeShow({ onNavigate }) {
   useEffect(() => {
     const close = (e) => {
       if (!e.target.closest('.gts-dd-wrap')) { setDdAccess(false); setDdLeads(false); setDdIndustry(false); }
+      if (!e.target.closest('.gts-fdd-wrap')) { setDdFilterIndustry(false); setDdFilterDate(false); setDdFilterLocation(false); }
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
@@ -88,20 +107,31 @@ function GlobalTradeShow({ onNavigate }) {
   const fetchShows = async () => {
     try {
       setLoading(true);
-      const t = localStorage.getItem('token');
-      const r = await fetch('/api/trade-shows', { headers: { Authorization: `Bearer ${t}` } });
-      if (r.ok) { const d = await r.json(); setShows(d.tradeShows || []); }
+      const r = await api.get('/trade-shows');
+      const tradeShows = r.data.tradeShows || [];
+      setShows(tradeShows);
+      
+      // Fetch leads count and exhibitor count for each trade show
+      tradeShows.forEach(async (show) => {
+        try {
+          const leadsRes = await api.get(`/lead-campaigns/by-trade-show/${show._id}`);
+          setShowsWithLeads(prev => ({ ...prev, [show._id]: leadsRes.data.totalLeads || 0 }));
+        } catch (e) { console.error(`Failed to fetch leads for ${show._id}`, e); }
+        
+        try {
+          const exhibitorsRes = await api.get(`/contact-lists/import/trade-shows/${show._id}/exhibitors`);
+          const actualCount = exhibitorsRes.data.exhibitors?.length || 0;
+          setShowsWithExhibitors(prev => ({ ...prev, [show._id]: actualCount }));
+        } catch (e) { console.error(`Failed to fetch exhibitors for ${show._id}`, e); }
+      });
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const fetchUsers = async () => {
     try {
-      const t = localStorage.getItem('token');
-      const r = await fetch('/api/company/members', { headers: { Authorization: `Bearer ${t}` } });
-      if (r.ok) {
-        const d = await r.json();
-        setCompanyUsers((d.members || []).map(u => ({ ...u, name: u.fullName || u.name, profilePicture: u.profileImage || u.profilePicture })));
-      }
+      const r = await api.get('/company/members');
+      const d = r.data;
+      setCompanyUsers((d.members || []).map(u => ({ ...u, name: u.fullName || u.name, profilePicture: u.profileImage || u.profilePicture })));
     } catch (e) { console.error(e); }
   };
 
@@ -157,7 +187,6 @@ function GlobalTradeShow({ onNavigate }) {
 
     setSaving(true);
     try {
-      const t = localStorage.getItem('token');
       const fd = new FormData();
       fd.append('shortName', formData.shortName); fd.append('fullName', formData.fullName);
       fd.append('showDate', formData.showDate); fd.append('location', formData.location);
@@ -171,28 +200,68 @@ function GlobalTradeShow({ onNavigate }) {
       if (selAccess.length) fd.append('showAccessPeople', JSON.stringify(selAccess.map(u => u._id)));
       if (selLeads.length) fd.append('showLeadsAccessPeople', JSON.stringify(selLeads.map(u => u._id)));
 
-      const r = await fetch('/api/trade-shows', { method: 'POST', headers: { Authorization: `Bearer ${t}` }, body: fd });
-      const d = await r.json();
-      if (r.ok) { await fetchShows(); closeModal(); } else setErrors({ general: d.message || 'Error creating' });
-    } catch (_) { setErrors({ general: 'Error creating trade show' }); } finally { setSaving(false); }
+      const r = await api.post('/trade-shows', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await fetchShows(); closeModal();
+    } catch (err) { setErrors({ general: err.response?.data?.message || 'Error creating trade show' }); } finally { setSaving(false); }
   };
 
   const deleteShow = async (id, e) => {
     e.stopPropagation();
     if (!window.confirm('Delete this trade show and all its exhibitors?')) return;
     try {
-      const t = localStorage.getItem('token');
-      await fetch(`/api/trade-shows/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${t}` } });
+      await api.delete(`/trade-shows/${id}`);
       fetchShows();
     } catch (e) { console.error(e); }
   };
 
-  const filtered = shows.filter(s =>
-    s.shortName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.industry?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    let result = shows.filter(s =>
+      s.shortName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    // Industry filter
+    if (filterIndustry) {
+      result = result.filter(s => s.industry === filterIndustry);
+    }
+    // Location filter
+    if (filterLocation) {
+      result = result.filter(s => s.location?.toLowerCase().includes(filterLocation.toLowerCase()));
+    }
+    // Date filter
+    if (filterDate !== 'all') {
+      const now = new Date();
+      result = result.filter(s => {
+        if (!s.showDate) return false;
+        const d = new Date(s.showDate);
+        switch (filterDate) {
+          case 'upcoming': return d >= now;
+          case 'past': return d < now;
+          case 'thisMonth': return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          case 'next3': { const limit = new Date(); limit.setMonth(limit.getMonth() + 3); return d >= now && d <= limit; }
+          case 'next6': { const limit = new Date(); limit.setMonth(limit.getMonth() + 6); return d >= now && d <= limit; }
+          default: return true;
+        }
+      });
+    }
+    return result;
+  }, [shows, searchQuery, filterIndustry, filterLocation, filterDate]);
+
+  const activeFilterCount = (filterIndustry ? 1 : 0) + (filterLocation ? 1 : 0) + (filterDate !== 'all' ? 1 : 0);
+  const clearFilters = () => { setFilterIndustry(''); setFilterLocation(''); setFilterDate('all'); };
+
+  // Unique locations from shows
+  const uniqueLocations = useMemo(() => {
+    const locs = [...new Set(shows.map(s => s.location).filter(Boolean))];
+    return locs.sort();
+  }, [shows]);
+
+  // Unique industries from shows
+  const uniqueIndustries = useMemo(() => {
+    const inds = [...new Set(shows.map(s => s.industry).filter(Boolean))];
+    return inds.sort();
+  }, [shows]);
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
   const getDays = (d) => {
@@ -214,31 +283,151 @@ function GlobalTradeShow({ onNavigate }) {
       {/* Header */}
       <div className="gts-head">
         <div className="gts-head-l">
-          <h1>Global Trade Shows</h1>
-          <span className="gts-badge">{shows.length}</span>
+          <div className="gts-head-icon"><FiLayers size={20} /></div>
+          <div>
+            <h1>Global Trade Shows</h1>
+            <p className="gts-head-sub">{shows.length} trade show{shows.length !== 1 ? 's' : ''} total{filtered.length !== shows.length ? ` · ${filtered.length} shown` : ''}</p>
+          </div>
         </div>
         <div className="gts-head-r">
           <div className="gts-srch">
             <FiSearch size={15} />
-            <input placeholder="Search shows..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <input placeholder="Search by name, location, industry..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            {searchQuery && <button className="gts-srch-clear" onClick={() => setSearchQuery('')}><FiX size={14} /></button>}
           </div>
-          <div className="gts-vtog">
-            <button className={viewMode === 'grid' ? 'on' : ''} onClick={() => setViewMode('grid')}><FiGrid size={15} /></button>
-            <button className={viewMode === 'list' ? 'on' : ''} onClick={() => setViewMode('list')}><FiList size={15} /></button>
-          </div>
+          <button className={`gts-filter-btn ${showFilters ? 'active' : ''} ${activeFilterCount > 0 ? 'has-filters' : ''}`} onClick={() => setShowFilters(!showFilters)}>
+            <FiFilter size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && <span className="gts-filter-count">{activeFilterCount}</span>}
+          </button>
           <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Add Trade Show</button>
         </div>
       </div>
 
-      {/* Shows */}
+      {/* Filter Bar */}
+      {showFilters && (
+        <div className="gts-filters">
+          <div className="gts-filters-row">
+            {/* Industry Filter */}
+            <div className="gts-fdd-wrap">
+              <button className={`gts-fdd-trigger ${filterIndustry ? 'active' : ''}`} onClick={() => { setDdFilterIndustry(!ddFilterIndustry); setDdFilterDate(false); setDdFilterLocation(false); }}>
+                <FiLayers size={13} />
+                <span>{filterIndustry || 'All Industries'}</span>
+                <FiChevronDown size={13} className={ddFilterIndustry ? 'rotated' : ''} />
+              </button>
+              {ddFilterIndustry && (
+                <div className="gts-fdd">
+                  <div className="gts-fdd-item" onClick={() => { setFilterIndustry(''); setDdFilterIndustry(false); }}>
+                    <span>All Industries</span>
+                    {!filterIndustry && <span className="gts-fdd-check">✓</span>}
+                  </div>
+                  {uniqueIndustries.map(ind => (
+                    <div key={ind} className={`gts-fdd-item ${filterIndustry === ind ? 'selected' : ''}`} onClick={() => { setFilterIndustry(ind); setDdFilterIndustry(false); }}>
+                      <span>{ind}</span>
+                      {filterIndustry === ind && <span className="gts-fdd-check">✓</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Location Filter */}
+            <div className="gts-fdd-wrap">
+              <button className={`gts-fdd-trigger ${filterLocation ? 'active' : ''}`} onClick={() => { setDdFilterLocation(!ddFilterLocation); setDdFilterIndustry(false); setDdFilterDate(false); }}>
+                <FiMapPin size={13} />
+                <span>{filterLocation || 'All Locations'}</span>
+                <FiChevronDown size={13} className={ddFilterLocation ? 'rotated' : ''} />
+              </button>
+              {ddFilterLocation && (
+                <div className="gts-fdd">
+                  <div className="gts-fdd-item" onClick={() => { setFilterLocation(''); setDdFilterLocation(false); }}>
+                    <span>All Locations</span>
+                    {!filterLocation && <span className="gts-fdd-check">✓</span>}
+                  </div>
+                  {uniqueLocations.map(loc => (
+                    <div key={loc} className={`gts-fdd-item ${filterLocation === loc ? 'selected' : ''}`} onClick={() => { setFilterLocation(loc); setDdFilterLocation(false); }}>
+                      <span>{loc}</span>
+                      {filterLocation === loc && <span className="gts-fdd-check">✓</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Date Filter */}
+            <div className="gts-fdd-wrap">
+              <button className={`gts-fdd-trigger ${filterDate !== 'all' ? 'active' : ''}`} onClick={() => { setDdFilterDate(!ddFilterDate); setDdFilterIndustry(false); setDdFilterLocation(false); }}>
+                <FiCalendar size={13} />
+                <span>{DATE_FILTERS.find(d => d.value === filterDate)?.label || 'All Dates'}</span>
+                <FiChevronDown size={13} className={ddFilterDate ? 'rotated' : ''} />
+              </button>
+              {ddFilterDate && (
+                <div className="gts-fdd">
+                  {DATE_FILTERS.map(df => (
+                    <div key={df.value} className={`gts-fdd-item ${filterDate === df.value ? 'selected' : ''}`} onClick={() => { setFilterDate(df.value); setDdFilterDate(false); }}>
+                      <span>{df.label}</span>
+                      {filterDate === df.value && <span className="gts-fdd-check">✓</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {activeFilterCount > 0 && (
+              <button className="gts-clear-filters" onClick={clearFilters}>
+                <FiX size={13} /> Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Active filter tags */}
+          {activeFilterCount > 0 && (
+            <div className="gts-filter-tags">
+              {filterIndustry && (
+                <span className="gts-filter-tag">
+                  <FiLayers size={11} /> {filterIndustry}
+                  <button onClick={() => setFilterIndustry('')}><FiX size={11} /></button>
+                </span>
+              )}
+              {filterLocation && (
+                <span className="gts-filter-tag">
+                  <FiMapPin size={11} /> {filterLocation}
+                  <button onClick={() => setFilterLocation('')}><FiX size={11} /></button>
+                </span>
+              )}
+              {filterDate !== 'all' && (
+                <span className="gts-filter-tag">
+                  <FiCalendar size={11} /> {DATE_FILTERS.find(d => d.value === filterDate)?.label}
+                  <button onClick={() => setFilterDate('all')}><FiX size={11} /></button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Table Header */}
+      {!loading && filtered.length > 0 && (
+        <div className="gts-table-head">
+          <div className="gts-th-name">Trade Show</div>
+          <div className="gts-th-industry">Industry</div>
+          <div className="gts-th-date">Date & Location</div>
+          <div className="gts-th-stats">Statistics</div>
+          <div className="gts-th-access">Access</div>
+          <div className="gts-th-actions"></div>
+        </div>
+      )}
+
+      {/* Shows List */}
       {loading ? (
         <div className="gts-load"><div className="gts-spin" /><p>Loading trade shows...</p></div>
       ) : filtered.length > 0 ? (
-        <div className={`gts-grid ${viewMode === 'list' ? 'gts-list-mode' : ''}`}>
+        <div className="gts-list">
           {filtered.map(s => {
             const cd = getDays(s.showDate);
             return (
               <div key={s._id} className="gts-card" onClick={() => onNavigate && onNavigate('exhibitor-list', s)}>
+                {/* Trade Show Name */}
                 <div className="gts-card-head">
                   <div className="gts-card-logo">
                     {s.showLogo?.path ? <img src={s.showLogo.path} alt="" /> : (
@@ -249,35 +438,62 @@ function GlobalTradeShow({ onNavigate }) {
                     <h3>{s.shortName}</h3>
                     <p>{s.fullName}</p>
                   </div>
-                  <div className="gts-card-acts" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setAboutPanel({ open: true, data: s })} title="About"><FiInfo size={14} /></button>
-                    <button className="del" onClick={(e) => deleteShow(s._id, e)} title="Delete"><FiTrash2 size={14} /></button>
+                </div>
+
+                {/* Industry */}
+                <div className="gts-card-industry">
+                  {s.industry ? <span className="gts-tag">{s.industry}</span> : <span className="gts-tag-empty">—</span>}
+                </div>
+
+                {/* Date & Location */}
+                <div className="gts-card-meta">
+                  <div className="gts-card-row"><FiCalendar size={12} /><span>{fmtDate(s.showDate)}</span>{cd && <span className={`gts-cd ${cd.cls}`}>{cd.text}</span>}</div>
+                  <div className="gts-card-row"><FiMapPin size={12} /><span>{s.location}</span></div>
+                </div>
+
+                {/* Stats */}
+                <div className="gts-card-nums">
+                  <div className="gts-stat">
+                    <FiUsers size={12} className="gts-stat-icon" />
+                    <div>
+                      <strong>{showsWithExhibitors[s._id] !== undefined ? `${showsWithExhibitors[s._id]}/${s.exhibitors || '0'}` : (s.exhibitors || '0')}</strong>
+                      <span>Exhibitors</span>
+                    </div>
+                  </div>
+                  <div className="gts-stat">
+                    <FiUsers size={12} className="gts-stat-icon" />
+                    <div>
+                      <strong>{s.attendees || '0'}</strong>
+                      <span>Attendees</span>
+                    </div>
+                  </div>
+                  <div className="gts-stat">
+                    <FiTrendingUp size={12} className="gts-stat-icon" />
+                    <div>
+                      <strong>{showsWithLeads[s._id] || '0'}</strong>
+                      <span>Leads</span>
+                    </div>
                   </div>
                 </div>
 
-                {s.industry && <span className="gts-tag">{s.industry}</span>}
-
-                <div className="gts-card-meta">
-                  <div className="gts-card-row"><FiCalendar size={13} /><span>{fmtDate(s.showDate)}</span>{cd && <span className={`gts-cd ${cd.cls}`}>{cd.text}</span>}</div>
-                  <div className="gts-card-row"><FiMapPin size={13} /><span>{s.location}</span></div>
-                </div>
-
-                <div className="gts-card-nums">
-                  <div><strong>{s.exhibitors || '—'}</strong><span>Exhibitors</span></div>
-                  <div><strong>{s.attendees || '—'}</strong><span>Attendees</span></div>
-                  {s.floorPlan?.path && (
-                    <a href={s.floorPlan.path} download onClick={e => e.stopPropagation()} className="gts-dl"><FiDownload size={13} /> Floor Plan</a>
-                  )}
-                </div>
-
+                {/* Access */}
                 <div className="gts-card-foot">
-                  <div className="gts-avs">
+                  <div className="gts-avs" title={`${s.showAccessPeople?.length || 0} people have access`}>
                     {(s.showAccessPeople?.slice(0, 3) || []).map((u, i) => (
                       <div key={u._id || i} className="gts-av"><img src={u.profileImage || defaultAvatar} alt="" /></div>
                     ))}
                     {(s.showAccessPeople?.length || 0) > 3 && <div className="gts-av gts-av-more">+{s.showAccessPeople.length - 3}</div>}
+                    {(s.showAccessPeople?.length || 0) === 0 && <span className="gts-no-access">—</span>}
                   </div>
-                  <FiChevronRight size={16} className="gts-card-arrow" />
+                </div>
+
+                {/* Actions */}
+                <div className="gts-card-acts" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setAboutPanel({ open: true, data: s })} title="About"><FiInfo size={14} /></button>
+                  {s.floorPlan?.path && (
+                    <a href={s.floorPlan.path} download onClick={e => e.stopPropagation()} className="gts-act-dl" title="Floor Plan"><FiDownload size={14} /></a>
+                  )}
+                  <button className="del" onClick={(e) => deleteShow(s._id, e)} title="Delete"><FiTrash2 size={14} /></button>
                 </div>
               </div>
             );
@@ -286,9 +502,13 @@ function GlobalTradeShow({ onNavigate }) {
       ) : !showModal && (
         <div className="gts-empty">
           <img src={noTradeShowImage} alt="" />
-          <h3>No Trade Shows Yet</h3>
-          <p>Create your first trade show to start managing exhibitors and leads.</p>
-          <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Create Trade Show</button>
+          <h3>{activeFilterCount > 0 || searchQuery ? 'No matching trade shows' : 'No Trade Shows Yet'}</h3>
+          <p>{activeFilterCount > 0 || searchQuery ? 'Try adjusting your filters or search query.' : 'Create your first trade show to start managing exhibitors and leads.'}</p>
+          {activeFilterCount > 0 || searchQuery ? (
+            <button className="gts-add" onClick={() => { clearFilters(); setSearchQuery(''); }}><FiX size={16} /> Clear Filters</button>
+          ) : (
+            <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Create Trade Show</button>
+          )}
         </div>
       )}
 
@@ -445,7 +665,11 @@ function GlobalTradeShow({ onNavigate }) {
                   )}
                   <div><h2>{sh.shortName}</h2><p>{sh.fullName}</p></div>
                 </div>
-                <button onClick={() => setAboutPanel({ open: false, data: null })}><FiX size={18} /></button>
+                <div className="gts-ph-actions">
+                  <button className="gts-ph-edit" onClick={() => { /* TODO: Open edit modal */ }} title="Edit Trade Show"><FiEdit size={16} /></button>
+                  <button className="gts-ph-delete" onClick={(e) => { setAboutPanel({ open: false, data: null }); deleteShow(sh._id, e); }} title="Delete Trade Show"><FiTrash2 size={16} /></button>
+                  <button className="gts-ph-close" onClick={() => setAboutPanel({ open: false, data: null })} title="Close"><FiX size={18} /></button>
+                </div>
               </div>
               <div className="gts-pb">
                 <div className="gts-ps">
@@ -520,12 +744,22 @@ function GlobalTradeShow({ onNavigate }) {
                       {showLeadsData.leads.length > 0 && (
                         <div className="gts-leads-table">
                           <div className="gts-leads-thr">
-                            <span>Company</span><span>Contact</span><span>Status</span>
+                            <span>Company</span><span>Contact</span><span>Lead By</span><span>Status</span>
                           </div>
                           {showLeadsData.leads.slice(0, 20).map(l => (
                             <div key={l._id} className="gts-leads-row">
                               <span>{l.companyName || '—'}</span>
                               <span>{l.clientName || '—'}</span>
+                              <div className="gts-lead-by">
+                                {l.addedBy ? (
+                                  <>
+                                    <img src={l.addedBy.profileImage || l.addedBy.profilePicture || l.addedBy.avatar || defaultAvatar} alt="" className="gts-lead-by-avatar" />
+                                    <span>{l.addedBy.fullName || l.addedBy.name || 'Unknown'}</span>
+                                  </>
+                                ) : (
+                                  <span>—</span>
+                                )}
+                              </div>
                               <span className={`gts-ls gts-ls-${(l.status || 'new').toLowerCase()}`}>{l.status || 'new'}</span>
                             </div>
                           ))}

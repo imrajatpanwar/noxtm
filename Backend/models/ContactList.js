@@ -76,6 +76,8 @@ const contactListSchema = new mongoose.Schema({
       required: true
     },
     details: String, // e.g., "Imported from Q4_prospects.csv" or "Trade Show: CES 2024"
+    tradeShowName: String, // Name of trade show (for tradeshow source type)
+    tradeShowId: String, // Reference to trade show ID
     importedAt: Date
   },
 

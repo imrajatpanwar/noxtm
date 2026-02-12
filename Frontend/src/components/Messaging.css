@@ -600,104 +600,110 @@
 }
 
 /* ========================================
-   Settings Panel
+   Chat Settings Panel (msg- prefixed)
    ======================================== */
 
-.settings-main-view {
+.msg-settings-view {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #ffffff;
+  background: #f8f9fb;
 }
 
-.settings-header {
+.msg-settings-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e5e5;
+  gap: 14px;
+  padding: 18px 24px;
   background: #ffffff;
+  border-bottom: 1px solid #eaedf0;
 }
 
-.back-button {
+.msg-settings-back {
   background: none;
   border: none;
-  padding: 8px;
+  padding: 6px;
   cursor: pointer;
   color: #525252;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.back-button:hover {
-  background: #f5f5f5;
+.msg-settings-back:hover {
+  background: #f0f0f0;
   color: #171717;
 }
 
-.back-button svg {
-  pointer-events: none;
-}
-
-.settings-header h2 {
+.msg-settings-header h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #171717;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0a0a0a;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.settings-content {
+.msg-settings-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  background: #fafafa;
+  padding: 20px 24px;
 }
 
-.settings-content::-webkit-scrollbar {
-  width: 4px;
+.msg-settings-body::-webkit-scrollbar { width: 4px; }
+.msg-settings-body::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 4px; }
+.msg-settings-body::-webkit-scrollbar-track { background: transparent; }
+
+/* Section */
+.msg-settings-section {
+  margin-bottom: 24px;
 }
 
-.settings-content::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
-  border-radius: 2px;
+.msg-settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9ca3af;
+  margin: 0 0 10px 4px;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Setting Items */
-.setting-item {
+/* Setting Row */
+.msg-setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 14px 16px;
   background: #ffffff;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  border: 1px solid #e5e5e5;
-  transition: all 0.15s;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  transition: all 0.12s;
+  border: 1px solid transparent;
 }
 
-.setting-item:hover {
-  border-color: #d4d4d4;
+.msg-setting-row:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.setting-item:last-child {
+.msg-setting-row:last-child {
   margin-bottom: 0;
 }
 
-.setting-info {
-  flex: 1;
+.msg-setting-left {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-right: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
-.setting-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+.msg-setting-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: #171717;
   display: flex;
   align-items: center;
@@ -706,46 +712,67 @@
   flex-shrink: 0;
 }
 
-.setting-icon svg {
-  width: 20px;
-  height: 20px;
+.msg-setting-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
-.setting-info label {
-  display: block;
+.msg-setting-icon-mute {
+  background: #dc2626;
+}
+
+.msg-setting-icon-blue {
+  background: #2563eb;
+}
+
+.msg-setting-icon-green {
+  background: #16a34a;
+}
+
+.msg-setting-icon-orange {
+  background: #ea580c;
+}
+
+.msg-setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.msg-setting-label {
   font-size: 14px;
   font-weight: 600;
   color: #171717;
-  margin-bottom: 2px;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.setting-info p {
-  margin: 0;
+.msg-setting-desc {
   font-size: 12px;
-  color: #737373;
-  line-height: 1.4;
+  color: #9ca3af;
+  line-height: 1.3;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Toggle Switch */
-.toggle-switch {
+/* Toggle */
+.msg-toggle {
   position: relative;
   width: 44px;
   height: 24px;
-  background: #d4d4d4;
+  background: #e5e7eb;
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.25s;
   flex-shrink: 0;
+  padding: 0;
 }
 
-.toggle-switch.active {
+.msg-toggle-on {
   background: #171717;
 }
 
-.toggle-slider {
+.msg-toggle-thumb {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -753,11 +780,11 @@
   height: 20px;
   background: #ffffff;
   border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-.toggle-switch.active .toggle-slider {
+.msg-toggle-on .msg-toggle-thumb {
   transform: translateX(20px);
 }
 
