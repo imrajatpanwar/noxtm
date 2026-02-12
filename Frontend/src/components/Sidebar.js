@@ -292,7 +292,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Noxtm Chat', section: 'noxtm-chat', category: 'Team Communication' },
 
     // Marketing
-    { name: 'Case Studies', section: 'case-studies', category: 'Marketing' },
+    { name: 'Notes', section: 'notes', category: 'Marketing' },
     { name: 'Email Marketing', section: 'email-marketing', category: 'Marketing' },
     { name: 'Campaign Setup', section: 'campaign-setup', category: 'Marketing' },
     { name: 'Create Email Template', section: 'email-template', category: 'Marketing' },
@@ -670,11 +670,11 @@ function Sidebar({ activeSection, onSectionChange }) {
               </div>
 
               <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'case-studies' ? 'active' : ''}`}
-                onClick={() => onSectionChange('case-studies')}
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'notes' ? 'active' : ''}`}
+                onClick={() => onSectionChange('notes')}
               >
                 <FiFileText className="sidebar-icon" />
-                <span>Case Studies</span>
+                <span>Notes</span>
               </div>
             </div>
           )}
