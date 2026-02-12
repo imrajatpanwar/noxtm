@@ -591,6 +591,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
 .notes-modal-header {
@@ -628,6 +629,7 @@
   padding: 20px 24px;
   overflow: visible;
   flex: 1;
+  min-height: 0;
 }
 
 /* --- Editor Inputs --- */
@@ -735,6 +737,8 @@
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
+  position: relative;
+  z-index: 100;
 }
 
 .notes-assign-label {
@@ -830,7 +834,7 @@
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  z-index: 10;
+  z-index: 200;
   overflow: hidden;
 }
 
