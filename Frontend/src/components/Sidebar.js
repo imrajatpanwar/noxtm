@@ -269,7 +269,7 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Data Center
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
-    { name: 'Client Leads', section: 'client-leads', category: 'Data Center' },
+    { name: 'Contacts', section: 'client-leads', category: 'Data Center' },
 
     // Lead Management
     { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
@@ -473,13 +473,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 )}
               </div>
 
-              {/* Client Leads */}
+              {/* Contacts */}
               <div
                 className={`Dash-noxtm-sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
                 onClick={() => onSectionChange('client-leads')}
               >
                 <FiUserCheck className="sidebar-icon" />
-                <span>Client Leads</span>
+                <span>Contacts</span>
               </div>
 
               {/* Client Management Section */}

@@ -8,7 +8,7 @@ import {
   FiDownload, FiPlus, FiX, FiCalendar, FiMapPin,
   FiSearch, FiInfo, FiUpload, FiTrash2,
   FiLayers, FiClock, FiShield, FiFilter,
-  FiChevronDown, FiUsers, FiTrendingUp, FiEdit
+  FiChevronDown, FiUsers, FiEdit
 } from 'react-icons/fi';
 
 const INDUSTRY_OPTIONS = [
@@ -38,7 +38,6 @@ function GlobalTradeShow({ onNavigate }) {
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyUsers, setCompanyUsers] = useState([]);
-  const [showsWithLeads, setShowsWithLeads] = useState({});
   const [showsWithExhibitors, setShowsWithExhibitors] = useState({});
 
   // Filters
@@ -63,11 +62,8 @@ function GlobalTradeShow({ onNavigate }) {
 
   // Access people
   const [selAccess, setSelAccess] = useState([]);
-  const [selLeads, setSelLeads] = useState([]);
   const [ddAccess, setDdAccess] = useState(false);
-  const [ddLeads, setDdLeads] = useState(false);
   const [accSearch, setAccSearch] = useState('');
-  const [leadSearch, setLeadSearch] = useState('');
 
   // Industry
   const [indSearch, setIndSearch] = useState('');
@@ -76,28 +72,12 @@ function GlobalTradeShow({ onNavigate }) {
 
   // About panel
   const [aboutPanel, setAboutPanel] = useState({ open: false, data: null });
-  const [showLeadsData, setShowLeadsData] = useState({ campaigns: [], leads: [], totalLeads: 0, loading: false });
 
   useEffect(() => { fetchShows(); fetchUsers(); }, []);
 
-  // Fetch leads when about panel opens
-  useEffect(() => {
-    if (aboutPanel.open && aboutPanel.data?._id) {
-      const fetchShowLeads = async () => {
-        setShowLeadsData(p => ({ ...p, loading: true }));
-        try {
-          const r = await api.get(`/lead-campaigns/by-trade-show/${aboutPanel.data._id}`);
-          const d = r.data;
-          setShowLeadsData({ campaigns: d.campaigns || [], leads: d.leads || [], totalLeads: d.totalLeads || 0, loading: false });
-        } catch (e) { console.error(e); setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
-      };
-      fetchShowLeads();
-    } else { setShowLeadsData({ campaigns: [], leads: [], totalLeads: 0, loading: false }); }
-  }, [aboutPanel.open, aboutPanel.data?._id]);
-
   useEffect(() => {
     const close = (e) => {
-      if (!e.target.closest('.gts-dd-wrap')) { setDdAccess(false); setDdLeads(false); setDdIndustry(false); }
+      if (!e.target.closest('.gts-dd-wrap')) { setDdAccess(false); setDdIndustry(false); }
       if (!e.target.closest('.gts-fdd-wrap')) { setDdFilterIndustry(false); setDdFilterDate(false); setDdFilterLocation(false); }
     };
     document.addEventListener('mousedown', close);
@@ -111,13 +91,8 @@ function GlobalTradeShow({ onNavigate }) {
       const tradeShows = r.data.tradeShows || [];
       setShows(tradeShows);
       
-      // Fetch leads count and exhibitor count for each trade show
+      // Fetch exhibitor count for each trade show
       tradeShows.forEach(async (show) => {
-        try {
-          const leadsRes = await api.get(`/lead-campaigns/by-trade-show/${show._id}`);
-          setShowsWithLeads(prev => ({ ...prev, [show._id]: leadsRes.data.totalLeads || 0 }));
-        } catch (e) { console.error(`Failed to fetch leads for ${show._id}`, e); }
-        
         try {
           const exhibitorsRes = await api.get(`/contact-lists/import/trade-shows/${show._id}/exhibitors`);
           const actualCount = exhibitorsRes.data.exhibitors?.length || 0;
@@ -138,8 +113,8 @@ function GlobalTradeShow({ onNavigate }) {
   const resetForm = () => {
     setFormData({ shortName: '', fullName: '', showDate: '', location: '', exhibitors: '', attendees: '', industry: '', eacDeadline: '', earlyBirdDeadline: '', showLogo: null, floorPlan: null });
     setLogoPreview(null); setFloorPlanName(''); setErrors({});
-    setSelAccess([]); setSelLeads([]);
-    setIndSearch(''); setAccSearch(''); setLeadSearch('');
+    setSelAccess([]);
+    setIndSearch(''); setAccSearch('');
   };
 
   const openModal = () => { resetForm(); setShowModal(true); };
@@ -170,11 +145,10 @@ function GlobalTradeShow({ onNavigate }) {
     setFormData(p => ({ ...p, floorPlan: file })); setFloorPlanName(file.name);
   };
 
-  const addUser = (u, t) => {
-    if (t === 'access') { if (!selAccess.find(x => x._id === u._id)) setSelAccess(p => [...p, u]); setDdAccess(false); setAccSearch(''); }
-    else { if (!selLeads.find(x => x._id === u._id)) setSelLeads(p => [...p, u]); setDdLeads(false); setLeadSearch(''); }
+  const addUser = (u) => {
+    if (!selAccess.find(x => x._id === u._id)) setSelAccess(p => [...p, u]); setDdAccess(false); setAccSearch('');
   };
-  const rmUser = (id, t) => { t === 'access' ? setSelAccess(p => p.filter(u => u._id !== id)) : setSelLeads(p => p.filter(u => u._id !== id)); };
+  const rmUser = (id) => { setSelAccess(p => p.filter(u => u._id !== id)); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -198,7 +172,6 @@ function GlobalTradeShow({ onNavigate }) {
       if (formData.showLogo) fd.append('showLogo', formData.showLogo);
       if (formData.floorPlan) fd.append('floorPlan', formData.floorPlan);
       if (selAccess.length) fd.append('showAccessPeople', JSON.stringify(selAccess.map(u => u._id)));
-      if (selLeads.length) fd.append('showLeadsAccessPeople', JSON.stringify(selLeads.map(u => u._id)));
 
       const r = await api.post('/trade-shows', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       await fetchShows(); closeModal();
@@ -276,7 +249,6 @@ function GlobalTradeShow({ onNavigate }) {
 
   const filteredInd = INDUSTRY_OPTIONS.filter(o => o.toLowerCase().includes(indSearch.toLowerCase()));
   const filteredAcc = companyUsers.filter(u => !selAccess.find(s => s._id === u._id) && (u.name?.toLowerCase().includes(accSearch.toLowerCase()) || u.email?.toLowerCase().includes(accSearch.toLowerCase())));
-  const filteredLd = companyUsers.filter(u => !selLeads.find(s => s._id === u._id) && (u.name?.toLowerCase().includes(leadSearch.toLowerCase()) || u.email?.toLowerCase().includes(leadSearch.toLowerCase())));
 
   return (
     <div className="gts">
@@ -467,13 +439,6 @@ function GlobalTradeShow({ onNavigate }) {
                       <span>Attendees</span>
                     </div>
                   </div>
-                  <div className="gts-stat">
-                    <FiTrendingUp size={12} className="gts-stat-icon" />
-                    <div>
-                      <strong>{showsWithLeads[s._id] || '0'}</strong>
-                      <span>Leads</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Access */}
@@ -503,7 +468,7 @@ function GlobalTradeShow({ onNavigate }) {
         <div className="gts-empty">
           <img src={noTradeShowImage} alt="" />
           <h3>{activeFilterCount > 0 || searchQuery ? 'No matching trade shows' : 'No Trade Shows Yet'}</h3>
-          <p>{activeFilterCount > 0 || searchQuery ? 'Try adjusting your filters or search query.' : 'Create your first trade show to start managing exhibitors and leads.'}</p>
+          <p>{activeFilterCount > 0 || searchQuery ? 'Try adjusting your filters or search query.' : 'Create your first trade show to start managing exhibitors.'}</p>
           {activeFilterCount > 0 || searchQuery ? (
             <button className="gts-add" onClick={() => { clearFilters(); setSearchQuery(''); }}><FiX size={16} /> Clear Filters</button>
           ) : (
@@ -611,33 +576,18 @@ function GlobalTradeShow({ onNavigate }) {
                 {/* Access */}
                 <div className="gts-sec">
                   <h4><FiShield size={14} /> Access Control</h4>
-                  <div className="gts-r2">
-                    <div className="gts-f gts-dd-wrap">
-                      <label>Show Access</label>
-                      {selAccess.length > 0 && <div className="gts-chips">{selAccess.map(u => (
-                        <div key={u._id} className="gts-chip-u"><img src={av(u)} alt="" /><span>{u.name}</span><button type="button" onClick={() => rmUser(u._id, 'access')}><FiX size={11} /></button></div>
-                      ))}</div>}
-                      <input value={accSearch} onChange={e => setAccSearch(e.target.value)}
-                        onFocus={() => { setDdAccess(true); setDdLeads(false); setDdIndustry(false); }} placeholder="Search people..." />
-                      {ddAccess && <div className="gts-dd">{filteredAcc.length ? filteredAcc.map(u => (
-                        <div key={u._id} className="gts-dd-i gts-dd-u" onClick={() => addUser(u, 'access')}>
-                          <img src={av(u)} alt="" /><div><div className="gts-dd-n">{u.name}</div><div className="gts-dd-em">{u.email}</div></div>
-                        </div>
-                      )) : <div className="gts-dd-e">No users</div>}</div>}
-                    </div>
-                    <div className="gts-f gts-dd-wrap">
-                      <label>Leads Access</label>
-                      {selLeads.length > 0 && <div className="gts-chips">{selLeads.map(u => (
-                        <div key={u._id} className="gts-chip-u"><img src={av(u)} alt="" /><span>{u.name}</span><button type="button" onClick={() => rmUser(u._id, 'leads')}><FiX size={11} /></button></div>
-                      ))}</div>}
-                      <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-                        onFocus={() => { setDdLeads(true); setDdAccess(false); setDdIndustry(false); }} placeholder="Search people..." />
-                      {ddLeads && <div className="gts-dd">{filteredLd.length ? filteredLd.map(u => (
-                        <div key={u._id} className="gts-dd-i gts-dd-u" onClick={() => addUser(u, 'leads')}>
-                          <img src={av(u)} alt="" /><div><div className="gts-dd-n">{u.name}</div><div className="gts-dd-em">{u.email}</div></div>
-                        </div>
-                      )) : <div className="gts-dd-e">No users</div>}</div>}
-                    </div>
+                  <div className="gts-f gts-dd-wrap">
+                    <label>Show Access</label>
+                    {selAccess.length > 0 && <div className="gts-chips">{selAccess.map(u => (
+                      <div key={u._id} className="gts-chip-u"><img src={av(u)} alt="" /><span>{u.name}</span><button type="button" onClick={() => rmUser(u._id)}><FiX size={11} /></button></div>
+                    ))}</div>}
+                    <input value={accSearch} onChange={e => setAccSearch(e.target.value)}
+                      onFocus={() => { setDdAccess(true); setDdIndustry(false); }} placeholder="Search people..." />
+                    {ddAccess && <div className="gts-dd">{filteredAcc.length ? filteredAcc.map(u => (
+                      <div key={u._id} className="gts-dd-i gts-dd-u" onClick={() => addUser(u)}>
+                        <img src={av(u)} alt="" /><div><div className="gts-dd-n">{u.name}</div><div className="gts-dd-em">{u.email}</div></div>
+                      </div>
+                    )) : <div className="gts-dd-e">No users</div>}</div>}
                   </div>
                 </div>
               </div>
@@ -702,7 +652,7 @@ function GlobalTradeShow({ onNavigate }) {
                     <a href={sh.floorPlan.path} download className="gts-pdl"><FiDownload size={15} /> Download Floor Plan</a>
                   </div>
                 )}
-                {(sh.showAccessPeople?.length > 0 || sh.showLeadsAccessPeople?.length > 0) && (
+                {(sh.showAccessPeople?.length > 0) && (
                   <div className="gts-ps">
                     <h4>Access</h4>
                     {sh.showAccessPeople?.length > 0 && (
@@ -710,71 +660,8 @@ function GlobalTradeShow({ onNavigate }) {
                         <div key={u._id || i} className="gts-pp-item"><img src={u.profileImage || defaultAvatar} alt="" /><span>{u.fullName || u.name || 'User'}</span></div>
                       ))}</div></div>
                     )}
-                    {sh.showLeadsAccessPeople?.length > 0 && (
-                      <div className="gts-pp"><label>Leads Access</label><div className="gts-pp-list">{sh.showLeadsAccessPeople.map((u, i) => (
-                        <div key={u._id || i} className="gts-pp-item"><img src={u.profileImage || defaultAvatar} alt="" /><span>{u.fullName || u.name || 'User'}</span></div>
-                      ))}</div></div>
-                    )}
                   </div>
                 )}
-                {/* Linked Leads & Campaigns */}
-                <div className="gts-ps">
-                  <h4><FiLayers size={14} /> Linked Leads</h4>
-                  {showLeadsData.loading ? (
-                    <p style={{ color: '#888', fontSize: 13 }}>Loading leads...</p>
-                  ) : showLeadsData.campaigns.length > 0 ? (
-                    <>
-                      <div className="gts-pst" style={{ marginBottom: 12 }}>
-                        <div className="gts-pst-box"><strong>{showLeadsData.totalLeads}</strong><span>Total Leads</span></div>
-                        <div className="gts-pst-box"><strong>{showLeadsData.campaigns.length}</strong><span>Campaigns</span></div>
-                      </div>
-                      {showLeadsData.campaigns.map(c => (
-                        <div key={c._id} className="gts-lead-camp">
-                          <div className="gts-lead-camp-head">
-                            <span className="gts-lead-camp-name">{c.name}</span>
-                            <span className={`gts-lead-camp-status gts-lcs-${c.status}`}>{c.status}</span>
-                          </div>
-                          <div className="gts-lead-camp-meta">
-                            <span>{c.leads?.length || 0} leads</span>
-                            <span>{c.method}</span>
-                            <span>{c.priority}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {showLeadsData.leads.length > 0 && (
-                        <div className="gts-leads-table">
-                          <div className="gts-leads-thr">
-                            <span>Company</span><span>Contact</span><span>Lead By</span><span>Status</span>
-                          </div>
-                          {showLeadsData.leads.slice(0, 20).map(l => (
-                            <div key={l._id} className="gts-leads-row">
-                              <span>{l.companyName || '—'}</span>
-                              <span>{l.clientName || '—'}</span>
-                              <div className="gts-lead-by">
-                                {l.addedBy ? (
-                                  <>
-                                    <img src={l.addedBy.profileImage || l.addedBy.profilePicture || l.addedBy.avatar || defaultAvatar} alt="" className="gts-lead-by-avatar" />
-                                    <span>{l.addedBy.fullName || l.addedBy.name || 'Unknown'}</span>
-                                  </>
-                                ) : (
-                                  <span>—</span>
-                                )}
-                              </div>
-                              <span className={`gts-ls gts-ls-${(l.status || 'new').toLowerCase()}`}>{l.status || 'new'}</span>
-                            </div>
-                          ))}
-                          {showLeadsData.leads.length > 20 && (
-                            <p style={{ color: '#888', fontSize: 12, textAlign: 'center', marginTop: 8 }}>
-                              +{showLeadsData.leads.length - 20} more leads
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p style={{ color: '#888', fontSize: 13 }}>No lead campaigns linked to this trade show yet.</p>
-                  )}
-                </div>
               </div>
             </div>
           </>
