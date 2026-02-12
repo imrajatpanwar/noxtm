@@ -149,6 +149,54 @@
   background: #222;
 }
 
+/* --- Tabs --- */
+.notes-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 24px;
+}
+
+.notes-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.notes-tab:hover {
+  color: #444;
+}
+
+.notes-tab.active {
+  color: #000;
+  border-bottom-color: #000;
+}
+
+.notes-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 100px;
+  background: #000;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* --- Section Label --- */
 .notes-section-label {
   font-size: 11px;
@@ -330,6 +378,126 @@
 
 .note-card-dropdown button.danger:hover {
   background: #fff0f0;
+}
+
+/* --- Assignment Badge on Note Card --- */
+.note-assign-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.note-assign-badge svg {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.note-assign-badge.pending {
+  background: #f5f5f5;
+  color: #888;
+  border: 1px solid #e0e0e0;
+}
+
+.note-assign-badge.accepted {
+  background: #f0f0f0;
+  color: #222;
+  border: 1px solid #ccc;
+}
+
+.note-assign-badge.rejected {
+  background: #fafafa;
+  color: #aaa;
+  border: 1px solid #e8e8e8;
+  text-decoration: line-through;
+}
+
+/* --- Assigned Note Card --- */
+.note-card.assigned-card {
+  cursor: default;
+}
+
+.note-card.assigned-card.pending {
+  border-color: #000;
+  border-width: 1.5px;
+}
+
+.note-card.assigned-card.accepted {
+  border-color: #ccc;
+}
+
+.assigned-from {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+  white-space: nowrap;
+  background: #f5f5f5;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.assigned-from svg {
+  font-size: 12px;
+}
+
+.assigned-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.assigned-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.15s;
+}
+
+.assigned-btn.accept {
+  color: #222;
+  border-color: #222;
+}
+
+.assigned-btn.accept:hover {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.assigned-btn.reject {
+  color: #999;
+  border-color: #ddd;
+}
+
+.assigned-btn.reject:hover {
+  background: #f5f5f5;
+  color: #666;
+  border-color: #bbb;
+}
+
+.assigned-status-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assigned-status-label.accepted {
+  color: #222;
 }
 
 /* --- Empty State --- */
@@ -560,6 +728,185 @@
 
 .notes-tag-input::placeholder {
   color: #bbb;
+}
+
+/* --- Assign to User Section --- */
+.notes-assign-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.notes-assign-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notes-assign-label svg {
+  font-size: 14px;
+}
+
+.notes-assign-picker {
+  position: relative;
+}
+
+.notes-assign-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px dashed #ddd;
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notes-assign-trigger:hover {
+  border-color: #bbb;
+  color: #666;
+  background: #fafafa;
+}
+
+.notes-assign-trigger svg {
+  font-size: 15px;
+}
+
+.notes-assign-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: #f5f5f5;
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+}
+
+.notes-assign-selected button {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.notes-assign-selected button:hover {
+  color: #000;
+}
+
+.notes-assign-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e8e8e8;
+  color: #666;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.notes-assign-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.notes-assign-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.notes-assign-search svg {
+  color: #999;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.notes-assign-search input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #222;
+  width: 100%;
+  background: none;
+}
+
+.notes-assign-search input::placeholder {
+  color: #bbb;
+}
+
+.notes-assign-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.notes-assign-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.notes-assign-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+  text-align: left;
+}
+
+.notes-assign-option:hover {
+  background: #f5f5f5;
+}
+
+.notes-assign-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.notes-assign-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+}
+
+.notes-assign-email {
+  font-size: 11px;
+  color: #999;
 }
 
 /* --- Modal Footer --- */
