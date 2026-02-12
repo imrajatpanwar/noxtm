@@ -986,12 +986,8 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
 
   // Fix display for lists created with "undefined" in name/description
   let detailName = list.name || 'Untitled Mail List';
-  if (detailName.includes('undefined') && tradeShowName) {
+  if ((detailName.includes('undefined') || sourceType === 'tradeshow') && tradeShowName) {
     detailName = `${tradeShowName} Contacts`;
-  }
-  let detailDesc = list.description || '';
-  if (detailDesc.includes('undefined') && tradeShowName) {
-    detailDesc = `Imported from trade show: ${tradeShowName}`;
   }
 
   return (
@@ -1011,14 +1007,6 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
                     <SourceIcon size={11} /> {sourceConfig.label}
                   </span>
                 </div>
-                {detailDesc && !detailDesc.includes('undefined') && (
-                  <p className="dm-description">{detailDesc}</p>
-                )}
-                {sourceType === 'tradeshow' && tradeShowName && (
-                  <div className="dm-source-tag">
-                    <FiGlobe size={12} /> {tradeShowName}
-                  </div>
-                )}
               </div>
               
               {/* Stats on right side */}
