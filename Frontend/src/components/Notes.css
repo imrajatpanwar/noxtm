@@ -626,7 +626,7 @@
 
 .notes-modal-body {
   padding: 20px 24px;
-  overflow-y: auto;
+  overflow: visible;
   flex: 1;
 }
 
@@ -830,7 +830,7 @@
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  z-index: 1100;
+  z-index: 10;
   overflow: hidden;
 }
 
