@@ -114,6 +114,7 @@ router.post('/login', async (req, res) => {
         userId: user._id,
         fullName: user.fullName,
         email: user.email,
+        role: user.role,
         companyId: user.companyId || null
       },
       JWT_SECRET,
@@ -176,6 +177,7 @@ router.get('/check-session', async (req, res) => {
         userId: user._id,
         fullName: user.fullName,
         email: user.email,
+        role: user.role,
         companyId: user.companyId || null
       },
       JWT_SECRET,
