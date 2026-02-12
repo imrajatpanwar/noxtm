@@ -34,8 +34,9 @@ const authenticateToken = (req, res, next) => {
 
 /**
  * Middleware to check if user is admin
+ * Falls back to database lookup if role is not in JWT (legacy tokens)
  */
-const requireAdmin = (req, res, next) => {
+const requireAdmin = async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -43,14 +44,27 @@ const requireAdmin = (req, res, next) => {
     });
   }
 
-  if (req.user.role !== ROLES.ADMIN) {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
+  // If role is already Admin in the JWT, proceed
+  if (req.user.role === ROLES.ADMIN) {
+    return next();
   }
 
-  next();
+  // Fallback: check database for role (handles old tokens without role)
+  try {
+    const User = require('mongoose').model('User');
+    const dbUser = await User.findById(req.user.userId || req.user._id).select('role').lean();
+    if (dbUser && dbUser.role === ROLES.ADMIN) {
+      req.user.role = ROLES.ADMIN;
+      return next();
+    }
+  } catch (err) {
+    // DB lookup failed, fall through to deny
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: 'Admin access required'
+  });
 };
 
 /**

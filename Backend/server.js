@@ -1716,7 +1716,7 @@ app.post('/api/verify-code', async (req, res) => {
     console.log('Verification record deleted');
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, companyId: user.companyId || null }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: user.companyId || null }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
@@ -2097,7 +2097,7 @@ app.post('/api/register', async (req, res) => {
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, companyId: user.companyId || null }, JWT_SECRET);
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: user.companyId || null }, JWT_SECRET);
 
     res.status(201).json({
       success: true,
@@ -3157,7 +3157,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, companyId: user.companyId || null }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: user.companyId || null }, JWT_SECRET, {
       expiresIn: '24h'
     });
 
