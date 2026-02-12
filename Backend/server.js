@@ -190,6 +190,10 @@ app.use('/api/tasks', tasksRoutes);
 const findrRoutes = require('./routes/findr');
 app.use('/api/findr', findrRoutes);
 
+// Admin panel routes (super admin only)
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
