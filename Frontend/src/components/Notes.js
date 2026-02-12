@@ -27,7 +27,7 @@ function Notes() {
       setLoading(true);
       const params = { archived: showArchived };
       if (searchQuery) params.search = searchQuery;
-      const res = await api.get('/api/notes', { params });
+      const res = await api.get('/notes', { params });
       if (res.data.success) {
         setNotes(res.data.notes);
       }
@@ -63,7 +63,7 @@ function Notes() {
       return;
     }
     try {
-      const res = await api.post('/api/notes', editorData);
+      const res = await api.post('/notes', editorData);
       if (res.data.success) {
         toast.success('Note created');
         setShowEditor(false);
@@ -82,7 +82,7 @@ function Notes() {
       return;
     }
     try {
-      const res = await api.put(`/api/notes/${selectedNote._id}`, editorData);
+      const res = await api.put(`/notes/${selectedNote._id}`, editorData);
       if (res.data.success) {
         toast.success('Note updated');
         setShowEditor(false);
@@ -98,7 +98,7 @@ function Notes() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this note permanently?')) return;
     try {
-      const res = await api.delete(`/api/notes/${id}`);
+      const res = await api.delete(`/notes/${id}`);
       if (res.data.success) {
         toast.success('Note deleted');
         fetchNotes(search);
@@ -111,7 +111,7 @@ function Notes() {
   // Toggle pin
   const handlePin = async (id) => {
     try {
-      const res = await api.patch(`/api/notes/${id}/pin`);
+      const res = await api.patch(`/notes/${id}/pin`);
       if (res.data.success) fetchNotes(search);
     } catch (err) {
       toast.error('Failed to pin note');
@@ -121,7 +121,7 @@ function Notes() {
   // Toggle archive
   const handleArchive = async (id) => {
     try {
-      const res = await api.patch(`/api/notes/${id}/archive`);
+      const res = await api.patch(`/notes/${id}/archive`);
       if (res.data.success) {
         toast.success(showArchived ? 'Note restored' : 'Note archived');
         fetchNotes(search);
