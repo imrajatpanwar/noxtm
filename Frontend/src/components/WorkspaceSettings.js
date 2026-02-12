@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -58,6 +58,7 @@ function WorkspaceSettings({ user, onLogout }) {
   const [editedProfile, setEditedProfile] = useState({});
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -292,21 +293,31 @@ function WorkspaceSettings({ user, onLogout }) {
     setLoadingProfile(true);
     try {
       const response = await api.get('/profile');
-      console.log('Fetched profile data:', response.data);
-      setProfileData(response.data);
+      const d = response.data;
+      setProfileData(d);
       setEditedProfile({
-        fullName: response.data?.fullName || '',
-        email: response.data?.email || '',
-        phone: response.data?.phone || '',
-        businessEmail: response.data?.businessEmail || '',
-        joiningDate: response.data?.joiningDate || '',
-        qualification: response.data?.qualification || '',
-        institute: response.data?.institute || '',
-        yearOfPassing: response.data?.yearOfPassing || '',
-        emergencyContactName: response.data?.emergencyContact?.name || '',
-        emergencyContactRelation: response.data?.emergencyContact?.relation || '',
-        emergencyContactPhone: response.data?.emergencyContact?.phone || '',
-        emergencyContactAddress: response.data?.emergencyContact?.address || '',
+        fullName: d?.fullName || '',
+        email: d?.email || '',
+        phoneNumber: d?.phoneNumber || '',
+        businessEmail: d?.businessEmail || '',
+        bio: d?.bio || '',
+        jobTitle: d?.jobTitle || '',
+        department: d?.department || '',
+        dateOfBirth: d?.dateOfBirth ? d.dateOfBirth.split('T')[0] : '',
+        address: d?.address || '',
+        city: d?.city || '',
+        state: d?.state || '',
+        country: d?.country || '',
+        linkedIn: d?.linkedIn || '',
+        website: d?.website || '',
+        timezone: d?.timezone || 'UTC',
+        qualification: d?.qualification || '',
+        institute: d?.institute || '',
+        yearOfPassing: d?.yearOfPassing || '',
+        emergencyContactName: d?.emergencyContact?.name || '',
+        emergencyContactRelation: d?.emergencyContact?.relation || '',
+        emergencyContactPhone: d?.emergencyContact?.phone || '',
+        emergencyContactAddress: d?.emergencyContact?.address || '',
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -319,20 +330,30 @@ function WorkspaceSettings({ user, onLogout }) {
   // Handle profile edit toggle
   const handleProfileEditToggle = () => {
     if (isEditingProfile) {
-      // Reset to original data
+      const d = profileData;
       setEditedProfile({
-        fullName: profileData?.fullName || '',
-        email: profileData?.email || '',
-        phone: profileData?.phone || '',
-        businessEmail: profileData?.businessEmail || '',
-        joiningDate: profileData?.joiningDate || '',
-        qualification: profileData?.qualification || '',
-        institute: profileData?.institute || '',
-        yearOfPassing: profileData?.yearOfPassing || '',
-        emergencyContactName: profileData?.emergencyContact?.name || '',
-        emergencyContactRelation: profileData?.emergencyContact?.relation || '',
-        emergencyContactPhone: profileData?.emergencyContact?.phone || '',
-        emergencyContactAddress: profileData?.emergencyContact?.address || '',
+        fullName: d?.fullName || '',
+        email: d?.email || '',
+        phoneNumber: d?.phoneNumber || '',
+        businessEmail: d?.businessEmail || '',
+        bio: d?.bio || '',
+        jobTitle: d?.jobTitle || '',
+        department: d?.department || '',
+        dateOfBirth: d?.dateOfBirth ? d.dateOfBirth.split('T')[0] : '',
+        address: d?.address || '',
+        city: d?.city || '',
+        state: d?.state || '',
+        country: d?.country || '',
+        linkedIn: d?.linkedIn || '',
+        website: d?.website || '',
+        timezone: d?.timezone || 'UTC',
+        qualification: d?.qualification || '',
+        institute: d?.institute || '',
+        yearOfPassing: d?.yearOfPassing || '',
+        emergencyContactName: d?.emergencyContact?.name || '',
+        emergencyContactRelation: d?.emergencyContact?.relation || '',
+        emergencyContactPhone: d?.emergencyContact?.phone || '',
+        emergencyContactAddress: d?.emergencyContact?.address || '',
       });
     }
     setIsEditingProfile(!isEditingProfile);
@@ -352,8 +373,19 @@ function WorkspaceSettings({ user, onLogout }) {
     try {
       const updateData = {
         fullName: editedProfile.fullName,
-        phone: editedProfile.phone,
+        phoneNumber: editedProfile.phoneNumber,
         businessEmail: editedProfile.businessEmail,
+        bio: editedProfile.bio,
+        jobTitle: editedProfile.jobTitle,
+        department: editedProfile.department,
+        dateOfBirth: editedProfile.dateOfBirth || null,
+        address: editedProfile.address,
+        city: editedProfile.city,
+        state: editedProfile.state,
+        country: editedProfile.country,
+        linkedIn: editedProfile.linkedIn,
+        website: editedProfile.website,
+        timezone: editedProfile.timezone,
         qualification: editedProfile.qualification,
         institute: editedProfile.institute,
         yearOfPassing: editedProfile.yearOfPassing,
@@ -365,25 +397,58 @@ function WorkspaceSettings({ user, onLogout }) {
         }
       };
 
-      const response = await api.put('/profile', updateData);
-      if (response.data) {
-        setProfileData(response.data);
-        toast.success('Profile updated successfully');
-        setIsEditingProfile(false);
-        // Update localStorage if needed
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          userData.fullName = editedProfile.fullName;
-          localStorage.setItem('user', JSON.stringify(userData));
-          window.dispatchEvent(new Event('userUpdated'));
-        }
+      await api.put('/profile', updateData);
+      toast.success('Profile updated successfully');
+      setIsEditingProfile(false);
+      fetchProfile();
+      // Update localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.fullName = editedProfile.fullName;
+        localStorage.setItem('user', JSON.stringify(userData));
+        window.dispatchEvent(new Event('userUpdated'));
       }
     } catch (error) {
       console.error('Error saving profile:', error);
       toast.error('Failed to save profile');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  // Upload profile picture
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+      const response = await api.post('/profile/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data?.imageUrl) {
+        setProfileData(prev => ({ ...prev, profileImage: response.data.imageUrl }));
+        toast.success('Profile picture updated');
+        // Update localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          userData.profileImage = response.data.imageUrl;
+          localStorage.setItem('user', JSON.stringify(userData));
+          window.dispatchEvent(new Event('userUpdated'));
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Failed to upload profile picture');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -1080,13 +1145,9 @@ function WorkspaceSettings({ user, onLogout }) {
     };
 
     const formatDate = (dateString) => {
-      if (!dateString) return 'Not set';
+      if (!dateString) return '—';
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
+      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
     if (loadingProfile) {
@@ -1106,264 +1167,379 @@ function WorkspaceSettings({ user, onLogout }) {
       currentMember?.roleInCompany === 'Owner';
 
     const companyRoleLabel = user?.companyId ? (isOwner ? 'Owner' : 'Employee') : 'User';
-    const titleLabel = user?.companyId ? (currentMember?.jobTitle || '') : '';
+    const titleLabel = user?.companyId ? (currentMember?.jobTitle || profileData?.jobTitle || '') : (profileData?.jobTitle || '');
+
+    const avatarFileInputRef = React.createRef();
 
     return (
       <div className="workspace-tab-content">
-        {/* Profile Header with Avatar */}
-        <div className="profile-header-card">
-          <div className="profile-avatar-section">
-            <div className="profile-avatar-large">
-              <span className="profile-avatar-fallback">{getInitials(profileData?.fullName)}</span>
-              {(profileData?.avatarUrl || profileData?.profileImage) && (
-                <img
-                  src={profileData?.avatarUrl || profileData?.profileImage}
-                  alt={profileData?.fullName || 'User'}
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        {/* ===== Profile Hero Card ===== */}
+        <div className="pf-hero">
+          <div className="pf-hero-bg"></div>
+          <div className="pf-hero-content">
+            <div className="pf-hero-left">
+              <div className="pf-avatar-wrapper" onClick={() => avatarFileInputRef.current?.click()}>
+                <div className="pf-avatar">
+                  <span className="pf-avatar-initials">{getInitials(profileData?.fullName)}</span>
+                  {profileData?.profileImage && (
+                    <img
+                      src={profileData.profileImage}
+                      alt={profileData.fullName || 'User'}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                </div>
+                <div className="pf-avatar-overlay">
+                  {uploadingAvatar ? <FiClock size={18} /> : <FiCamera size={18} />}
+                </div>
+                <input
+                  ref={avatarFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleAvatarUpload}
                 />
+              </div>
+              <div className="pf-hero-info">
+                <h2 className="pf-hero-name">{profileData?.fullName || 'User'}</h2>
+                <p className="pf-hero-email">{profileData?.email}</p>
+                <div className="pf-hero-badges">
+                  <span className={`pf-badge pf-badge-role ${isOwner ? 'owner' : 'employee'}`}>{companyRoleLabel}</span>
+                  {!!titleLabel && <span className="pf-badge pf-badge-title">{titleLabel}</span>}
+                  {profileData?.department && <span className="pf-badge pf-badge-dept">{profileData.department}</span>}
+                </div>
+              </div>
+            </div>
+            <div className="pf-hero-right">
+              {!isEditingProfile ? (
+                <button className="pf-btn-edit" onClick={handleProfileEditToggle}>
+                  <FiEdit3 size={14} /> Edit Profile
+                </button>
+              ) : (
+                <div className="pf-hero-actions">
+                  <button className="pf-btn-cancel" onClick={handleProfileEditToggle}><FiX size={14} /> Cancel</button>
+                  <button className="pf-btn-save" onClick={handleSaveProfile} disabled={savingProfile}>
+                    <FiSave size={14} /> {savingProfile ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
               )}
             </div>
-            <div className="profile-name-section">
-              <h2>{profileData?.fullName || 'User'}</h2>
-              <p className="profile-email">{profileData?.email || 'Not set'}</p>
-              <div className="profile-badges">
-                <span className={`profile-role-badge ${isOwner ? 'owner' : 'employee'}`}>{companyRoleLabel}</span>
-                {!!titleLabel && <span className="profile-title-badge">{titleLabel}</span>}
-              </div>
-            </div>
           </div>
-          {!isEditingProfile && (
-            <button className="btn-edit" onClick={handleProfileEditToggle}>
-              <FiEdit3 /> Edit Profile
-            </button>
-          )}
+
+          {/* Quick Stats */}
+          <div className="pf-quick-stats">
+            <div className="pf-qs-item">
+              <FiCalendar size={14} />
+              <span>Joined {formatDate(profileData?.createdAt)}</span>
+            </div>
+            {profileData?.timezone && (
+              <div className="pf-qs-item">
+                <FiClock size={14} />
+                <span>{profileData.timezone}</span>
+              </div>
+            )}
+            {companyDetails?.companyName && (
+              <div className="pf-qs-item">
+                <FiBriefcase size={14} />
+                <span>{companyDetails.companyName}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Profile Details Card */}
-        <div className="workspace-info-card">
-          <div className="workspace-info-header">
-            <h3><FiUser /> Personal Details</h3>
+        {/* ===== Personal Information ===== */}
+        <div className="pf-section">
+          <div className="pf-section-header">
+            <div className="pf-section-icon"><FiUser size={16} /></div>
+            <div>
+              <h3>Personal Information</h3>
+              <p>Basic details about you</p>
+            </div>
           </div>
 
           {!isEditingProfile ? (
-            <div className="workspace-info-grid">
-              <div className="info-item">
+            <div className="pf-fields-grid">
+              <div className="pf-field">
                 <label>Full Name</label>
-                <div className="info-value">{profileData?.fullName || 'Not set'}</div>
+                <span>{profileData?.fullName || '—'}</span>
               </div>
-              <div className="info-item">
-                <label>Email</label>
-                <div className="info-value">{profileData?.email || 'Not set'}</div>
+              <div className="pf-field">
+                <label>Email Address</label>
+                <span>{profileData?.email || '—'}</span>
               </div>
-              <div className="info-item">
+              <div className="pf-field">
                 <label>Phone Number</label>
-                <div className="info-value">{profileData?.phone || 'Not set'}</div>
+                <span>{profileData?.phoneNumber || '—'}</span>
               </div>
-              <div className="info-item">
+              <div className="pf-field">
                 <label>Business Email</label>
-                <div className="info-value">{profileData?.businessEmail || 'Not set'}</div>
+                <span>{profileData?.businessEmail || '—'}</span>
               </div>
-              <div className="info-item">
-                <label>Joining Date</label>
-                <div className="info-value">{formatDate(profileData?.joiningDate || profileData?.createdAt)}</div>
+              <div className="pf-field">
+                <label>Date of Birth</label>
+                <span>{profileData?.dateOfBirth ? formatDate(profileData.dateOfBirth) : '—'}</span>
               </div>
-              <div className="info-item">
+              <div className="pf-field pf-field-full">
+                <label>Bio</label>
+                <span>{profileData?.bio || '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="pf-edit-grid">
+              <div className="pf-input-group">
+                <label>Full Name</label>
+                <input type="text" value={editedProfile.fullName} onChange={(e) => handleProfileInputChange('fullName', e.target.value)} />
+              </div>
+              <div className="pf-input-group">
+                <label>Email <small>(read-only)</small></label>
+                <input type="email" value={editedProfile.email} disabled />
+              </div>
+              <div className="pf-input-group">
+                <label>Phone Number</label>
+                <input type="tel" value={editedProfile.phoneNumber} onChange={(e) => handleProfileInputChange('phoneNumber', e.target.value)} placeholder="+1 (555) 000-0000" />
+              </div>
+              <div className="pf-input-group">
+                <label>Business Email</label>
+                <input type="email" value={editedProfile.businessEmail} onChange={(e) => handleProfileInputChange('businessEmail', e.target.value)} placeholder="work@company.com" />
+              </div>
+              <div className="pf-input-group">
+                <label>Date of Birth</label>
+                <input type="date" value={editedProfile.dateOfBirth} onChange={(e) => handleProfileInputChange('dateOfBirth', e.target.value)} />
+              </div>
+              <div className="pf-input-group pf-input-full">
+                <label>Bio</label>
+                <textarea value={editedProfile.bio} onChange={(e) => handleProfileInputChange('bio', e.target.value)} placeholder="Tell us a bit about yourself..." rows="3" maxLength={500} />
+                <small className="pf-char-count">{(editedProfile.bio || '').length}/500</small>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ===== Work & Company ===== */}
+        <div className="pf-section">
+          <div className="pf-section-header">
+            <div className="pf-section-icon"><FiBriefcase size={16} /></div>
+            <div>
+              <h3>Work & Company</h3>
+              <p>Your role and professional info</p>
+            </div>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="pf-fields-grid">
+              <div className="pf-field">
+                <label>Job Title</label>
+                <span>{titleLabel || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Department</label>
+                <span>{profileData?.department || '—'}</span>
+              </div>
+              <div className="pf-field">
                 <label>Company Role</label>
-                <div className="info-value workspace-badge">{companyRoleLabel}</div>
+                <span className="pf-field-badge">{companyRoleLabel}</span>
               </div>
-              <div className="info-item">
-                <label>Title</label>
-                <div className="info-value">{titleLabel || 'Not set'}</div>
+              <div className="pf-field">
+                <label>Timezone</label>
+                <span>{profileData?.timezone || 'UTC'}</span>
               </div>
             </div>
           ) : (
-            <div className="workspace-edit-form">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.fullName}
-                    onChange={(e) => handleProfileInputChange('fullName', e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email (Read-only)</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editedProfile.email}
-                    disabled
-                    style={{ opacity: 0.7 }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Phone Number</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    value={editedProfile.phone}
-                    onChange={(e) => handleProfileInputChange('phone', e.target.value)}
-                    placeholder="+91 XXXXXXXXXX"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Business Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editedProfile.businessEmail}
-                    onChange={(e) => handleProfileInputChange('businessEmail', e.target.value)}
-                    placeholder="work@company.com"
-                  />
-                </div>
+            <div className="pf-edit-grid">
+              <div className="pf-input-group">
+                <label>Job Title</label>
+                <input type="text" value={editedProfile.jobTitle} onChange={(e) => handleProfileInputChange('jobTitle', e.target.value)} placeholder="e.g., Software Engineer" />
+              </div>
+              <div className="pf-input-group">
+                <label>Department</label>
+                <select value={editedProfile.department} onChange={(e) => handleProfileInputChange('department', e.target.value)}>
+                  <option value="">Select department</option>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className="pf-input-group">
+                <label>Timezone</label>
+                <select value={editedProfile.timezone} onChange={(e) => handleProfileInputChange('timezone', e.target.value)}>
+                  {['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Asia/Kolkata', 'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney', 'Pacific/Auckland'].map(tz => (
+                    <option key={tz} value={tz}>{tz}</option>
+                  ))}
+                </select>
               </div>
             </div>
           )}
         </div>
 
-        {/* Education Card */}
-        <div className="workspace-info-card">
-          <div className="workspace-info-header">
-            <h3><FiBriefcase /> Education & Qualifications</h3>
+        {/* ===== Location & Links ===== */}
+        <div className="pf-section">
+          <div className="pf-section-header">
+            <div className="pf-section-icon"><FiMapPin size={16} /></div>
+            <div>
+              <h3>Location & Links</h3>
+              <p>Where you're based and how to find you online</p>
+            </div>
           </div>
 
           {!isEditingProfile ? (
-            <div className="workspace-info-grid">
-              <div className="info-item">
-                <label>Highest Qualification</label>
-                <div className="info-value">{profileData?.qualification || 'Not set'}</div>
-              </div>
-              <div className="info-item">
-                <label>Institute / University</label>
-                <div className="info-value">{profileData?.institute || 'Not set'}</div>
-              </div>
-              <div className="info-item">
-                <label>Year of Passing</label>
-                <div className="info-value">{profileData?.yearOfPassing || 'Not set'}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="workspace-edit-form">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Highest Qualification</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.qualification}
-                    onChange={(e) => handleProfileInputChange('qualification', e.target.value)}
-                    placeholder="e.g., BCA, MCA, B.Tech"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Institute / University</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.institute}
-                    onChange={(e) => handleProfileInputChange('institute', e.target.value)}
-                    placeholder="University name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Year of Passing</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.yearOfPassing}
-                    onChange={(e) => handleProfileInputChange('yearOfPassing', e.target.value)}
-                    placeholder="e.g., 2024"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Emergency Contact Card */}
-        <div className="workspace-info-card">
-          <div className="workspace-info-header">
-            <h3><FiPhone /> Emergency Contact</h3>
-          </div>
-
-          {!isEditingProfile ? (
-            <div className="workspace-info-grid">
-              <div className="info-item">
-                <label>Name</label>
-                <div className="info-value">{profileData?.emergencyContact?.name || 'Not set'}</div>
-              </div>
-              <div className="info-item">
-                <label>Relation</label>
-                <div className="info-value">{profileData?.emergencyContact?.relation || 'Not set'}</div>
-              </div>
-              <div className="info-item">
-                <label>Contact Number</label>
-                <div className="info-value">{profileData?.emergencyContact?.phone || 'Not set'}</div>
-              </div>
-              <div className="info-item">
+            <div className="pf-fields-grid">
+              <div className="pf-field">
                 <label>Address</label>
-                <div className="info-value">{profileData?.emergencyContact?.address || 'Not set'}</div>
+                <span>{profileData?.address || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>City</label>
+                <span>{profileData?.city || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>State / Province</label>
+                <span>{profileData?.state || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Country</label>
+                <span>{profileData?.country || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>LinkedIn</label>
+                <span>{profileData?.linkedIn ? <a href={profileData.linkedIn} target="_blank" rel="noopener noreferrer">{profileData.linkedIn}</a> : '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Website</label>
+                <span>{profileData?.website ? <a href={profileData.website} target="_blank" rel="noopener noreferrer">{profileData.website}</a> : '—'}</span>
               </div>
             </div>
           ) : (
-            <div className="workspace-edit-form">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Contact Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.emergencyContactName}
-                    onChange={(e) => handleProfileInputChange('emergencyContactName', e.target.value)}
-                    placeholder="Emergency contact name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Relation</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editedProfile.emergencyContactRelation}
-                    onChange={(e) => handleProfileInputChange('emergencyContactRelation', e.target.value)}
-                    placeholder="e.g., Father, Mother, Spouse"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Contact Number</label>
-                  <input
-                    type="tel"
-                    className="form-input"
-                    value={editedProfile.emergencyContactPhone}
-                    onChange={(e) => handleProfileInputChange('emergencyContactPhone', e.target.value)}
-                    placeholder="+91 XXXXXXXXXX"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Address</label>
-                  <textarea
-                    className="form-textarea"
-                    value={editedProfile.emergencyContactAddress}
-                    onChange={(e) => handleProfileInputChange('emergencyContactAddress', e.target.value)}
-                    placeholder="Full address"
-                    rows="2"
-                  />
-                </div>
+            <div className="pf-edit-grid">
+              <div className="pf-input-group pf-input-full">
+                <label>Address</label>
+                <input type="text" value={editedProfile.address} onChange={(e) => handleProfileInputChange('address', e.target.value)} placeholder="Street address" />
+              </div>
+              <div className="pf-input-group">
+                <label>City</label>
+                <input type="text" value={editedProfile.city} onChange={(e) => handleProfileInputChange('city', e.target.value)} placeholder="City" />
+              </div>
+              <div className="pf-input-group">
+                <label>State / Province</label>
+                <input type="text" value={editedProfile.state} onChange={(e) => handleProfileInputChange('state', e.target.value)} placeholder="State" />
+              </div>
+              <div className="pf-input-group">
+                <label>Country</label>
+                <input type="text" value={editedProfile.country} onChange={(e) => handleProfileInputChange('country', e.target.value)} placeholder="Country" />
+              </div>
+              <div className="pf-input-group">
+                <label>LinkedIn URL</label>
+                <input type="url" value={editedProfile.linkedIn} onChange={(e) => handleProfileInputChange('linkedIn', e.target.value)} placeholder="https://linkedin.com/in/..." />
+              </div>
+              <div className="pf-input-group">
+                <label>Website</label>
+                <input type="url" value={editedProfile.website} onChange={(e) => handleProfileInputChange('website', e.target.value)} placeholder="https://yoursite.com" />
               </div>
             </div>
           )}
         </div>
 
-        {/* Save/Cancel buttons when editing */}
+        {/* ===== Education ===== */}
+        <div className="pf-section">
+          <div className="pf-section-header">
+            <div className="pf-section-icon"><FiDatabase size={16} /></div>
+            <div>
+              <h3>Education & Qualifications</h3>
+              <p>Academic background</p>
+            </div>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="pf-fields-grid">
+              <div className="pf-field">
+                <label>Highest Qualification</label>
+                <span>{profileData?.qualification || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Institute / University</label>
+                <span>{profileData?.institute || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Year of Passing</label>
+                <span>{profileData?.yearOfPassing || '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="pf-edit-grid">
+              <div className="pf-input-group">
+                <label>Highest Qualification</label>
+                <input type="text" value={editedProfile.qualification} onChange={(e) => handleProfileInputChange('qualification', e.target.value)} placeholder="e.g., B.Tech, MBA" />
+              </div>
+              <div className="pf-input-group">
+                <label>Institute / University</label>
+                <input type="text" value={editedProfile.institute} onChange={(e) => handleProfileInputChange('institute', e.target.value)} placeholder="University name" />
+              </div>
+              <div className="pf-input-group">
+                <label>Year of Passing</label>
+                <input type="text" value={editedProfile.yearOfPassing} onChange={(e) => handleProfileInputChange('yearOfPassing', e.target.value)} placeholder="e.g., 2024" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ===== Emergency Contact ===== */}
+        <div className="pf-section">
+          <div className="pf-section-header">
+            <div className="pf-section-icon pf-section-icon-red"><FiPhone size={16} /></div>
+            <div>
+              <h3>Emergency Contact</h3>
+              <p>Someone we can reach in case of emergency</p>
+            </div>
+          </div>
+
+          {!isEditingProfile ? (
+            <div className="pf-fields-grid">
+              <div className="pf-field">
+                <label>Name</label>
+                <span>{profileData?.emergencyContact?.name || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Relation</label>
+                <span>{profileData?.emergencyContact?.relation || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Contact Number</label>
+                <span>{profileData?.emergencyContact?.phone || '—'}</span>
+              </div>
+              <div className="pf-field">
+                <label>Address</label>
+                <span>{profileData?.emergencyContact?.address || '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="pf-edit-grid">
+              <div className="pf-input-group">
+                <label>Contact Name</label>
+                <input type="text" value={editedProfile.emergencyContactName} onChange={(e) => handleProfileInputChange('emergencyContactName', e.target.value)} placeholder="Emergency contact name" />
+              </div>
+              <div className="pf-input-group">
+                <label>Relation</label>
+                <input type="text" value={editedProfile.emergencyContactRelation} onChange={(e) => handleProfileInputChange('emergencyContactRelation', e.target.value)} placeholder="e.g., Father, Spouse" />
+              </div>
+              <div className="pf-input-group">
+                <label>Contact Number</label>
+                <input type="tel" value={editedProfile.emergencyContactPhone} onChange={(e) => handleProfileInputChange('emergencyContactPhone', e.target.value)} placeholder="+1 (555) 000-0000" />
+              </div>
+              <div className="pf-input-group pf-input-full">
+                <label>Address</label>
+                <textarea value={editedProfile.emergencyContactAddress} onChange={(e) => handleProfileInputChange('emergencyContactAddress', e.target.value)} placeholder="Full address" rows="2" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Save Bar when editing */}
         {isEditingProfile && (
-          <div className="form-actions" style={{ marginTop: '1.5rem' }}>
-            <button className="btn-cancel" onClick={handleProfileEditToggle}>
-              <FiX /> Cancel
-            </button>
-            <button className="btn-save" onClick={handleSaveProfile} disabled={savingProfile}>
-              <FiSave /> {savingProfile ? 'Saving...' : 'Save Changes'}
-            </button>
+          <div className="pf-bottom-bar">
+            <span>You have unsaved changes</span>
+            <div className="pf-bottom-actions">
+              <button className="pf-btn-cancel" onClick={handleProfileEditToggle}><FiX size={14} /> Discard</button>
+              <button className="pf-btn-save" onClick={handleSaveProfile} disabled={savingProfile}>
+                <FiSave size={14} /> {savingProfile ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         )}
       </div>

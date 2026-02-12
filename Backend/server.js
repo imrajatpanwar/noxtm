@@ -3252,11 +3252,26 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       permissions: normalizedPermissions,
       status: user.status,
       subscription: user.subscription || { plan: 'None', status: 'inactive' },
-      companyId: user.companyId, // Populated with company details
+      companyId: user.companyId,
       createdAt: user.createdAt,
       phoneNumber: user.phoneNumber,
       bio: user.bio,
-      profileImage: user.profileImage
+      profileImage: user.profileImage,
+      businessEmail: user.businessEmail,
+      jobTitle: user.jobTitle,
+      department: user.department,
+      dateOfBirth: user.dateOfBirth,
+      address: user.address,
+      city: user.city,
+      state: user.state,
+      country: user.country,
+      linkedIn: user.linkedIn,
+      website: user.website,
+      qualification: user.qualification,
+      institute: user.institute,
+      yearOfPassing: user.yearOfPassing,
+      emergencyContact: user.emergencyContact,
+      timezone: user.timezone
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -3573,7 +3588,13 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
 // Update user profile (own profile)
 app.put('/api/profile', authenticateToken, async (req, res) => {
   try {
-    const { fullName, username, phoneNumber, bio, email } = req.body;
+    const {
+      fullName, username, phoneNumber, bio, email,
+      businessEmail, jobTitle, department, dateOfBirth,
+      address, city, state, country, linkedIn, website,
+      qualification, institute, yearOfPassing,
+      emergencyContact, timezone
+    } = req.body;
 
     if (!mongoConnected) {
       return res.status(503).json({
@@ -3590,6 +3611,21 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     if (username !== undefined) updateData.username = username;
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
     if (bio !== undefined) updateData.bio = bio;
+    if (businessEmail !== undefined) updateData.businessEmail = businessEmail;
+    if (jobTitle !== undefined) updateData.jobTitle = jobTitle;
+    if (department !== undefined) updateData.department = department;
+    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth || null;
+    if (address !== undefined) updateData.address = address;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (country !== undefined) updateData.country = country;
+    if (linkedIn !== undefined) updateData.linkedIn = linkedIn;
+    if (website !== undefined) updateData.website = website;
+    if (qualification !== undefined) updateData.qualification = qualification;
+    if (institute !== undefined) updateData.institute = institute;
+    if (yearOfPassing !== undefined) updateData.yearOfPassing = yearOfPassing;
+    if (timezone !== undefined) updateData.timezone = timezone;
+    if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact;
     if (email !== undefined) {
       // Check if email is already taken by another user
       const existingUser = await User.findOne({
