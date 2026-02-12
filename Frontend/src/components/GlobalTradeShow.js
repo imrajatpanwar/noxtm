@@ -94,7 +94,7 @@ function GlobalTradeShow({ onNavigate }) {
       // Fetch exhibitor count for each trade show
       tradeShows.forEach(async (show) => {
         try {
-          const exhibitorsRes = await api.get(`/contact-lists/import/trade-shows/${show._id}/exhibitors`);
+          const exhibitorsRes = await api.get(`/trade-shows/${show._id}/exhibitors`);
           const actualCount = exhibitorsRes.data.exhibitors?.length || 0;
           setShowsWithExhibitors(prev => ({ ...prev, [show._id]: actualCount }));
         } catch (e) { console.error(`Failed to fetch exhibitors for ${show._id}`, e); }
@@ -173,7 +173,7 @@ function GlobalTradeShow({ onNavigate }) {
       if (formData.floorPlan) fd.append('floorPlan', formData.floorPlan);
       if (selAccess.length) fd.append('showAccessPeople', JSON.stringify(selAccess.map(u => u._id)));
 
-      const r = await api.post('/trade-shows', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post('/trade-shows', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       await fetchShows(); closeModal();
     } catch (err) { setErrors({ general: err.response?.data?.message || 'Error creating trade show' }); } finally { setSaving(false); }
   };

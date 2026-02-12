@@ -309,7 +309,6 @@ function ContactSidePanel({ contact, onClose, onStatusChange, onFollowUpChange }
     setFollowUpInput(contact.followUp || '');
   }, [contact]);
 
-  const statusStyle = STATUS_COLORS[contact.status] || { bg: '#f5f5f5', color: '#525252' };
   const daysActive = contact.createdAt ? Math.max(0, Math.floor((new Date() - new Date(contact.createdAt)) / (1000 * 60 * 60 * 24))) : 0;
 
   const handleFollowUpSave = () => {
