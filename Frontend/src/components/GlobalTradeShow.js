@@ -560,7 +560,7 @@ function GlobalTradeShow({ onNavigate }) {
                       <label>Industry</label>
                       <input value={indSearch || formData.industry}
                         onChange={e => { setIndSearch(e.target.value); setDdIndustry(true); }}
-                        onFocus={() => { setDdIndustry(true); setDdAccess(false); setDdLeads(false); }}
+                        onFocus={() => { setDdIndustry(true); setDdAccess(false); }}
                         placeholder="Search industry..." />
                       {ddIndustry && (
                         <div className="gts-dd">
