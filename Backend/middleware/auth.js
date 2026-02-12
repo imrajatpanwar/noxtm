@@ -19,6 +19,9 @@ const authenticateToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    // Normalize: ensure _id is always available (JWT stores userId, but many routes use _id)
+    decoded._id = decoded._id || decoded.userId;
+    decoded.userId = decoded.userId || decoded._id;
     req.user = decoded;
     next();
   } catch (error) {

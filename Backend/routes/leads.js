@@ -3,14 +3,32 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const LeadDirectory = require('../models/Lead');
 const Client = require('../models/Client');
+const Company = require('../models/Company');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
-// Get all leads for current user
+// Get all leads - Owner sees all company leads, users see only their own
 router.get('/', auth, async (req, res) => {
   try {
     const { status, search } = req.query;
-    const query = { userId: req.user.userId };
+    let query = {};
+
+    // Check if user is a company owner
+    let isOwner = false;
+    if (req.user.companyId) {
+      const company = await Company.findById(req.user.companyId);
+      if (company && company.owner.toString() === req.user.userId.toString()) {
+        isOwner = true;
+      }
+    }
+
+    if (isOwner) {
+      // Owner sees all leads for the company (userId = owner's id)
+      query.userId = req.user.userId;
+    } else {
+      // Regular user sees only leads they added
+      query.addedBy = req.user.userId;
+    }
 
     // Filter by status
     if (status && status !== 'All') {
@@ -26,7 +44,9 @@ router.get('/', auth, async (req, res) => {
       ];
     }
 
-    const leads = await LeadDirectory.find(query).sort({ createdAt: -1 });
+    const leads = await LeadDirectory.find(query)
+      .populate('addedBy', 'fullName name email username profileImage profilePicture avatar')
+      .sort({ createdAt: -1 });
     res.json(leads);
   } catch (error) {
     console.error('Error fetching leads:', error);
@@ -58,14 +78,25 @@ router.post('/', auth, async (req, res) => {
   try {
     console.log('Received lead data:', req.body);
     
+    // Determine the owner userId for the lead
+    let ownerUserId = req.user.userId;
+    if (req.user.companyId) {
+      const company = await Company.findById(req.user.companyId);
+      if (company && company.owner) {
+        ownerUserId = company.owner;
+      }
+    }
+
     const leadData = {
       ...req.body,
-      userId: req.user.userId
+      userId: ownerUserId,
+      addedBy: req.user.userId
     };
 
     console.log('Lead data with userId:', leadData);
     const lead = new LeadDirectory(leadData);
     await lead.save();
+    await lead.populate('addedBy', 'fullName name email username profileImage profilePicture avatar');
 
     res.status(201).json(lead);
   } catch (error) {

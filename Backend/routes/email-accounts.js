@@ -357,7 +357,7 @@ router.get('/connected', isAuthenticated, async (req, res) => {
       .map(conn => {
         const account = conn.emailAccountId.toObject();
         delete account.password;
-        delete account.imapSettings?.encryptedPassword;
+        // Keep encryptedPassword in imapSettings — frontend needs it to identify hosted accounts
         delete account.smtpSettings?.encryptedPassword;
         return account;
       });

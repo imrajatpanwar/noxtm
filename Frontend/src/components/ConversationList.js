@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { MessagingContext } from '../contexts/MessagingContext';
+import api from '../config/api';
 import {
   formatTimestamp,
   truncateMessage,
@@ -27,7 +28,24 @@ function ConversationList({
   const [showChats, setShowChats] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [filteredConversations, setFilteredConversations] = useState([]);
+  const [companyMembers, setCompanyMembers] = useState([]);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, conversation: null });
   const menuRef = useRef(null);
+  const contextMenuRef = useRef(null);
+
+  // Fetch all company members
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const response = await api.get('/messaging/users');
+        const members = response.data.users || response.data.members || [];
+        setCompanyMembers(members);
+      } catch (error) {
+        console.error('Error fetching company members:', error);
+      }
+    };
+    fetchMembers();
+  }, []);
 
   useEffect(() => {
     // Filter conversations based on search query
@@ -54,16 +72,61 @@ function ConversationList({
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
       }
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target)) {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+      }
     };
 
-    if (showMenu) {
+    if (showMenu || contextMenu.visible) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showMenu]);
+  }, [showMenu, contextMenu.visible]);
+
+  // Handle context menu on conversation item
+  const handleConversationContextMenu = (e, conversation) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      conversation
+    });
+  };
+
+  const handleMuteChat = (conversation) => {
+    console.log('Mute chat:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleClearChat = (conversation) => {
+    console.log('Clear chat:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handlePinChat = (conversation) => {
+    console.log('Pin chat:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleArchiveChat = (conversation) => {
+    console.log('Archive chat:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleMarkUnread = (conversation) => {
+    console.log('Mark unread:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleBlockUser = (conversation) => {
+    console.log('Block user:', conversation._id || conversation.name);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
 
   // Check if user is online
   const isUserOnline = (userId) => {
@@ -152,6 +215,7 @@ function ConversationList({
         key={conversation._id}
         className={isGroup ? `cl-noxtm-sidepanel-conversation-item cl-noxtm-group-chat ${isSelected ? 'cl-selected' : ''}` : `cl-noxtm-direct-message-item ${isSelected ? 'cl-dm-selected' : ''}`}
         onClick={() => onSelectConversation(conversation)}
+        onContextMenu={(e) => handleConversationContextMenu(e, conversation)}
       >
         <div className={isGroup ? "cl-conversation-avatar-wrapper" : "cl-dm-avatar-wrapper"}>
           <div className={isGroup ? `cl-main-chat-sidebar-conversation-avatar cl-group-avatar` : `cl-dm-avatar cl-user-avatar`}>
@@ -238,12 +302,6 @@ function ConversationList({
                 </svg>
                 <span>Chat Settings</span>
               </button>
-              <button className="cl-menu-item">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 11V9h2v2H7zm0-4V4h2v3H7z"/>
-                </svg>
-                <span>Help</span>
-              </button>
             </div>
           )}
         </div>
@@ -274,7 +332,7 @@ function ConversationList({
       </div>
 
       {/* Conversations List */}
-      <div className="cl-conversations-scroll">
+      <div className="cl-conversations-scroll" style={{ position: 'relative' }}>
         {/* Noxtm Bot — Pinned at top */}
         {onSelectNoxtmBot && (
           <div
@@ -351,13 +409,170 @@ function ConversationList({
           </div>
           {showChats && (
             <div className="cl-section-content">
-              {directMessageConversations.length > 0 ? (
-                directMessageConversations.map(renderConversationItem)
-              ) : (
+              {/* Show existing DM conversations first */}
+              {directMessageConversations.map(renderConversationItem)}
+
+              {/* Show remaining company members who have no DM conversation yet */}
+              {(() => {
+                const currentUserId = currentUser?.id || currentUser?._id;
+                // Collect user IDs who already have a DM conversation
+                const dmUserIds = new Set();
+                directMessageConversations.forEach(conv => {
+                  conv.participants?.forEach(p => {
+                    // Extract ID from various possible structures
+                    const pid = (typeof p === 'string' ? p : (p.user?._id || p.user?.id || p._id || p.id || p))?.toString();
+                    if (pid && pid !== currentUserId?.toString()) {
+                      dmUserIds.add(pid);
+                    }
+                  });
+                });
+
+                // Filter company members not in existing DMs
+                let remainingMembers = companyMembers.filter(m => {
+                  const memberId = (m._id || m.id)?.toString();
+                  return memberId !== currentUserId?.toString() && !dmUserIds.has(memberId);
+                });
+
+                // Apply search filter
+                if (searchQuery.trim()) {
+                  const query = searchQuery.toLowerCase();
+                  remainingMembers = remainingMembers.filter(m =>
+                    (m.fullName || m.username || '').toLowerCase().includes(query) ||
+                    (m.email || '').toLowerCase().includes(query)
+                  );
+                }
+
+                return remainingMembers.map(member => {
+                  const memberId = member._id || member.id;
+                  const name = member.fullName || member.username || member.email?.split('@')[0] || 'User';
+                  const initials = getInitials(name);
+                  const memberOnline = isUserOnline(memberId);
+                  let profileImg = member.profileImage;
+                  if (profileImg && !profileImg.startsWith('http') && !profileImg.startsWith('data:')) {
+                    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    profileImg = `${isDev ? 'http://localhost:5000' : ''}${profileImg}`;
+                  }
+
+                  return (
+                    <div
+                      key={memberId}
+                      className="cl-noxtm-direct-message-item cl-member-no-convo"
+                      onContextMenu={(e) => handleConversationContextMenu(e, {
+                        _id: `new_dm_${memberId}`,
+                        isDirectMessage: true,
+                        isNewDm: true,
+                        targetUser: member,
+                        participants: [
+                          { _id: currentUserId, fullName: currentUser?.fullName || currentUser?.username },
+                          { _id: memberId, fullName: name, profileImage: member.profileImage }
+                        ],
+                        name: name
+                      })}
+                      onClick={() => {
+                        // Create a temporary pseudo-conversation object to start a DM
+                        onSelectConversation({
+                          _id: `new_dm_${memberId}`,
+                          isDirectMessage: true,
+                          isNewDm: true,
+                          targetUser: member,
+                          participants: [
+                            { _id: currentUserId, fullName: currentUser?.fullName || currentUser?.username },
+                            { _id: memberId, fullName: name, profileImage: member.profileImage }
+                          ],
+                          name: name
+                        });
+                      }}
+                    >
+                      <div className="cl-dm-avatar-wrapper">
+                        <div className="cl-dm-avatar cl-user-avatar">
+                          {profileImg ? (
+                            <img
+                              src={profileImg}
+                              alt={name}
+                              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            initials
+                          )}
+                        </div>
+                        {memberOnline && <div className="cl-dm-online-indicator"></div>}
+                      </div>
+                      <div className="cl-conversation-info">
+                        <div className="cl-dm-conversation-header">
+                          <span className="cl-conversation-name">{name}</span>
+                        </div>
+                        <div className="cl-conversation-preview">
+                          <span className="cl-last-message cl-member-role">{member.roleInCompany || 'Member'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+
+              {/* Context Menu */}
+              {contextMenu.visible && (
+                <div
+                  ref={contextMenuRef}
+                  className="cl-context-menu"
+                  style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x }}
+                >
+                  <button className="cl-context-menu-item" onClick={() => handleMuteChat(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                      <line x1="23" y1="9" x2="17" y2="15"/>
+                      <line x1="17" y1="9" x2="23" y2="15"/>
+                    </svg>
+                    <span>Mute</span>
+                  </button>
+                  <button className="cl-context-menu-item" onClick={() => handlePinChat(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 17v5"/>
+                      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+                    </svg>
+                    <span>Pin Chat</span>
+                  </button>
+                  <button className="cl-context-menu-item" onClick={() => handleMarkUnread(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                    </svg>
+                    <span>Mark as Unread</span>
+                  </button>
+                  <div className="cl-context-menu-divider"></div>
+                  <button className="cl-context-menu-item" onClick={() => handleArchiveChat(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="5" rx="1"/>
+                      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+                      <path d="M10 12h4"/>
+                    </svg>
+                    <span>Archive Chat</span>
+                  </button>
+                  <button className="cl-context-menu-item" onClick={() => handleClearChat(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"/>
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    </svg>
+                    <span>Clear Chat</span>
+                  </button>
+                  <div className="cl-context-menu-divider"></div>
+                  <button className="cl-context-menu-item cl-context-menu-danger" onClick={() => handleBlockUser(contextMenu.conversation)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                    </svg>
+                    <span>Block User</span>
+                  </button>
+                </div>
+              )}
+
+              {directMessageConversations.length === 0 && companyMembers.length === 0 && (
                 <div className="cl-empty-conversations">
                   <div className="cl-empty-icon">💬</div>
-                  <p>No direct messages yet</p>
-                  <span>Start a direct message with a team member</span>
+                  <p>No team members yet</p>
+                  <span>Invite members to your company to start chatting</span>
                 </div>
               )}
             </div>
