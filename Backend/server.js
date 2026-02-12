@@ -190,6 +190,10 @@ app.use('/api/tasks', tasksRoutes);
 const findrRoutes = require('./routes/findr');
 app.use('/api/findr', findrRoutes);
 
+// Notes routes
+const notesRoutes = require('./routes/notes');
+app.use('/api/notes', notesRoutes);
+
 // Admin panel routes (super admin only)
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);

@@ -10,7 +10,7 @@ import ClientLeads from './ClientLeads';
 import EmailSetup from './EmailSetup';
 import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
-import CaseStudies from './CaseStudies';
+import Notes from './Notes';
 
 import EmailMarketing from './EmailMarketing';
 import CampaignSetup from './CampaignSetup';
@@ -204,8 +204,8 @@ function Dashboard({ user, onLogout }) {
         return <ProjectManagement />;
       case 'project-delivered':
         return <ProjectDelivered />;
-      case 'case-studies':
-        return <CaseStudies />;
+      case 'notes':
+        return <Notes />;
       case 'email-marketing':
         return <EmailMarketing />;
       case 'email-setup':
