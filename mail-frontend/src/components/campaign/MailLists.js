@@ -187,8 +187,8 @@ function MailLists() {
         </div>
       </div>
 
-      {/* Lists Grid */}
-      <div className="lists-grid">
+      {/* Lists Table */}
+      <div className="lists-table">
         {lists.length === 0 ? (
           <div className="no-lists">
             <FiAlertCircle size={48} />
@@ -196,118 +196,103 @@ function MailLists() {
             <p>Create your first mail list to start sending campaigns using the button above</p>
           </div>
         ) : (
-          lists.map(list => {
-            const status = getListStatus(list);
-            const totalContacts = list.contacts?.length || list.contactCount || 0;
-            const sourceBadge = getSourceBadge(list);
-            const SourceIcon = sourceBadge.icon;
-            const pipeline = pipelineData[list._id];
+          <>
+            <div className="lists-table-header">
+              <div className="lt-col lt-col-name">Name</div>
+              <div className="lt-col lt-col-status">Status</div>
+              <div className="lt-col lt-col-emails">Emails</div>
+              <div className="lt-col lt-col-pipeline">Pipeline</div>
+              <div className="lt-col lt-col-actions"></div>
+            </div>
+            {lists.map(list => {
+              const status = getListStatus(list);
+              const totalContacts = list.contacts?.length || list.contactCount || 0;
+              const sourceBadge = getSourceBadge(list);
+              const SourceIcon = sourceBadge.icon;
+              const pipeline = pipelineData[list._id];
 
-            // Fix display for lists created with "undefined" in name/description
-            const tsId = list.source?.tradeShowId;
-            const tsShortName = tsId ? tradeShowMap[tsId] : null;
-            const tsName = tsShortName || list.source?.tradeShowName;
-            let displayName = list.name || 'Untitled List';
-            if (displayName.includes('undefined') && tsName) {
-              displayName = `${tsName} Contacts`;
-            }
-            let displayDesc = list.description || '';
-            if (displayDesc.includes('undefined') && tsName) {
-              displayDesc = `Imported from trade show: ${tsName}`;
-            }
-            
-            return (
-              <div key={list._id} className="list-card">
-                <div className="list-card-header">
-                  <div className="list-card-title-row">
-                    <h3>{displayName}</h3>
-                    <span className="source-badge" style={{ background: `${sourceBadge.color}15`, color: sourceBadge.color }}>
-                      <SourceIcon size={12} /> {sourceBadge.label}
-                    </span>
-                  </div>
-                  <span className={`list-status ${status.color}`}>{status.label}</span>
-                </div>
-                
-                {displayDesc && !displayDesc.includes('undefined') && (
-                  <p className="list-description">{displayDesc}</p>
-                )}
+              const tsId = list.source?.tradeShowId;
+              const tsShortName = tsId ? tradeShowMap[tsId] : null;
+              const tsName = tsShortName || list.source?.tradeShowName;
+              let displayName = list.name || 'Untitled List';
+              if (displayName.includes('undefined') && tsName) {
+                displayName = `${tsName} Contacts`;
+              }
 
-                {list.source?.type === 'tradeshow' && (tsName || list.source?.tradeShowName) && (
-                  <div className="list-source-info">
-                    <FiGlobe size={12} /> {tsName || list.source.tradeShowName}
-                  </div>
-                )}
-                
-                <div className="list-stats">
-                  <div className="list-stat">
-                    <span className="stat-number">{totalContacts.toLocaleString()}</span>
-                    <span className="stat-text">Total Emails</span>
-                  </div>
-                  <div className="list-stat valid">
-                    <span className="stat-number">{(list.validCount || 0).toLocaleString()}</span>
-                    <span className="stat-text">Valid</span>
-                  </div>
-                  <div className="list-stat invalid">
-                    <span className="stat-number">{(list.invalidCount || 0).toLocaleString()}</span>
-                    <span className="stat-text">Invalid</span>
-                  </div>
-                </div>
-
-                {list.validated && (
-                  <div className="validation-bar">
-                    <div 
-                      className="validation-progress valid" 
-                      style={{ width: `${totalContacts > 0 ? (list.validCount / totalContacts) * 100 : 0}%` }}
-                    ></div>
-                    <div 
-                      className="validation-progress invalid" 
-                      style={{ width: `${totalContacts > 0 ? (list.invalidCount / totalContacts) * 100 : 0}%` }}
-                    ></div>
-                  </div>
-                )}
-
-                {/* Pipeline Tracker */}
-                {pipeline && (
-                  <div className="pipeline-tracker">
-                    <div className="pipeline-stages">
-                      <div className={`pipeline-stage ${pipeline.fetched > 0 ? 'completed' : ''}`}>
-                        <div className="pipeline-dot"></div>
-                        <span className="pipeline-label">Fetched</span>
-                        <span className="pipeline-count">{pipeline.fetched}</span>
-                      </div>
-                      <div className="pipeline-connector"></div>
-                      <div className={`pipeline-stage ${pipeline.validated ? 'completed' : ''}`}>
-                        <div className="pipeline-dot"></div>
-                        <span className="pipeline-label">Validated</span>
-                        <span className="pipeline-count">{pipeline.validCount}</span>
-                      </div>
-                      <div className="pipeline-connector"></div>
-                      <div className={`pipeline-stage ${pipeline.campaignsUsed > 0 ? 'completed' : ''}`}>
-                        <div className="pipeline-dot"></div>
-                        <span className="pipeline-label">Campaigns</span>
-                        <span className="pipeline-count">{pipeline.campaignsUsed}</span>
-                      </div>
-                      <div className="pipeline-connector"></div>
-                      <div className={`pipeline-stage ${pipeline.totalSent > 0 ? 'completed' : ''}`}>
-                        <div className="pipeline-dot"></div>
-                        <span className="pipeline-label">Sent</span>
-                        <span className="pipeline-count">{pipeline.totalSent}</span>
-                      </div>
+              return (
+                <div key={list._id} className="lists-table-row" onClick={() => handleViewList(list)}>
+                  {/* Name + Source */}
+                  <div className="lt-col lt-col-name">
+                    <div className="lt-name-group">
+                      <span className="lt-name">{displayName}</span>
+                      <span className="source-badge" style={{ background: `${sourceBadge.color}15`, color: sourceBadge.color }}>
+                        <SourceIcon size={10} /> {sourceBadge.label}
+                      </span>
                     </div>
                   </div>
-                )}
 
-                <div className="list-card-actions">
-                  <button className="btn-view" onClick={() => handleViewList(list)}>
-                    View & Manage
-                  </button>
-                  <button className="btn-delete" onClick={() => handleDeleteList(list._id)}>
-                    <FiTrash2 />
-                  </button>
+                  {/* Status */}
+                  <div className="lt-col lt-col-status">
+                    <span className={`list-status ${status.color}`}>{status.label}</span>
+                  </div>
+
+                  {/* Emails */}
+                  <div className="lt-col lt-col-emails">
+                    <div className="lt-emails-group">
+                      <span className="lt-email-stat">{totalContacts.toLocaleString()} <small>total</small></span>
+                      <span className="lt-email-stat lt-valid">{(list.validCount || 0).toLocaleString()} <small>valid</small></span>
+                      <span className="lt-email-stat lt-invalid">{(list.invalidCount || 0).toLocaleString()} <small>invalid</small></span>
+                    </div>
+                    {list.validated && totalContacts > 0 && (
+                      <div className="lt-validation-bar">
+                        <div className="lt-bar-valid" style={{ width: `${(list.validCount / totalContacts) * 100}%` }}></div>
+                        <div className="lt-bar-invalid" style={{ width: `${(list.invalidCount / totalContacts) * 100}%` }}></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pipeline */}
+                  <div className="lt-col lt-col-pipeline">
+                    {pipeline ? (
+                      <div className="lt-pipeline">
+                        <div className={`lt-pip-step ${pipeline.fetched > 0 ? 'done' : ''}`}>
+                          <div className="lt-pip-dot"></div>
+                          <span>{pipeline.fetched}</span>
+                        </div>
+                        <div className="lt-pip-line"></div>
+                        <div className={`lt-pip-step ${pipeline.validated ? 'done' : ''}`}>
+                          <div className="lt-pip-dot"></div>
+                          <span>{pipeline.validCount}</span>
+                        </div>
+                        <div className="lt-pip-line"></div>
+                        <div className={`lt-pip-step ${pipeline.campaignsUsed > 0 ? 'done' : ''}`}>
+                          <div className="lt-pip-dot"></div>
+                          <span>{pipeline.campaignsUsed}</span>
+                        </div>
+                        <div className="lt-pip-line"></div>
+                        <div className={`lt-pip-step ${pipeline.totalSent > 0 ? 'done' : ''}`}>
+                          <div className="lt-pip-dot"></div>
+                          <span>{pipeline.totalSent}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="lt-pipeline-empty">—</span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="lt-col lt-col-actions">
+                    <button className="btn-view-sm" onClick={(e) => { e.stopPropagation(); handleViewList(list); }}>
+                      <FiChevronRight size={16} />
+                    </button>
+                    <button className="btn-delete-sm" onClick={(e) => { e.stopPropagation(); handleDeleteList(list._id); }}>
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </>
         )}
       </div>
 
