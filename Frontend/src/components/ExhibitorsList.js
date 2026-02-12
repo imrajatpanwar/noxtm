@@ -2,17 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './ExhibitorsList.css';
 import Breadcrumb from './Breadcrumb';
 import defaultAvatar from './image/default-avatar.svg';
-import { FiPlus, FiX, FiSearch, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiMail, FiPhone, FiMapPin, FiFilter } from 'react-icons/fi';
-
-const LEAD_STATUS_OPTIONS = ['All', 'Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Converted', 'Lost'];
-const STATUS_COLORS = {
-  'Cold Lead': { bg: '#dbeafe', color: '#1d4ed8' },
-  'Warm Lead': { bg: '#fef3c7', color: '#b45309' },
-  'Qualified (SQL)': { bg: '#dcfce7', color: '#15803d' },
-  'Active': { bg: '#f3e8ff', color: '#7c3aed' },
-  'Converted': { bg: '#d1fae5', color: '#059669' },
-  'Lost': { bg: '#fee2e2', color: '#dc2626' }
-};
+import { FiPlus, FiX, FiSearch, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 
 function ExhibitorsList({ tradeShow, onNavigate }) {
   const [exhibitors, setExhibitors] = useState([]);
@@ -22,14 +12,6 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editId, setEditId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-
-  // Tabs: exhibitors / leads
-  const [activeTab, setActiveTab] = useState('exhibitors');
-
-  // Leads state
-  const [leads, setLeads] = useState([]);
-  const [leadsLoading, setLeadsLoading] = useState(false);
-  const [leadStatusFilter, setLeadStatusFilter] = useState('All');
 
   const [form, setForm] = useState({
     companyName: '', boothNo: '', location: '',
@@ -44,18 +26,6 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
   ];
 
   useEffect(() => { if (tradeShow?._id) fetchExhibitors(); }, [tradeShow]);
-
-  // Fetch leads when switching to leads tab
-  useEffect(() => { if (tradeShow?._id && activeTab === 'leads') fetchLeads(); }, [tradeShow, activeTab]);
-
-  const fetchLeads = async () => {
-    try {
-      setLeadsLoading(true);
-      const t = localStorage.getItem('token');
-      const r = await fetch(`/api/lead-campaigns/by-trade-show/${tradeShow._id}`, { headers: { Authorization: `Bearer ${t}` } });
-      if (r.ok) { const d = await r.json(); setLeads(d.leads || []); }
-    } catch (e) { console.error(e); } finally { setLeadsLoading(false); }
-  };
 
   const fetchExhibitors = async () => {
     try {
@@ -150,25 +120,8 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="exl-tabs">
-        <button
-          className={`exl-tab ${activeTab === 'exhibitors' ? 'active' : ''}`}
-          onClick={() => setActiveTab('exhibitors')}
-        >
-          Exhibitors <span className="exl-tab-count">{exhibitors.length}</span>
-        </button>
-        <button
-          className={`exl-tab ${activeTab === 'leads' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leads')}
-        >
-          Leads <span className="exl-tab-count">{leads.length}</span>
-        </button>
-      </div>
-
-      {/* Exhibitors Tab Content */}
-      {activeTab === 'exhibitors' && (
-        <>
+      {/* Exhibitors Content */}
+      {
           {loading ? (
             <div className="exl-load"><div className="exl-spin" /><p>Loading exhibitors...</p></div>
           ) : filtered.length > 0 ? (
@@ -247,90 +200,6 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
               <button className="exl-add" onClick={openAdd}><FiPlus size={16} /> Add Exhibitor</button>
             </div>
           )}
-        </>
-      )}
-
-      {/* Leads Tab Content */}
-      {activeTab === 'leads' && (
-        <>
-          {/* Leads Filter Bar */}
-          <div className="exl-leads-filter-bar">
-            <div className="exl-srch">
-              <FiSearch size={15} />
-              <input placeholder="Search leads..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-            </div>
-            <div className="exl-filter-dd">
-              <FiFilter size={14} />
-              <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)}>
-                {LEAD_STATUS_OPTIONS.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {leadsLoading ? (
-            <div className="exl-load"><div className="exl-spin" /><p>Loading leads...</p></div>
-          ) : (() => {
-            const filteredLeads = leads.filter(lead => {
-              const matchesSearch = lead.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                lead.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                lead.email?.toLowerCase().includes(searchQuery.toLowerCase());
-              const matchesStatus = leadStatusFilter === 'All' || lead.status === leadStatusFilter;
-              return matchesSearch && matchesStatus;
-            });
-
-            return filteredLeads.length > 0 ? (
-              <div className="exl-table-wrap">
-                <table className="exl-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Company</th>
-                      <th>Email</th>
-                      <th>Phone</th>
-                      <th>Designation</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLeads.map(lead => (
-                      <tr key={lead._id}>
-                        <td className="exl-co">
-                          <div className="exl-lead-cell">
-                            <div className="exl-lead-avatar">{lead.clientName?.charAt(0)?.toUpperCase() || '?'}</div>
-                            <strong>{lead.clientName || '—'}</strong>
-                          </div>
-                        </td>
-                        <td>{lead.companyName || '—'}</td>
-                        <td>{lead.email ? <a href={`mailto:${lead.email}`} className="exl-link">{lead.email}</a> : '—'}</td>
-                        <td>{lead.phone || '—'}</td>
-                        <td>{lead.designation || '—'}</td>
-                        <td>
-                          <span
-                            className="exl-lead-status"
-                            style={{
-                              background: STATUS_COLORS[lead.status]?.bg || '#f5f5f5',
-                              color: STATUS_COLORS[lead.status]?.color || '#737373'
-                            }}
-                          >
-                            {lead.status || 'New'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="exl-empty">
-                <h3>No Leads Yet</h3>
-                <p>Leads captured via Chrome Extension for {tradeShow?.shortName || 'this trade show'} will appear here.</p>
-              </div>
-            );
-          })()}
-        </>
-      )}
 
       {/* Add / Edit Modal */}
       {showModal && (

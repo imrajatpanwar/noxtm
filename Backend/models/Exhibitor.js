@@ -63,6 +63,15 @@ const exhibitorSchema = new mongoose.Schema({
     sameAsCompany: {
       type: Boolean,
       default: false
+    },
+    status: {
+      type: String,
+      enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'],
+      default: 'Cold Lead'
+    },
+    followUp: {
+      type: String,
+      trim: true
     }
   }],
   extractedAt: {

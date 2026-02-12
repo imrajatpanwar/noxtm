@@ -200,4 +200,117 @@ router.delete('/exhibitors/:id', auth, async (req, res) => {
   }
 });
 
+// ============ CONTACTS ENDPOINTS ============
+
+// Get all contacts across all exhibitors for the user's company
+router.get('/contacts', auth, async (req, res) => {
+  try {
+    const User = mongoose.model('User');
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const companyId = user.companyId;
+    const { status, search } = req.query;
+
+    // Get all exhibitors for this company
+    const exhibitors = await Exhibitor.find({ companyId }).populate({
+      path: 'tradeShowId',
+      select: 'shortName fullName'
+    }).sort({ createdAt: -1 });
+
+    // Flatten contacts from all exhibitors
+    const contacts = [];
+    for (const ex of exhibitors) {
+      if (!ex.contacts || ex.contacts.length === 0) continue;
+      for (let i = 0; i < ex.contacts.length; i++) {
+        const c = ex.contacts[i];
+        if (!c.fullName && !c.email) continue; // skip empty contacts
+
+        const contact = {
+          _id: `${ex._id}_${i}`,
+          exhibitorId: ex._id,
+          contactIndex: i,
+          fullName: c.fullName || '',
+          designation: c.designation || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          location: c.location || '',
+          socialLinks: c.socialLinks || [],
+          status: c.status || 'Cold Lead',
+          followUp: c.followUp || '',
+          companyName: ex.companyName,
+          website: ex.website,
+          tradeShowId: ex.tradeShowId?._id || ex.tradeShowId,
+          tradeShowName: ex.tradeShowId?.shortName || ex.tradeShowId?.fullName || '',
+          createdAt: ex.createdAt
+        };
+
+        // Apply filters
+        if (status && status !== 'All' && contact.status !== status) continue;
+        if (search) {
+          const q = search.toLowerCase();
+          const match = contact.fullName.toLowerCase().includes(q) ||
+            contact.companyName.toLowerCase().includes(q) ||
+            contact.email.toLowerCase().includes(q) ||
+            contact.designation.toLowerCase().includes(q);
+          if (!match) continue;
+        }
+
+        contacts.push(contact);
+      }
+    }
+
+    res.json(contacts);
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update contact status/followUp within an exhibitor
+router.patch('/contacts/:exhibitorId/:contactIndex/status', auth, async (req, res) => {
+  try {
+    const User = mongoose.model('User');
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { exhibitorId, contactIndex } = req.params;
+    const { status, followUp } = req.body;
+    const idx = parseInt(contactIndex);
+
+    const exhibitor = await Exhibitor.findOne({ _id: exhibitorId, companyId: user.companyId });
+    if (!exhibitor) return res.status(404).json({ message: 'Exhibitor not found' });
+    if (!exhibitor.contacts || idx >= exhibitor.contacts.length) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+
+    if (status) exhibitor.contacts[idx].status = status;
+    if (followUp !== undefined) exhibitor.contacts[idx].followUp = followUp;
+
+    await exhibitor.save();
+
+    const c = exhibitor.contacts[idx];
+    res.json({
+      _id: `${exhibitor._id}_${idx}`,
+      exhibitorId: exhibitor._id,
+      contactIndex: idx,
+      fullName: c.fullName || '',
+      designation: c.designation || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      location: c.location || '',
+      socialLinks: c.socialLinks || [],
+      status: c.status || 'Cold Lead',
+      followUp: c.followUp || '',
+      companyName: exhibitor.companyName,
+      website: exhibitor.website,
+      tradeShowId: exhibitor.tradeShowId,
+      createdAt: exhibitor.createdAt
+    });
+  } catch (error) {
+    console.error('Error updating contact status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

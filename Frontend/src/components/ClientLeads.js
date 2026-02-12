@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FiSearch, FiEdit3, FiUser, FiPlus, FiMail, FiPhone, FiMapPin,
-  FiCalendar, FiActivity, FiDownload, FiUpload, FiX, FiTrash2,
+  FiSearch, FiEdit3, FiUser, FiMail, FiPhone, FiMapPin,
+  FiCalendar, FiActivity, FiDownload, FiX,
   FiChevronRight, FiBriefcase, FiGlobe, FiFileText
 } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -18,84 +18,56 @@ const STATUS_COLORS = {
 };
 
 function ClientLeads() {
-  const [leads, setLeads] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [showAddForm, setShowAddForm] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
-  const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
 
-  const [newLead, setNewLead] = useState({
-    companyName: '',
-    clientName: '',
-    email: '',
-    phone: '',
-    designation: '',
-    location: '',
-    requirements: ''
-  });
-
-  // Fetch leads from backend
-  const fetchLeads = useCallback(async () => {
+  // Fetch contacts from backend (exhibitor contacts)
+  const fetchContacts = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
       if (filterStatus !== 'All') params.status = filterStatus;
       if (searchTerm) params.search = searchTerm;
 
-      const response = await api.get('/leads', { params });
-      // Backend returns array directly
-      const data = Array.isArray(response.data) ? response.data : (response.data?.leads || response.data || []);
-      setLeads(data);
+      const response = await api.get('/contacts', { params });
+      const data = Array.isArray(response.data) ? response.data : [];
+      setContacts(data);
     } catch (error) {
-      console.error('Error fetching leads:', error);
-      toast.error('Failed to load leads');
-      setLeads([]);
+      console.error('Error fetching contacts:', error);
+      toast.error('Failed to load contacts');
+      setContacts([]);
     } finally {
       setLoading(false);
     }
   }, [filterStatus, searchTerm]);
 
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    fetchContacts();
+  }, [fetchContacts]);
 
   // Stats
   const stats = {
-    total: leads.length,
-    cold: leads.filter(l => l.status === 'Cold Lead').length,
-    warm: leads.filter(l => l.status === 'Warm Lead').length,
-    qualified: leads.filter(l => l.status === 'Qualified (SQL)').length,
-    active: leads.filter(l => l.status === 'Active').length,
-    dead: leads.filter(l => l.status === 'Dead Lead').length
+    total: contacts.length,
+    cold: contacts.filter(c => c.status === 'Cold Lead').length,
+    warm: contacts.filter(c => c.status === 'Warm Lead').length,
+    qualified: contacts.filter(c => c.status === 'Qualified (SQL)').length,
+    active: contacts.filter(c => c.status === 'Active').length,
+    dead: contacts.filter(c => c.status === 'Dead Lead').length
   };
 
-  // Add lead
-  const handleAddLead = async (e) => {
-    e.preventDefault();
-    if (!newLead.companyName || !newLead.clientName || !newLead.email) return;
+  // Update contact status
+  const handleStatusChange = async (contact, newStatus) => {
     try {
-      const response = await api.post('/leads', {
-        ...newLead,
-        status: 'Cold Lead'
-      });
-      setLeads([response.data, ...leads]);
-      setNewLead({ companyName: '', clientName: '', email: '', phone: '', designation: '', location: '', requirements: '' });
-      setShowAddForm(false);
-      toast.success('Lead added successfully!');
-    } catch (error) {
-      console.error('Error adding lead:', error);
-      toast.error(error.response?.data?.message || 'Failed to add lead');
-    }
-  };
-
-  // Update lead status
-  const handleStatusChange = async (leadId, newStatus) => {
-    try {
-      const response = await api.patch(`/leads/${leadId}/status`, { status: newStatus });
-      setLeads(leads.map(l => l._id === leadId ? response.data : l));
-      if (selectedLead?._id === leadId) setSelectedLead(response.data);
+      const response = await api.patch(
+        `/contacts/${contact.exhibitorId}/${contact.contactIndex}/status`,
+        { status: newStatus }
+      );
+      setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
+      if (selectedContact?._id === contact._id) setSelectedContact({ ...selectedContact, ...response.data });
       toast.success('Status updated');
     } catch (error) {
       console.error('Error updating status:', error);
@@ -103,106 +75,43 @@ function ClientLeads() {
     }
   };
 
-  // Delete lead
-  const handleDeleteLead = async (leadId) => {
-    if (!window.confirm('Delete this lead? This cannot be undone.')) return;
+  // Update contact follow-up
+  const handleFollowUpChange = async (contact, followUp) => {
     try {
-      await api.delete(`/leads/${leadId}`);
-      setLeads(leads.filter(l => l._id !== leadId));
-      if (selectedLead?._id === leadId) {
-        setShowSidePanel(false);
-        setSelectedLead(null);
-      }
-      toast.success('Lead deleted');
+      const response = await api.patch(
+        `/contacts/${contact.exhibitorId}/${contact.contactIndex}/status`,
+        { followUp }
+      );
+      setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
+      if (selectedContact?._id === contact._id) setSelectedContact({ ...selectedContact, ...response.data });
+      toast.success('Follow-up updated');
     } catch (error) {
-      console.error('Error deleting lead:', error);
-      toast.error('Failed to delete lead');
-    }
-  };
-
-  // Update lead (full)
-  const handleUpdateLead = async (leadId, data) => {
-    try {
-      const response = await api.put(`/leads/${leadId}`, data);
-      setLeads(leads.map(l => l._id === leadId ? response.data : l));
-      setSelectedLead(response.data);
-      toast.success('Lead updated');
-    } catch (error) {
-      console.error('Error updating lead:', error);
-      toast.error('Failed to update lead');
+      console.error('Error updating follow-up:', error);
+      toast.error('Failed to update follow-up');
     }
   };
 
   // CSV Export
   const handleExport = () => {
     const csvContent = [
-      ['Company Name', 'Client Name', 'Email', 'Phone', 'Designation', 'Location', 'Status', 'Requirements'],
-      ...leads.map(l => [
-        l.companyName, l.clientName, l.email, l.phone || '', l.designation || '',
-        l.location || '', l.status, l.requirements || ''
+      ['Contact Name', 'Company', 'Trade Show', 'Email', 'Phone', 'Designation', 'Location', 'Status', 'Follow-Up'],
+      ...contacts.map(c => [
+        c.fullName, c.companyName, c.tradeShowName || '', c.email, c.phone || '',
+        c.designation || '', c.location || '', c.status, c.followUp || ''
       ])
     ].map(row => row.map(f => `"${(f || '').replace(/"/g, '""')}"`).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `leads_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `contacts_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    toast.success('Leads exported');
+    toast.success('Contacts exported');
   };
 
-  // CSV Import
-  const handleImport = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const lines = e.target.result.split('\n');
-        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
-        let imported = 0;
-
-        for (const line of lines.slice(1)) {
-          if (!line.trim()) continue;
-          const values = line.split(',').map(v => v.replace(/"/g, '').trim());
-          const row = {};
-          headers.forEach((h, i) => { row[h] = values[i] || ''; });
-
-          const leadData = {
-            companyName: row['company name'] || row['companyname'] || row['company'] || '',
-            clientName: row['client name'] || row['clientname'] || row['name'] || '',
-            email: row['email'] || '',
-            phone: row['phone'] || '',
-            designation: row['designation'] || '',
-            location: row['location'] || '',
-            requirements: row['requirements'] || row['notes'] || '',
-            status: 'Cold Lead'
-          };
-
-          if (leadData.companyName && leadData.clientName && leadData.email) {
-            try {
-              await api.post('/leads', leadData);
-              imported++;
-            } catch (err) {
-              console.error('Failed to import row:', err);
-            }
-          }
-        }
-
-        toast.success(`${imported} leads imported`);
-        fetchLeads();
-      } catch (error) {
-        toast.error('Error importing CSV');
-        console.error('Import error:', error);
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  // Open lead detail
-  const handleLeadClick = (lead) => {
-    setSelectedLead(lead);
+  // Open contact detail
+  const handleContactClick = (contact) => {
+    setSelectedContact(contact);
     setShowSidePanel(true);
   };
 
@@ -213,19 +122,12 @@ function ClientLeads() {
       {/* Header */}
       <div className="cl-header">
         <div>
-          <h1 className="cl-title">Client Leads</h1>
-          <p className="cl-subtitle">Track, manage and convert your leads pipeline</p>
+          <h1 className="cl-title">Contacts</h1>
+          <p className="cl-subtitle">Exhibitor contacts from your trade shows</p>
         </div>
         <div className="cl-header-actions">
           <button className="cl-btn-outline" onClick={handleExport}>
             <FiDownload /> Export
-          </button>
-          <label className="cl-btn-outline cl-import-label">
-            <FiUpload /> Import
-            <input type="file" accept=".csv" onChange={handleImport} hidden />
-          </label>
-          <button className="cl-btn-primary" onClick={() => setShowAddForm(true)}>
-            <FiPlus /> Add Lead
           </button>
         </div>
       </div>
@@ -238,7 +140,7 @@ function ClientLeads() {
           </div>
           <div className="cl-stat-info">
             <span className="cl-stat-number">{stats.total}</span>
-            <span className="cl-stat-label">Total Leads</span>
+            <span className="cl-stat-label">Total Contacts</span>
           </div>
         </div>
         <div className="cl-stat-card">
@@ -247,7 +149,7 @@ function ClientLeads() {
           </div>
           <div className="cl-stat-info">
             <span className="cl-stat-number">{stats.cold}</span>
-            <span className="cl-stat-label">Cold Leads</span>
+            <span className="cl-stat-label">Cold</span>
           </div>
         </div>
         <div className="cl-stat-card">
@@ -256,7 +158,7 @@ function ClientLeads() {
           </div>
           <div className="cl-stat-info">
             <span className="cl-stat-number">{stats.warm}</span>
-            <span className="cl-stat-label">Warm Leads</span>
+            <span className="cl-stat-label">Warm</span>
           </div>
         </div>
         <div className="cl-stat-card">
@@ -286,7 +188,7 @@ function ClientLeads() {
             <FiSearch />
             <input
               type="text"
-              placeholder="Search leads..."
+              placeholder="Search contacts..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -297,162 +199,84 @@ function ClientLeads() {
             <option value="All">All Statuses</option>
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <span className="cl-result-count">{leads.length} lead{leads.length !== 1 ? 's' : ''}</span>
+          <span className="cl-result-count">{contacts.length} contact{contacts.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
-      {/* Add Lead Form */}
-      {showAddForm && (
-        <div className="noxtm-overlay" onClick={() => setShowAddForm(false)}>
-          <div className="cl-modal" onClick={e => e.stopPropagation()}>
-            <div className="cl-modal-header">
-              <h2>Add New Lead</h2>
-              <button className="cl-modal-close" onClick={() => setShowAddForm(false)}><FiX /></button>
-            </div>
-            <form onSubmit={handleAddLead} className="cl-modal-form">
-              <div className="cl-form-row">
-                <div className="cl-form-group">
-                  <label>Company Name <span className="cl-req">*</span></label>
-                  <input type="text" required placeholder="e.g. Acme Corp" value={newLead.companyName}
-                    onChange={e => setNewLead({ ...newLead, companyName: e.target.value })} />
-                </div>
-                <div className="cl-form-group">
-                  <label>Client Name <span className="cl-req">*</span></label>
-                  <input type="text" required placeholder="e.g. John Smith" value={newLead.clientName}
-                    onChange={e => setNewLead({ ...newLead, clientName: e.target.value })} />
-                </div>
-              </div>
-              <div className="cl-form-row">
-                <div className="cl-form-group">
-                  <label>Email <span className="cl-req">*</span></label>
-                  <input type="email" required placeholder="john@acme.com" value={newLead.email}
-                    onChange={e => setNewLead({ ...newLead, email: e.target.value })} />
-                </div>
-                <div className="cl-form-group">
-                  <label>Phone</label>
-                  <input type="tel" placeholder="+1-555-0123" value={newLead.phone}
-                    onChange={e => setNewLead({ ...newLead, phone: e.target.value })} />
-                </div>
-              </div>
-              <div className="cl-form-row">
-                <div className="cl-form-group">
-                  <label>Designation</label>
-                  <input type="text" placeholder="e.g. CTO" value={newLead.designation}
-                    onChange={e => setNewLead({ ...newLead, designation: e.target.value })} />
-                </div>
-                <div className="cl-form-group">
-                  <label>Location</label>
-                  <input type="text" placeholder="e.g. New York" value={newLead.location}
-                    onChange={e => setNewLead({ ...newLead, location: e.target.value })} />
-                </div>
-              </div>
-              <div className="cl-form-group">
-                <label>Requirements</label>
-                <textarea rows="3" placeholder="Describe what the lead needs..."
-                  value={newLead.requirements}
-                  onChange={e => setNewLead({ ...newLead, requirements: e.target.value })} />
-              </div>
-              <div className="cl-modal-actions">
-                <button type="button" className="cl-btn-cancel" onClick={() => setShowAddForm(false)}>Cancel</button>
-                <button type="submit" className="cl-btn-submit">Add Lead</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Leads Table */}
+      {/* Contacts Table */}
       <div className="cl-table-wrapper">
         {loading ? (
           <div className="cl-loading">
             <div className="cl-spinner" />
-            <p>Loading leads...</p>
+            <p>Loading contacts...</p>
           </div>
-        ) : leads.length === 0 ? (
+        ) : contacts.length === 0 ? (
           <div className="cl-empty">
             <FiUser size={44} />
-            <h3>No Leads Found</h3>
-            <p>{searchTerm || filterStatus !== 'All' ? 'Try adjusting your filters' : 'Add your first lead to get started'}</p>
+            <h3>No Contacts Found</h3>
+            <p>{searchTerm || filterStatus !== 'All' ? 'Try adjusting your filters' : 'Contacts from exhibitors will appear here once you add them via trade shows'}</p>
           </div>
         ) : (
           <table className="cl-table">
             <thead>
               <tr>
-                <th>Lead</th>
-                <th>Company</th>
                 <th>Contact</th>
+                <th>Company</th>
+                <th>Trade Show</th>
+                <th>Phone</th>
+                <th>Designation</th>
                 <th>Status</th>
-                <th>Lead By</th>
                 <th>Follow-Up</th>
                 <th>Date</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {leads.map(lead => {
-                const style = getStatusStyle(lead.status);
+              {contacts.map(contact => {
+                const style = getStatusStyle(contact.status);
                 return (
-                  <tr key={lead._id} onClick={() => handleLeadClick(lead)}>
+                  <tr key={contact._id} onClick={() => handleContactClick(contact)}>
                     <td>
                       <div className="cl-lead-cell">
                         <div className="cl-lead-avatar">
-                          {(lead.clientName || '?')[0].toUpperCase()}
+                          {(contact.fullName || '?')[0].toUpperCase()}
                         </div>
                         <div className="cl-lead-name-info">
-                          <span className="cl-lead-name">{lead.clientName}</span>
-                          <span className="cl-lead-email">{lead.email}</span>
+                          <span className="cl-lead-name">{contact.fullName}</span>
+                          <span className="cl-lead-email">{contact.email}</span>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="cl-company-name">{lead.companyName}</span>
+                      <span className="cl-company-name">{contact.companyName}</span>
+                    </td>
+                    <td>
+                      <span className="cl-company-name" style={{ fontSize: 12, color: '#6b7280' }}>{contact.tradeShowName || '-'}</span>
                     </td>
                     <td>
                       <div className="cl-contact-cell">
-                        {lead.phone && <span><FiPhone size={12} /> {lead.phone}</span>}
-                        {lead.location && <span><FiMapPin size={12} /> {lead.location}</span>}
+                        {contact.phone && <span><FiPhone size={12} /> {contact.phone}</span>}
+                        {!contact.phone && '-'}
                       </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 13 }}>{contact.designation || '-'}</span>
                     </td>
                     <td>
                       <span className="cl-status-badge" style={{ background: style.bg, color: style.color }}>
-                        {lead.status}
+                        {contact.status}
                       </span>
                     </td>
                     <td>
-                      <div className="cl-leadby-cell">
-                        {lead.addedBy ? (
-                          <>
-                            {(lead.addedBy.profileImage || lead.addedBy.profilePicture || lead.addedBy.avatar) ? (
-                              <img
-                                src={lead.addedBy.profileImage || lead.addedBy.profilePicture || lead.addedBy.avatar}
-                                alt=""
-                                className="cl-leadby-avatar"
-                                title={lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email?.split('@')[0] || 'Unknown'}
-                              />
-                            ) : (
-                              <div className="cl-leadby-avatar-placeholder" title={lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email?.split('@')[0] || 'Unknown'}>
-                                {(lead.addedBy.fullName || lead.addedBy.name || lead.addedBy.username || lead.addedBy.email || '?')[0].toUpperCase()}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <span className="cl-leadby-name">—</span>
-                        )}
-                      </div>
+                      <span className="cl-followup">{contact.followUp || '-'}</span>
                     </td>
                     <td>
-                      <span className="cl-followup">{lead.followUp || '—'}</span>
-                    </td>
-                    <td>
-                      <span className="cl-date">{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}</span>
+                      <span className="cl-date">{contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : '-'}</span>
                     </td>
                     <td>
                       <div className="cl-row-actions" onClick={e => e.stopPropagation()}>
-                        <button className="cl-icon-btn" title="Edit" onClick={() => handleLeadClick(lead)}>
+                        <button className="cl-icon-btn" title="View" onClick={() => handleContactClick(contact)}>
                           <FiEdit3 />
-                        </button>
-                        <button className="cl-icon-btn cl-icon-btn-danger" title="Delete" onClick={() => handleDeleteLead(lead._id)}>
-                          <FiTrash2 />
                         </button>
                       </div>
                     </td>
@@ -465,69 +289,34 @@ function ClientLeads() {
       </div>
 
       {/* Side Panel */}
-      {showSidePanel && selectedLead && (
-        <LeadSidePanel
-          lead={selectedLead}
-          onClose={() => { setShowSidePanel(false); setSelectedLead(null); }}
+      {showSidePanel && selectedContact && (
+        <ContactSidePanel
+          contact={selectedContact}
+          onClose={() => { setShowSidePanel(false); setSelectedContact(null); }}
           onStatusChange={handleStatusChange}
-          onDelete={handleDeleteLead}
-          onUpdate={handleUpdateLead}
+          onFollowUpChange={handleFollowUpChange}
         />
       )}
     </div>
   );
 }
 
-/* ========== Lead Side Panel ========== */
-function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState({
-    companyName: lead.companyName || '',
-    clientName: lead.clientName || '',
-    email: lead.email || '',
-    phone: lead.phone || '',
-    designation: lead.designation || '',
-    location: lead.location || '',
-    requirements: lead.requirements || '',
-    status: lead.status || 'Cold Lead'
-  });
+/* ========== Contact Side Panel ========== */
+function ContactSidePanel({ contact, onClose, onStatusChange, onFollowUpChange }) {
+  const [followUpInput, setFollowUpInput] = useState(contact.followUp || '');
 
-  // Sync when lead prop changes
   useEffect(() => {
-    setForm({
-      companyName: lead.companyName || '',
-      clientName: lead.clientName || '',
-      email: lead.email || '',
-      phone: lead.phone || '',
-      designation: lead.designation || '',
-      location: lead.location || '',
-      requirements: lead.requirements || '',
-      status: lead.status || 'Cold Lead'
-    });
-    setIsEditing(false);
-  }, [lead]);
+    setFollowUpInput(contact.followUp || '');
+  }, [contact]);
 
-  const handleSave = () => {
-    onUpdate(lead._id, form);
-    setIsEditing(false);
+  const statusStyle = STATUS_COLORS[contact.status] || { bg: '#f5f5f5', color: '#525252' };
+  const daysActive = contact.createdAt ? Math.max(0, Math.floor((new Date() - new Date(contact.createdAt)) / (1000 * 60 * 60 * 24))) : 0;
+
+  const handleFollowUpSave = () => {
+    if (followUpInput !== (contact.followUp || '')) {
+      onFollowUpChange(contact, followUpInput);
+    }
   };
-
-  const handleCancel = () => {
-    setForm({
-      companyName: lead.companyName || '',
-      clientName: lead.clientName || '',
-      email: lead.email || '',
-      phone: lead.phone || '',
-      designation: lead.designation || '',
-      location: lead.location || '',
-      requirements: lead.requirements || '',
-      status: lead.status || 'Cold Lead'
-    });
-    setIsEditing(false);
-  };
-
-  const statusStyle = STATUS_COLORS[lead.status] || { bg: '#f5f5f5', color: '#525252' };
-  const daysActive = lead.createdAt ? Math.max(0, Math.floor((new Date() - new Date(lead.createdAt)) / (1000 * 60 * 60 * 24))) : 0;
 
   return (
     <>
@@ -536,12 +325,9 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
         {/* Panel Header */}
         <div className="cl-panel-header">
           <div>
-            <h3>{isEditing ? 'Edit Lead' : 'Lead Details'}</h3>
+            <h3>Contact Details</h3>
           </div>
           <div className="cl-panel-header-actions">
-            {!isEditing && (
-              <button className="cl-icon-btn" onClick={() => setIsEditing(true)} title="Edit"><FiEdit3 /></button>
-            )}
             <button className="cl-panel-close" onClick={onClose}><FiX /></button>
           </div>
         </div>
@@ -551,16 +337,14 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
           {/* Profile */}
           <div className="cl-panel-profile">
             <div className="cl-panel-avatar">
-              {(lead.clientName || '?')[0].toUpperCase()}
+              {(contact.fullName || '?')[0].toUpperCase()}
             </div>
             <div className="cl-panel-profile-info">
-              {isEditing ? (
-                <input className="cl-edit-input cl-edit-name" value={form.clientName}
-                  onChange={e => setForm({ ...form, clientName: e.target.value })} />
-              ) : (
-                <h2>{lead.clientName}</h2>
+              <h2>{contact.fullName}</h2>
+              <span className="cl-panel-company">{contact.companyName}</span>
+              {contact.tradeShowName && (
+                <span style={{ fontSize: 12, color: '#6b7280', display: 'block', marginTop: 2 }}>{contact.tradeShowName}</span>
               )}
-              <span className="cl-panel-company">{lead.companyName}</span>
             </div>
           </div>
 
@@ -569,7 +353,7 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
             <div className="cl-panel-stat">
               <FiActivity className="cl-panel-stat-icon" />
               <div>
-                <span className="cl-panel-stat-value">{lead.status}</span>
+                <span className="cl-panel-stat-value">{contact.status}</span>
                 <span className="cl-panel-stat-label">Status</span>
               </div>
             </div>
@@ -583,7 +367,7 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
             <div className="cl-panel-stat">
               <FiFileText className="cl-panel-stat-icon" />
               <div>
-                <span className="cl-panel-stat-value">{lead.followUp || '—'}</span>
+                <span className="cl-panel-stat-value">{contact.followUp || '-'}</span>
                 <span className="cl-panel-stat-label">Follow-Up</span>
               </div>
             </div>
@@ -592,21 +376,31 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
           {/* Status */}
           <div className="cl-panel-section">
             <h4>Status</h4>
-            {isEditing ? (
-              <select className="cl-edit-select" value={form.status}
-                onChange={e => setForm({ ...form, status: e.target.value })}>
+            <div className="cl-panel-status-row">
+              <select
+                className="cl-edit-select"
+                value={contact.status}
+                onChange={e => onStatusChange(contact, e.target.value)}
+                style={{ marginBottom: 8 }}
+              >
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-            ) : (
-              <div className="cl-panel-status-row">
-                <span className="cl-status-badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>
-                  {lead.status}
-                </span>
-                {lead.convertedToClient && (
-                  <span className="cl-converted-tag">Converted to Client</span>
-                )}
-              </div>
-            )}
+            </div>
+          </div>
+
+          {/* Follow-Up */}
+          <div className="cl-panel-section">
+            <h4>Follow-Up Note</h4>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="cl-edit-input"
+                value={followUpInput}
+                onChange={e => setFollowUpInput(e.target.value)}
+                placeholder="Add follow-up note..."
+                onBlur={handleFollowUpSave}
+                onKeyDown={e => { if (e.key === 'Enter') handleFollowUpSave(); }}
+              />
+            </div>
           </div>
 
           {/* Contact Info */}
@@ -617,68 +411,43 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
                 <FiMail className="cl-panel-info-icon" />
                 <div>
                   <span className="cl-panel-info-label">Email</span>
-                  {isEditing ? (
-                    <input className="cl-edit-input" value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })} />
-                  ) : (
-                    <span className="cl-panel-info-value">{lead.email}</span>
-                  )}
+                  <span className="cl-panel-info-value">{contact.email || '-'}</span>
                 </div>
               </div>
               <div className="cl-panel-info-item">
                 <FiPhone className="cl-panel-info-icon" />
                 <div>
                   <span className="cl-panel-info-label">Phone</span>
-                  {isEditing ? (
-                    <input className="cl-edit-input" value={form.phone}
-                      onChange={e => setForm({ ...form, phone: e.target.value })} />
-                  ) : (
-                    <span className="cl-panel-info-value">{lead.phone || '—'}</span>
-                  )}
+                  <span className="cl-panel-info-value">{contact.phone || '-'}</span>
                 </div>
               </div>
               <div className="cl-panel-info-item">
                 <FiBriefcase className="cl-panel-info-icon" />
                 <div>
                   <span className="cl-panel-info-label">Company</span>
-                  {isEditing ? (
-                    <input className="cl-edit-input" value={form.companyName}
-                      onChange={e => setForm({ ...form, companyName: e.target.value })} />
-                  ) : (
-                    <span className="cl-panel-info-value">{lead.companyName}</span>
-                  )}
+                  <span className="cl-panel-info-value">{contact.companyName}</span>
                 </div>
               </div>
               <div className="cl-panel-info-item">
                 <FiBriefcase className="cl-panel-info-icon" />
                 <div>
                   <span className="cl-panel-info-label">Designation</span>
-                  {isEditing ? (
-                    <input className="cl-edit-input" value={form.designation}
-                      onChange={e => setForm({ ...form, designation: e.target.value })} />
-                  ) : (
-                    <span className="cl-panel-info-value">{lead.designation || '—'}</span>
-                  )}
+                  <span className="cl-panel-info-value">{contact.designation || '-'}</span>
                 </div>
               </div>
               <div className="cl-panel-info-item">
                 <FiMapPin className="cl-panel-info-icon" />
                 <div>
                   <span className="cl-panel-info-label">Location</span>
-                  {isEditing ? (
-                    <input className="cl-edit-input" value={form.location}
-                      onChange={e => setForm({ ...form, location: e.target.value })} />
-                  ) : (
-                    <span className="cl-panel-info-value">{lead.location || '—'}</span>
-                  )}
+                  <span className="cl-panel-info-value">{contact.location || '-'}</span>
                 </div>
               </div>
               <div className="cl-panel-info-item">
                 <FiCalendar className="cl-panel-info-icon" />
                 <div>
-                  <span className="cl-panel-info-label">Created</span>
+                  <span className="cl-panel-info-label">Added</span>
                   <span className="cl-panel-info-value">
-                    {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '—'}
+                    {contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : '-'}
                   </span>
                 </div>
               </div>
@@ -686,60 +455,33 @@ function LeadSidePanel({ lead, onClose, onStatusChange, onDelete, onUpdate }) {
           </div>
 
           {/* Social Links */}
-          {lead.social && Object.values(lead.social).some(Boolean) && (
+          {contact.socialLinks && contact.socialLinks.length > 0 && (
             <div className="cl-panel-section">
               <h4>Social Links</h4>
               <div className="cl-panel-social">
-                {lead.social.linkedin && (
-                  <a href={lead.social.linkedin} target="_blank" rel="noopener noreferrer" className="cl-social-link">
-                    <FiGlobe /> LinkedIn
+                {contact.socialLinks.map((link, i) => (
+                  <a key={i} href={link.startsWith('http') ? link : `https://${link}`} target="_blank" rel="noopener noreferrer" className="cl-social-link">
+                    <FiGlobe /> {link.replace(/^https?:\/\//, '').substring(0, 30)}
                   </a>
-                )}
-                {lead.social.twitter && (
-                  <a href={lead.social.twitter} target="_blank" rel="noopener noreferrer" className="cl-social-link">
-                    <FiGlobe /> Twitter
-                  </a>
-                )}
-                {lead.social.website && (
-                  <a href={lead.social.website} target="_blank" rel="noopener noreferrer" className="cl-social-link">
-                    <FiGlobe /> Website
-                  </a>
-                )}
+                ))}
               </div>
             </div>
           )}
 
-          {/* Requirements */}
-          <div className="cl-panel-section">
-            <h4>Requirements</h4>
-            {isEditing ? (
-              <textarea className="cl-edit-textarea" rows="4" value={form.requirements}
-                onChange={e => setForm({ ...form, requirements: e.target.value })} />
-            ) : (
-              <p className="cl-panel-requirements">{lead.requirements || 'No requirements specified'}</p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="cl-panel-actions">
-            {isEditing ? (
-              <>
-                <button className="cl-btn-submit" onClick={handleSave}>Save Changes</button>
-                <button className="cl-btn-cancel" onClick={handleCancel}>Cancel</button>
-              </>
-            ) : (
-              <>
-                {lead.status !== 'Qualified (SQL)' && (
-                  <button className="cl-btn-convert" onClick={() => onStatusChange(lead._id, 'Qualified (SQL)')}>
-                    Convert to Client
-                  </button>
-                )}
-                <button className="cl-btn-delete" onClick={() => onDelete(lead._id)}>
-                  <FiTrash2 /> Delete Lead
-                </button>
-              </>
-            )}
-          </div>
+          {/* Website */}
+          {contact.website && (
+            <div className="cl-panel-section">
+              <h4>Company Website</h4>
+              <a
+                href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cl-social-link"
+              >
+                <FiGlobe /> {contact.website}
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </>
