@@ -2,24 +2,41 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   FiPlus, FiSearch, FiEdit3, FiTrash2, FiX, FiBookmark, FiArchive,
-  FiTag, FiClock, FiMoreVertical, FiCheck, FiChevronDown
+  FiTag, FiClock, FiMoreVertical, FiCheck, FiChevronDown,
+  FiUserPlus, FiUser, FiSend, FiXCircle, FiCheckCircle, FiInbox
 } from 'react-icons/fi';
 import api from '../config/api';
 import './Notes.css';
 
 function Notes() {
   const [notes, setNotes] = useState([]);
+  const [assignedNotes, setAssignedNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState('my'); // 'my' | 'assigned'
   const [selectedNote, setSelectedNote] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [editorData, setEditorData] = useState({ title: '', content: '', tags: [], color: 'default' });
+  const [editorData, setEditorData] = useState({ title: '', content: '', tags: [], color: 'default', assignedTo: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [tagInput, setTagInput] = useState('');
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const menuRef = useRef(null);
   const searchTimer = useRef(null);
+  const userDropdownRef = useRef(null);
+
+  // Fetch company users for assignment
+  const fetchCompanyUsers = useCallback(async () => {
+    try {
+      const res = await api.get('/notes/company-users');
+      if (res.data.success) setCompanyUsers(res.data.users);
+    } catch (err) { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchCompanyUsers(); }, [fetchCompanyUsers]);
 
   // Fetch notes
   const fetchNotes = useCallback(async (searchQuery = '') => {
@@ -38,7 +55,25 @@ function Notes() {
     }
   }, [showArchived]);
 
-  useEffect(() => { fetchNotes(); }, [fetchNotes]);
+  // Fetch assigned notes
+  const fetchAssignedNotes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/notes/assigned');
+      if (res.data.success) {
+        setAssignedNotes(res.data.notes);
+      }
+    } catch (err) {
+      toast.error('Failed to load assigned notes');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'my') fetchNotes();
+    else fetchAssignedNotes();
+  }, [activeTab, fetchNotes, fetchAssignedNotes]);
 
   // Debounced search
   const handleSearch = (value) => {
@@ -47,10 +82,11 @@ function Notes() {
     searchTimer.current = setTimeout(() => fetchNotes(value), 300);
   };
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setActiveMenu(null);
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) setShowUserDropdown(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -82,7 +118,10 @@ function Notes() {
       return;
     }
     try {
-      const res = await api.put(`/notes/${selectedNote._id}`, editorData);
+      const payload = { ...editorData };
+      // If assignedTo changed to empty, send null to clear assignment
+      if (payload.assignedTo === '') payload.assignedTo = null;
+      const res = await api.put(`/notes/${selectedNote._id}`, payload);
       if (res.data.success) {
         toast.success('Note updated');
         setShowEditor(false);
@@ -131,6 +170,19 @@ function Notes() {
     }
   };
 
+  // Respond to assigned note
+  const handleAssignmentResponse = async (noteId, response) => {
+    try {
+      const res = await api.patch(`/notes/${noteId}/respond`, { response });
+      if (res.data.success) {
+        toast.success(response === 'accepted' ? 'Note accepted' : 'Note rejected');
+        fetchAssignedNotes();
+      }
+    } catch (err) {
+      toast.error('Failed to respond');
+    }
+  };
+
   // Open editor
   const openNewNote = () => {
     resetEditor();
@@ -144,7 +196,8 @@ function Notes() {
       title: note.title,
       content: note.content,
       tags: note.tags || [],
-      color: note.color || 'default'
+      color: note.color || 'default',
+      assignedTo: note.assignedTo?._id || note.assignedTo || ''
     });
     setSelectedNote(note);
     setIsEditing(true);
@@ -153,8 +206,10 @@ function Notes() {
   };
 
   const resetEditor = () => {
-    setEditorData({ title: '', content: '', tags: [], color: 'default' });
+    setEditorData({ title: '', content: '', tags: [], color: 'default', assignedTo: '' });
     setTagInput('');
+    setUserSearchQuery('');
+    setShowUserDropdown(false);
     setSelectedNote(null);
   };
 
@@ -177,6 +232,22 @@ function Notes() {
       removeTag(editorData.tags[editorData.tags.length - 1]);
     }
   };
+
+  // User assignment helpers
+  const getSelectedUserName = () => {
+    if (!editorData.assignedTo) return '';
+    // Check if it's already populated from the note object
+    if (selectedNote?.assignedTo?.fullName && selectedNote.assignedTo._id === editorData.assignedTo) {
+      return selectedNote.assignedTo.fullName;
+    }
+    const user = companyUsers.find(u => u._id === editorData.assignedTo);
+    return user ? user.fullName : '';
+  };
+
+  const filteredUsers = companyUsers.filter(u =>
+    u.fullName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  );
 
   // Format date
   const formatDate = (dateStr) => {
@@ -202,6 +273,8 @@ function Notes() {
 
   const pinnedNotes = notes.filter(n => n.pinned);
   const otherNotes = notes.filter(n => !n.pinned);
+  const pendingAssigned = assignedNotes.filter(n => n.assignmentStatus === 'pending');
+  const acceptedAssigned = assignedNotes.filter(n => n.assignmentStatus === 'accepted');
 
   return (
     <div className="notes-container">
@@ -209,32 +282,36 @@ function Notes() {
       <div className="notes-header">
         <div className="notes-header-left">
           <h1 className="notes-title">Notes</h1>
-          <span className="notes-count">{notes.length}</span>
+          <span className="notes-count">{activeTab === 'my' ? notes.length : assignedNotes.length}</span>
         </div>
         <div className="notes-header-right">
-          <div className="notes-search">
-            <FiSearch className="notes-search-icon" />
-            <input
-              type="text"
-              placeholder="Search notes..."
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="notes-search-input"
-            />
-            {search && (
-              <button className="notes-search-clear" onClick={() => { setSearch(''); fetchNotes(); }}>
-                <FiX />
+          {activeTab === 'my' && (
+            <>
+              <div className="notes-search">
+                <FiSearch className="notes-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search notes..."
+                  value={search}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="notes-search-input"
+                />
+                {search && (
+                  <button className="notes-search-clear" onClick={() => { setSearch(''); fetchNotes(); }}>
+                    <FiX />
+                  </button>
+                )}
+              </div>
+              <button
+                className={`notes-filter-btn ${showArchived ? 'active' : ''}`}
+                onClick={() => setShowArchived(!showArchived)}
+              >
+                <FiArchive />
+                <span>{showArchived ? 'Archived' : 'Active'}</span>
+                <FiChevronDown />
               </button>
-            )}
-          </div>
-          <button
-            className={`notes-filter-btn ${showArchived ? 'active' : ''}`}
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            <FiArchive />
-            <span>{showArchived ? 'Archived' : 'Active'}</span>
-            <FiChevronDown />
-          </button>
+            </>
+          )}
           <button className="notes-new-btn" onClick={openNewNote}>
             <FiPlus />
             <span>New Note</span>
@@ -242,7 +319,26 @@ function Notes() {
         </div>
       </div>
 
-      {/* Notes Grid */}
+      {/* Tabs */}
+      <div className="notes-tabs">
+        <button
+          className={`notes-tab ${activeTab === 'my' ? 'active' : ''}`}
+          onClick={() => setActiveTab('my')}
+        >
+          <FiEdit3 /> My Notes
+        </button>
+        <button
+          className={`notes-tab ${activeTab === 'assigned' ? 'active' : ''}`}
+          onClick={() => setActiveTab('assigned')}
+        >
+          <FiInbox /> Assigned to Me
+          {pendingAssigned.length > 0 && (
+            <span className="notes-tab-badge">{pendingAssigned.length}</span>
+          )}
+        </button>
+      </div>
+
+      {/* Notes Content */}
       <div className="notes-body">
         {loading ? (
           <div className="notes-loading">
@@ -250,67 +346,112 @@ function Notes() {
               <div key={i} className="notes-skeleton" />
             ))}
           </div>
-        ) : notes.length === 0 ? (
-          <div className="notes-empty">
-            <div className="notes-empty-icon">
-              <FiEdit3 />
+        ) : activeTab === 'my' ? (
+          /* MY NOTES TAB */
+          notes.length === 0 ? (
+            <div className="notes-empty">
+              <div className="notes-empty-icon"><FiEdit3 /></div>
+              <h3>{showArchived ? 'No archived notes' : 'No notes yet'}</h3>
+              <p>{showArchived ? 'Notes you archive will appear here.' : 'Create your first note to get started.'}</p>
+              {!showArchived && (
+                <button className="notes-empty-btn" onClick={openNewNote}>
+                  <FiPlus /> New Note
+                </button>
+              )}
             </div>
-            <h3>{showArchived ? 'No archived notes' : 'No notes yet'}</h3>
-            <p>{showArchived ? 'Notes you archive will appear here.' : 'Create your first note to get started.'}</p>
-            {!showArchived && (
-              <button className="notes-empty-btn" onClick={openNewNote}>
-                <FiPlus /> New Note
-              </button>
-            )}
-          </div>
+          ) : (
+            <>
+              {pinnedNotes.length > 0 && (
+                <>
+                  <div className="notes-section-label">Pinned</div>
+                  <div className="notes-grid">
+                    {pinnedNotes.map(note => (
+                      <NoteCard
+                        key={note._id}
+                        note={note}
+                        activeMenu={activeMenu}
+                        setActiveMenu={setActiveMenu}
+                        menuRef={menuRef}
+                        onEdit={openEditNote}
+                        onDelete={handleDelete}
+                        onPin={handlePin}
+                        onArchive={handleArchive}
+                        formatDate={formatDate}
+                        truncate={truncate}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {otherNotes.length > 0 && (
+                <>
+                  {pinnedNotes.length > 0 && <div className="notes-section-label">Others</div>}
+                  <div className="notes-grid">
+                    {otherNotes.map(note => (
+                      <NoteCard
+                        key={note._id}
+                        note={note}
+                        activeMenu={activeMenu}
+                        setActiveMenu={setActiveMenu}
+                        menuRef={menuRef}
+                        onEdit={openEditNote}
+                        onDelete={handleDelete}
+                        onPin={handlePin}
+                        onArchive={handleArchive}
+                        formatDate={formatDate}
+                        truncate={truncate}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )
         ) : (
-          <>
-            {pinnedNotes.length > 0 && (
-              <>
-                <div className="notes-section-label">Pinned</div>
-                <div className="notes-grid">
-                  {pinnedNotes.map(note => (
-                    <NoteCard
-                      key={note._id}
-                      note={note}
-                      activeMenu={activeMenu}
-                      setActiveMenu={setActiveMenu}
-                      menuRef={menuRef}
-                      onEdit={openEditNote}
-                      onDelete={handleDelete}
-                      onPin={handlePin}
-                      onArchive={handleArchive}
-                      formatDate={formatDate}
-                      truncate={truncate}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-
-            {otherNotes.length > 0 && (
-              <>
-                {pinnedNotes.length > 0 && <div className="notes-section-label">Others</div>}
-                <div className="notes-grid">
-                  {otherNotes.map(note => (
-                    <NoteCard
-                      key={note._id}
-                      note={note}
-                      activeMenu={activeMenu}
-                      setActiveMenu={setActiveMenu}
-                      menuRef={menuRef}
-                      onEdit={openEditNote}
-                      onDelete={handleDelete}
-                      onPin={handlePin}
-                      onArchive={handleArchive}
-                      formatDate={formatDate}
-                      truncate={truncate}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
+          /* ASSIGNED TO ME TAB */
+          assignedNotes.length === 0 ? (
+            <div className="notes-empty">
+              <div className="notes-empty-icon"><FiInbox /></div>
+              <h3>No assigned notes</h3>
+              <p>Notes assigned to you by others will appear here.</p>
+            </div>
+          ) : (
+            <>
+              {pendingAssigned.length > 0 && (
+                <>
+                  <div className="notes-section-label">Pending Review</div>
+                  <div className="notes-grid">
+                    {pendingAssigned.map(note => (
+                      <AssignedNoteCard
+                        key={note._id}
+                        note={note}
+                        onRespond={handleAssignmentResponse}
+                        formatDate={formatDate}
+                        truncate={truncate}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {acceptedAssigned.length > 0 && (
+                <>
+                  <div className="notes-section-label">Accepted</div>
+                  <div className="notes-grid">
+                    {acceptedAssigned.map(note => (
+                      <AssignedNoteCard
+                        key={note._id}
+                        note={note}
+                        onRespond={handleAssignmentResponse}
+                        formatDate={formatDate}
+                        truncate={truncate}
+                        accepted
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )
         )}
       </div>
 
@@ -344,6 +485,70 @@ function Notes() {
                 rows={12}
               />
 
+              {/* Assign to User */}
+              <div className="notes-assign-section">
+                <div className="notes-assign-label">
+                  <FiUserPlus />
+                  <span>Assign to</span>
+                </div>
+                <div className="notes-assign-picker" ref={userDropdownRef}>
+                  {editorData.assignedTo ? (
+                    <div className="notes-assign-selected">
+                      <div className="notes-assign-avatar"><FiUser /></div>
+                      <span>{getSelectedUserName()}</span>
+                      <button onClick={() => setEditorData(prev => ({ ...prev, assignedTo: '' }))}>
+                        <FiX />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="notes-assign-trigger"
+                      onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    >
+                      <FiUser />
+                      <span>Select a team member...</span>
+                    </div>
+                  )}
+                  {showUserDropdown && (
+                    <div className="notes-assign-dropdown">
+                      <div className="notes-assign-search">
+                        <FiSearch />
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          value={userSearchQuery}
+                          onChange={(e) => setUserSearchQuery(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="notes-assign-list">
+                        {filteredUsers.length === 0 ? (
+                          <div className="notes-assign-empty">No users found</div>
+                        ) : (
+                          filteredUsers.map(user => (
+                            <button
+                              key={user._id}
+                              className="notes-assign-option"
+                              onClick={() => {
+                                setEditorData(prev => ({ ...prev, assignedTo: user._id }));
+                                setShowUserDropdown(false);
+                                setUserSearchQuery('');
+                              }}
+                            >
+                              <div className="notes-assign-avatar"><FiUser /></div>
+                              <div className="notes-assign-info">
+                                <span className="notes-assign-name">{user.fullName}</span>
+                                <span className="notes-assign-email">{user.email}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="notes-editor-tags">
                 <FiTag className="notes-tag-icon" />
                 <div className="notes-tag-list">
@@ -371,8 +576,8 @@ function Notes() {
                 Cancel
               </button>
               <button className="notes-btn-save" onClick={isEditing ? handleUpdate : handleCreate}>
-                <FiCheck />
-                {isEditing ? 'Update' : 'Create'}
+                {editorData.assignedTo ? <FiSend /> : <FiCheck />}
+                {isEditing ? 'Update' : (editorData.assignedTo ? 'Create & Assign' : 'Create')}
               </button>
             </div>
           </div>
@@ -386,6 +591,9 @@ function Notes() {
 // Note Card Component
 // ============================================
 function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, onPin, onArchive, formatDate, truncate }) {
+  const assignedUser = note.assignedTo;
+  const statusLabel = note.assignmentStatus;
+
   return (
     <div className={`note-card ${note.pinned ? 'pinned' : ''}`} onClick={() => onEdit(note)}>
       <div className="note-card-top">
@@ -420,6 +628,19 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
         <p className="note-card-content">{truncate(note.content)}</p>
       )}
 
+      {/* Assignment badge */}
+      {assignedUser && statusLabel !== 'none' && (
+        <div className={`note-assign-badge ${statusLabel}`}>
+          <FiSend />
+          <span>
+            {assignedUser.fullName || 'User'}
+            {statusLabel === 'pending' && ' — Pending'}
+            {statusLabel === 'accepted' && ' — Accepted'}
+            {statusLabel === 'rejected' && ' — Rejected'}
+          </span>
+        </div>
+      )}
+
       <div className="note-card-bottom">
         <div className="note-card-tags">
           {(note.tags || []).slice(0, 3).map(tag => (
@@ -436,6 +657,64 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
       </div>
 
       {note.pinned && <div className="note-pin-indicator"><FiBookmark /></div>}
+    </div>
+  );
+}
+
+// ============================================
+// Assigned Note Card Component (for "Assigned to Me" tab)
+// ============================================
+function AssignedNoteCard({ note, onRespond, formatDate, truncate, accepted }) {
+  const sender = note.assignedBy || note.userId;
+
+  return (
+    <div className={`note-card assigned-card ${accepted ? 'accepted' : 'pending'}`}>
+      <div className="note-card-top">
+        <h3 className="note-card-title">{note.title}</h3>
+        <div className="assigned-from">
+          <FiUser />
+          <span>{sender?.fullName || 'Unknown'}</span>
+        </div>
+      </div>
+
+      {note.content && (
+        <p className="note-card-content">{truncate(note.content)}</p>
+      )}
+
+      <div className="note-card-tags" style={{ marginTop: 8 }}>
+        {(note.tags || []).slice(0, 3).map(tag => (
+          <span key={tag} className="note-card-tag">{tag}</span>
+        ))}
+      </div>
+
+      <div className="note-card-bottom">
+        <div className="note-card-time">
+          <FiClock />
+          <span>{formatDate(note.assignedAt || note.updatedAt)}</span>
+        </div>
+        {!accepted ? (
+          <div className="assigned-actions">
+            <button
+              className="assigned-btn accept"
+              onClick={() => onRespond(note._id, 'accepted')}
+              title="Accept"
+            >
+              <FiCheckCircle />
+            </button>
+            <button
+              className="assigned-btn reject"
+              onClick={() => onRespond(note._id, 'rejected')}
+              title="Reject"
+            >
+              <FiXCircle />
+            </button>
+          </div>
+        ) : (
+          <span className="assigned-status-label accepted">
+            <FiCheck /> Accepted
+          </span>
+        )}
+      </div>
     </div>
   );
 }
