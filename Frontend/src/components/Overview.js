@@ -22,21 +22,16 @@ const RevenueGraph = () => {
         const clientsRes = await api.get('/clients');
         if (clientsRes.data.success) {
           const clients = clientsRes.data.clients || [];
-          // Group by month for the current year
+          // Group by month for the current year - actual counts per month
           const monthCounts = Array(12).fill(0);
           clients.forEach(client => {
-            const createdDate = new Date(client.createdAt || client.created_at);
+            const createdDate = new Date(client.createdAt);
             const currentYear = new Date().getFullYear();
             if (createdDate.getFullYear() === currentYear) {
               monthCounts[createdDate.getMonth()]++;
             }
           });
-          // Cumulative count
-          const cumulative = monthCounts.reduce((acc, count, idx) => {
-            acc.push((acc[idx - 1] || 0) + count);
-            return acc;
-          }, []);
-          setContactsData(cumulative);
+          setContactsData(monthCounts);
         }
 
         // Fetch trade shows count if ExhibitOS is active
@@ -44,24 +39,16 @@ const RevenueGraph = () => {
           const tradeShowsRes = await api.get('/trade-shows');
           if (tradeShowsRes.data.success) {
             const shows = tradeShowsRes.data.tradeShows || [];
-            console.log('Trade shows fetched:', shows); // Debug log
+            // Group by month for the current year - actual counts per month
             const monthCounts = Array(12).fill(0);
             shows.forEach(show => {
               const showDate = new Date(show.showDate);
               const currentYear = new Date().getFullYear();
-              console.log('Processing show:', show.shortName, 'Date:', showDate, 'Year:', showDate.getFullYear()); // Debug
               if (showDate.getFullYear() === currentYear) {
                 monthCounts[showDate.getMonth()]++;
               }
             });
-            console.log('Month counts:', monthCounts); // Debug log
-            // Cumulative count
-            const cumulative = monthCounts.reduce((acc, count, idx) => {
-              acc.push((acc[idx - 1] || 0) + count);
-              return acc;
-            }, []);
-            console.log('Cumulative trade shows:', cumulative); // Debug log
-            setTradeShowsData(cumulative);
+            setTradeShowsData(monthCounts);
           }
         }
       } catch (error) {
@@ -90,8 +77,10 @@ const RevenueGraph = () => {
 
   const totalRevenue = monthlyData[monthlyData.length - 1].value;
   const maxValue = 90000;
-  const maxContacts = Math.max(...contactsData, 100);
-  const maxTradeShows = Math.max(...tradeShowsData, 50);
+  const totalContacts = contactsData.reduce((sum, count) => sum + count, 0);
+  const totalTradeShows = tradeShowsData.reduce((sum, count) => sum + count, 0);
+  const maxContacts = Math.max(...contactsData, 10);
+  const maxTradeShows = Math.max(...tradeShowsData, 5);
 
   // Generate path data for revenue
   const getPathData = () => {
@@ -107,7 +96,7 @@ const RevenueGraph = () => {
     if (contactsData.length === 0) return '';
     return contactsData.map((count, i) => {
       const x = (i / (contactsData.length - 1)) * 100;
-      const y = 100 - (count / maxContacts) * 80; // Scale to 80% of graph height
+      const y = 100 - (count / maxContacts) * 100; // Full scale
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
   };
@@ -117,7 +106,7 @@ const RevenueGraph = () => {
     if (tradeShowsData.length === 0) return '';
     return tradeShowsData.map((count, i) => {
       const x = (i / (tradeShowsData.length - 1)) * 100;
-      const y = 100 - (count / maxTradeShows) * 60; // Scale to 60% of graph height
+      const y = 100 - (count / maxTradeShows) * 100; // Full scale
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
   };
@@ -136,12 +125,12 @@ const RevenueGraph = () => {
           </div>
           <div className="legend-item">
             <span className="legend-dot" style={{ background: '#4285f4' }}></span>
-            <span>Contacts ({contactsData[contactsData.length - 1] || 0})</span>
+            <span>Contacts ({totalContacts})</span>
           </div>
           {exhibitOSActive && (
             <div className="legend-item">
               <span className="legend-dot" style={{ background: '#34a853' }}></span>
-              <span>Trade Shows ({tradeShowsData[tradeShowsData.length - 1] || 0})</span>
+              <span>Trade Shows ({totalTradeShows})</span>
             </div>
           )}
         </div>
