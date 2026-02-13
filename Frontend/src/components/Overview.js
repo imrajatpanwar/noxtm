@@ -317,19 +317,17 @@ function Overview({ error }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching overview data...');
         const [usersRes, tasksRes] = await Promise.all([
           api.get('/users/company-members'),
           api.get('/tasks')
         ]);
-        console.log('Users response:', usersRes.data);
-        console.log('Tasks response:', tasksRes.data);
         
         const users = usersRes.data.members || usersRes.data || [];
-        const taskData = tasksRes.data || [];
+        // /tasks returns { tasks: [...], pagination: {...} }
+        const taskData = tasksRes.data.tasks || tasksRes.data || [];
         
-        setCompanyUsers(users);
-        setTasks(taskData);
+        setCompanyUsers(Array.isArray(users) ? users : []);
+        setTasks(Array.isArray(taskData) ? taskData : []);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching overview data:', err);
@@ -350,16 +348,6 @@ function Overview({ error }) {
   
   // Show all users if no active users, or show active users
   const displayUsers = activeUsers.length > 0 ? activeUsers : companyUsers;
-
-  console.log('Overview Debug:', {
-    loading,
-    totalUsers: companyUsers.length,
-    totalTasks: tasks.length,
-    activeUsers: activeUsers.length,
-    displayUsers: displayUsers.length,
-    users: companyUsers.map(u => u.name || u.fullName),
-    tasks: tasks.map(t => ({ title: t.title, assignees: t.assignees }))
-  });
 
   return (
     <div className="overview-wrapper">
