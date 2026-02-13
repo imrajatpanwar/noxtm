@@ -44,19 +44,23 @@ const RevenueGraph = () => {
           const tradeShowsRes = await api.get('/trade-shows');
           if (tradeShowsRes.data.success) {
             const shows = tradeShowsRes.data.tradeShows || [];
+            console.log('Trade shows fetched:', shows); // Debug log
             const monthCounts = Array(12).fill(0);
             shows.forEach(show => {
-              const startDate = new Date(show.startDate);
+              const showDate = new Date(show.showDate);
               const currentYear = new Date().getFullYear();
-              if (startDate.getFullYear() === currentYear) {
-                monthCounts[startDate.getMonth()]++;
+              console.log('Processing show:', show.shortName, 'Date:', showDate, 'Year:', showDate.getFullYear()); // Debug
+              if (showDate.getFullYear() === currentYear) {
+                monthCounts[showDate.getMonth()]++;
               }
             });
+            console.log('Month counts:', monthCounts); // Debug log
             // Cumulative count
             const cumulative = monthCounts.reduce((acc, count, idx) => {
               acc.push((acc[idx - 1] || 0) + count);
               return acc;
             }, []);
+            console.log('Cumulative trade shows:', cumulative); // Debug log
             setTradeShowsData(cumulative);
           }
         }
