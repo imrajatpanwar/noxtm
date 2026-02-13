@@ -224,10 +224,12 @@ function SocialMediaCalendar() {
             {/* Header */}
             <div className="smc-header">
                 <div className="smc-header-left">
-                    <div className="smc-header-icon"><FiCalendar size={20} /></div>
-                    <div>
-                        <h1>Content Calendar</h1>
-                        <div className="smc-header-sub">Plan, schedule & manage your social media content</div>
+                    <div className="smc-header-title-row">
+                        <div className="smc-header-icon"><FiCalendar size={20} /></div>
+                        <div>
+                            <h1>Content Calendar</h1>
+                            <div className="smc-header-sub">Plan, schedule & manage your social media content</div>
+                        </div>
                     </div>
                     <div className="smc-month-nav">
                         <button onClick={prevMonth}><FiChevronLeft size={14} /></button>
