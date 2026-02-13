@@ -99,6 +99,14 @@ function initializeRoutes(dependencies) {
         console.log(`🔍 Socket ${socket.id} joined crawler job room: ${jobId}`);
       });
 
+      // Join WhatsApp company room for real-time updates
+      socket.on('join-whatsapp', (companyId) => {
+        if (companyId) {
+          socket.join(`whatsapp:${companyId}`);
+          console.log(`📱 Socket ${socket.id} joined WhatsApp room: whatsapp:${companyId}`);
+        }
+      });
+
       // Typing indicator - start typing
       socket.on('typing-start', (data) => {
         const { conversationId, userId, userName } = data;

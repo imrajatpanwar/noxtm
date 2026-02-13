@@ -233,6 +233,17 @@ const connectWithTimeout = async () => {
 console.log('Starting MongoDB connection...');
 connectWithTimeout().then(() => {
   console.log('MongoDB connection attempt completed');
+  
+  // Restore WhatsApp sessions after MongoDB connects
+  if (mongoConnected) {
+    setTimeout(() => {
+      whatsappSessionManager.restoreAllSessions().then(() => {
+        console.log('✅ WhatsApp sessions restored');
+      }).catch(err => {
+        console.warn('⚠️  WhatsApp session restore error:', err.message);
+      });
+    }, 3000); // Wait 3 seconds for MongoDB to stabilize
+  }
 }).catch((err) => {
   console.error('Unexpected error in MongoDB connection:', err);
 });
@@ -4147,6 +4158,16 @@ const messaging = messagingRoutes.initializeRoutes({
 });
 app.use('/api/messaging', messaging);
 
+// ===== WHATSAPP MARKETING ROUTES =====
+const whatsappRoutes = require('./routes/whatsapp');
+const whatsapp = whatsappRoutes.initializeRoutes({ io });
+app.use('/api/whatsapp', whatsapp);
+
+// Initialize WhatsApp session manager with Socket.IO and chatbot engine
+const whatsappSessionManager = require('./services/whatsappSessionManager');
+const whatsappChatbotEngine = require('./services/whatsappChatbotEngine');
+whatsappSessionManager.init(io, whatsappChatbotEngine);
+
 // ===== EXTENSION AUTHENTICATION ROUTES =====
 // No authentication middleware - these routes handle their own auth
 app.use('/api/auth/extension', extensionAuthRoutes);
@@ -4217,11 +4238,20 @@ process.on('unhandledRejection', (reason, promise) => {
 async function gracefulShutdown(signal) {
   try {
     console.log(`🛑 ${signal} received, shutting down gracefully`);
+    
+    // Stop all WhatsApp sessions
+    try {
+      await whatsappSessionManager.stopAllSessions();
+      console.log('📱 WhatsApp sessions stopped');
+    } catch (e) {
+      console.warn('WhatsApp shutdown error:', e.message);
+    }
+    
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
       console.log('📦 MongoDB connection closed');
     } else {
-      console.log('� MongoDB was not connected (state:', mongoose.connection.readyState, ')');
+      console.log('📦 MongoDB was not connected (state:', mongoose.connection.readyState, ')');
     }
     process.exit(0);
   } catch (err) {
