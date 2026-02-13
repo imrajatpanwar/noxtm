@@ -115,6 +115,15 @@
   font-weight: 600;
   font-size: 14px;
   transition: all 0.15s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.profile-circle-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .profile-circle:hover {
@@ -169,6 +178,14 @@
   font-weight: 600;
   font-size: 15px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.profile-dropdown-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .profile-dropdown-info {

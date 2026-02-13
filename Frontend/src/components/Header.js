@@ -52,6 +52,11 @@ function Header({ user, onLogout }) {
     return names[0][0].toUpperCase();
   };
 
+  // Get profile image URL
+  const getProfileImage = () => {
+    return user?.profileImage || user?.avatarUrl || user?.photoUrl || user?.avatar || null;
+  };
+
   return (
     <header className="header">
       <div className="header-container">
@@ -87,14 +92,22 @@ function Header({ user, onLogout }) {
                   className="profile-circle"
                   onClick={() => setShowDropdown(!showDropdown)}
                 >
-                  {getInitials()}
+                  {getProfileImage() ? (
+                    <img src={getProfileImage()} alt={user?.name || 'User'} className="profile-circle-img" />
+                  ) : (
+                    getInitials()
+                  )}
                 </button>
 
                 {showDropdown && (
                   <div className="profile-dropdown">
                     <div className="profile-dropdown-header">
                       <div className="profile-dropdown-avatar">
-                        {getInitials()}
+                        {getProfileImage() ? (
+                          <img src={getProfileImage()} alt={user?.name || 'User'} className="profile-dropdown-avatar-img" />
+                        ) : (
+                          getInitials()
+                        )}
                       </div>
                       <div className="profile-dropdown-info">
                         <span className="profile-dropdown-name">{user?.name || 'User'}</span>
