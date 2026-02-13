@@ -9,6 +9,7 @@
     "express": "^4.21.2",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-bootstrap": "^2.10.10",
     "react-date-range": "^1.4.0",
