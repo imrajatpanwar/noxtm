@@ -4,6 +4,39 @@ import { useModules } from '../contexts/ModuleContext';
 import api from '../config/api';
 import './Overview.css';
 
+// User avatar component
+const UserAvatar = ({ user, size = 28 }) => {
+  if (!user) return null;
+
+  const displayName = user.fullName || user.name || user.email?.split('@')[0] || 'User';
+  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+  const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
+  const colorIndex = displayName.charCodeAt(0) % colors.length;
+  const bgColor = colors[colorIndex];
+
+  const profileImg = user.profileImage || user.avatar || user.profilePicture;
+
+  return (
+    <div
+      className="active-team-avatar"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.4,
+        background: profileImg ? 'transparent' : bgColor
+      }}
+      title={displayName}
+    >
+      {profileImg ? (
+        <img src={profileImg} alt={displayName} />
+      ) : (
+        <span>{initials}</span>
+      )}
+    </div>
+  );
+};
+
 // Revenue Graph Component
 const RevenueGraph = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('Yearly');
@@ -277,6 +310,34 @@ const RevenueGraph = () => {
 };
 
 function Overview({ error }) {
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, tasksRes] = await Promise.all([
+          api.get('/company/users'),
+          api.get('/tasks')
+        ]);
+        setCompanyUsers(usersRes.data.members || usersRes.data || []);
+        setTasks(tasksRes.data || []);
+      } catch (err) {
+        console.error('Error fetching overview data:', err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Get active users (users who have tasks assigned)
+  const activeUserIds = new Set();
+  tasks.forEach(task => {
+    task.assignees?.forEach(assignee => {
+      activeUserIds.add(assignee._id || assignee);
+    });
+  });
+  const activeUsers = companyUsers.filter(u => activeUserIds.has(u._id));
+
   return (
     <div className="overview-wrapper">
       {error && (
@@ -291,8 +352,24 @@ function Overview({ error }) {
           <RevenueGraph />
         </div>
 
-        {/* Right side - Task Manager */}
+        {/* Right side - Active Team + Task Manager */}
         <div className="overview-right">
+          {activeUsers.length > 0 && (
+            <div className="active-team-section">
+              <div className="active-team-header">
+                <span className="active-team-label">Active Team</span>
+                <span className="active-team-count">{activeUsers.length}</span>
+              </div>
+              <div className="active-team-avatars">
+                {activeUsers.slice(0, 8).map(user => (
+                  <UserAvatar key={user._id} user={user} size={32} />
+                ))}
+                {activeUsers.length > 8 && (
+                  <div className="active-team-more">+{activeUsers.length - 8}</div>
+                )}
+              </div>
+            </div>
+          )}
           <TaskManager isWidget={true} />
         </div>
       </div>
