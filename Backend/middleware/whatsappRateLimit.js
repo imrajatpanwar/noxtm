@@ -6,7 +6,7 @@ const whatsappMessageLimiter = rateLimit({
   max: 30, // 30 requests per minute
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.user?.companyId || req.ip}:wa-msg`,
+  keyGenerator: (req) => `${req.user?.companyId || 'anon'}:wa-msg`,
   message: {
     success: false,
     message: 'Too many messages. Please slow down.',
@@ -20,7 +20,7 @@ const whatsappAccountLimiter = rateLimit({
   max: 10, // 10 account operations per hour
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.user?.companyId || req.ip}:wa-acct`,
+  keyGenerator: (req) => `${req.user?.companyId || 'anon'}:wa-acct`,
   message: {
     success: false,
     message: 'Too many account operations. Please try again later.',
@@ -34,7 +34,7 @@ const whatsappCampaignLimiter = rateLimit({
   max: 5, // 5 campaign starts per hour
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.user?.companyId || req.ip}:wa-campaign`,
+  keyGenerator: (req) => `${req.user?.companyId || 'anon'}:wa-campaign`,
   message: {
     success: false,
     message: 'Too many campaigns started. Please try again later.',
@@ -48,7 +48,7 @@ const whatsappApiLimiter = rateLimit({
   max: 60, // 60 requests per minute
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.user?.companyId || req.ip}:wa-api`,
+  keyGenerator: (req) => `${req.user?.companyId || 'anon'}:wa-api`,
   message: {
     success: false,
     message: 'Too many requests. Please slow down.',
