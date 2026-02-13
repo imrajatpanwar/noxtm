@@ -28,8 +28,14 @@
 
 .smc-header-left {
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.smc-header-title-row {
+    display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .smc-header-icon {
