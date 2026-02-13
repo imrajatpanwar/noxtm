@@ -40,17 +40,37 @@ const noteSchema = new mongoose.Schema({
     trim: true,
     maxlength: 30
   }],
-  // Assignment fields
-  assignedTo: {
+  // Assignment fields - multiple users can be assigned
+  assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
+    ref: 'User'
+  }],
   assignedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
+  // Track individual assignment responses
+  assignments: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending'
+    },
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    respondedAt: {
+      type: Date
+    }
+  }],
+  // Legacy fields for backward compatibility
   assignmentStatus: {
     type: String,
     enum: ['none', 'pending', 'accepted', 'rejected'],
@@ -67,6 +87,7 @@ const noteSchema = new mongoose.Schema({
 // Compound index for fast user queries
 noteSchema.index({ userId: 1, archived: 1, pinned: -1, updatedAt: -1 });
 noteSchema.index({ userId: 1, tags: 1 });
-noteSchema.index({ assignedTo: 1, assignmentStatus: 1 });
+noteSchema.index({ 'assignments.userId': 1, 'assignments.status': 1 });
+noteSchema.index({ assignedTo: 1 });
 
 module.exports = mongoose.model('Note', noteSchema);
