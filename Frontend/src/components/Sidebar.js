@@ -266,6 +266,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     // Dashboard
     { name: 'Overview', section: 'overview', category: 'Dashboard' },
     { name: 'Task Manager', section: 'task-manager', category: 'Dashboard' },
+    { name: 'Notes', section: 'notes', category: 'Dashboard' },
 
     // Data Center
     { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
@@ -285,14 +286,12 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Projects
     { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
-    { name: 'Project Delivered', section: 'project-delivered', category: 'Projects' },
 
     // Team Communication
     { name: 'Message', section: 'message', category: 'Team Communication' },
     { name: 'Noxtm Chat', section: 'noxtm-chat', category: 'Team Communication' },
 
     // Marketing
-    { name: 'Notes', section: 'notes', category: 'Marketing' },
     { name: 'Email Marketing', section: 'email-marketing', category: 'Marketing' },
     { name: 'Campaign Setup', section: 'campaign-setup', category: 'Marketing' },
     { name: 'Create Email Template', section: 'email-template', category: 'Marketing' },
@@ -418,6 +417,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <FiTarget className="sidebar-icon" />
                 <span>Task Manager</span>
               </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'notes' ? 'active' : ''}`}
+                onClick={() => onSectionChange('notes')}
+              >
+                <FiFileText className="sidebar-icon" />
+                <span>Notes</span>
+              </div>
             </div>
           )}
 
@@ -505,13 +511,6 @@ function Sidebar({ activeSection, onSectionChange }) {
               >
                 <FiFolder className="sidebar-icon" />
                 <span>Client / Projects</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'project-delivered' ? 'active' : ''}`}
-                onClick={() => onSectionChange('project-delivered')}
-              >
-                <FiPackage className="sidebar-icon" />
-                <span>Project Delivered</span>
               </div>
             </div>
           )}
@@ -667,14 +666,6 @@ function Sidebar({ activeSection, onSectionChange }) {
               >
                 <FiUserPlus className="sidebar-icon" />
                 <span>Referral Client</span>
-              </div>
-
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'notes' ? 'active' : ''}`}
-                onClick={() => onSectionChange('notes')}
-              >
-                <FiFileText className="sidebar-icon" />
-                <span>Notes</span>
               </div>
             </div>
           )}
