@@ -594,10 +594,19 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
   const assignedUser = note.assignedTo;
   const statusLabel = note.assignmentStatus;
 
+  const getInitial = (name) => {
+    return name ? name.charAt(0).toUpperCase() : '?';
+  };
+
   return (
     <div className={`note-card ${note.pinned ? 'pinned' : ''}`} onClick={() => onEdit(note)}>
       <div className="note-card-top">
         <h3 className="note-card-title">{note.title}</h3>
+        {assignedUser && statusLabel !== 'none' && (
+          <div className={`note-card-avatar ${statusLabel}`} title={`Assigned to ${assignedUser.fullName || 'User'} - ${statusLabel}`}>
+            {getInitial(assignedUser.fullName)}
+          </div>
+        )}
         <div className="note-card-menu-wrapper" ref={activeMenu === note._id ? menuRef : null}>
           <button
             className="note-card-menu-btn"
@@ -626,19 +635,6 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
 
       {note.content && (
         <p className="note-card-content">{truncate(note.content)}</p>
-      )}
-
-      {/* Assignment badge */}
-      {assignedUser && statusLabel !== 'none' && (
-        <div className={`note-assign-badge ${statusLabel}`}>
-          <FiSend />
-          <span>
-            {assignedUser.fullName || 'User'}
-            {statusLabel === 'pending' && ' — Pending'}
-            {statusLabel === 'accepted' && ' — Accepted'}
-            {statusLabel === 'rejected' && ' — Rejected'}
-          </span>
-        </div>
       )}
 
       <div className="note-card-bottom">
