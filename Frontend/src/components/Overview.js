@@ -8,105 +8,132 @@ import './Overview.css';
 const RevenueGraph = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('Yearly');
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const [hoveredLine, setHoveredLine] = useState(null);
-  const [contactsData, setContactsData] = useState([]);
-  const [tradeShowsData, setTradeShowsData] = useState([]);
+  const [revenueData, setRevenueData] = useState(Array(12).fill(0));
+  const [contactsData, setContactsData] = useState(Array(12).fill(0));
+  const [tradeShowsData, setTradeShowsData] = useState(Array(12).fill(0));
   const { isModuleInstalled } = useModules();
   const exhibitOSActive = isModuleInstalled('ExhibitOS');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Fetch real data for contacts and trade shows
+  // Fetch real data for revenue, contacts, and trade shows
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch contacts count
-        const clientsRes = await api.get('/clients');
-        if (clientsRes.data.success) {
-          const clients = clientsRes.data.clients || [];
-          // Group by month for the current year - actual counts per month
-          const monthCounts = Array(12).fill(0);
-          clients.forEach(client => {
-            const createdDate = new Date(client.createdAt);
-            const currentYear = new Date().getFullYear();
-            if (createdDate.getFullYear() === currentYear) {
-              monthCounts[createdDate.getMonth()]++;
-            }
-          });
-          setContactsData(monthCounts);
+        const currentYear = new Date().getFullYear();
+
+        // Fetch all data in parallel
+        const promises = [
+          api.get('/clients'),
+          api.get('/invoices')
+        ];
+        if (exhibitOSActive) {
+          promises.push(api.get('/trade-shows'));
         }
 
-        // Fetch trade shows count if ExhibitOS is active
-        if (exhibitOSActive) {
-          const tradeShowsRes = await api.get('/trade-shows');
-          if (tradeShowsRes.data.success) {
-            const shows = tradeShowsRes.data.tradeShows || [];
-            // Group by month for the current year - actual counts per month
-            const monthCounts = Array(12).fill(0);
+        const results = await Promise.all(promises);
+
+        // Process contacts - /clients returns raw array
+        const clients = Array.isArray(results[0].data) ? results[0].data : [];
+        const contactMonths = Array(12).fill(0);
+        clients.forEach(client => {
+          const d = new Date(client.createdAt);
+          if (d.getFullYear() === currentYear) {
+            contactMonths[d.getMonth()]++;
+          }
+        });
+        setContactsData(contactMonths);
+
+        // Process revenue from invoices - /invoices returns raw array
+        const invoices = Array.isArray(results[1].data) ? results[1].data : [];
+        const revMonths = Array(12).fill(0);
+        invoices.forEach(inv => {
+          if (inv.status === 'paid') {
+            const d = new Date(inv.paidAt || inv.createdAt);
+            if (d.getFullYear() === currentYear) {
+              revMonths[d.getMonth()] += inv.total || 0;
+            }
+          }
+        });
+        setRevenueData(revMonths);
+
+        // Process trade shows
+        if (exhibitOSActive && results[2]) {
+          if (results[2].data.success) {
+            const shows = results[2].data.tradeShows || [];
+            const showMonths = Array(12).fill(0);
             shows.forEach(show => {
-              const showDate = new Date(show.showDate);
-              const currentYear = new Date().getFullYear();
-              if (showDate.getFullYear() === currentYear) {
-                monthCounts[showDate.getMonth()]++;
+              const d = new Date(show.showDate);
+              if (d.getFullYear() === currentYear) {
+                showMonths[d.getMonth()]++;
               }
             });
-            setTradeShowsData(monthCounts);
+            setTradeShowsData(showMonths);
           }
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching graph data:', error);
       }
     };
 
     fetchData();
   }, [exhibitOSActive]);
 
-  // Sample monthly revenue data
-  const monthlyData = [
-    { month: 'Jan', value: 12000 },
-    { month: 'Feb', value: 18000 },
-    { month: 'Mar', value: 25000 },
-    { month: 'Apr', value: 22000 },
-    { month: 'May', value: 28000 },
-    { month: 'Jun', value: 32000 },
-    { month: 'Jul', value: 35000 },
-    { month: 'Aug', value: 39952 },
-    { month: 'Sep', value: 45000 },
-    { month: 'Oct', value: 52000 },
-    { month: 'Nov', value: 58000 },
-    { month: 'Dec', value: 72592 },
-  ];
+  const totalRevenue = revenueData.reduce((sum, v) => sum + v, 0);
+  const totalContacts = contactsData.reduce((sum, v) => sum + v, 0);
+  const totalTradeShows = tradeShowsData.reduce((sum, v) => sum + v, 0);
 
-  const totalRevenue = monthlyData[monthlyData.length - 1].value;
-  const maxValue = 90000;
-  const totalContacts = contactsData.reduce((sum, count) => sum + count, 0);
-  const totalTradeShows = tradeShowsData.reduce((sum, count) => sum + count, 0);
-  const maxContacts = Math.max(...contactsData, 10);
+  // Dynamic max values
+  const rawMaxRevenue = Math.max(...revenueData, 1000);
+  const maxContacts = Math.max(...contactsData, 5);
   const maxTradeShows = Math.max(...tradeShowsData, 5);
 
+  // Calculate nice Y-axis for revenue
+  const getNiceMax = (val) => {
+    if (val <= 0) return 1000;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(val)));
+    const normalized = val / magnitude;
+    let niceNorm;
+    if (normalized <= 1) niceNorm = 1;
+    else if (normalized <= 2) niceNorm = 2;
+    else if (normalized <= 5) niceNorm = 5;
+    else niceNorm = 10;
+    return niceNorm * magnitude;
+  };
+
+  const niceStep = getNiceMax(rawMaxRevenue / 5);
+  const maxRevenue = niceStep * 5;
+
+  // Y-axis labels
+  const yLabels = [];
+  for (let i = 5; i >= 0; i--) {
+    const val = niceStep * i;
+    if (val >= 1000) yLabels.push(`${Math.round(val / 1000)}k`);
+    else yLabels.push(`${val}`);
+  }
+
   // Generate path data for revenue
-  const getPathData = () => {
-    return monthlyData.map((d, i) => {
-      const x = (i / (monthlyData.length - 1)) * 100;
-      const y = 100 - (d.value / maxValue) * 100;
+  const getRevenuePath = () => {
+    return revenueData.map((v, i) => {
+      const x = (i / 11) * 100;
+      const y = 100 - (v / maxRevenue) * 100;
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
   };
 
   // Generate path data for contacts
   const getContactsPath = () => {
-    if (contactsData.length === 0) return '';
-    return contactsData.map((count, i) => {
-      const x = (i / (contactsData.length - 1)) * 100;
-      const y = 100 - (count / maxContacts) * 100; // Full scale
+    return contactsData.map((v, i) => {
+      const x = (i / 11) * 100;
+      const y = 100 - (v / maxContacts) * 100;
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
   };
 
   // Generate path data for trade shows
   const getTradeShowsPath = () => {
-    if (tradeShowsData.length === 0) return '';
-    return tradeShowsData.map((count, i) => {
-      const x = (i / (tradeShowsData.length - 1)) * 100;
-      const y = 100 - (count / maxTradeShows) * 100; // Full scale
+    return tradeShowsData.map((v, i) => {
+      const x = (i / 11) * 100;
+      const y = 100 - (v / maxTradeShows) * 100;
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
   };
@@ -149,12 +176,9 @@ const RevenueGraph = () => {
       <div className="graph-container">
         {/* Y-axis labels */}
         <div className="y-axis">
-          <span>90k</span>
-          <span>60k</span>
-          <span>40k</span>
-          <span>20k</span>
-          <span>10k</span>
-          <span>0</span>
+          {yLabels.map((label, i) => (
+            <span key={i}>{label}</span>
+          ))}
         </div>
 
         {/* Graph area */}
@@ -168,7 +192,7 @@ const RevenueGraph = () => {
 
               {/* Revenue line - black */}
               <path
-                d={getPathData()}
+                d={getRevenuePath()}
                 fill="none"
                 stroke="#1a1a1a"
                 strokeWidth="2"
@@ -178,18 +202,16 @@ const RevenueGraph = () => {
               />
 
               {/* Contacts line - blue */}
-              {contactsData.length > 0 && (
-                <path
-                  d={getContactsPath()}
-                  fill="none"
-                  stroke="#4285f4"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                  opacity="0.8"
-                />
-              )}
+              <path
+                d={getContactsPath()}
+                fill="none"
+                stroke="#4285f4"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                opacity="0.8"
+              />
 
               {/* Trade Shows line - green */}
               {exhibitOSActive && tradeShowsData.length > 0 && (
@@ -208,11 +230,11 @@ const RevenueGraph = () => {
 
             {/* Hover zones for tooltip */}
             <div className="graph-hover-overlay">
-              {monthlyData.map((d, i) => (
+              {months.map((m, i) => (
                 <div
                   key={i}
                   className="hover-zone"
-                  style={{ left: `${(i / (monthlyData.length - 1)) * 100}%` }}
+                  style={{ left: `${(i / 11) * 100}%` }}
                   onMouseEnter={() => setHoveredPoint(i)}
                   onMouseLeave={() => setHoveredPoint(null)}
                 />
@@ -224,12 +246,15 @@ const RevenueGraph = () => {
               <div
                 className="graph-tooltip"
                 style={{
-                  left: `${(hoveredPoint / (monthlyData.length - 1)) * 100}%`,
-                  top: `${100 - (monthlyData[hoveredPoint].value / maxValue) * 100}%`
+                  left: `${(hoveredPoint / 11) * 100}%`,
+                  top: `${100 - (revenueData[hoveredPoint] / maxRevenue) * 100}%`
                 }}
               >
                 <div className="tooltip-content">
-                  ${monthlyData[hoveredPoint].value.toLocaleString()}
+                  <div><strong>{months[hoveredPoint]}</strong></div>
+                  <div>${revenueData[hoveredPoint].toLocaleString()}</div>
+                  <div style={{ color: '#4285f4' }}>{contactsData[hoveredPoint]} contacts</div>
+                  {exhibitOSActive && <div style={{ color: '#34a853' }}>{tradeShowsData[hoveredPoint]} shows</div>}
                 </div>
                 <div className="tooltip-line" />
               </div>
@@ -238,8 +263,8 @@ const RevenueGraph = () => {
 
           {/* X-axis labels */}
           <div className="x-axis">
-            {monthlyData.map((d, i) => (
-              <span key={i}>{d.month}</span>
+            {months.map((m, i) => (
+              <span key={i}>{m}</span>
             ))}
           </div>
         </div>
