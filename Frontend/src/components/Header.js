@@ -44,8 +44,9 @@ function Header({ user, onLogout }) {
 
   // Get user initials for avatar
   const getInitials = () => {
-    if (!user?.name) return 'U';
-    const names = user.name.split(' ');
+    const userName = user?.fullName || user?.name;
+    if (!userName) return 'U';
+    const names = userName.split(' ');
     if (names.length >= 2) {
       return (names[0][0] + names[1][0]).toUpperCase();
     }
@@ -93,7 +94,7 @@ function Header({ user, onLogout }) {
                   onClick={() => setShowDropdown(!showDropdown)}
                 >
                   {getProfileImage() ? (
-                    <img src={getProfileImage()} alt={user?.name || 'User'} className="profile-circle-img" />
+                    <img src={getProfileImage()} alt={user?.fullName || user?.name || 'User'} className="profile-circle-img" />
                   ) : (
                     getInitials()
                   )}
@@ -104,13 +105,13 @@ function Header({ user, onLogout }) {
                     <div className="profile-dropdown-header">
                       <div className="profile-dropdown-avatar">
                         {getProfileImage() ? (
-                          <img src={getProfileImage()} alt={user?.name || 'User'} className="profile-dropdown-avatar-img" />
+                          <img src={getProfileImage()} alt={user?.fullName || user?.name || 'User'} className="profile-dropdown-avatar-img" />
                         ) : (
                           getInitials()
                         )}
                       </div>
                       <div className="profile-dropdown-info">
-                        <span className="profile-dropdown-name">{user?.name || 'User'}</span>
+                        <span className="profile-dropdown-name">{user?.fullName || user?.name || 'User'}</span>
                         <span className="profile-dropdown-email">{user?.email || ''}</span>
                       </div>
                     </div>
