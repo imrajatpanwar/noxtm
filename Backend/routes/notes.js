@@ -42,21 +42,36 @@ router.get('/assigned', async (req, res) => {
     const userId = req.user.userId || req.user._id;
     const { status } = req.query;
 
-    const filter = { assignedTo: userId };
+    const filter = {
+      'assignments.userId': userId
+    };
+    
     if (status && ['pending', 'accepted', 'rejected'].includes(status)) {
-      filter.assignmentStatus = status;
+      filter['assignments.status'] = status;
     } else {
       // Default: show pending + accepted
-      filter.assignmentStatus = { $in: ['pending', 'accepted'] };
+      filter['assignments.status'] = { $in: ['pending', 'accepted'] };
     }
 
     const notes = await Note.find(filter)
       .populate('userId', 'fullName email profileImage')
       .populate('assignedBy', 'fullName email profileImage')
-      .sort({ assignedAt: -1 })
+      .populate('assignedTo', 'fullName email profileImage')
+      .sort({ 'assignments.assignedAt': -1 })
       .lean();
 
-    res.json({ success: true, notes });
+    // Add user's assignment status to each note
+    const notesWithStatus = notes.map(note => {
+      const userAssignment = note.assignments?.find(a => a.userId.toString() === userId.toString());
+      return {
+        ...note,
+        myAssignmentStatus: userAssignment?.status || 'pending',
+        myAssignedAt: userAssignment?.assignedAt,
+        myRespondedAt: userAssignment?.respondedAt
+      };
+    });
+
+    res.json({ success: true, notes: notesWithStatus });
   } catch (error) {
     console.error('Error fetching assigned notes:', error);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -182,32 +197,47 @@ router.put('/:id', async (req, res) => {
     if (archived !== undefined) update.archived = archived;
     if (tags !== undefined) update.tags = Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean).slice(0, 10) : [];
 
-    // Handle assignment
+    // Handle assignment - support multiple users
     if (assignedTo !== undefined) {
-      if (assignedTo) {
-        // Verify target user exists and is in same company
-        const currentUser = await User.findById(userId).select('companyId').lean();
-        const targetUser = await User.findById(assignedTo).select('companyId').lean();
+      if (assignedTo && (Array.isArray(assignedTo) ? assignedTo.length > 0 : assignedTo)) {
+        const assignedUserIds = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
         
-        if (!targetUser) {
-          return res.status(400).json({ success: false, message: 'Target user not found' });
+        // Verify all target users exist and are in same company
+        const currentUser = await User.findById(userId).select('companyId').lean();
+        const targetUsers = await User.find({ _id: { $in: assignedUserIds } }).select('companyId').lean();
+        
+        if (targetUsers.length !== assignedUserIds.length) {
+          return res.status(400).json({ success: false, message: 'One or more target users not found' });
         }
         
-        if (currentUser.companyId && targetUser.companyId && 
-            currentUser.companyId.toString() !== targetUser.companyId.toString()) {
-          return res.status(403).json({ success: false, message: 'Can only assign to users in your company' });
+        // Verify all users are in same company
+        if (currentUser.companyId) {
+          const invalidUsers = targetUsers.filter(u => 
+            !u.companyId || u.companyId.toString() !== currentUser.companyId.toString()
+          );
+          if (invalidUsers.length > 0) {
+            return res.status(403).json({ success: false, message: 'Can only assign to users in your company' });
+          }
         }
 
-        update.assignedTo = assignedTo;
+        update.assignedTo = assignedUserIds;
         update.assignedBy = userId;
         update.assignmentStatus = 'pending';
         update.assignedAt = new Date();
+        
+        // Create assignments array for tracking individual responses
+        update.assignments = assignedUserIds.map(uid => ({
+          userId: uid,
+          status: 'pending',
+          assignedAt: new Date()
+        }));
       } else {
         // Remove assignment
-        update.assignedTo = null;
+        update.assignedTo = [];
         update.assignedBy = null;
         update.assignmentStatus = 'none';
         update.assignedAt = null;
+        update.assignments = [];
       }
     }
 
@@ -308,20 +338,39 @@ router.patch('/:id/respond', async (req, res) => {
 
     const note = await Note.findOne({ 
       _id: req.params.id, 
-      assignedTo: userId,
-      assignmentStatus: 'pending'
+      'assignments.userId': userId,
+      'assignments.status': 'pending'
     });
 
     if (!note) {
-      return res.status(404).json({ success: false, message: 'Assigned note not found' });
+      return res.status(404).json({ success: false, message: 'Assigned note not found or already responded' });
     }
 
-    note.assignmentStatus = response;
+    // Update the specific user's assignment status
+    const assignmentIndex = note.assignments.findIndex(a => a.userId.toString() === userId.toString());
+    if (assignmentIndex !== -1) {
+      note.assignments[assignmentIndex].status = response;
+      note.assignments[assignmentIndex].respondedAt = new Date();
+    }
+    
+    // Update overall assignment status based on all responses
+    const allAccepted = note.assignments.every(a => a.status === 'accepted');
+    const anyRejected = note.assignments.some(a => a.status === 'rejected');
+    
+    if (allAccepted) {
+      note.assignmentStatus = 'accepted';
+    } else if (anyRejected) {
+      note.assignmentStatus = 'rejected';
+    } else {
+      note.assignmentStatus = 'pending';
+    }
+    
     await note.save();
 
     const populated = await Note.findById(note._id)
       .populate('userId', 'fullName email profileImage')
       .populate('assignedBy', 'fullName email profileImage')
+      .populate('assignedTo', 'fullName email profileImage')
       .lean();
 
     res.json({ success: true, note: populated });

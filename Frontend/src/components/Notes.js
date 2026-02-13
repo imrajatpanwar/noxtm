@@ -17,7 +17,7 @@ function Notes() {
   const [activeTab, setActiveTab] = useState('my'); // 'my' | 'assigned'
   const [selectedNote, setSelectedNote] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [editorData, setEditorData] = useState({ title: '', content: '', tags: [], color: 'default', assignedTo: '' });
+  const [editorData, setEditorData] = useState({ title: '', content: '', tags: [], color: 'default', assignedTo: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [tagInput, setTagInput] = useState('');
@@ -119,8 +119,8 @@ function Notes() {
     }
     try {
       const payload = { ...editorData };
-      // If assignedTo changed to empty, send null to clear assignment
-      if (payload.assignedTo === '') payload.assignedTo = null;
+      // If assignedTo changed to empty array, send empty array to clear assignment
+      if (!payload.assignedTo || payload.assignedTo.length === 0) payload.assignedTo = [];
       const res = await api.put(`/notes/${selectedNote._id}`, payload);
       if (res.data.success) {
         toast.success('Note updated');
@@ -192,12 +192,22 @@ function Notes() {
   };
 
   const openEditNote = (note) => {
+    // Extract user IDs from assignedTo (handle both array and single value)
+    let assignedUserIds = [];
+    if (note.assignedTo) {
+      if (Array.isArray(note.assignedTo)) {
+        assignedUserIds = note.assignedTo.map(u => typeof u === 'string' ? u : u._id);
+      } else {
+        assignedUserIds = [typeof note.assignedTo === 'string' ? note.assignedTo : note.assignedTo._id];
+      }
+    }
+    
     setEditorData({
       title: note.title,
       content: note.content,
       tags: note.tags || [],
       color: note.color || 'default',
-      assignedTo: note.assignedTo?._id || note.assignedTo || ''
+      assignedTo: assignedUserIds
     });
     setSelectedNote(note);
     setIsEditing(true);
@@ -206,7 +216,7 @@ function Notes() {
   };
 
   const resetEditor = () => {
-    setEditorData({ title: '', content: '', tags: [], color: 'default', assignedTo: '' });
+    setEditorData({ title: '', content: '', tags: [], color: 'default', assignedTo: [] });
     setTagInput('');
     setUserSearchQuery('');
     setShowUserDropdown(false);
@@ -234,14 +244,28 @@ function Notes() {
   };
 
   // User assignment helpers
-  const getSelectedUserName = () => {
-    if (!editorData.assignedTo) return '';
-    // Check if it's already populated from the note object
-    if (selectedNote?.assignedTo?.fullName && selectedNote.assignedTo._id === editorData.assignedTo) {
-      return selectedNote.assignedTo.fullName;
+  const getSelectedUsers = () => {
+    if (!editorData.assignedTo || editorData.assignedTo.length === 0) return [];
+    return editorData.assignedTo.map(userId => {
+      // Check if user data is already in selectedNote (populated)
+      if (selectedNote?.assignedTo && Array.isArray(selectedNote.assignedTo)) {
+        const foundUser = selectedNote.assignedTo.find(u => (u._id || u) === userId);
+        if (foundUser && foundUser.fullName) return foundUser;
+      }
+      // Otherwise look up in companyUsers
+      return companyUsers.find(u => u._id === userId) || { _id: userId, fullName: 'Unknown' };
+    });
+  };
+  
+  const addAssignedUser = (userId) => {
+    if (!editorData.assignedTo.includes(userId)) {
+      setEditorData(prev => ({ ...prev, assignedTo: [...prev.assignedTo, userId] }));
     }
-    const user = companyUsers.find(u => u._id === editorData.assignedTo);
-    return user ? user.fullName : '';
+    setUserSearchQuery('');
+  };
+  
+  const removeAssignedUser = (userId) => {
+    setEditorData(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => id !== userId) }));
   };
 
   const filteredUsers = companyUsers.filter(u =>
@@ -273,8 +297,8 @@ function Notes() {
 
   const pinnedNotes = notes.filter(n => n.pinned);
   const otherNotes = notes.filter(n => !n.pinned);
-  const pendingAssigned = assignedNotes.filter(n => n.assignmentStatus === 'pending');
-  const acceptedAssigned = assignedNotes.filter(n => n.assignmentStatus === 'accepted');
+  const pendingAssigned = assignedNotes.filter(n => n.myAssignmentStatus === 'pending' || (!n.myAssignmentStatus && n.assignmentStatus === 'pending'));
+  const acceptedAssigned = assignedNotes.filter(n => n.myAssignmentStatus === 'accepted' || (!n.myAssignmentStatus && n.assignmentStatus === 'accepted'));
 
   return (
     <div className="notes-container">
@@ -492,23 +516,30 @@ function Notes() {
                   <span>Assign to</span>
                 </div>
                 <div className="notes-assign-picker" ref={userDropdownRef}>
-                  {editorData.assignedTo ? (
-                    <div className="notes-assign-selected">
-                      <div className="notes-assign-avatar"><FiUser /></div>
-                      <span>{getSelectedUserName()}</span>
-                      <button onClick={() => setEditorData(prev => ({ ...prev, assignedTo: '' }))}>
-                        <FiX />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className="notes-assign-trigger"
-                      onClick={() => setShowUserDropdown(!showUserDropdown)}
-                    >
-                      <FiUser />
-                      <span>Select a team member...</span>
+                  {/* Show selected users as badges */}
+                  {editorData.assignedTo && editorData.assignedTo.length > 0 && (
+                    <div className="notes-assign-selected-list">
+                      {getSelectedUsers().map(user => (
+                        <div key={user._id} className="notes-assign-selected-badge">
+                          <div className="notes-assign-avatar"><FiUser /></div>
+                          <span>{user.fullName}</span>
+                          <button onClick={() => removeAssignedUser(user._id)}>
+                            <FiX />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
+                  
+                  {/* Trigger to open dropdown */}
+                  <div
+                    className="notes-assign-trigger"
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  >
+                    <FiUser />
+                    <span>{editorData.assignedTo.length > 0 ? 'Add more...' : 'Select team members...'}</span>
+                  </div>
+                  
                   {showUserDropdown && (
                     <div className="notes-assign-dropdown">
                       <div className="notes-assign-search">
@@ -525,23 +556,29 @@ function Notes() {
                         {filteredUsers.length === 0 ? (
                           <div className="notes-assign-empty">No users found</div>
                         ) : (
-                          filteredUsers.map(user => (
-                            <button
-                              key={user._id}
-                              className="notes-assign-option"
-                              onClick={() => {
-                                setEditorData(prev => ({ ...prev, assignedTo: user._id }));
-                                setShowUserDropdown(false);
-                                setUserSearchQuery('');
-                              }}
-                            >
-                              <div className="notes-assign-avatar"><FiUser /></div>
-                              <div className="notes-assign-info">
-                                <span className="notes-assign-name">{user.fullName}</span>
-                                <span className="notes-assign-email">{user.email}</span>
-                              </div>
-                            </button>
-                          ))
+                          filteredUsers.map(user => {
+                            const isSelected = editorData.assignedTo.includes(user._id);
+                            return (
+                              <button
+                                key={user._id}
+                                className={`notes-assign-option ${isSelected ? 'selected' : ''}`}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    removeAssignedUser(user._id);
+                                  } else {
+                                    addAssignedUser(user._id);
+                                  }
+                                }}
+                              >
+                                <div className="notes-assign-avatar"><FiUser /></div>
+                                <div className="notes-assign-info">
+                                  <span className="notes-assign-name">{user.fullName}</span>
+                                  <span className="notes-assign-email">{user.email}</span>
+                                </div>
+                                {isSelected && <FiCheck className="notes-assign-check" />}
+                              </button>
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -576,8 +613,8 @@ function Notes() {
                 Cancel
               </button>
               <button className="notes-btn-save" onClick={isEditing ? handleUpdate : handleCreate}>
-                {editorData.assignedTo ? <FiSend /> : <FiCheck />}
-                {isEditing ? 'Update' : (editorData.assignedTo ? 'Create & Assign' : 'Create')}
+                {editorData.assignedTo && editorData.assignedTo.length > 0 ? <FiSend /> : <FiCheck />}
+                {isEditing ? 'Update' : (editorData.assignedTo && editorData.assignedTo.length > 0 ? 'Create & Assign' : 'Create')}
               </button>
             </div>
           </div>
@@ -591,20 +628,44 @@ function Notes() {
 // Note Card Component
 // ============================================
 function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, onPin, onArchive, formatDate, truncate }) {
-  const assignedUser = note.assignedTo;
-  const statusLabel = note.assignmentStatus;
+  const assignedUsers = note.assignedTo && Array.isArray(note.assignedTo) ? note.assignedTo : (note.assignedTo ? [note.assignedTo] : []);
+  const hasAssignments = assignedUsers.length > 0 && note.assignments && note.assignments.length > 0;
 
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : '?';
+  };
+  
+  const getStatusForUser = (userId) => {
+    if (!note.assignments) return 'pending';
+    const assignment = note.assignments.find(a => (a.userId._id || a.userId).toString() === (userId._id || userId).toString());
+    return assignment?.status || 'pending';
   };
 
   return (
     <div className={`note-card ${note.pinned ? 'pinned' : ''}`} onClick={() => onEdit(note)}>
       <div className="note-card-top">
         <h3 className="note-card-title">{note.title}</h3>
-        {assignedUser && statusLabel !== 'none' && (
-          <div className={`note-card-avatar ${statusLabel}`} title={`Assigned to ${assignedUser.fullName || 'User'} - ${statusLabel}`}>
-            {getInitial(assignedUser.fullName)}
+        {hasAssignments && (
+          <div className="note-card-avatars">
+            {assignedUsers.slice(0, 3).map((user, idx) => {
+              const status = getStatusForUser(user._id || user);
+              const userName = user.fullName || user.name || 'User';
+              return (
+                <div 
+                  key={idx} 
+                  className={`note-card-avatar ${status}`} 
+                  title={`${userName} - ${status}`}
+                  style={{ marginLeft: idx > 0 ? '-8px' : '0', zIndex: 10 - idx }}
+                >
+                  {getInitial(userName)}
+                </div>
+              );
+            })}
+            {assignedUsers.length > 3 && (
+              <div className="note-card-avatar-more" title={`+${assignedUsers.length - 3} more`}>
+                +{assignedUsers.length - 3}
+              </div>
+            )}
           </div>
         )}
         <div className="note-card-menu-wrapper" ref={activeMenu === note._id ? menuRef : null}>
