@@ -312,18 +312,28 @@ const RevenueGraph = () => {
 function Overview({ error }) {
   const [companyUsers, setCompanyUsers] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching overview data...');
         const [usersRes, tasksRes] = await Promise.all([
-          api.get('/company/users'),
+          api.get('/users/company-members'),
           api.get('/tasks')
         ]);
-        setCompanyUsers(usersRes.data.members || usersRes.data || []);
-        setTasks(tasksRes.data || []);
+        console.log('Users response:', usersRes.data);
+        console.log('Tasks response:', tasksRes.data);
+        
+        const users = usersRes.data.members || usersRes.data || [];
+        const taskData = tasksRes.data || [];
+        
+        setCompanyUsers(users);
+        setTasks(taskData);
+        setLoading(false);
       } catch (err) {
         console.error('Error fetching overview data:', err);
+        setLoading(false);
       }
     };
     fetchData();
@@ -342,10 +352,12 @@ function Overview({ error }) {
   const displayUsers = activeUsers.length > 0 ? activeUsers : companyUsers;
 
   console.log('Overview Debug:', {
+    loading,
     totalUsers: companyUsers.length,
     totalTasks: tasks.length,
     activeUsers: activeUsers.length,
     displayUsers: displayUsers.length,
+    users: companyUsers.map(u => u.name || u.fullName),
     tasks: tasks.map(t => ({ title: t.title, assignees: t.assignees }))
   });
 
@@ -365,7 +377,7 @@ function Overview({ error }) {
 
         {/* Right side - Active Team + Task Manager */}
         <div className="overview-right">
-          {displayUsers.length > 0 && (
+          {!loading && displayUsers.length > 0 && (
             <div className="active-team-section">
               <div className="active-team-header">
                 <span className="active-team-label">{activeUsers.length > 0 ? 'Active Team' : 'Team Members'}</span>
@@ -377,7 +389,8 @@ function Overview({ error }) {
                 ))}
                 {displayUsers.length > 8 && (
                   <div className="active-team-more">+{displayUsers.length - 8}</div>
-                )}\n              </div>
+                )}
+              </div>
             </div>
           )}
           <TaskManager isWidget={true} />
