@@ -396,11 +396,22 @@
     font-family: 'Switzer', sans-serif;
 }
 
-.overview-right .active-team-avatars {
+/* Horizontal overlapping avatars */
+.overview-right .active-team-avatars-horizontal {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
     align-items: center;
+    position: relative;
+}
+
+.overview-right .active-team-avatar-overlap {
+    position: relative;
+    margin-right: -12px;
+    transition: transform 0.2s ease, z-index 0s;
+}
+
+.overview-right .active-team-avatar-overlap:hover {
+    transform: translateY(-4px);
+    z-index: 100 !important;
 }
 
 .overview-right .active-team-avatar {
@@ -413,15 +424,10 @@
     color: white;
     overflow: hidden;
     flex-shrink: 0;
-    border: 2px solid #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 3px solid #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     transition: transform 0.2s ease;
     cursor: pointer;
-}
-
-.overview-right .active-team-avatar:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
 .overview-right .active-team-avatar img {
@@ -431,20 +437,83 @@
     border-radius: 50%;
 }
 
-.overview-right .active-team-more {
-    width: 32px;
-    height: 32px;
+/* +N overflow badge with popup */
+.overview-right .active-team-more-overlap {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: #f5f5f5;
-    border: 2px solid #ffffff;
+    background: #e5e5e5;
+    border: 3px solid #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
-    color: #666;
+    color: #171717;
     font-family: 'Switzer', sans-serif;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    position: relative;
+    z-index: 5;
+    transition: all 0.2s ease;
+}
+
+.overview-right .active-team-more-overlap:hover {
+    background: #d4d4d4;
+    transform: translateY(-4px);
+}
+
+/* Hover popup for overflow users */
+.overview-right .active-team-popup {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border: 1px solid #eaeaea;
+    min-width: 200px;
+    z-index: 1000;
+    animation: popupFadeIn 0.2s ease;
+}
+
+@keyframes popupFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.overview-right .popup-user-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.overview-right .popup-user-item:hover {
+    background: #f5f5f5;
+}
+
+.overview-right .popup-user-item span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #171717;
+    font-family: 'Switzer', sans-serif;
+    white-space: nowrap;
+}
+
+.overview-right .popup-user-item .active-team-avatar {
+    border-width: 2px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Widget Active Users - DEPRECATED */

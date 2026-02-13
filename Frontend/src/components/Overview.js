@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import TaskManager from './TaskManager';
 import { useModules } from '../contexts/ModuleContext';
+import { MessagingContext } from '../contexts/MessagingContext';
 import api from '../config/api';
 import './Overview.css';
 
@@ -311,23 +312,16 @@ const RevenueGraph = () => {
 
 function Overview({ error }) {
   const [companyUsers, setCompanyUsers] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showPopup, setShowPopup] = useState(false);
+  const { onlineUsers } = useContext(MessagingContext);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, tasksRes] = await Promise.all([
-          api.get('/users/company-members'),
-          api.get('/tasks')
-        ]);
-        
+        const usersRes = await api.get('/users/company-members');
         const users = usersRes.data.members || usersRes.data || [];
-        // /tasks returns { tasks: [...], pagination: {...} }
-        const taskData = tasksRes.data.tasks || tasksRes.data || [];
-        
         setCompanyUsers(Array.isArray(users) ? users : []);
-        setTasks(Array.isArray(taskData) ? taskData : []);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching overview data:', err);
@@ -337,17 +331,11 @@ function Overview({ error }) {
     fetchData();
   }, []);
 
-  // Get active users (users who have tasks assigned)
-  const activeUserIds = new Set();
-  tasks.forEach(task => {
-    task.assignees?.forEach(assignee => {
-      activeUserIds.add(assignee._id || assignee);
-    });
+  // Filter to show only currently logged-in users
+  const activeUsers = companyUsers.filter(user => {
+    const userId = user._id || user.id;
+    return onlineUsers.includes(userId?.toString());
   });
-  const activeUsers = companyUsers.filter(u => activeUserIds.has(u._id));
-  
-  // Show all users if no active users, or show active users
-  const displayUsers = activeUsers.length > 0 ? activeUsers : companyUsers;
 
   return (
     <div className="overview-wrapper">
@@ -365,18 +353,40 @@ function Overview({ error }) {
 
         {/* Right side - Active Team + Task Manager */}
         <div className="overview-right">
-          {!loading && displayUsers.length > 0 && (
+          {!loading && activeUsers.length > 0 && (
             <div className="active-team-section">
               <div className="active-team-header">
-                <span className="active-team-label">{activeUsers.length > 0 ? 'Active Team' : 'Team Members'}</span>
-                <span className="active-team-count">{displayUsers.length}</span>
+                <span className="active-team-label">ACTIVE TEAM</span>
+                <span className="active-team-count">{activeUsers.length}</span>
               </div>
-              <div className="active-team-avatars">
-                {displayUsers.slice(0, 8).map(user => (
-                  <UserAvatar key={user._id} user={user} size={32} />
+              <div className="active-team-avatars-horizontal">
+                {activeUsers.slice(0, 5).map((user, index) => (
+                  <div
+                    key={user._id}
+                    className="active-team-avatar-overlap"
+                    style={{ zIndex: 10 - index }}
+                  >
+                    <UserAvatar user={user} size={40} />
+                  </div>
                 ))}
-                {displayUsers.length > 8 && (
-                  <div className="active-team-more">+{displayUsers.length - 8}</div>
+                {activeUsers.length > 5 && (
+                  <div
+                    className="active-team-more-overlap"
+                    onMouseEnter={() => setShowPopup(true)}
+                    onMouseLeave={() => setShowPopup(false)}
+                  >
+                    +{activeUsers.length - 5}
+                    {showPopup && (
+                      <div className="active-team-popup">
+                        {activeUsers.slice(5).map(user => (
+                          <div key={user._id} className="popup-user-item">
+                            <UserAvatar user={user} size={28} />
+                            <span>{user.fullName || user.name || user.email}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
