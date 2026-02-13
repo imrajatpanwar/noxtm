@@ -16,7 +16,8 @@ const UserAvatar = ({ user, size = 28 }) => {
   const colorIndex = displayName.charCodeAt(0) % colors.length;
   const bgColor = colors[colorIndex];
 
-  const profileImg = user.profileImage || user.avatar || user.profilePicture;
+  // Check all possible profile image field variations
+  const profileImg = user.profileImage || user.avatarUrl || user.photoUrl || user.avatar || user.profilePicture || user.image;
 
   return (
     <div

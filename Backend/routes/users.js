@@ -41,7 +41,7 @@ router.get('/company-members', authenticateToken, async (req, res) => {
     }
 
     const members = await User.find({ companyId: currentUser.companyId })
-      .select('_id fullName email role profilePicture')
+      .select('_id fullName email role profileImage')
       .sort({ fullName: 1 });
 
     res.json({
@@ -53,8 +53,8 @@ router.get('/company-members', authenticateToken, async (req, res) => {
         name: member.fullName,
         email: member.email,
         role: member.role,
-        avatar: member.profilePicture,
-        profileImage: member.profilePicture
+        avatar: member.profileImage,
+        profileImage: member.profileImage
       }))
     });
   } catch (error) {
