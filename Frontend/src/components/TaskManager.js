@@ -837,14 +837,6 @@ function TaskManager({ isWidget = false }) {
     if (isWidget) {
         const recentTasks = tasks.slice(0, 4);
         const totalTasks = tasks.length;
-        // Get active users (users who have tasks or recently active)
-        const activeUserIds = new Set();
-        tasks.forEach(task => {
-            task.assignees?.forEach(assignee => {
-                activeUserIds.add(assignee._id || assignee);
-            });
-        });
-        const activeUsers = companyUsers.filter(u => activeUserIds.has(u._id));
         
         return (
             <div className="task-manager widget-mode">
@@ -857,21 +849,6 @@ function TaskManager({ isWidget = false }) {
                         <FiPlus size={14} />
                     </button>
                 </div>
-                {activeUsers.length > 0 && (
-                    <div className="widget-active-users">
-                        <span className="active-users-label">Active Team</span>
-                        <div className="active-users-list">
-                            {activeUsers.slice(0, 5).map(user => (
-                                <div key={user._id} className="active-user-avatar" title={user.fullName || user.name}>
-                                    <UserAvatar user={user} size={24} />
-                                </div>
-                            ))}
-                            {activeUsers.length > 5 && (
-                                <div className="active-user-count">+{activeUsers.length - 5}</div>
-                            )}
-                        </div>
-                    </div>
-                )}
                 <div className="widget-stats-row">
                     {statuses.map(status => (
                         <div key={status} className="stat-chip">
