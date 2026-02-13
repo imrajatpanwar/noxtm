@@ -274,9 +274,29 @@ async function handleIncomingMessage(accountId, companyId, msg) {
   } else if (msg.message.locationMessage) {
     type = 'location';
     content = `${msg.message.locationMessage.degreesLatitude},${msg.message.locationMessage.degreesLongitude}`;
+  } else if (msg.message.protocolMessage || msg.message.senderKeyDistributionMessage ||
+             msg.message.messageContextInfo || msg.message.reactionMessage ||
+             msg.message.ephemeralMessage || msg.message.viewOnceMessage ||
+             msg.message.editedMessage || msg.message.pinInChatMessage) {
+    // Skip protocol/system messages - don't log as chat messages
+    return;
   } else {
-    // Unknown message type - still log it
-    content = '[Unsupported message type]';
+    // Try to extract text from nested message structures
+    const msgKeys = Object.keys(msg.message);
+    const innerMsg = msg.message[msgKeys[0]];
+    if (innerMsg?.message?.conversation) {
+      content = innerMsg.message.conversation;
+    } else if (innerMsg?.message?.extendedTextMessage?.text) {
+      content = innerMsg.message.extendedTextMessage.text;
+    } else if (innerMsg?.caption) {
+      content = innerMsg.caption;
+    } else if (innerMsg?.text) {
+      content = innerMsg.text;
+    } else {
+      // Truly unknown - skip silently
+      console.log(`[WA] Skipping unsupported message type: ${msgKeys.join(', ')}`);
+      return;
+    }
   }
 
   // Find or create contact (upsert to avoid race condition with concurrent messages)
@@ -413,6 +433,10 @@ async function sendMessage(accountId, jid, content, options = {}) {
 
   // Send the message
   const result = await session.socket.sendMessage(jid, messageContent);
+
+  if (!result || !result.key) {
+    throw new Error('Message send failed - no response from WhatsApp');
+  }
 
   // Increment daily counter
   account.incrementDailyCount();
