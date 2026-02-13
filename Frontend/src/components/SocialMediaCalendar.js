@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm } from './calendarHelpers';
@@ -224,7 +224,11 @@ function SocialMediaCalendar() {
             {/* Header */}
             <div className="smc-header">
                 <div className="smc-header-left">
-                    <h1>Content Calendar</h1>
+                    <div className="smc-header-icon"><FiCalendar size={20} /></div>
+                    <div>
+                        <h1>Content Calendar</h1>
+                        <div className="smc-header-sub">Plan, schedule & manage your social media content</div>
+                    </div>
                     <div className="smc-month-nav">
                         <button onClick={prevMonth}><FiChevronLeft size={14} /></button>
                         <span className="smc-month-title">{viewMode === 'week' ? `Week of ${weekDays[0].toLocaleDateString('default', { month: 'short', day: 'numeric' })}` : monthName}</span>
@@ -234,8 +238,8 @@ function SocialMediaCalendar() {
                 </div>
                 <div className="smc-header-right">
                     <div className="smc-view-switcher">
-                        <button className={`smc-view-btn ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}><FiGrid size={12} /> Month</button>
-                        <button className={`smc-view-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}><FiList size={12} /> Week</button>
+                        <button className={`smc-view-btn ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}><FiGrid size={13} /> Month</button>
+                        <button className={`smc-view-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}><FiList size={13} /> Week</button>
                     </div>
                     <div className="smc-search-box"><FiSearch /><input placeholder="Search posts..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                     <div className="smc-account-selector" ref={accountDropdownRef}>
@@ -286,9 +290,9 @@ function SocialMediaCalendar() {
                         {STATUSES.map(s => <button key={s} className={`smc-filter-btn ${statusFilter === statusClass(s) ? 'active' : ''}`} onClick={() => setStatusFilter(statusFilter === statusClass(s) ? 'all' : statusClass(s))}>{s}</button>)}
                     </div>
                     <div className="smc-stats">
-                        <span className="smc-stat"><strong>{totalPosts}</strong> posts</span>
-                        <span className="smc-stat"><strong>{scheduledCount}</strong> scheduled</span>
-                        <span className="smc-stat"><strong>{draftCount}</strong> drafts</span>
+                        <span className="smc-stat"><FiCalendar size={12} /> <strong>{totalPosts}</strong> posts</span>
+                        <span className="smc-stat"><FiClock size={12} /> <strong>{scheduledCount}</strong> scheduled</span>
+                        <span className="smc-stat"><FiEdit3 size={12} /> <strong>{draftCount}</strong> drafts</span>
                     </div>
                 </div>
             )}
