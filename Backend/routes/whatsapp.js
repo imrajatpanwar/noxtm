@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { authenticateToken } = require('../middleware/auth');
 const { whatsappMessageLimiter, whatsappAccountLimiter, whatsappCampaignLimiter, whatsappApiLimiter } = require('../middleware/whatsappRateLimit');
 
@@ -806,7 +807,7 @@ function initializeRoutes({ io }) {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const messageStats = await WhatsAppMessage.aggregate([
-        { $match: { companyId: new require('mongoose').Types.ObjectId(companyId), timestamp: { $gte: sevenDaysAgo } } },
+        { $match: { companyId: new mongoose.Types.ObjectId(companyId), timestamp: { $gte: sevenDaysAgo } } },
         {
           $group: {
             _id: {
