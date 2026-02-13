@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import api from '../config/api';
 
 const WhatsAppContext = createContext();
@@ -60,6 +61,7 @@ export function WhatsAppProvider({ children, socket }) {
             : a
         )
       );
+      toast.success(`WhatsApp connected: ${data.displayName || data.phoneNumber || 'Account'}`);
     };
 
     // Account disconnected
@@ -69,6 +71,8 @@ export function WhatsAppProvider({ children, socket }) {
           a._id === data.accountId ? { ...a, status: 'disconnected' } : a
         )
       );
+      const reason = data.reason === 'device_removed' ? ' (device removed)' : data.reason === 'logged_out' ? ' (logged out)' : '';
+      toast.warning(`WhatsApp disconnected${reason}`);
     };
 
     // New incoming message

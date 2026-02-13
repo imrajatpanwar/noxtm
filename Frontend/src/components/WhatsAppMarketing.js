@@ -2,14 +2,20 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { WhatsAppProvider, useWhatsApp } from '../contexts/WhatsAppContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'sonner';
+import {
+  FiMessageSquare, FiUsers, FiSmartphone, FiZap, FiSend, FiSearch, FiPlus, FiSettings,
+  FiTrash2, FiRefreshCw, FiWifi, FiWifiOff, FiStar, FiX, FiClock, FiEdit2,
+  FiPlay, FiPause, FiCheck, FiCheckCircle, FiAlertCircle, FiTrendingUp,
+  FiBarChart2, FiFile, FiTag, FiHash, FiActivity
+} from 'react-icons/fi';
 import './WhatsAppMarketing.css';
 
 // =====================================================
-// MAIN WRAPPER - Provides WhatsApp context with socket
+// MAIN WRAPPER
 // =====================================================
 function WhatsAppMarketing() {
   const { socket } = useContext(MessagingContext);
-
   return (
     <WhatsAppProvider socket={socket}>
       <WhatsAppMarketingInner />
@@ -18,34 +24,45 @@ function WhatsAppMarketing() {
 }
 
 // =====================================================
-// INNER COMPONENT - Has access to WhatsApp context
+// INNER COMPONENT
 // =====================================================
 function WhatsAppMarketingInner() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'accounts', label: 'Accounts', icon: '📱' },
-    { id: 'chats', label: 'Chats', icon: '💬' },
-    { id: 'campaigns', label: 'Campaigns', icon: '📢' },
-    { id: 'chatbot', label: 'Chatbot', icon: '🤖' }
+    { id: 'dashboard', label: 'Dashboard', icon: FiBarChart2 },
+    { id: 'accounts', label: 'Accounts', icon: FiSmartphone },
+    { id: 'chats', label: 'Chats', icon: FiMessageSquare },
+    { id: 'campaigns', label: 'Campaigns', icon: FiZap },
+    { id: 'chatbot', label: 'Chatbot', icon: FiActivity }
   ];
 
   return (
     <div className="wa-container">
       <div className="wa-header">
-        <h1>WhatsApp Marketing</h1>
+        <div className="wa-header-left">
+          <div className="wa-header-icon">
+            <FiMessageSquare size={20} />
+          </div>
+          <div>
+            <h1>WhatsApp Marketing</h1>
+            <p className="wa-header-sub">Manage accounts, chats, campaigns &amp; automation</p>
+          </div>
+        </div>
         <div className="wa-tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`wa-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span className="wa-tab-icon">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={`wa-tab ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon size={14} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -66,43 +83,44 @@ function WhatsAppMarketingInner() {
 function DashboardTab() {
   const { dashboard, fetchDashboard } = useWhatsApp();
 
-  useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  if (!dashboard) {
-    return <div className="wa-loading">Loading dashboard...</div>;
-  }
+  if (!dashboard) return <div className="wa-loading"><div className="wa-spinner" /><span>Loading dashboard...</span></div>;
+
+  const stats = [
+    { label: 'Connected', value: dashboard.accounts?.filter(a => a.status === 'connected').length || 0, sub: `of ${dashboard.accounts?.length || 0} accounts`, icon: FiWifi, color: '#25d366' },
+    { label: 'Total Contacts', value: dashboard.totalContacts || 0, icon: FiUsers, color: '#1a1a1a' },
+    { label: 'Messages Today', value: dashboard.messagesToday || 0, icon: FiSend, color: '#2563eb' },
+    { label: 'Active Campaigns', value: dashboard.activeCampaigns || 0, icon: FiZap, color: '#d97706' },
+    { label: 'Chatbot Rules', value: dashboard.activeRules || 0, icon: FiActivity, color: '#7c3aed' }
+  ];
 
   return (
     <div className="wa-dashboard">
       <div className="wa-stats-grid">
-        <div className="wa-stat-card">
-          <div className="wa-stat-label">Connected Accounts</div>
-          <div className="wa-stat-value">{dashboard.accounts?.filter(a => a.status === 'connected').length || 0}</div>
-          <div className="wa-stat-sub">of {dashboard.accounts?.length || 0} total</div>
-        </div>
-        <div className="wa-stat-card">
-          <div className="wa-stat-label">Total Contacts</div>
-          <div className="wa-stat-value">{dashboard.totalContacts || 0}</div>
-        </div>
-        <div className="wa-stat-card">
-          <div className="wa-stat-label">Messages Today</div>
-          <div className="wa-stat-value">{dashboard.messagesToday || 0}</div>
-        </div>
-        <div className="wa-stat-card">
-          <div className="wa-stat-label">Active Campaigns</div>
-          <div className="wa-stat-value">{dashboard.activeCampaigns || 0}</div>
-        </div>
-        <div className="wa-stat-card">
-          <div className="wa-stat-label">Active Rules</div>
-          <div className="wa-stat-value">{dashboard.activeRules || 0}</div>
-        </div>
+        {stats.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={i} className="wa-stat-card">
+              <div className="wa-stat-icon" style={{ background: s.color + '12', color: s.color }}>
+                <Icon size={18} />
+              </div>
+              <div className="wa-stat-info">
+                <span className="wa-stat-label">{s.label}</span>
+                <span className="wa-stat-value">{s.value}</span>
+                {s.sub && <span className="wa-stat-sub">{s.sub}</span>}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {dashboard.accounts && dashboard.accounts.length > 0 && (
         <div className="wa-section">
-          <h3>Account Status</h3>
+          <div className="wa-section-title">
+            <FiSmartphone size={15} />
+            <span>Account Status</span>
+          </div>
           <div className="wa-account-list">
             {dashboard.accounts.map(acc => (
               <div key={acc._id} className="wa-account-row">
@@ -110,18 +128,18 @@ function DashboardTab() {
                   {acc.profilePicture ? (
                     <img src={acc.profilePicture} alt="" />
                   ) : (
-                    <div className="wa-avatar-placeholder">📱</div>
+                    <div className="wa-avatar-placeholder"><FiSmartphone size={16} /></div>
                   )}
+                  <span className={`wa-online-dot ${acc.status === 'connected' ? 'online' : ''}`} />
                 </div>
                 <div className="wa-account-info">
                   <div className="wa-account-name">{acc.displayName || acc.phoneNumber}</div>
                   <div className="wa-account-phone">{acc.phoneNumber || 'Not connected'}</div>
                 </div>
-                <div className={`wa-status-badge ${acc.status}`}>
-                  {acc.status}
-                </div>
+                <div className={`wa-status-badge ${acc.status}`}>{acc.status}</div>
                 <div className="wa-account-msgs">
-                  {acc.dailyMessageCount || 0} msgs today
+                  <FiTrendingUp size={12} />
+                  <span>{acc.dailyMessageCount || 0} today</span>
                 </div>
               </div>
             ))}
@@ -147,27 +165,22 @@ function AccountsTab() {
   const [editingSettings, setEditingSettings] = useState(null);
   const [settingsForm, setSettingsForm] = useState({});
 
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
   const handleLink = async () => {
     try {
       await linkAccount(linkName || 'My WhatsApp');
       setShowLinkModal(true);
       setLinkName('');
+      toast.info('Scan the QR code with your WhatsApp');
     } catch (e) {
-      alert('Failed to link account: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to link: ' + (e.response?.data?.message || e.message));
     }
   };
 
   const handleRemove = async (id) => {
     if (window.confirm('Remove this account? All messages and data will be deleted.')) {
-      try {
-        await removeAccount(id);
-      } catch (e) {
-        alert('Failed: ' + e.message);
-      }
+      try { await removeAccount(id); toast.success('Account removed'); } catch (e) { toast.error(e.message); }
     }
   };
 
@@ -176,9 +189,8 @@ function AccountsTab() {
     try {
       await updateAccountSettings(editingSettings, settingsForm);
       setEditingSettings(null);
-    } catch (e) {
-      alert('Failed: ' + e.message);
-    }
+      toast.success('Settings saved');
+    } catch (e) { toast.error(e.message); }
   };
 
   return (
@@ -186,36 +198,34 @@ function AccountsTab() {
       <div className="wa-section-header">
         <h2>WhatsApp Accounts</h2>
         <button className="wa-btn wa-btn-primary" onClick={handleLink} disabled={loading}>
-          + Link New Account
+          <FiPlus size={14} /> Link New Account
         </button>
       </div>
 
       {/* QR Code Modal */}
       {(showLinkModal || qrCode) && (
-        <div className="wa-modal-overlay" onClick={() => { setShowLinkModal(false); }}>
+        <div className="wa-modal-overlay" onClick={() => setShowLinkModal(false)}>
           <div className="wa-modal" onClick={e => e.stopPropagation()}>
             <div className="wa-modal-header">
               <h3>Link WhatsApp Account</h3>
-              <button className="wa-modal-close" onClick={() => setShowLinkModal(false)}>×</button>
+              <button className="wa-modal-close" onClick={() => setShowLinkModal(false)}><FiX size={16} /></button>
             </div>
             <div className="wa-modal-body wa-qr-container">
               {qrCode ? (
                 <>
-                  <QRCodeSVG value={qrCode} size={256} level="M" />
-                  <p className="wa-qr-hint">Scan this QR code with WhatsApp on your phone</p>
-                  <p className="wa-qr-steps">
-                    1. Open WhatsApp on your phone<br />
-                    2. Tap <strong>Menu</strong> or <strong>Settings</strong><br />
-                    3. Tap <strong>Linked Devices</strong><br />
-                    4. Tap <strong>Link a Device</strong><br />
-                    5. Point your phone camera at this QR code
-                  </p>
+                  <div className="wa-qr-box">
+                    <QRCodeSVG value={qrCode} size={220} level="M" bgColor="#ffffff" fgColor="#1a1a1a" />
+                  </div>
+                  <p className="wa-qr-hint">Scan with WhatsApp on your phone</p>
+                  <div className="wa-qr-steps">
+                    <div className="wa-qr-step"><span className="wa-step-num">1</span>Open WhatsApp</div>
+                    <div className="wa-qr-step"><span className="wa-step-num">2</span>Tap Settings &rarr; Linked Devices</div>
+                    <div className="wa-qr-step"><span className="wa-step-num">3</span>Tap Link a Device</div>
+                    <div className="wa-qr-step"><span className="wa-step-num">4</span>Point camera at this QR code</div>
+                  </div>
                 </>
               ) : (
-                <div className="wa-loading">
-                  <div className="wa-spinner"></div>
-                  <p>Generating QR code...</p>
-                </div>
+                <div className="wa-loading"><div className="wa-spinner" /><p>Generating QR code...</p></div>
               )}
             </div>
           </div>
@@ -227,8 +237,8 @@ function AccountsTab() {
         <div className="wa-modal-overlay" onClick={() => setEditingSettings(null)}>
           <div className="wa-modal" onClick={e => e.stopPropagation()}>
             <div className="wa-modal-header">
-              <h3>Account Settings</h3>
-              <button className="wa-modal-close" onClick={() => setEditingSettings(null)}>×</button>
+              <h3><FiSettings size={16} /> Account Settings</h3>
+              <button className="wa-modal-close" onClick={() => setEditingSettings(null)}><FiX size={16} /></button>
             </div>
             <div className="wa-modal-body">
               <div className="wa-form-group">
@@ -268,8 +278,8 @@ function AccountsTab() {
                 </label>
               </div>
               <div className="wa-form-actions">
-                <button className="wa-btn wa-btn-secondary" onClick={() => setEditingSettings(null)}>Cancel</button>
-                <button className="wa-btn wa-btn-primary" onClick={handleSaveSettings}>Save</button>
+                <button className="wa-btn" onClick={() => setEditingSettings(null)}>Cancel</button>
+                <button className="wa-btn wa-btn-primary" onClick={handleSaveSettings}>Save Settings</button>
               </div>
             </div>
           </div>
@@ -280,53 +290,74 @@ function AccountsTab() {
       <div className="wa-account-cards">
         {accounts.length === 0 ? (
           <div className="wa-empty">
-            <p>No WhatsApp accounts linked yet</p>
-            <p style={{ color: '#888', fontSize: '0.85rem' }}>Click "Link New Account" to get started</p>
+            <FiSmartphone size={40} />
+            <h3>No accounts linked yet</h3>
+            <p>Click "Link New Account" to connect your WhatsApp</p>
           </div>
         ) : (
           accounts.map(acc => (
-            <div key={acc._id} className="wa-account-card">
+            <div key={acc._id} className={`wa-account-card ${acc.status}`}>
               <div className="wa-account-card-header">
                 <div className="wa-account-avatar-lg">
                   {acc.profilePicture ? (
                     <img src={acc.profilePicture} alt="" />
                   ) : (
-                    <div className="wa-avatar-placeholder-lg">📱</div>
+                    <div className="wa-avatar-placeholder-lg"><FiSmartphone size={20} /></div>
                   )}
+                  <span className={`wa-online-dot-lg ${acc.status === 'connected' ? 'online' : ''}`} />
                 </div>
-                <div>
+                <div className="wa-account-card-info">
                   <h4>{acc.displayName || 'WhatsApp'}</h4>
                   <span className="wa-phone">{acc.phoneNumber || 'Connecting...'}</span>
+                  <div className={`wa-status-badge ${acc.status}`}>
+                    {acc.status === 'connected' ? <FiWifi size={10} /> : <FiWifiOff size={10} />}
+                    {acc.status}
+                  </div>
                 </div>
-                <div className={`wa-status-badge ${acc.status}`}>
-                  {acc.status}
-                </div>
+                {acc.isDefault && <span className="wa-default-badge"><FiStar size={10} /> Default</span>}
               </div>
 
               <div className="wa-account-card-body">
-                <div className="wa-account-stat">
-                  <span>Today:</span> {acc.dailyMessageCount || 0} / {acc.settings?.dailyLimit || 500}
+                <div className="wa-usage-bar">
+                  <div className="wa-usage-label">
+                    <span>Daily Usage</span>
+                    <span>{acc.dailyMessageCount || 0} / {acc.settings?.dailyLimit || 500}</span>
+                  </div>
+                  <div className="wa-progress-track">
+                    <div className="wa-progress-fill" style={{
+                      width: `${Math.min(((acc.dailyMessageCount || 0) / (acc.settings?.dailyLimit || 500)) * 100, 100)}%`
+                    }} />
+                  </div>
                 </div>
-                {acc.isDefault && <span className="wa-default-badge">Default</span>}
               </div>
 
               <div className="wa-account-card-actions">
                 {acc.status === 'connected' && (
                   <>
-                    <button className="wa-btn wa-btn-sm" onClick={() => disconnectAccount(acc._id)}>Disconnect</button>
+                    <button className="wa-btn wa-btn-sm" onClick={() => disconnectAccount(acc._id)}>
+                      <FiWifiOff size={12} /> Disconnect
+                    </button>
                     {!acc.isDefault && (
-                      <button className="wa-btn wa-btn-sm" onClick={() => setDefaultAccount(acc._id)}>Set Default</button>
+                      <button className="wa-btn wa-btn-sm" onClick={() => setDefaultAccount(acc._id)}>
+                        <FiStar size={12} /> Set Default
+                      </button>
                     )}
                   </>
                 )}
                 {(acc.status === 'disconnected' || acc.status === 'connecting') && (
-                  <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={() => reconnectAccount(acc._id)}>Reconnect</button>
+                  <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={() => reconnectAccount(acc._id)}>
+                    <FiRefreshCw size={12} /> Reconnect
+                  </button>
                 )}
                 <button className="wa-btn wa-btn-sm" onClick={() => {
                   setEditingSettings(acc._id);
                   setSettingsForm(acc.settings || {});
-                }}>Settings</button>
-                <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleRemove(acc._id)}>Remove</button>
+                }}>
+                  <FiSettings size={12} />
+                </button>
+                <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleRemove(acc._id)}>
+                  <FiTrash2 size={12} />
+                </button>
               </div>
             </div>
           ))
@@ -364,9 +395,7 @@ function ChatsTab() {
   }, [selectedAccount, searchQuery, fetchContacts]);
 
   useEffect(() => {
-    if (selectedContact) {
-      fetchMessages(selectedContact._id);
-    }
+    if (selectedContact) fetchMessages(selectedContact._id);
   }, [selectedContact, fetchMessages]);
 
   useEffect(() => {
@@ -380,74 +409,92 @@ function ChatsTab() {
       await sendMessage(selectedAccount, selectedContact._id, selectedContact.whatsappId, messageInput.trim());
       setMessageInput('');
     } catch (e) {
-      alert('Send failed: ' + e.message);
-    } finally {
-      setSending(false);
-    }
+      toast.error('Send failed: ' + (e.response?.data?.message || e.message));
+    } finally { setSending(false); }
   };
 
   const contactMessages = selectedContact ? (messages[selectedContact._id] || []) : [];
 
+  const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 86400000 && d.getDate() === now.getDate()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diff < 604800000) {
+      return d.toLocaleDateString([], { weekday: 'short' });
+    }
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
   return (
     <div className="wa-chats">
-      {/* Left Panel - Contact List */}
+      {/* Left Panel — Contact List */}
       <div className="wa-chat-sidebar">
         <div className="wa-chat-sidebar-header">
-          <select
-            className="wa-select"
-            value={selectedAccount}
-            onChange={e => { setSelectedAccount(e.target.value); setSelectedContact(null); }}
-          >
+          <select className="wa-select" value={selectedAccount}
+            onChange={e => { setSelectedAccount(e.target.value); setSelectedContact(null); }}>
             <option value="">Select Account</option>
             {connectedAccounts.map(a => (
               <option key={a._id} value={a._id}>{a.displayName || a.phoneNumber}</option>
             ))}
           </select>
-          <input
-            className="wa-search-input"
-            placeholder="Search contacts..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
+          <div className="wa-search-wrap">
+            <FiSearch size={14} />
+            <input className="wa-search-input" placeholder="Search contacts..."
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+          </div>
         </div>
         <div className="wa-contact-list">
           {contacts.length === 0 ? (
-            <div className="wa-empty-sm">No contacts yet</div>
+            <div className="wa-empty-sm"><FiUsers size={24} /><p>No contacts yet</p></div>
           ) : (
             contacts.map(contact => (
-              <div
-                key={contact._id}
+              <div key={contact._id}
                 className={`wa-contact-item ${selectedContact?._id === contact._id ? 'active' : ''}`}
-                onClick={() => setSelectedContact(contact)}
-              >
+                onClick={() => setSelectedContact(contact)}>
                 <div className="wa-contact-avatar">
                   {contact.profilePicture ? (
                     <img src={contact.profilePicture} alt="" />
                   ) : (
-                    <div className="wa-avatar-sm">{(contact.pushName || contact.phoneNumber || '?')[0]}</div>
+                    <div className="wa-avatar-sm">{getInitials(contact.pushName || contact.phoneNumber)}</div>
                   )}
                 </div>
                 <div className="wa-contact-details">
-                  <div className="wa-contact-name">{contact.pushName || contact.phoneNumber}</div>
-                  <div className="wa-contact-preview">
-                    {contact.lastMessageDirection === 'outbound' && <span style={{color:'#25d366'}}>✓ </span>}
-                    {contact.lastMessagePreview || 'No messages yet'}
+                  <div className="wa-contact-top">
+                    <span className="wa-contact-name">{contact.pushName || contact.phoneNumber}</span>
+                    <span className="wa-contact-time">{formatTime(contact.lastMessageAt)}</span>
+                  </div>
+                  <div className="wa-contact-bottom">
+                    <span className="wa-contact-preview">
+                      {contact.lastMessageDirection === 'outbound' && <FiCheck size={10} className="wa-sent-check" />}
+                      {contact.lastMessagePreview || 'No messages yet'}
+                    </span>
+                    {contact.unreadCount > 0 && <span className="wa-unread-badge">{contact.unreadCount}</span>}
                   </div>
                 </div>
-                {contact.unreadCount > 0 && (
-                  <div className="wa-unread-badge">{contact.unreadCount}</div>
-                )}
               </div>
             ))
           )}
         </div>
       </div>
 
-      {/* Right Panel - Messages */}
+      {/* Right Panel — Messages */}
       <div className="wa-chat-main">
         {selectedContact ? (
           <>
             <div className="wa-chat-header">
+              <div className="wa-chat-header-avatar">
+                {selectedContact.profilePicture ? (
+                  <img src={selectedContact.profilePicture} alt="" />
+                ) : (
+                  <div className="wa-avatar-sm">{getInitials(selectedContact.pushName || selectedContact.phoneNumber)}</div>
+                )}
+              </div>
               <div className="wa-chat-header-info">
                 <h3>{selectedContact.pushName || selectedContact.phoneNumber}</h3>
                 <span className="wa-chat-phone">{selectedContact.phoneNumber}</span>
@@ -455,13 +502,16 @@ function ChatsTab() {
               {selectedContact.tags?.length > 0 && (
                 <div className="wa-chat-tags">
                   {selectedContact.tags.map(tag => (
-                    <span key={tag} className="wa-tag">{tag}</span>
+                    <span key={tag} className="wa-tag"><FiTag size={9} /> {tag}</span>
                   ))}
                 </div>
               )}
             </div>
 
             <div className="wa-messages-area">
+              {contactMessages.length === 0 && (
+                <div className="wa-no-messages"><p>No messages yet. Start the conversation!</p></div>
+              )}
               {contactMessages.map((msg, i) => (
                 <div key={msg._id || i} className={`wa-message ${msg.direction}`}>
                   <div className="wa-message-bubble">
@@ -470,7 +520,11 @@ function ChatsTab() {
                         {msg.type === 'image' && <img src={msg.mediaUrl} alt="" />}
                         {msg.type === 'video' && <video src={msg.mediaUrl} controls />}
                         {msg.type === 'audio' && <audio src={msg.mediaUrl} controls />}
-                        {msg.type === 'document' && <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">📄 {msg.mediaFilename || 'Document'}</a>}
+                        {msg.type === 'document' && (
+                          <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="wa-doc-link">
+                            <FiFile size={14} /> {msg.mediaFilename || 'Document'}
+                          </a>
+                        )}
                       </div>
                     )}
                     {msg.content && <div className="wa-message-text">{msg.content}</div>}
@@ -479,11 +533,13 @@ function ChatsTab() {
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       {msg.direction === 'outbound' && (
-                        <span className="wa-message-status">
-                          {msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : msg.status === 'sent' ? '✓' : '⏳'}
+                        <span className={`wa-message-status ${msg.status}`}>
+                          {msg.status === 'read' ? <><FiCheck size={10} /><FiCheck size={10} /></> :
+                            msg.status === 'delivered' ? <><FiCheck size={10} /><FiCheck size={10} /></> :
+                              msg.status === 'sent' ? <FiCheck size={10} /> : <FiClock size={10} />}
                         </span>
                       )}
-                      {msg.isAutomated && <span className="wa-auto-badge">🤖</span>}
+                      {msg.isAutomated && <span className="wa-auto-badge"><FiActivity size={9} /></span>}
                     </div>
                   </div>
                 </div>
@@ -492,27 +548,23 @@ function ChatsTab() {
             </div>
 
             <div className="wa-chat-input">
-              <input
-                className="wa-message-input"
-                placeholder="Type a message..."
-                value={messageInput}
-                onChange={e => setMessageInput(e.target.value)}
+              <input className="wa-message-input" placeholder="Type a message..."
+                value={messageInput} onChange={e => setMessageInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                disabled={sending}
-              />
-              <button
-                className="wa-send-btn"
-                onClick={handleSend}
-                disabled={!messageInput.trim() || sending}
-              >
-                {sending ? '...' : '➤'}
+                disabled={sending} />
+              <button className="wa-send-btn" onClick={handleSend}
+                disabled={!messageInput.trim() || sending}>
+                <FiSend size={16} />
               </button>
             </div>
           </>
         ) : (
           <div className="wa-no-chat">
-            <div className="wa-no-chat-icon">💬</div>
-            <p>Select a contact to start chatting</p>
+            <div className="wa-no-chat-graphic">
+              <FiMessageSquare size={48} />
+            </div>
+            <h3>Select a contact</h3>
+            <p>Choose a conversation from the left panel to start chatting</p>
           </div>
         )}
       </div>
@@ -537,13 +589,11 @@ function CampaignsTab() {
 
   const connectedAccounts = accounts.filter(a => a.status === 'connected');
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, [fetchCampaigns]);
+  useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
 
   const handleCreate = async () => {
     if (!form.name || !form.message || !form.accountId) {
-      alert('Please fill in name, account, and message');
+      toast.error('Please fill in name, account, and message');
       return;
     }
     try {
@@ -557,17 +607,28 @@ function CampaignsTab() {
       });
       setShowCreateModal(false);
       setForm({ name: '', message: '', accountId: '', targetTags: '', scheduledAt: '' });
+      toast.success('Campaign created');
     } catch (e) {
-      alert('Failed: ' + (e.response?.data?.message || e.message));
+      toast.error(e.response?.data?.message || e.message);
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      draft: '#888', scheduled: '#f0ad4e', sending: '#25d366',
-      paused: '#f0ad4e', completed: '#5cb85c', failed: '#d9534f'
+  const getStatusStyle = (status) => {
+    const map = {
+      draft: { bg: '#f5f5f5', color: '#6b7280', icon: FiEdit2 },
+      scheduled: { bg: '#fef3c7', color: '#d97706', icon: FiClock },
+      sending: { bg: '#dcfce7', color: '#16a34a', icon: FiSend },
+      paused: { bg: '#fef3c7', color: '#d97706', icon: FiPause },
+      completed: { bg: '#f0fdf4', color: '#16a34a', icon: FiCheckCircle },
+      failed: { bg: '#fef2f2', color: '#dc2626', icon: FiAlertCircle }
     };
-    return colors[status] || '#888';
+    return map[status] || map.draft;
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this campaign?')) {
+      try { await deleteCampaign(id); toast.success('Campaign deleted'); } catch (e) { toast.error(e.message); }
+    }
   };
 
   return (
@@ -575,7 +636,7 @@ function CampaignsTab() {
       <div className="wa-section-header">
         <h2>Campaigns</h2>
         <button className="wa-btn wa-btn-primary" onClick={() => setShowCreateModal(true)}>
-          + New Campaign
+          <FiPlus size={14} /> New Campaign
         </button>
       </div>
 
@@ -584,8 +645,8 @@ function CampaignsTab() {
         <div className="wa-modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="wa-modal wa-modal-lg" onClick={e => e.stopPropagation()}>
             <div className="wa-modal-header">
-              <h3>Create Campaign</h3>
-              <button className="wa-modal-close" onClick={() => setShowCreateModal(false)}>×</button>
+              <h3><FiZap size={16} /> Create Campaign</h3>
+              <button className="wa-modal-close" onClick={() => setShowCreateModal(false)}><FiX size={16} /></button>
             </div>
             <div className="wa-modal-body">
               <div className="wa-form-group">
@@ -606,20 +667,25 @@ function CampaignsTab() {
                 <label>Message * <span className="wa-hint">Use {'{{name}}'} for personalization</span></label>
                 <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
                   placeholder="Hi {{name}}, check out our new..." rows={5} />
+                <div className="wa-char-count">{form.message.length} characters</div>
               </div>
-              <div className="wa-form-group">
-                <label>Target Tags <span className="wa-hint">Comma-separated contact tags</span></label>
-                <input type="text" value={form.targetTags} onChange={e => setForm({ ...form, targetTags: e.target.value })}
-                  placeholder="e.g. customer, vip" />
-              </div>
-              <div className="wa-form-group">
-                <label>Schedule (optional)</label>
-                <input type="datetime-local" value={form.scheduledAt}
-                  onChange={e => setForm({ ...form, scheduledAt: e.target.value })} />
+              <div className="wa-form-row">
+                <div className="wa-form-group">
+                  <label><FiTag size={12} /> Target Tags <span className="wa-hint">Comma-separated</span></label>
+                  <input type="text" value={form.targetTags} onChange={e => setForm({ ...form, targetTags: e.target.value })}
+                    placeholder="e.g. customer, vip" />
+                </div>
+                <div className="wa-form-group">
+                  <label><FiClock size={12} /> Schedule (optional)</label>
+                  <input type="datetime-local" value={form.scheduledAt}
+                    onChange={e => setForm({ ...form, scheduledAt: e.target.value })} />
+                </div>
               </div>
               <div className="wa-form-actions">
-                <button className="wa-btn wa-btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button className="wa-btn wa-btn-primary" onClick={handleCreate}>Create Campaign</button>
+                <button className="wa-btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button className="wa-btn wa-btn-primary" onClick={handleCreate}>
+                  <FiZap size={14} /> Create Campaign
+                </button>
               </div>
             </div>
           </div>
@@ -627,41 +693,38 @@ function CampaignsTab() {
       )}
 
       {/* Campaign List */}
-      <div className="wa-campaign-list">
-        {campaigns.length === 0 ? (
-          <div className="wa-empty">
-            <p>No campaigns yet</p>
-            <p style={{ color: '#888', fontSize: '0.85rem' }}>Create a campaign to send bulk messages to your contacts</p>
-          </div>
-        ) : (
-          campaigns.map(c => {
+      {campaigns.length === 0 ? (
+        <div className="wa-empty">
+          <FiZap size={40} />
+          <h3>No campaigns yet</h3>
+          <p>Create a campaign to send bulk messages to your contacts</p>
+        </div>
+      ) : (
+        <div className="wa-campaign-list">
+          {campaigns.map(c => {
             const progress = campaignProgress[c._id];
+            const style = getStatusStyle(c.status);
+            const StatusIcon = style.icon;
             return (
               <div key={c._id} className="wa-campaign-card">
                 <div className="wa-campaign-header">
-                  <h4>{c.name}</h4>
-                  <span className="wa-status-badge" style={{ background: getStatusColor(c.status) }}>
-                    {c.status}
+                  <div className="wa-campaign-title">
+                    <h4>{c.name}</h4>
+                    <span className="wa-campaign-date">
+                      <FiClock size={11} /> {new Date(c.createdAt).toLocaleDateString()}
+                      {c.accountId?.displayName && ` • ${c.accountId.displayName}`}
+                    </span>
+                  </div>
+                  <span className="wa-campaign-status" style={{ background: style.bg, color: style.color }}>
+                    <StatusIcon size={11} /> {c.status}
                   </span>
                 </div>
 
                 <div className="wa-campaign-stats">
-                  <div className="wa-campaign-stat">
-                    <span className="wa-stat-num">{c.stats?.total || 0}</span>
-                    <span className="wa-stat-lbl">Total</span>
-                  </div>
-                  <div className="wa-campaign-stat">
-                    <span className="wa-stat-num">{c.stats?.sent || 0}</span>
-                    <span className="wa-stat-lbl">Sent</span>
-                  </div>
-                  <div className="wa-campaign-stat">
-                    <span className="wa-stat-num">{c.stats?.delivered || 0}</span>
-                    <span className="wa-stat-lbl">Delivered</span>
-                  </div>
-                  <div className="wa-campaign-stat">
-                    <span className="wa-stat-num">{c.stats?.failed || 0}</span>
-                    <span className="wa-stat-lbl">Failed</span>
-                  </div>
+                  <div className="wa-campaign-stat"><span className="wa-stat-num">{c.stats?.total || 0}</span><span className="wa-stat-lbl">Total</span></div>
+                  <div className="wa-campaign-stat"><span className="wa-stat-num">{c.stats?.sent || 0}</span><span className="wa-stat-lbl">Sent</span></div>
+                  <div className="wa-campaign-stat"><span className="wa-stat-num">{c.stats?.delivered || 0}</span><span className="wa-stat-lbl">Delivered</span></div>
+                  <div className="wa-campaign-stat"><span className="wa-stat-num">{c.stats?.failed || 0}</span><span className="wa-stat-lbl">Failed</span></div>
                 </div>
 
                 {progress && progress.status === 'sending' && (
@@ -672,32 +735,42 @@ function CampaignsTab() {
                 )}
 
                 <div className="wa-campaign-actions">
-                  {c.status === 'draft' || c.status === 'scheduled' ? (
+                  {(c.status === 'draft' || c.status === 'scheduled') && (
                     <>
-                      <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={() => startCampaign(c._id)}>Start</button>
-                      <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => deleteCampaign(c._id)}>Delete</button>
+                      <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={async () => { try { await startCampaign(c._id); toast.success('Campaign started'); } catch(e) { toast.error(e.message); } }}>
+                        <FiPlay size={12} /> Start
+                      </button>
+                      <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleDelete(c._id)}>
+                        <FiTrash2 size={12} />
+                      </button>
                     </>
-                  ) : c.status === 'sending' ? (
-                    <button className="wa-btn wa-btn-sm" onClick={() => pauseCampaign(c._id)}>Pause</button>
-                  ) : c.status === 'paused' ? (
-                    <>
-                      <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={() => resumeCampaign(c._id)}>Resume</button>
-                      <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => deleteCampaign(c._id)}>Delete</button>
-                    </>
-                  ) : (
-                    <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => deleteCampaign(c._id)}>Delete</button>
                   )}
-                </div>
-
-                <div className="wa-campaign-meta">
-                  Created {new Date(c.createdAt).toLocaleDateString()}
-                  {c.accountId?.displayName && ` • ${c.accountId.displayName}`}
+                  {c.status === 'sending' && (
+                    <button className="wa-btn wa-btn-sm" onClick={async () => { try { await pauseCampaign(c._id); toast.info('Campaign paused'); } catch(e) { toast.error(e.message); } }}>
+                      <FiPause size={12} /> Pause
+                    </button>
+                  )}
+                  {c.status === 'paused' && (
+                    <>
+                      <button className="wa-btn wa-btn-sm wa-btn-primary" onClick={async () => { try { await resumeCampaign(c._id); toast.success('Campaign resumed'); } catch(e) { toast.error(e.message); } }}>
+                        <FiPlay size={12} /> Resume
+                      </button>
+                      <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleDelete(c._id)}>
+                        <FiTrash2 size={12} />
+                      </button>
+                    </>
+                  )}
+                  {(c.status === 'completed' || c.status === 'failed') && (
+                    <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleDelete(c._id)}>
+                      <FiTrash2 size={12} /> Delete
+                    </button>
+                  )}
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -711,7 +784,7 @@ function ChatbotTab() {
     updateChatbotRule, deleteChatbotRule, accounts
   } = useWhatsApp();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
   const [form, setForm] = useState({
     name: '', accountId: '', triggerType: 'keyword', triggerValue: '',
@@ -719,47 +792,33 @@ function ChatbotTab() {
     priority: 100, cooldownMinutes: 5, isActive: true
   });
 
-  useEffect(() => {
-    fetchChatbotRules();
-  }, [fetchChatbotRules]);
+  useEffect(() => { fetchChatbotRules(); }, [fetchChatbotRules]);
 
-  const resetForm = () => {
-    setForm({
-      name: '', accountId: '', triggerType: 'keyword', triggerValue: '',
-      responseType: 'text', responseContent: '', aiPrompt: '',
-      priority: 100, cooldownMinutes: 5, isActive: true
-    });
-  };
+  const resetForm = () => setForm({
+    name: '', accountId: '', triggerType: 'keyword', triggerValue: '',
+    responseType: 'text', responseContent: '', aiPrompt: '',
+    priority: 100, cooldownMinutes: 5, isActive: true
+  });
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.triggerType || !form.responseType) {
-      alert('Name, trigger type, and response type are required');
+      toast.error('Name, trigger type, and response type are required');
       return;
     }
     try {
-      await createChatbotRule({
-        ...form,
-        accountId: form.accountId || undefined
-      });
-      setShowCreateModal(false);
-      resetForm();
-    } catch (e) {
-      alert('Failed: ' + (e.response?.data?.message || e.message));
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingRule) return;
-    try {
-      await updateChatbotRule(editingRule, {
-        ...form,
-        accountId: form.accountId || null
-      });
+      const data = { ...form, accountId: form.accountId || undefined };
+      if (editingRule) {
+        await updateChatbotRule(editingRule, data);
+        toast.success('Rule updated');
+      } else {
+        await createChatbotRule(data);
+        toast.success('Rule created');
+      }
+      setShowModal(false);
       setEditingRule(null);
       resetForm();
-      setShowCreateModal(false);
     } catch (e) {
-      alert('Failed: ' + (e.response?.data?.message || e.message));
+      toast.error(e.response?.data?.message || e.message);
     }
   };
 
@@ -777,124 +836,118 @@ function ChatbotTab() {
       cooldownMinutes: rule.cooldownMinutes || 5,
       isActive: rule.isActive !== false
     });
-    setShowCreateModal(true);
+    setShowModal(true);
   };
 
   const handleDelete = async (ruleId) => {
     if (window.confirm('Delete this chatbot rule?')) {
-      try {
-        await deleteChatbotRule(ruleId);
-      } catch (e) {
-        alert('Failed: ' + e.message);
-      }
+      try { await deleteChatbotRule(ruleId); toast.success('Rule deleted'); } catch (e) { toast.error(e.message); }
     }
   };
 
   const toggleActive = async (rule) => {
-    try {
-      await updateChatbotRule(rule._id, { isActive: !rule.isActive });
-    } catch (e) {
-      alert('Failed: ' + e.message);
-    }
+    try { await updateChatbotRule(rule._id, { isActive: !rule.isActive }); } catch (e) { toast.error(e.message); }
   };
 
-  const triggerTypeLabels = {
-    keyword: 'Exact Keyword',
-    contains: 'Contains',
-    'starts-with': 'Starts With',
-    regex: 'Regex',
-    'ai-fallback': 'AI Fallback'
+  const getTriggerIcon = (type) => {
+    const map = { keyword: FiHash, contains: FiSearch, regex: FiEdit2, any: FiMessageSquare };
+    return map[type] || FiHash;
   };
 
   return (
     <div className="wa-chatbot">
       <div className="wa-section-header">
         <h2>Chatbot Rules</h2>
-        <button className="wa-btn wa-btn-primary" onClick={() => { resetForm(); setEditingRule(null); setShowCreateModal(true); }}>
-          + Add Rule
+        <button className="wa-btn wa-btn-primary" onClick={() => {
+          setEditingRule(null);
+          resetForm();
+          setShowModal(true);
+        }}>
+          <FiPlus size={14} /> New Rule
         </button>
       </div>
 
-      <p className="wa-chatbot-info">
-        Rules are evaluated by priority (lower number = higher priority). If no rule matches, the AI fallback rule is used.
-      </p>
-
       {/* Create/Edit Modal */}
-      {showCreateModal && (
-        <div className="wa-modal-overlay" onClick={() => { setShowCreateModal(false); setEditingRule(null); }}>
+      {showModal && (
+        <div className="wa-modal-overlay" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>
           <div className="wa-modal wa-modal-lg" onClick={e => e.stopPropagation()}>
             <div className="wa-modal-header">
-              <h3>{editingRule ? 'Edit Rule' : 'Create Rule'}</h3>
-              <button className="wa-modal-close" onClick={() => { setShowCreateModal(false); setEditingRule(null); }}>×</button>
+              <h3><FiActivity size={16} /> {editingRule ? 'Edit Rule' : 'Create Rule'}</h3>
+              <button className="wa-modal-close" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>
+                <FiX size={16} />
+              </button>
             </div>
             <div className="wa-modal-body">
-              <div className="wa-form-group">
-                <label>Rule Name *</label>
-                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Welcome Greeting" />
+              <div className="wa-form-row">
+                <div className="wa-form-group">
+                  <label>Rule Name *</label>
+                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. Welcome Message" />
+                </div>
+                <div className="wa-form-group">
+                  <label>Account (optional)</label>
+                  <select value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })}>
+                    <option value="">All Accounts</option>
+                    {accounts.map(a => (
+                      <option key={a._id} value={a._id}>{a.displayName || a.phoneNumber}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="wa-form-group">
-                <label>Account <span className="wa-hint">(Leave empty for all accounts)</span></label>
-                <select value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })}>
-                  <option value="">All Accounts</option>
-                  {accounts.map(a => (
-                    <option key={a._id} value={a._id}>{a.displayName || a.phoneNumber}</option>
-                  ))}
-                </select>
-              </div>
-
+              <div className="wa-form-divider">Trigger</div>
               <div className="wa-form-row">
                 <div className="wa-form-group">
                   <label>Trigger Type *</label>
                   <select value={form.triggerType} onChange={e => setForm({ ...form, triggerType: e.target.value })}>
                     <option value="keyword">Exact Keyword</option>
                     <option value="contains">Contains</option>
-                    <option value="starts-with">Starts With</option>
-                    <option value="regex">Regex</option>
-                    <option value="ai-fallback">AI Fallback</option>
+                    <option value="regex">Regex Pattern</option>
+                    <option value="any">Any Message</option>
                   </select>
                 </div>
-                {form.triggerType !== 'ai-fallback' && (
+                {form.triggerType !== 'any' && (
                   <div className="wa-form-group">
-                    <label>Trigger Value *</label>
+                    <label>Trigger Value</label>
                     <input type="text" value={form.triggerValue}
                       onChange={e => setForm({ ...form, triggerValue: e.target.value })}
-                      placeholder={form.triggerType === 'regex' ? 'e.g. ^(hi|hello)$' : 'e.g. hello'} />
+                      placeholder={form.triggerType === 'keyword' ? 'hello' : form.triggerType === 'contains' ? 'pricing' : '/^hi|hello$/i'} />
                   </div>
                 )}
               </div>
 
+              <div className="wa-form-divider">Response</div>
               <div className="wa-form-group">
                 <label>Response Type *</label>
                 <select value={form.responseType} onChange={e => setForm({ ...form, responseType: e.target.value })}>
-                  <option value="text">Text</option>
-                  <option value="image">Image</option>
-                  <option value="document">Document</option>
-                  <option value="ai">AI Generated</option>
+                  <option value="text">Text Message</option>
+                  <option value="template">Template</option>
+                  <option value="ai">AI-Generated</option>
                 </select>
               </div>
 
-              {form.responseType === 'ai' || form.triggerType === 'ai-fallback' ? (
+              {(form.responseType === 'text' || form.responseType === 'template') && (
                 <div className="wa-form-group">
-                  <label>AI System Prompt</label>
-                  <textarea value={form.aiPrompt} onChange={e => setForm({ ...form, aiPrompt: e.target.value })}
-                    placeholder="You are a helpful business assistant for our company..."
-                    rows={4} />
-                </div>
-              ) : (
-                <div className="wa-form-group">
-                  <label>Response Content <span className="wa-hint">Use {'{{name}}'} for contact name</span></label>
+                  <label>Response Content *</label>
                   <textarea value={form.responseContent}
                     onChange={e => setForm({ ...form, responseContent: e.target.value })}
-                    placeholder="Hi {{name}}! Thanks for reaching out..."
-                    rows={4} />
+                    placeholder="Hello! Thanks for reaching out..." rows={4} />
                 </div>
               )}
 
+              {form.responseType === 'ai' && (
+                <div className="wa-form-group">
+                  <label>AI Prompt</label>
+                  <textarea value={form.aiPrompt}
+                    onChange={e => setForm({ ...form, aiPrompt: e.target.value })}
+                    placeholder="You are a helpful customer support agent for our company..." rows={4} />
+                </div>
+              )}
+
+              <div className="wa-form-divider">Settings</div>
               <div className="wa-form-row">
                 <div className="wa-form-group">
-                  <label>Priority <span className="wa-hint">(lower = higher)</span></label>
+                  <label>Priority (lower = higher)</label>
                   <input type="number" value={form.priority}
                     onChange={e => setForm({ ...form, priority: parseInt(e.target.value) })} />
                 </div>
@@ -904,19 +957,18 @@ function ChatbotTab() {
                     onChange={e => setForm({ ...form, cooldownMinutes: parseInt(e.target.value) })} />
                 </div>
               </div>
-
               <div className="wa-form-group">
                 <label className="wa-checkbox-label">
                   <input type="checkbox" checked={form.isActive}
                     onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                  Active
+                  Rule is active
                 </label>
               </div>
 
               <div className="wa-form-actions">
-                <button className="wa-btn wa-btn-secondary" onClick={() => { setShowCreateModal(false); setEditingRule(null); }}>Cancel</button>
-                <button className="wa-btn wa-btn-primary" onClick={editingRule ? handleUpdate : handleCreate}>
-                  {editingRule ? 'Update' : 'Create'}
+                <button className="wa-btn" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>Cancel</button>
+                <button className="wa-btn wa-btn-primary" onClick={handleSubmit}>
+                  {editingRule ? 'Update Rule' : 'Create Rule'}
                 </button>
               </div>
             </div>
@@ -925,49 +977,52 @@ function ChatbotTab() {
       )}
 
       {/* Rules List */}
-      <div className="wa-rules-list">
-        {chatbotRules.length === 0 ? (
-          <div className="wa-empty">
-            <p>No chatbot rules yet</p>
-            <p style={{ color: '#888', fontSize: '0.85rem' }}>Add rules to automate responses to incoming messages</p>
-          </div>
-        ) : (
-          chatbotRules.map(rule => (
-            <div key={rule._id} className={`wa-rule-card ${!rule.isActive ? 'inactive' : ''}`}>
-              <div className="wa-rule-header">
-                <div className="wa-rule-name">
-                  <span className="wa-rule-priority">#{rule.priority}</span>
-                  {rule.name}
+      {chatbotRules.length === 0 ? (
+        <div className="wa-empty">
+          <FiActivity size={40} />
+          <h3>No chatbot rules yet</h3>
+          <p>Create rules to automatically respond to incoming WhatsApp messages</p>
+        </div>
+      ) : (
+        <div className="wa-rules-list">
+          {chatbotRules.map(rule => {
+            const TriggerIcon = getTriggerIcon(rule.triggerType);
+            return (
+              <div key={rule._id} className={`wa-rule-card ${!rule.isActive ? 'inactive' : ''}`}>
+                <div className="wa-rule-header">
+                  <div className="wa-rule-title">
+                    <h4>{rule.name}</h4>
+                    <div className="wa-rule-meta">
+                      <span className="wa-rule-type"><TriggerIcon size={10} /> {rule.triggerType}</span>
+                      {rule.triggerValue && <span className="wa-rule-value">{rule.triggerValue}</span>}
+                      <span className="wa-rule-priority">P{rule.priority}</span>
+                    </div>
+                  </div>
+                  <div className="wa-rule-controls">
+                    <button className={`wa-toggle ${rule.isActive ? 'active' : ''}`}
+                      onClick={() => toggleActive(rule)}>
+                      <span className="wa-toggle-knob" />
+                    </button>
+                    <button className="wa-btn wa-btn-sm" onClick={() => handleEdit(rule)}><FiEdit2 size={12} /></button>
+                    <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleDelete(rule._id)}><FiTrash2 size={12} /></button>
+                  </div>
                 </div>
-                <div className="wa-rule-actions">
-                  <button
-                    className={`wa-btn wa-btn-xs ${rule.isActive ? 'wa-btn-active' : 'wa-btn-inactive'}`}
-                    onClick={() => toggleActive(rule)}
-                  >
-                    {rule.isActive ? 'ON' : 'OFF'}
-                  </button>
-                  <button className="wa-btn wa-btn-xs" onClick={() => handleEdit(rule)}>Edit</button>
-                  <button className="wa-btn wa-btn-xs wa-btn-danger" onClick={() => handleDelete(rule._id)}>Delete</button>
+                <div className="wa-rule-body">
+                  <div className="wa-rule-response">
+                    <span className="wa-response-type">{rule.responseType}</span>
+                    <p>{rule.responseType === 'ai' ? (rule.aiPrompt || '').substring(0, 100) : (rule.responseContent || '').substring(0, 100)}
+                      {((rule.responseContent || rule.aiPrompt || '').length > 100) && '...'}
+                    </p>
+                  </div>
+                  {rule.cooldownMinutes > 0 && (
+                    <span className="wa-cooldown"><FiClock size={10} /> {rule.cooldownMinutes}min cooldown</span>
+                  )}
                 </div>
               </div>
-              <div className="wa-rule-body">
-                <div className="wa-rule-trigger">
-                  <span className="wa-rule-type">{triggerTypeLabels[rule.triggerType] || rule.triggerType}</span>
-                  {rule.triggerValue && <span className="wa-rule-value">"{rule.triggerValue}"</span>}
-                </div>
-                <div className="wa-rule-response">
-                  → {rule.responseType === 'ai' ? 'AI Response' : (rule.responseContent || '').substring(0, 80)}
-                  {(rule.responseContent || '').length > 80 ? '...' : ''}
-                </div>
-                <div className="wa-rule-stats">
-                  Triggered: {rule.stats?.triggered || 0} | Responded: {rule.stats?.responded || 0}
-                  | Cooldown: {rule.cooldownMinutes}min
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

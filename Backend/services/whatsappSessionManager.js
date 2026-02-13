@@ -59,7 +59,19 @@ async function startSession(accountId) {
     fs.mkdirSync(sessionDir, { recursive: true });
   }
 
-  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+  const { state, saveCreds: _origSaveCreds } = await useMultiFileAuthState(sessionDir);
+  // Wrap saveCreds to handle ENOENT gracefully when session dir is cleaned up
+  const saveCreds = async () => {
+    try {
+      await _origSaveCreds();
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        console.log(`[WA] Session dir deleted, skipping creds save for ${accountId}`);
+      } else {
+        console.error(`[WA] Error saving creds for ${accountId}:`, err.message);
+      }
+    }
+  };
   const { version } = await fetchLatestBaileysVersion();
 
   const socket = makeWASocket({
@@ -124,11 +136,12 @@ async function startSession(accountId) {
         lastConnected: new Date()
       });
 
-      emitToCompany(account.companyId, 'whatsapp:connection-update', {
+      emitToCompany(account.companyId, 'whatsapp:connected', {
         accountId,
         status: 'connected',
         phoneNumber: me?.id?.split(':')[0] || me?.id?.split('@')[0],
-        displayName: me?.name
+        displayName: me?.name,
+        profilePicture: account.profilePicture
       });
     }
 
@@ -136,22 +149,26 @@ async function startSession(accountId) {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut && statusCode !== 401;
 
-      console.log(`[WA] Disconnected: ${accountId}, code: ${statusCode}, reconnect: ${shouldReconnect}`);
+      if (statusCode !== 515) {
+        console.log(`[WA] Disconnected: ${accountId}, code: ${statusCode}, reconnect: ${shouldReconnect}`);
+      }
 
       if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-        // User logged out or device removed — clean up session files for fresh re-link
-        const sessionDir = path.join(SESSIONS_DIR, accountId);
+        // Remove event listeners FIRST to prevent saveCreds race condition
+        try { socket.ev.removeAllListeners(); } catch (e) { /* best-effort */ }
+        sessions.delete(accountId);
+
+        // Clean up session files for fresh re-link
+        const sessionDir = path.join(SESSIONS_DIR, account.sessionFolder);
         if (fs.existsSync(sessionDir)) {
           fs.rmSync(sessionDir, { recursive: true, force: true });
-          console.log(`[WA] Cleaned session files for ${accountId}`);
+          console.log(`[WA] Cleaned session files for ${accountId} (${account.sessionFolder})`);
         }
 
         await WhatsAppAccount.findByIdAndUpdate(accountId, {
           status: 'disconnected',
           lastDisconnected: new Date()
         });
-
-        sessions.delete(accountId);
 
         emitToCompany(account.companyId, 'whatsapp:disconnected', {
           accountId,
@@ -187,7 +204,7 @@ async function startSession(accountId) {
           });
           sessions.delete(accountId);
 
-          emitToCompany(account.companyId, 'whatsapp:connection-update', {
+          emitToCompany(account.companyId, 'whatsapp:disconnected', {
             accountId,
             status: 'disconnected',
             reason: 'max_retries'
@@ -431,8 +448,17 @@ async function sendMessage(accountId, jid, content, options = {}) {
       messageContent = { text: content };
   }
 
-  // Send the message
-  const result = await session.socket.sendMessage(jid, messageContent);
+  // Send the message with error guard
+  let result;
+  try {
+    result = await session.socket.sendMessage(jid, messageContent);
+  } catch (sendErr) {
+    // Handle Baileys-level send errors gracefully
+    if (sendErr.message?.includes('undefined') || sendErr.message?.includes('not connected')) {
+      throw new Error('WhatsApp session lost connection. Please reconnect.');
+    }
+    throw sendErr;
+  }
 
   if (!result || !result.key) {
     throw new Error('Message send failed - no response from WhatsApp');

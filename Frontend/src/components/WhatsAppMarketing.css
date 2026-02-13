@@ -1,101 +1,174 @@
-/* =====================================================
-   WHATSAPP MARKETING - Clean Black/White Theme
-   ===================================================== */
-
+/* ===== WhatsApp Marketing — Premium B&W ===== */
 .wa-container {
-  padding: 0 24px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-  font-family: 'Switzer', -apple-system, sans-serif;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  max-width: 100%;
+  color: #1a1a1a;
 }
 
-/* Header & Tabs */
+/* Loading & Spinner */
+.wa-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.wa-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #1a1a1a;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Header */
 .wa-header {
-  margin-bottom: 24px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.wa-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wa-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #1a1a1a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wa-header h1 {
-  font-size: 1.5rem;
+  font-size: 18px;
   font-weight: 700;
-  margin: 0 0 16px 0;
-  color: #111;
+  margin: 0;
+  letter-spacing: -0.3px;
 }
 
+.wa-header-sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 2px 0 0;
+}
+
+/* Tabs */
 .wa-tabs {
   display: flex;
-  gap: 4px;
-  background: #f0f0f0;
-  padding: 4px;
-  border-radius: 12px;
-  width: fit-content;
+  gap: 2px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 3px;
 }
 
 .wa-tab {
   background: transparent;
   border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 7px 14px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 12px;
   font-weight: 500;
-  color: #666;
+  color: #6b7280;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
+  gap: 5px;
+  transition: all 0.15s ease;
+  font-family: 'Switzer', sans-serif;
 }
 
 .wa-tab:hover {
-  color: #111;
-  background: rgba(0, 0, 0, 0.05);
+  color: #1a1a1a;
+  background: #fff;
 }
 
 .wa-tab.active {
-  background: #111;
+  background: #1a1a1a;
   color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.wa-tab-icon {
-  font-size: 1rem;
+/* Content */
+.wa-content {
+  padding: 20px 24px;
 }
 
-/* Section Headers */
-.wa-section-header {
+/* Section */
+.wa-section {
+  margin-top: 24px;
+}
+
+.wa-section-title {
   display: flex;
   align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wa-section-header {
+  display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
 .wa-section-header h2 {
-  font-size: 1.15rem;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
-  color: #111;
 }
 
 /* Buttons */
 .wa-btn {
-  border: 1px solid #ddd;
+  border: 1px solid #e5e7eb;
   background: #fff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
   cursor: pointer;
   font-weight: 500;
   transition: all 0.15s;
-  color: #333;
+  color: #374151;
+  font-family: 'Switzer', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .wa-btn:hover {
   background: #f5f5f5;
-  border-color: #ccc;
+  border-color: #d1d5db;
 }
 
 .wa-btn-primary {
-  background: #111;
+  background: #1a1a1a;
   color: #fff;
-  border-color: #111;
+  border-color: #1a1a1a;
 }
 
 .wa-btn-primary:hover {
@@ -103,40 +176,18 @@
 }
 
 .wa-btn-danger {
-  color: #d9534f;
-  border-color: #d9534f;
+  color: #dc2626;
+  border-color: #fecaca;
 }
 
 .wa-btn-danger:hover {
-  background: #d9534f;
-  color: #fff;
-}
-
-.wa-btn-secondary {
-  background: #f5f5f5;
-  border-color: #ddd;
+  background: #fef2f2;
+  border-color: #dc2626;
 }
 
 .wa-btn-sm {
-  padding: 5px 12px;
-  font-size: 0.8rem;
-}
-
-.wa-btn-xs {
-  padding: 3px 8px;
-  font-size: 0.75rem;
-  border-radius: 6px;
-}
-
-.wa-btn-active {
-  background: #25d366;
-  color: #fff;
-  border-color: #25d366;
-}
-
-.wa-btn-inactive {
-  background: #f0f0f0;
-  color: #999;
+  padding: 4px 10px;
+  font-size: 11px;
 }
 
 .wa-btn:disabled {
@@ -147,250 +198,390 @@
 /* Stats Grid */
 .wa-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
 }
 
 .wa-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
   background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.wa-stat-card:hover {
+  border-color: #e5e7eb;
+}
+
+.wa-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wa-stat-info {
+  display: flex;
+  flex-direction: column;
 }
 
 .wa-stat-label {
-  font-size: 0.8rem;
-  color: #888;
-  margin-bottom: 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .wa-stat-value {
-  font-size: 1.8rem;
+  font-size: 22px;
   font-weight: 700;
-  color: #111;
+  color: #1a1a1a;
+  line-height: 1.2;
 }
 
 .wa-stat-sub {
-  font-size: 0.75rem;
-  color: #aaa;
-  margin-top: 2px;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 /* Status Badge */
 .wa-status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: capitalize;
-  color: #fff;
 }
 
 .wa-status-badge.connected {
-  background: #25d366;
-}
-
-.wa-status-badge.connecting {
-  background: #f0ad4e;
+  background: #dcfce7;
+  color: #16a34a;
 }
 
 .wa-status-badge.disconnected {
-  background: #999;
+  background: #f5f5f5;
+  color: #9ca3af;
 }
 
-.wa-status-badge.banned {
-  background: #d9534f;
-}
-
-/* Default Badge */
-.wa-default-badge {
-  background: #111;
-  color: #fff;
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 600;
+.wa-status-badge.connecting {
+  background: #fef3c7;
+  color: #d97706;
 }
 
 /* Account List (Dashboard) */
-.wa-section {
-  margin-top: 24px;
-}
-
-.wa-section h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: #111;
-}
-
 .wa-account-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .wa-account-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
   background: #fff;
-  border: 1px solid #eee;
-  border-radius: 10px;
 }
 
-.wa-account-avatar img,
-.wa-account-avatar-lg img {
-  width: 40px;
-  height: 40px;
+.wa-account-avatar {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.wa-account-avatar img {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.wa-account-avatar-lg img {
-  width: 48px;
-  height: 48px;
-}
-
-.wa-avatar-placeholder,
-.wa-avatar-placeholder-lg {
-  width: 40px;
-  height: 40px;
+.wa-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f0f0;
-  border-radius: 50%;
-  font-size: 1.2rem;
+  color: #9ca3af;
 }
 
 .wa-avatar-placeholder-lg {
   width: 48px;
   height: 48px;
-  font-size: 1.4rem;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.wa-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d1d5db;
+  border: 2px solid #fff;
+}
+
+.wa-online-dot.online {
+  background: #25d366;
+}
+
+.wa-online-dot-lg {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d1d5db;
+  border: 2px solid #fff;
+}
+
+.wa-online-dot-lg.online {
+  background: #25d366;
 }
 
 .wa-account-info {
   flex: 1;
+  min-width: 0;
 }
 
 .wa-account-name {
   font-weight: 600;
-  font-size: 0.9rem;
-  color: #111;
+  font-size: 13px;
+  color: #1a1a1a;
 }
 
 .wa-account-phone {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 .wa-account-msgs {
-  font-size: 0.8rem;
-  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
-/* Account Cards (Accounts Tab) */
+/* Account Cards */
 .wa-account-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
 .wa-account-card {
-  background: #fff;
-  border: 1px solid #eee;
+  border: 1px solid #f0f0f0;
   border-radius: 12px;
-  padding: 20px;
+  overflow: hidden;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.wa-account-card:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.wa-account-card.connected {
+  border-left: 3px solid #25d366;
+}
+
+.wa-account-card.disconnected {
+  border-left: 3px solid #d1d5db;
+}
+
+.wa-account-card.connecting {
+  border-left: 3px solid #d97706;
 }
 
 .wa-account-card-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #f8f8f8;
 }
 
-.wa-account-card-header h4 {
+.wa-account-avatar-lg {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.wa-account-avatar-lg img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.wa-account-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.wa-account-card-info h4 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .wa-phone {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 12px;
+  color: #9ca3af;
+  display: block;
+  margin: 2px 0;
+}
+
+.wa-default-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef3c7;
+  color: #d97706;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .wa-account-card-body {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  padding: 12px 16px;
 }
 
-.wa-account-stat {
-  font-size: 0.85rem;
-  color: #666;
+.wa-usage-bar {
+  margin: 0;
+}
+
+.wa-usage-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.wa-progress-track {
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.wa-progress-track .wa-progress-fill {
+  height: 100%;
+  background: #25d366;
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 .wa-account-card-actions {
   display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  border-top: 1px solid #f8f8f8;
   flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* Chat Layout */
 .wa-chats {
   display: flex;
-  height: calc(100vh - 250px);
-  min-height: 500px;
-  border: 1px solid #eee;
+  border: 1px solid #f0f0f0;
   border-radius: 12px;
   overflow: hidden;
+  min-height: 520px;
   background: #fff;
 }
 
 .wa-chat-sidebar {
   width: 320px;
-  border-right: 1px solid #eee;
+  border-right: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
   background: #fafafa;
+  flex-shrink: 0;
 }
 
 .wa-chat-sidebar-header {
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.wa-select,
-.wa-search-input {
+.wa-select {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  background: #fff;
+  padding: 7px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Switzer', sans-serif;
+  color: #1a1a1a;
   outline: none;
-  box-sizing: border-box;
+  background: #fff;
 }
 
-.wa-select:focus,
-.wa-search-input:focus {
-  border-color: #111;
+.wa-select:focus {
+  border-color: #1a1a1a;
 }
 
+.wa-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fff;
+}
+
+.wa-search-wrap svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.wa-search-input {
+  border: none;
+  background: transparent;
+  padding: 7px 0;
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+  font-family: 'Switzer', sans-serif;
+}
+
+.wa-search-wrap:focus-within {
+  border-color: #1a1a1a;
+}
+
+/* Contact List */
 .wa-contact-list {
   flex: 1;
   overflow-y: auto;
@@ -401,8 +592,8 @@
 }
 
 .wa-contact-list::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
 }
 
 .wa-contact-item {
@@ -411,8 +602,8 @@
   gap: 10px;
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.15s;
+  transition: background 0.1s;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .wa-contact-item:hover {
@@ -420,28 +611,31 @@
 }
 
 .wa-contact-item.active {
-  background: #e8e8e8;
+  background: #e5e7eb;
+}
+
+.wa-contact-avatar {
+  flex-shrink: 0;
 }
 
 .wa-contact-avatar img {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .wa-avatar-sm {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: #111;
+  background: #1a1a1a;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: 11px;
   font-weight: 600;
-  flex-shrink: 0;
 }
 
 .wa-contact-details {
@@ -449,34 +643,64 @@
   min-width: 0;
 }
 
+.wa-contact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .wa-contact-name {
-  font-size: 0.9rem;
+  font-size: 13px;
   font-weight: 600;
-  color: #111;
+  color: #1a1a1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.wa-contact-time {
+  font-size: 10px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.wa-contact-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .wa-contact-preview {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 12px;
+  color: #9ca3af;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.wa-sent-check {
+  color: #25d366;
+  flex-shrink: 0;
 }
 
 .wa-unread-badge {
   background: #25d366;
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 10px;
   font-weight: 700;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 10px;
+  min-width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 9px;
+  padding: 0 4px;
   flex-shrink: 0;
 }
 
@@ -485,49 +709,67 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: #fff;
+  min-width: 0;
 }
 
 .wa-chat-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.wa-chat-header-avatar img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.wa-chat-header-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .wa-chat-header-info h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .wa-chat-phone {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 .wa-chat-tags {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .wa-tag {
-  background: #f0f0f0;
-  color: #555;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f5f5f5;
+  color: #6b7280;
+  font-size: 10px;
   padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
+  border-radius: 4px;
   font-weight: 500;
 }
 
-/* Messages Area */
+/* Messages */
 .wa-messages-area {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   background: #fafafa;
 }
 
@@ -536,8 +778,17 @@
 }
 
 .wa-messages-area::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+.wa-no-messages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #d1d5db;
+  font-size: 13px;
 }
 
 .wa-message {
@@ -556,96 +807,123 @@
 .wa-message-bubble {
   padding: 8px 12px;
   border-radius: 12px;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
   word-wrap: break-word;
 }
 
 .wa-message.inbound .wa-message-bubble {
   background: #fff;
-  border: 1px solid #eee;
+  border: 1px solid #f0f0f0;
   border-bottom-left-radius: 4px;
 }
 
 .wa-message.outbound .wa-message-bubble {
-  background: #111;
+  background: #1a1a1a;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
+.wa-message-text {
+  margin-bottom: 2px;
+}
+
+.wa-message-media {
+  margin-bottom: 6px;
+}
+
 .wa-message-media img {
-  max-width: 250px;
+  max-width: 220px;
   border-radius: 8px;
-  margin-bottom: 4px;
 }
 
 .wa-message-media video {
-  max-width: 250px;
+  max-width: 220px;
   border-radius: 8px;
+}
+
+.wa-message-media audio {
+  max-width: 200px;
+}
+
+.wa-doc-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
 }
 
 .wa-message-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px;
   justify-content: flex-end;
+  margin-top: 2px;
 }
 
 .wa-message-time {
-  font-size: 0.7rem;
+  font-size: 10px;
   opacity: 0.6;
 }
 
 .wa-message-status {
-  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: -2px;
+  opacity: 0.6;
 }
 
-.wa-message.outbound .wa-message-status {
+.wa-message-status.read {
   color: #25d366;
+  opacity: 1;
 }
 
 .wa-auto-badge {
-  font-size: 0.7rem;
+  opacity: 0.6;
 }
 
 /* Chat Input */
 .wa-chat-input {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid #eee;
-  background: #fff;
+  border-top: 1px solid #f0f0f0;
 }
 
 .wa-message-input {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
+  padding: 9px 14px;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 13px;
   outline: none;
   background: #f5f5f5;
+  font-family: 'Switzer', sans-serif;
 }
 
 .wa-message-input:focus {
-  border-color: #111;
+  border-color: #1a1a1a;
   background: #fff;
 }
 
 .wa-send-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: none;
-  background: #111;
+  background: #1a1a1a;
   color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  transition: background 0.15s;
+  transition: all 0.15s;
   flex-shrink: 0;
 }
 
@@ -654,23 +932,41 @@
 }
 
 .wa-send-btn:disabled {
-  background: #ccc;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* No Chat Selected */
+/* No Chat */
 .wa-no-chat {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #aaa;
+  height: 100%;
+  color: #d1d5db;
 }
 
-.wa-no-chat-icon {
-  font-size: 3rem;
-  margin-bottom: 8px;
+.wa-no-chat-graphic {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.wa-no-chat h3 {
+  color: #6b7280;
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.wa-no-chat p {
+  color: #9ca3af;
+  font-size: 13px;
+  margin: 0;
 }
 
 /* Campaign Cards */
@@ -681,28 +977,56 @@
 }
 
 .wa-campaign-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 16px;
   background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 20px;
+  transition: border-color 0.15s;
+}
+
+.wa-campaign-card:hover {
+  border-color: #e5e7eb;
 }
 
 .wa-campaign-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 12px;
 }
 
-.wa-campaign-header h4 {
-  margin: 0;
-  font-size: 1rem;
+.wa-campaign-title h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
   font-weight: 600;
+}
+
+.wa-campaign-date {
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wa-campaign-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  flex-shrink: 0;
 }
 
 .wa-campaign-stats {
   display: flex;
-  gap: 24px;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid #f8f8f8;
+  border-bottom: 1px solid #f8f8f8;
   margin-bottom: 12px;
 }
 
@@ -713,374 +1037,572 @@
 }
 
 .wa-stat-num {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 700;
-  color: #111;
+  color: #1a1a1a;
 }
 
 .wa-stat-lbl {
-  font-size: 0.7rem;
-  color: #888;
+  font-size: 10px;
+  color: #9ca3af;
   text-transform: uppercase;
+  font-weight: 500;
+}
+
+.wa-campaign-actions {
+  display: flex;
+  gap: 6px;
 }
 
 /* Progress Bar */
 .wa-progress-bar {
   position: relative;
-  height: 24px;
+  height: 20px;
   background: #f0f0f0;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   margin-bottom: 12px;
 }
 
-.wa-progress-fill {
+.wa-progress-bar .wa-progress-fill {
   height: 100%;
   background: #25d366;
-  border-radius: 12px;
-  transition: width 0.5s ease;
+  border-radius: 10px;
+  transition: width 0.3s ease;
 }
 
 .wa-progress-text {
   position: absolute;
+  right: 8px;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 0.75rem;
+  transform: translateY(-50%);
+  font-size: 10px;
   font-weight: 600;
-  color: #111;
-}
-
-.wa-campaign-actions {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.wa-campaign-meta {
-  font-size: 0.75rem;
-  color: #aaa;
+  color: #374151;
 }
 
 /* Chatbot Rules */
-.wa-chatbot-info {
-  font-size: 0.85rem;
-  color: #888;
-  margin: -8px 0 20px 0;
-}
-
 .wa-rules-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .wa-rule-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
   background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 16px;
-  transition: opacity 0.15s;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.wa-rule-card:hover {
+  border-color: #e5e7eb;
 }
 
 .wa-rule-card.inactive {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .wa-rule-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
 }
 
-.wa-rule-name {
+.wa-rule-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.wa-rule-title h4 {
+  margin: 0;
+  font-size: 13px;
   font-weight: 600;
-  font-size: 0.95rem;
+}
+
+.wa-rule-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.wa-rule-priority {
-  background: #f0f0f0;
-  color: #666;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.wa-rule-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.wa-rule-body {
-  font-size: 0.85rem;
-}
-
-.wa-rule-trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
 .wa-rule-type {
-  background: #111;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #1a1a1a;
   color: #fff;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.7rem;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .wa-rule-value {
-  color: #555;
-  font-style: italic;
+  font-size: 11px;
+  color: #6b7280;
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.wa-rule-priority {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.wa-rule-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.wa-rule-body {
+  padding: 0 16px 12px;
 }
 
 .wa-rule-response {
-  color: #666;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
-.wa-rule-stats {
-  font-size: 0.75rem;
-  color: #aaa;
-}
-
-/* Modal */
-.wa-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.wa-modal {
-  background: #fff;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-
-.wa-modal-lg {
-  max-width: 600px;
-}
-
-.wa-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #eee;
-}
-
-.wa-modal-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
+.wa-response-type {
+  display: inline-block;
+  font-size: 10px;
   font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
 }
 
-.wa-modal-close {
-  background: none;
+.wa-rule-response p {
+  font-size: 12px;
+  color: #374151;
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+.wa-cooldown {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* Toggle Switch */
+.wa-toggle {
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: #e5e7eb;
   border: none;
-  font-size: 1.5rem;
   cursor: pointer;
-  color: #888;
+  position: relative;
+  transition: background 0.2s;
   padding: 0;
-  line-height: 1;
 }
 
-.wa-modal-close:hover {
-  color: #111;
+.wa-toggle.active {
+  background: #25d366;
 }
 
-.wa-modal-body {
-  padding: 24px;
+.wa-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
 }
 
-/* QR Container */
-.wa-qr-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+.wa-toggle.active .wa-toggle-knob {
+  transform: translateX(16px);
 }
 
-.wa-qr-hint {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #111;
-  margin-top: 16px;
-}
-
-.wa-qr-steps {
-  font-size: 0.85rem;
-  color: #666;
-  line-height: 1.7;
-  margin-top: 12px;
-  text-align: left;
-  background: #f8f8f8;
-  padding: 12px 16px;
-  border-radius: 8px;
-}
-
-/* Form Elements */
+/* Forms */
 .wa-form-group {
-  margin-bottom: 16px;
-  flex: 1;
+  margin-bottom: 12px;
 }
 
 .wa-form-group label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 11px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 6px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.wa-form-group input[type="text"],
-.wa-form-group input[type="number"],
-.wa-form-group input[type="datetime-local"],
-.wa-form-group textarea,
-.wa-form-group select {
+.wa-form-group input,
+.wa-form-group select,
+.wa-form-group textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Switzer', sans-serif;
+  color: #1a1a1a;
+  background: #fff;
   outline: none;
   box-sizing: border-box;
-  background: #fff;
-  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .wa-form-group input:focus,
-.wa-form-group textarea:focus,
-.wa-form-group select:focus {
-  border-color: #111;
-}
-
-.wa-form-group textarea {
-  resize: vertical;
-  min-height: 80px;
+.wa-form-group select:focus,
+.wa-form-group textarea:focus {
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.06);
 }
 
 .wa-form-row {
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.wa-hint {
-  font-weight: 400;
-  color: #888;
-  font-size: 0.8rem;
-}
-
-.wa-checkbox-label {
-  display: flex !important;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.wa-checkbox-label input[type="checkbox"] {
-  width: auto;
+.wa-form-divider {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 16px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .wa-form-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
-/* Loading & Empty States */
-.wa-loading {
+.wa-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wa-checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+
+.wa-hint {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.wa-char-count {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* Modal */
+.wa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  animation: fadeIn 0.15s ease;
+}
+
+.wa-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.2s ease;
+}
+
+.wa-modal-lg {
+  max-width: 560px;
+}
+
+.wa-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.wa-modal-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wa-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.wa-modal-close:hover {
+  color: #1a1a1a;
+  background: #f5f5f5;
+}
+
+.wa-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* QR Code */
+.wa-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.wa-qr-box {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.wa-qr-hint {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 8px 0 0;
+}
+
+.wa-qr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.wa-qr-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #374151;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.wa-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Empty State */
+.wa-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  color: #888;
-}
-
-.wa-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #eee;
-  border-top-color: #111;
-  border-radius: 50%;
-  animation: wa-spin 0.7s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes wa-spin {
-  to { transform: rotate(360deg); }
-}
-
-.wa-empty {
+  padding: 60px 20px;
+  color: #d1d5db;
   text-align: center;
-  padding: 40px;
-  color: #888;
+}
+
+.wa-empty h3 {
+  color: #6b7280;
+  font-size: 15px;
+  margin: 12px 0 4px;
+}
+
+.wa-empty p {
+  color: #9ca3af;
+  font-size: 13px;
+  margin: 0;
 }
 
 .wa-empty-sm {
-  text-align: center;
-  padding: 20px;
-  color: #aaa;
-  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #d1d5db;
+  gap: 8px;
+}
+
+.wa-empty-sm p {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .wa-container {
-    padding: 0 12px 12px;
+  .wa-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .wa-tabs {
-    overflow-x: auto;
     width: 100%;
+    overflow-x: auto;
+  }
+
+  .wa-form-row {
+    grid-template-columns: 1fr;
   }
 
   .wa-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .wa-chats {
-    flex-direction: column;
-    height: auto;
-  }
-
-  .wa-chat-sidebar {
-    width: 100%;
-    max-height: 300px;
-    border-right: none;
-    border-bottom: 1px solid #eee;
+    grid-template-columns: 1fr 1fr;
   }
 
   .wa-account-cards {
     grid-template-columns: 1fr;
   }
 
-  .wa-form-row {
+  .wa-chats {
     flex-direction: column;
-    gap: 0;
   }
 
-  .wa-message {
-    max-width: 85%;
+  .wa-chat-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #f0f0f0;
+    max-height: 300px;
   }
+
+  .wa-campaign-stats {
+    flex-wrap: wrap;
+  }
+}
+
+/* Connecting pulse animation */
+.wa-status-badge.connecting {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* QR code scan effect */
+.wa-qr-box svg {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Send button active state */
+.wa-send-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+/* Smooth message bubble entrance */
+.wa-message {
+  animation: msgSlide 0.2s ease;
+}
+
+@keyframes msgSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Campaign progress animation */
+.wa-progress-bar .wa-progress-fill {
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Toast-friendly scrollbar for modals */
+.wa-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wa-modal-body::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+/* Account card default badge glow */
+.wa-account-card.connected:hover {
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.08);
+}
+
+/* Better hover for rule toggle */
+.wa-toggle:hover {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }

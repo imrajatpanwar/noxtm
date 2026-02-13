@@ -198,6 +198,10 @@ app.use('/api/notes', notesRoutes);
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 
+// Social Media Calendar routes
+const socialMediaCalendarRoutes = require('./routes/social-media-calendar');
+app.use('/api/social-media-calendar', socialMediaCalendarRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
@@ -233,7 +237,7 @@ const connectWithTimeout = async () => {
 console.log('Starting MongoDB connection...');
 connectWithTimeout().then(() => {
   console.log('MongoDB connection attempt completed');
-  
+
   // Restore WhatsApp sessions after MongoDB connects
   if (mongoConnected) {
     setTimeout(() => {
@@ -4238,7 +4242,7 @@ process.on('unhandledRejection', (reason, promise) => {
 async function gracefulShutdown(signal) {
   try {
     console.log(`🛑 ${signal} received, shutting down gracefully`);
-    
+
     // Stop all WhatsApp sessions
     try {
       await whatsappSessionManager.stopAllSessions();
@@ -4246,7 +4250,7 @@ async function gracefulShutdown(signal) {
     } catch (e) {
       console.warn('WhatsApp shutdown error:', e.message);
     }
-    
+
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
       console.log('📦 MongoDB connection closed');

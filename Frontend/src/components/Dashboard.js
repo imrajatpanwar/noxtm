@@ -48,6 +48,7 @@ import InvoiceManagement from './InvoiceManagement';
 import ChatWidget from './ChatWidget';
 import NoxtmChatAdmin from './NoxtmChatAdmin';
 import LinkedInManager from './LinkedInManager';
+import SocialMediaCalendar from './SocialMediaCalendar';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -268,6 +269,8 @@ function Dashboard({ user, onLogout }) {
         return <WebsiteAnalytics />;
       case 'seo-insights':
         return <SeoInsights />;
+      case 'content-calendar':
+        return <SocialMediaCalendar />;
       case 'linkedin':
         return <LinkedInManager />;
       case 'noxtm-chat':
