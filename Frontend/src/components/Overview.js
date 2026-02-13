@@ -337,6 +337,17 @@ function Overview({ error }) {
     });
   });
   const activeUsers = companyUsers.filter(u => activeUserIds.has(u._id));
+  
+  // Show all users if no active users, or show active users
+  const displayUsers = activeUsers.length > 0 ? activeUsers : companyUsers;
+
+  console.log('Overview Debug:', {
+    totalUsers: companyUsers.length,
+    totalTasks: tasks.length,
+    activeUsers: activeUsers.length,
+    displayUsers: displayUsers.length,
+    tasks: tasks.map(t => ({ title: t.title, assignees: t.assignees }))
+  });
 
   return (
     <div className="overview-wrapper">
@@ -354,20 +365,19 @@ function Overview({ error }) {
 
         {/* Right side - Active Team + Task Manager */}
         <div className="overview-right">
-          {activeUsers.length > 0 && (
+          {displayUsers.length > 0 && (
             <div className="active-team-section">
               <div className="active-team-header">
-                <span className="active-team-label">Active Team</span>
-                <span className="active-team-count">{activeUsers.length}</span>
+                <span className="active-team-label">{activeUsers.length > 0 ? 'Active Team' : 'Team Members'}</span>
+                <span className="active-team-count">{displayUsers.length}</span>
               </div>
               <div className="active-team-avatars">
-                {activeUsers.slice(0, 8).map(user => (
+                {displayUsers.slice(0, 8).map(user => (
                   <UserAvatar key={user._id} user={user} size={32} />
                 ))}
-                {activeUsers.length > 8 && (
-                  <div className="active-team-more">+{activeUsers.length - 8}</div>
-                )}
-              </div>
+                {displayUsers.length > 8 && (
+                  <div className="active-team-more">+{displayUsers.length - 8}</div>
+                )}\n              </div>
             </div>
           )}
           <TaskManager isWidget={true} />
