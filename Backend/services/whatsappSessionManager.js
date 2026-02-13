@@ -139,18 +139,24 @@ async function startSession(accountId) {
       console.log(`[WA] Disconnected: ${accountId}, code: ${statusCode}, reconnect: ${shouldReconnect}`);
 
       if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-        // User logged out or banned — clean up
+        // User logged out or device removed — clean up session files for fresh re-link
+        const sessionDir = path.join(SESSIONS_DIR, accountId);
+        if (fs.existsSync(sessionDir)) {
+          fs.rmSync(sessionDir, { recursive: true, force: true });
+          console.log(`[WA] Cleaned session files for ${accountId}`);
+        }
+
         await WhatsAppAccount.findByIdAndUpdate(accountId, {
-          status: statusCode === 401 ? 'banned' : 'disconnected',
+          status: 'disconnected',
           lastDisconnected: new Date()
         });
 
         sessions.delete(accountId);
 
-        emitToCompany(account.companyId, 'whatsapp:connection-update', {
+        emitToCompany(account.companyId, 'whatsapp:disconnected', {
           accountId,
-          status: statusCode === 401 ? 'banned' : 'disconnected',
-          reason: 'logged_out'
+          status: 'disconnected',
+          reason: statusCode === 401 ? 'device_removed' : 'logged_out'
         });
       } else if (shouldReconnect) {
         // Attempt reconnect with exponential backoff
@@ -273,29 +279,25 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     content = '[Unsupported message type]';
   }
 
-  // Find or create contact
-  let contact = await WhatsAppContact.findOne({ accountId, whatsappId: jid });
-  if (!contact) {
-    const phoneNumber = jid.split('@')[0];
-    contact = await WhatsAppContact.create({
-      companyId,
-      accountId,
-      whatsappId: jid,
-      phoneNumber,
-      pushName,
-      lastMessageAt: new Date(),
-      lastMessagePreview: content.substring(0, 150),
-      lastMessageDirection: 'inbound',
-      unreadCount: 1
-    });
-  } else {
-    contact.pushName = pushName || contact.pushName;
-    contact.lastMessageAt = new Date();
-    contact.lastMessagePreview = content.substring(0, 150);
-    contact.lastMessageDirection = 'inbound';
-    contact.unreadCount = (contact.unreadCount || 0) + 1;
-    await contact.save();
-  }
+  // Find or create contact (upsert to avoid race condition with concurrent messages)
+  const phoneNumber = jid.split('@')[0];
+  let contact = await WhatsAppContact.findOneAndUpdate(
+    { accountId, whatsappId: jid },
+    {
+      $set: {
+        companyId,
+        accountId,
+        whatsappId: jid,
+        phoneNumber,
+        pushName: pushName || undefined,
+        lastMessageAt: new Date(),
+        lastMessagePreview: content.substring(0, 150),
+        lastMessageDirection: 'inbound'
+      },
+      $inc: { unreadCount: 1 }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   // Save message
   const savedMessage = await WhatsAppMessage.create({
@@ -416,24 +418,22 @@ async function sendMessage(accountId, jid, content, options = {}) {
   account.incrementDailyCount();
   await account.save();
 
-  // Find or create contact
-  let contact = await WhatsAppContact.findOne({ accountId, whatsappId: jid });
-  if (!contact) {
-    contact = await WhatsAppContact.create({
-      companyId: account.companyId,
-      accountId,
-      whatsappId: jid,
-      phoneNumber: jid.split('@')[0],
-      lastMessageAt: new Date(),
-      lastMessagePreview: (content || '[Media]').substring(0, 150),
-      lastMessageDirection: 'outbound'
-    });
-  } else {
-    contact.lastMessageAt = new Date();
-    contact.lastMessagePreview = (content || '[Media]').substring(0, 150);
-    contact.lastMessageDirection = 'outbound';
-    await contact.save();
-  }
+  // Find or create contact (upsert to avoid race condition)
+  let contact = await WhatsAppContact.findOneAndUpdate(
+    { accountId, whatsappId: jid },
+    {
+      $set: {
+        companyId: account.companyId,
+        accountId,
+        whatsappId: jid,
+        phoneNumber: jid.split('@')[0],
+        lastMessageAt: new Date(),
+        lastMessagePreview: (content || '[Media]').substring(0, 150),
+        lastMessageDirection: 'outbound'
+      }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   // Save message to DB
   const savedMessage = await WhatsAppMessage.create({

@@ -806,7 +806,7 @@ function initializeRoutes({ io }) {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const messageStats = await WhatsAppMessage.aggregate([
-        { $match: { companyId: require('mongoose').Types.ObjectId(companyId), timestamp: { $gte: sevenDaysAgo } } },
+        { $match: { companyId: new require('mongoose').Types.ObjectId(companyId), timestamp: { $gte: sevenDaysAgo } } },
         {
           $group: {
             _id: {
