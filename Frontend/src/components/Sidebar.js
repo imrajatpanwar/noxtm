@@ -278,11 +278,8 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Digital Media Management
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
-    { name: 'Instagram', section: 'instagram', category: 'Digital Media Management' },
+    { name: 'Content Calendar', section: 'content-calendar', category: 'Digital Media Management' },
     { name: 'LinkedIn', section: 'linkedin', category: 'Digital Media Management' },
-    { name: 'YouTube', section: 'youtube', category: 'Digital Media Management' },
-    { name: 'X.com', section: 'x-com', category: 'Digital Media Management' },
-    { name: 'Reddit', section: 'reddit', category: 'Digital Media Management' },
 
     // Projects
     { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
@@ -607,11 +604,11 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <span>Meta Ads</span>
                     </div>
                     <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'instagram' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('instagram')}
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'content-calendar' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('content-calendar')}
                     >
-                      <FiCamera className="sidebar-icon" />
-                      <span>Instagram</span>
+                      <FiGrid className="sidebar-icon" />
+                      <span>Content Calendar</span>
                     </div>
                     <div
                       className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'linkedin' ? 'active' : ''}`}
@@ -619,27 +616,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                     >
                       <FiLinkedin className="sidebar-icon" />
                       <span>LinkedIn</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'youtube' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('youtube')}
-                    >
-                      <FiYoutube className="sidebar-icon" />
-                      <span>YouTube</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'x-com' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('x-com')}
-                    >
-                      <FiTwitter className="sidebar-icon" />
-                      <span>X.com</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'reddit' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('reddit')}
-                    >
-                      <FiMessageSquare className="sidebar-icon" />
-                      <span>Reddit</span>
                     </div>
                   </div>
                 )}
