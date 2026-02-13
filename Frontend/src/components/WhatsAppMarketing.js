@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { WhatsAppProvider, useWhatsApp } from '../contexts/WhatsAppContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -139,7 +139,7 @@ function AccountsTab() {
   const {
     accounts, fetchAccounts, linkAccount, reconnectAccount,
     disconnectAccount, removeAccount, updateAccountSettings,
-    setDefaultAccount, qrCode, linkingAccountId, loading
+    setDefaultAccount, qrCode, loading
   } = useWhatsApp();
 
   const [showLinkModal, setShowLinkModal] = useState(false);
