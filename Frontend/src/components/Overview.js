@@ -141,35 +141,38 @@ const RevenueGraph = () => {
   return (
     <div className="revenue-graph-card">
       <div className="revenue-header">
-        <div className="revenue-info">
-          <span className="revenue-label">Total Revenue</span>
-          <span className="revenue-amount">${totalRevenue.toLocaleString()}</span>
+        <div className="revenue-top-row">
+          <div className="revenue-info">
+            <span className="revenue-label">Total Revenue</span>
+            <span className="revenue-amount">${totalRevenue.toLocaleString()}</span>
+          </div>
+          <div className="period-selector">
+            {['Monthly', 'Quarterly', 'Yearly'].map((p) => (
+              <button
+                key={p}
+                className={`period-btn${selectedPeriod === p ? ' active' : ''}`}
+                onClick={() => setSelectedPeriod(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="graph-legend">
           <div className="legend-item">
-            <span className="legend-dot" style={{ background: '#1a1a1a' }}></span>
+            <span className="legend-line" style={{ background: '#1a1a1a' }}></span>
             <span>Revenue</span>
           </div>
           <div className="legend-item">
-            <span className="legend-dot" style={{ background: '#4285f4' }}></span>
+            <span className="legend-line" style={{ background: '#4285f4' }}></span>
             <span>Contacts ({totalContacts})</span>
           </div>
           {exhibitOSActive && (
             <div className="legend-item">
-              <span className="legend-dot" style={{ background: '#34a853' }}></span>
+              <span className="legend-line" style={{ background: '#34a853' }}></span>
               <span>Trade Shows ({totalTradeShows})</span>
             </div>
           )}
-        </div>
-        <div className="period-selector">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-          >
-            <option value="Monthly">Monthly</option>
-            <option value="Quarterly">Quarterly</option>
-            <option value="Yearly">Yearly</option>
-          </select>
         </div>
       </div>
 
