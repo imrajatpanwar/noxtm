@@ -360,6 +360,56 @@
     margin-bottom: 14px;
 }
 
+/* Widget Active Users */
+.overview-right .widget-active-users {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.overview-right .active-users-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Switzer', sans-serif;
+}
+
+.overview-right .active-users-list {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.overview-right .active-user-avatar {
+    position: relative;
+}
+
+.overview-right .active-user-avatar .user-avatar {
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.overview-right .active-user-count {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #f5f5f5;
+    border: 2px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #666;
+    font-family: 'Switzer', sans-serif;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .overview-right .stat-chip {
     flex: 1;
     display: flex;
