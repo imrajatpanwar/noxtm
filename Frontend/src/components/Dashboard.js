@@ -17,7 +17,6 @@ import CampaignSetup from './CampaignSetup';
 import EmailTemplate from './EmailTemplate';
 import EmailAnalytics from './EmailAnalytics';
 import WhatsAppMarketing from './WhatsAppMarketing';
-import ReferralClient from './ReferralClient';
 import Credentials from './Credentials';
 import Messaging from './Messaging';
 import HrOverview from './HrOverview';
@@ -219,8 +218,6 @@ function Dashboard({ user, onLogout }) {
         return <EmailAnalytics />;
       case 'whatsapp-marketing':
         return <WhatsAppMarketing />;
-      case 'referral-client':
-        return <ReferralClient />;
       case 'credentials':
         return <Credentials />;
       case 'message':

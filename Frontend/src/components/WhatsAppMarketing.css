@@ -33,7 +33,7 @@
 
 /* Header */
 .wa-header {
-  padding: 20px 24px;
+  padding: 25px 20px 10px 20px;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
@@ -60,10 +60,14 @@
 }
 
 .wa-header h1 {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.3px;
+}
+
+.wa-header-title {
+  font-size: 24px;
 }
 
 .wa-header-sub {
@@ -110,7 +114,7 @@
 
 /* Content */
 .wa-content {
-  padding: 20px 24px;
+  padding: 10px 20px;
 }
 
 /* Section */
@@ -1553,8 +1557,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* QR code scan effect */
@@ -1573,8 +1584,15 @@
 }
 
 @keyframes msgSlide {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Campaign progress animation */
@@ -1583,8 +1601,15 @@
 }
 
 @keyframes progressPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
 }
 
 /* Toast-friendly scrollbar for modals */
@@ -1605,4 +1630,656 @@
 /* Better hover for rule toggle */
 .wa-toggle:hover {
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+/* ===================================== */
+/* MESSAGE TEMPLATES                     */
+/* ===================================== */
+
+.wa-modal-xl {
+  max-width: 820px !important;
+  width: 95vw;
+}
+
+.wa-tpl-modal-split {
+  display: flex !important;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.wa-tpl-form-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.wa-tpl-var-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.wa-tpl-var-chip {
+  background: #f5f5f5;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: #6b7280;
+  font-family: 'Switzer', sans-serif;
+  transition: all 0.12s;
+}
+
+.wa-tpl-var-chip:hover {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+
+.wa-tpl-buttons-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wa-tpl-btn-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.wa-tpl-btn-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.wa-tpl-btn-fields select,
+.wa-tpl-btn-fields input {
+  padding: 5px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: 'Switzer', sans-serif;
+  outline: none;
+  min-width: 90px;
+}
+
+.wa-tpl-btn-fields select:focus,
+.wa-tpl-btn-fields input:focus {
+  border-color: #1a1a1a;
+}
+
+.wa-tpl-phone-preview {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.wa-tpl-phone-frame {
+  width: 260px;
+  min-height: 380px;
+  border: 2px solid #1a1a1a;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #e5ddd5;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  position: relative;
+}
+
+.wa-tpl-phone-notch {
+  width: 80px;
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 0 0 8px 8px;
+  margin: 0 auto;
+}
+
+.wa-tpl-phone-header {
+  background: #075e54;
+  color: #fff;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wa-tpl-phone-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #128c7e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wa-tpl-phone-body {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wa-tpl-phone-bubble {
+  background: #fff;
+  border-radius: 0 8px 8px 8px;
+  padding: 8px 10px;
+  max-width: 100%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.wa-tpl-phone-header-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.wa-tpl-phone-media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 80px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.wa-tpl-phone-text {
+  font-size: 12px;
+  color: #1a1a1a;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.wa-tpl-phone-footer {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.wa-tpl-phone-time {
+  font-size: 9px;
+  color: #9ca3af;
+  text-align: right;
+  margin-top: 2px;
+}
+
+.wa-tpl-phone-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.wa-tpl-phone-btn {
+  background: #fff;
+  border-radius: 6px;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0088cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  cursor: default;
+}
+
+.wa-template-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.wa-template-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.wa-template-card:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.wa-template-card-header {
+  padding: 14px 16px 8px;
+}
+
+.wa-template-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.wa-template-card-title h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wa-template-category {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.wa-template-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.wa-template-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.wa-template-btn-count {
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+.wa-template-card-body {
+  padding: 0 16px 10px;
+}
+
+.wa-template-preview-text {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.wa-template-btn-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.wa-template-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.wa-template-card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  border-top: 1px solid #f8f8f8;
+}
+
+.wa-campaign-tpl-preview {
+  background: #f0f7ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+
+.wa-campaign-tpl-preview-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #2563eb;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+  .wa-tpl-modal-split {
+    flex-direction: column;
+  }
+
+  .wa-tpl-phone-preview {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .wa-tpl-phone-frame {
+    width: 240px;
+    min-height: 320px;
+  }
+
+  .wa-modal-xl {
+    max-width: 95vw !important;
+  }
+}
+
+/* ===================================== */
+/* PHONE LISTS                           */
+/* ===================================== */
+
+/* Campaign sub-tabs */
+.wa-campaign-subtabs {
+  display: flex;
+  gap: 2px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+
+.wa-campaign-subtab {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  font-family: 'Switzer', sans-serif;
+}
+
+.wa-campaign-subtab:hover {
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.wa-campaign-subtab.active {
+  background: #1a1a1a;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Phone List cards */
+.wa-pl-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.wa-pl-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.wa-pl-card:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.wa-pl-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 16px 6px;
+}
+
+.wa-pl-card-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wa-pl-desc {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 2px 0 0;
+}
+
+.wa-pl-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.wa-pl-card-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 16px 10px;
+}
+
+.wa-pl-phone-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #f5f5f5;
+  color: #374151;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.wa-pl-more {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.wa-pl-card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  border-top: 1px solid #f8f8f8;
+}
+
+/* Phone list preview in campaign modal */
+.wa-pl-preview-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* ===== Campaign Settings Panel ===== */
+.wa-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.2s;
+}
+
+.wa-settings-toggle:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.wa-settings-arrow {
+  margin-left: auto;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.wa-settings-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fafafa;
+  margin-top: -1px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.wa-settings-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.wa-settings-row .wa-form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.wa-settings-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wa-settings-checks .wa-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.wa-settings-checks .wa-checkbox-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #1a1a1a;
+  cursor: pointer;
+}
+
+.wa-settings-checks .wa-checkbox-label input[type="number"] {
+  padding: 2px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.wa-settings-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f0f9ff;
+  border: 1px solid #bce0fd;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #1e6faf;
+  line-height: 1.4;
+}
+
+/* ===== Progress Bar ===== */
+.wa-progress-bar {
+  position: relative;
+  height: 20px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.wa-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1a1a1a, #444);
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+
+.wa-progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* ===== Campaign Estimate ===== */
+.wa-campaign-estimate {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #6b7280;
+  padding: 6px 0;
+}
+
+.wa-campaign-estimate svg {
+  flex-shrink: 0;
+}
+
+/* ===== Campaign Live Progress ===== */
+.wa-campaign-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: #374151;
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+
+.wa-campaign-live span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ===== Campaign Paused Reason ===== */
+.wa-campaign-paused-reason {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #d97706;
+  padding: 6px 10px;
+  background: #fef3c7;
+  border-radius: 6px;
+  margin: 6px 0;
 }

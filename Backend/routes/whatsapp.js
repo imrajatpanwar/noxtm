@@ -8,6 +8,8 @@ const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppChatbotRule = require('../models/WhatsAppChatbotRule');
+const WhatsAppTemplate = require('../models/WhatsAppTemplate');
+const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
 
 const sessionManager = require('../services/whatsappSessionManager');
 const campaignService = require('../services/whatsappCampaignService');
@@ -229,10 +231,29 @@ function initializeRoutes({ io }) {
       if (accountId) filter.accountId = accountId;
       if (tag) filter.tags = tag;
       if (search) {
-        filter.$or = [
-          { pushName: { $regex: search, $options: 'i' } },
-          { phoneNumber: { $regex: search, $options: 'i' } }
+        const searchValue = String(search).trim();
+        const escapedSearch = searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const digitsOnlySearch = searchValue.replace(/\D/g, '');
+
+        const orConditions = [
+          { pushName: { $regex: escapedSearch, $options: 'i' } },
+          { phoneNumber: { $regex: escapedSearch, $options: 'i' } }
         ];
+
+        // Allow phone search even when numbers are formatted with spaces/dashes/plus
+        if (digitsOnlySearch) {
+          const flexibleDigitsRegex = digitsOnlySearch
+            .split('')
+            .map(d => `${d}\\D*`)
+            .join('');
+
+          orConditions.push(
+            { phoneNumber: { $regex: flexibleDigitsRegex, $options: 'i' } },
+            { whatsappId: { $regex: flexibleDigitsRegex, $options: 'i' } }
+          );
+        }
+
+        filter.$or = orConditions;
       }
 
       const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -481,14 +502,29 @@ function initializeRoutes({ io }) {
    */
   router.post('/campaigns', async (req, res) => {
     try {
-      const { accountId, name, description, message, mediaUrl, mediaType, mediaFilename, recipients, targetTags, settings, scheduledAt } = req.body;
+      const {
+        accountId,
+        name,
+        description,
+        message,
+        mediaUrl,
+        mediaType,
+        mediaFilename,
+        recipients,
+        targetTags,
+        manualPhones,
+        settings,
+        scheduledAt,
+        templateId,
+        phoneListId
+      } = req.body;
 
       if (!accountId || !name || !message) {
         return res.status(400).json({ success: false, message: 'accountId, name, and message required' });
       }
 
-      // Build recipients list from tags or direct list
-      let recipientsList = recipients || [];
+      // Build recipients list from tags, direct list, and/or manual phone numbers
+      let recipientsList = Array.isArray(recipients) ? recipients : [];
 
       // If targetTags provided, fetch contacts with those tags
       if (targetTags && targetTags.length > 0 && recipientsList.length === 0) {
@@ -509,6 +545,84 @@ function initializeRoutes({ io }) {
         }));
       }
 
+      // Add manual phone numbers (comma/newline separated string OR array)
+      if (manualPhones) {
+        const manualPhoneList = Array.isArray(manualPhones)
+          ? manualPhones
+          : String(manualPhones)
+            .split(/[\n,;]+/)
+            .map(p => p.trim())
+            .filter(Boolean);
+
+        const manualRecipients = manualPhoneList
+          .map(phone => {
+            const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+            if (!cleanPhone) return null;
+            return {
+              whatsappId: `${cleanPhone}@s.whatsapp.net`,
+              name: cleanPhone,
+              phone: cleanPhone,
+              status: 'pending'
+            };
+          })
+          .filter(Boolean);
+
+        recipientsList = [...recipientsList, ...manualRecipients];
+      }
+
+      // If phoneListId provided, fetch phones from the list
+      if (phoneListId) {
+        const phoneList = await WhatsAppPhoneList.findOne({
+          _id: phoneListId,
+          companyId: req.user.companyId
+        });
+        if (phoneList && phoneList.phones.length > 0) {
+          const listRecipients = phoneList.phones
+            .map(entry => {
+              const cleanPhone = String(entry.phone).replace(/[^0-9]/g, '');
+              if (!cleanPhone) return null;
+              return {
+                whatsappId: `${cleanPhone}@s.whatsapp.net`,
+                name: entry.name || cleanPhone,
+                phone: cleanPhone,
+                status: 'pending'
+              };
+            })
+            .filter(Boolean);
+          recipientsList = [...recipientsList, ...listRecipients];
+        }
+      }
+
+      // Normalize + deduplicate recipients by whatsappId
+      const recipientMap = new Map();
+      for (const rec of recipientsList) {
+        if (!rec) continue;
+        const recPhone = String(rec.phone || '').replace(/[^0-9]/g, '');
+        const recWhatsappId = rec.whatsappId || (recPhone ? `${recPhone}@s.whatsapp.net` : null);
+        if (!recWhatsappId) continue;
+
+        const dedupeKey = recWhatsappId.toLowerCase();
+        if (!recipientMap.has(dedupeKey)) {
+          recipientMap.set(dedupeKey, {
+            contactId: rec.contactId || undefined,
+            whatsappId: recWhatsappId,
+            name: rec.name || rec.pushName || recPhone || recWhatsappId,
+            phone: rec.phone || recPhone,
+            variables: rec.variables,
+            status: rec.status || 'pending'
+          });
+        }
+      }
+
+      recipientsList = Array.from(recipientMap.values());
+
+      if (recipientsList.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No recipients found. Add target tags or manual phone numbers.'
+        });
+      }
+
       const campaign = await WhatsAppCampaign.create({
         companyId: req.user.companyId,
         accountId,
@@ -523,7 +637,8 @@ function initializeRoutes({ io }) {
         targetTags: targetTags || [],
         status: scheduledAt ? 'scheduled' : 'draft',
         scheduledAt,
-        settings: settings || {}
+        settings: settings || {},
+        templateId: templateId || undefined
       });
 
       res.status(201).json({ success: true, data: campaign });
@@ -774,6 +889,200 @@ function initializeRoutes({ io }) {
 
       await Promise.all(updates);
       res.json({ success: true, message: 'Rules reordered' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // =====================================================
+  // MESSAGE TEMPLATES
+  // =====================================================
+
+  /**
+   * GET /api/whatsapp/templates
+   * List all message templates for the company
+   */
+  router.get('/templates', async (req, res) => {
+    try {
+      const { category, active } = req.query;
+      const filter = { companyId: req.user.companyId };
+      if (category) filter.category = category;
+      if (active !== undefined) filter.isActive = active === 'true';
+
+      const templates = await WhatsAppTemplate.find(filter)
+        .sort({ createdAt: -1 })
+        .lean();
+
+      res.json({ success: true, data: templates });
+    } catch (error) {
+      console.error('[WA Routes] Get templates error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * POST /api/whatsapp/templates
+   * Create a new message template
+   */
+  router.post('/templates', async (req, res) => {
+    try {
+      const {
+        name, category, language, headerType, headerContent,
+        body, footerText, buttons, variables
+      } = req.body;
+
+      if (!name || !body) {
+        return res.status(400).json({ success: false, message: 'name and body are required' });
+      }
+
+      if (buttons && buttons.length > 3) {
+        return res.status(400).json({ success: false, message: 'Maximum 3 buttons allowed' });
+      }
+
+      const template = await WhatsAppTemplate.create({
+        companyId: req.user.companyId,
+        createdBy: req.user._id,
+        name,
+        category: category || 'marketing',
+        language: language || 'en',
+        headerType: headerType || 'none',
+        headerContent,
+        body,
+        footerText,
+        buttons: buttons || [],
+        variables: variables || []
+      });
+
+      res.status(201).json({ success: true, data: template });
+    } catch (error) {
+      console.error('[WA Routes] Create template error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/whatsapp/templates/:id
+   * Update a message template
+   */
+  router.put('/templates/:id', async (req, res) => {
+    try {
+      const template = await WhatsAppTemplate.findOne({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+
+      if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+
+      const fields = ['name', 'category', 'language', 'headerType', 'headerContent',
+        'body', 'footerText', 'buttons', 'variables', 'isActive'];
+
+      fields.forEach(field => {
+        if (req.body[field] !== undefined) template[field] = req.body[field];
+      });
+
+      await template.save();
+      res.json({ success: true, data: template });
+    } catch (error) {
+      console.error('[WA Routes] Update template error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/whatsapp/templates/:id
+   * Delete a message template
+   */
+  router.delete('/templates/:id', async (req, res) => {
+    try {
+      const template = await WhatsAppTemplate.findOneAndDelete({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+
+      if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+
+      res.json({ success: true, message: 'Template deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // =====================================================
+  // PHONE LISTS
+  // =====================================================
+
+  /**
+   * GET /api/whatsapp/phone-lists
+   */
+  router.get('/phone-lists', async (req, res) => {
+    try {
+      const lists = await WhatsAppPhoneList.find({ companyId: req.user.companyId })
+        .sort({ createdAt: -1 })
+        .lean();
+      res.json({ success: true, data: lists });
+    } catch (error) {
+      console.error('[WA Routes] Get phone lists error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * POST /api/whatsapp/phone-lists
+   */
+  router.post('/phone-lists', async (req, res) => {
+    try {
+      const { name, description, phones } = req.body;
+      if (!name || !phones || phones.length === 0) {
+        return res.status(400).json({ success: false, message: 'name and at least one phone required' });
+      }
+      const list = await WhatsAppPhoneList.create({
+        companyId: req.user.companyId,
+        createdBy: req.user._id,
+        name,
+        description,
+        phones
+      });
+      res.status(201).json({ success: true, data: list });
+    } catch (error) {
+      console.error('[WA Routes] Create phone list error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/whatsapp/phone-lists/:id
+   */
+  router.put('/phone-lists/:id', async (req, res) => {
+    try {
+      const list = await WhatsAppPhoneList.findOne({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+      if (!list) return res.status(404).json({ success: false, message: 'Phone list not found' });
+
+      const fields = ['name', 'description', 'phones', 'isActive'];
+      fields.forEach(field => {
+        if (req.body[field] !== undefined) list[field] = req.body[field];
+      });
+      await list.save();
+      res.json({ success: true, data: list });
+    } catch (error) {
+      console.error('[WA Routes] Update phone list error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/whatsapp/phone-lists/:id
+   */
+  router.delete('/phone-lists/:id', async (req, res) => {
+    try {
+      const list = await WhatsAppPhoneList.findOneAndDelete({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+      if (!list) return res.status(404).json({ success: false, message: 'Phone list not found' });
+      res.json({ success: true, message: 'Phone list deleted' });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

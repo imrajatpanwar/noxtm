@@ -101,19 +101,78 @@ async function abortCampaign(campaignId) {
 }
 
 /**
- * Process campaign recipients in batches with throttling
+ * Process campaign recipients in batches with throttling + ramp-up
  */
 async function processCampaign(campaignId) {
   let campaign = await WhatsAppCampaign.findById(campaignId);
   if (!campaign) return;
 
-  const { batchSize = 10, delayMin = 3, delayMax = 8, dailyLimit = 200, sendHoursStart = 0, sendHoursEnd = 24 } = campaign.settings || {};
+  const {
+    batchSize = 10,
+    delayMin = 10,
+    delayMax = 45,
+    dailyLimit = 100,
+    sendHoursStart = 0,
+    sendHoursEnd = 24,
+    rampUpEnabled = true,
+    rampUpPercent = 15,
+    randomDelayEnabled = true
+  } = campaign.settings || {};
 
   const startIndex = campaign.resumeIndex || 0;
   const recipients = campaign.recipients;
-  let sentCount = 0;
   let consecutiveFailures = 0;
   const MAX_CONSECUTIVE_FAILURES = 5;
+
+  // Helper: get today's date string
+  const getDateStr = () => new Date().toISOString().split('T')[0];
+
+  // Initialize day tracking
+  const today = getDateStr();
+  if (campaign.lastSendDate !== today) {
+    // New day — increment dayNumber (unless first run)
+    if (campaign.lastSendDate) {
+      campaign.dayNumber = (campaign.dayNumber || 1) + 1;
+    }
+    campaign.dailySentCount = 0;
+    campaign.lastSendDate = today;
+  }
+
+  // Calculate today's daily limit with ramp-up
+  const dayNum = campaign.dayNumber || 1;
+  const todayLimit = rampUpEnabled
+    ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, dayNum - 1))
+    : dailyLimit;
+
+  // Calculate estimated time remaining
+  const calcEstimatedTime = (remaining) => {
+    if (remaining <= 0) return 0;
+    const avgDelay = (delayMin + delayMax) / 2;
+    // How many can we send today
+    const canSendToday = Math.max(0, todayLimit - campaign.dailySentCount);
+    if (remaining <= canSendToday) {
+      return remaining * avgDelay; // all fit today
+    }
+    // Multi-day estimate
+    let remainingMsgs = remaining;
+    let totalSeconds = canSendToday * avgDelay; // finish today's quota
+    remainingMsgs -= canSendToday;
+    let futureDay = dayNum + 1;
+    while (remainingMsgs > 0) {
+      const futureLimit = rampUpEnabled
+        ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, futureDay - 1))
+        : dailyLimit;
+      const sendHours = sendHoursEnd - sendHoursStart;
+      const batch = Math.min(remainingMsgs, futureLimit);
+      totalSeconds += batch * avgDelay + (sendHours > 0 ? 0 : 0);
+      // Add overnight gap (rough estimate: next day starts after sleep)
+      totalSeconds += (24 - (sendHoursEnd - sendHoursStart)) * 3600;
+      remainingMsgs -= batch;
+      futureDay++;
+      if (futureDay > dayNum + 100) break; // safety
+    }
+    return totalSeconds;
+  };
 
   for (let i = startIndex; i < recipients.length; i++) {
     // Check state
@@ -125,31 +184,52 @@ async function processCampaign(campaignId) {
       return;
     }
 
+    // Check if day changed mid-run
+    const nowDate = getDateStr();
+    if (campaign.lastSendDate !== nowDate) {
+      campaign.dayNumber = (campaign.dayNumber || 1) + 1;
+      campaign.dailySentCount = 0;
+      campaign.lastSendDate = nowDate;
+    }
+
+    // Recalculate today's limit (may have changed if day rolled over)
+    const currentDayNum = campaign.dayNumber || 1;
+    const currentDayLimit = rampUpEnabled
+      ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, currentDayNum - 1))
+      : dailyLimit;
+
     // Check send hours
     const now = new Date();
     const currentHour = now.getHours();
     if (currentHour < sendHoursStart || currentHour >= sendHoursEnd) {
-      // Outside send hours — pause and notify
       campaign.status = 'paused';
       campaign.resumeIndex = i;
       await campaign.save();
       runningCampaigns.delete(campaignId);
       emitProgress(campaign.companyId, campaignId, {
         status: 'paused',
-        reason: 'outside_send_hours'
+        reason: 'outside_send_hours',
+        stats: campaign.stats,
+        dayNumber: currentDayNum,
+        dailySentCount: campaign.dailySentCount,
+        dailyLimitToday: currentDayLimit
       });
       return;
     }
 
     // Check daily limit
-    if (sentCount >= dailyLimit) {
+    if (campaign.dailySentCount >= currentDayLimit) {
       campaign.status = 'paused';
       campaign.resumeIndex = i;
       await campaign.save();
       runningCampaigns.delete(campaignId);
       emitProgress(campaign.companyId, campaignId, {
         status: 'paused',
-        reason: 'daily_limit_reached'
+        reason: 'daily_limit_reached',
+        stats: campaign.stats,
+        dayNumber: currentDayNum,
+        dailySentCount: campaign.dailySentCount,
+        dailyLimitToday: currentDayLimit
       });
       return;
     }
@@ -198,7 +278,7 @@ async function processCampaign(campaignId) {
         recipient.messageId = result.messageId;
       }
 
-      sentCount++;
+      campaign.dailySentCount++;
       consecutiveFailures = 0;
 
     } catch (err) {
@@ -207,7 +287,7 @@ async function processCampaign(campaignId) {
       recipient.error = err.message;
       consecutiveFailures++;
 
-      // Too many failures — abort to protect account
+      // Too many failures — pause to protect account
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         campaign.status = 'paused';
         campaign.resumeIndex = i + 1;
@@ -216,7 +296,10 @@ async function processCampaign(campaignId) {
         emitProgress(campaign.companyId, campaignId, {
           status: 'paused',
           reason: 'too_many_failures',
-          stats: campaign.stats
+          stats: campaign.stats,
+          dayNumber: currentDayNum,
+          dailySentCount: campaign.dailySentCount,
+          dailyLimitToday: currentDayLimit
         });
         return;
       }
@@ -227,18 +310,30 @@ async function processCampaign(campaignId) {
       campaign.resumeIndex = i;
       await campaign.save();
 
+      const remaining = recipients.length - i;
+      const estSeconds = calcEstimatedTime(remaining);
+
       emitProgress(campaign.companyId, campaignId, {
         status: 'sending',
         progress: Math.round((i / recipients.length) * 100),
         stats: campaign.stats,
         currentIndex: i,
-        total: recipients.length
+        total: recipients.length,
+        dayNumber: campaign.dayNumber,
+        dailySentCount: campaign.dailySentCount,
+        dailyLimitToday: currentDayLimit,
+        estimatedTimeRemaining: estSeconds
       });
     }
 
     // Random delay between messages (anti-ban)
-    const delay = (Math.random() * (delayMax - delayMin) + delayMin) * 1000;
-    await new Promise(r => setTimeout(r, delay));
+    if (randomDelayEnabled) {
+      const delay = (Math.random() * (delayMax - delayMin) + delayMin) * 1000;
+      await new Promise(r => setTimeout(r, delay));
+    } else {
+      // Fixed minimum delay
+      await new Promise(r => setTimeout(r, delayMin * 1000));
+    }
   }
 
   // Campaign complete
@@ -250,7 +345,9 @@ async function processCampaign(campaignId) {
 
   emitProgress(campaign.companyId, campaignId, {
     status: 'completed',
-    stats: campaign.stats
+    stats: campaign.stats,
+    dayNumber: campaign.dayNumber,
+    dailySentCount: campaign.dailySentCount
   });
 }
 

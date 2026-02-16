@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useContext } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUserPlus, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiExternalLink } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiExternalLink } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { useModules } from '../contexts/ModuleContext';
@@ -12,8 +12,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const { isModuleInstalled } = useModules();
   const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
-  const [hrManagementSubExpanded, setHrManagementSubExpanded] = useState(false);
-  const [employeesExpanded, setEmployeesExpanded] = useState(false);
   const [financeManagementExpanded, setFinanceManagementExpanded] = useState(false);
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
@@ -229,14 +227,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     setHrManagementExpanded(!hrManagementExpanded);
   };
 
-  const toggleHrManagementSub = () => {
-    setHrManagementSubExpanded(!hrManagementSubExpanded);
-  };
-
-  const toggleEmployees = () => {
-    setEmployeesExpanded(!employeesExpanded);
-  };
-
   const toggleFinanceManagement = () => {
     setFinanceManagementExpanded(!financeManagementExpanded);
   };
@@ -293,8 +283,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Campaign Setup', section: 'campaign-setup', category: 'Marketing' },
     { name: 'Create Email Template', section: 'email-template', category: 'Marketing' },
     { name: 'Analytics & Reporting', section: 'email-analytics', category: 'Marketing' },
-    { name: 'WhatsApp Marketing', section: 'whatsapp-marketing', category: 'Marketing' },
-    { name: 'Referral Client', section: 'referral-client', category: 'Marketing' },
+    { name: 'Whatsapp', section: 'whatsapp-marketing', category: 'Marketing' },
 
     // HR Management
     { name: 'HR Management', section: 'hr-management-sub', category: 'HR Management' },
@@ -352,18 +341,34 @@ function Sidebar({ activeSection, onSectionChange }) {
     setSearchQuery(''); // Clear search after selection
   };
 
+  // Keyboard shortcut handler (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector('.search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Detect if user is on Mac
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
   return (
     <div className="dashboard-sidebar">
       {/* Search */}
-      <div className="sidebar-search">
+      <div className="sidebar-search" onClick={() => document.querySelector('.search-input')?.focus()}>
         <FiSearch className="search-icon" />
         <input
           type="text"
-          placeholder="Search"
+          placeholder="Search..."
           className="search-input"
           value={searchQuery}
           onChange={handleSearchChange}
         />
+        {!searchQuery && <kbd className="search-shortcut">{isMac ? '⌘' : 'Ctrl'} K</kbd>}
       </div>
 
       {/* Search Results */}
@@ -633,15 +638,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                 onClick={() => onSectionChange('whatsapp-marketing')}
               >
                 <FiMessageCircle className="sidebar-icon" />
-                <span>WhatsApp Marketing</span>
-              </div>
-
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'referral-client' ? 'active' : ''}`}
-                onClick={() => onSectionChange('referral-client')}
-              >
-                <FiUserPlus className="sidebar-icon" />
-                <span>Referral Client</span>
+                <span>Whatsapp</span>
               </div>
             </div>
           )}
@@ -667,92 +664,68 @@ function Sidebar({ activeSection, onSectionChange }) {
 
                 {hrManagementExpanded && (
                   <div className="sidebar-submenu">
-                    {/* HR Management Expandable Submenu */}
-                    <div className="sidebar-item-container">
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-management-sub' ? 'active' : ''}`}
-                        onClick={toggleHrManagementSub}
-                      >
-                        <FiUserCheck className="sidebar-icon" />
-                        <span>HR Management</span>
-                        {hrManagementSubExpanded ?
-                          <FiChevronDown className="sidebar-chevron" /> :
-                          <FiChevronRight className="sidebar-chevron" />
-                        }
-                      </div>
-
-                      {hrManagementSubExpanded && (
-                        <div className="sidebar-sub-submenu">
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'hr-overview' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('hr-overview')}
-                          >
-                            <span>HR Overview</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'interview-management' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('interview-management')}
-                          >
-                            <span>Interview Management</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'letter-templates' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('letter-templates')}
-                          >
-                            <span>Letter Templates</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'hr-manage' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('hr-manage')}
-                          >
-                            <span>HR Manage</span>
-                          </div>
-                        </div>
-                      )}
+                    {/* HR Overview - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-overview' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('hr-overview')}
+                    >
+                      <span>HR Overview</span>
                     </div>
 
-                    {/* Employees Expandable Submenu */}
-                    <div className="sidebar-item-container">
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'employees' ? 'active' : ''}`}
-                        onClick={toggleEmployees}
-                      >
-                        <FiUser className="sidebar-icon" />
-                        <span>Employees</span>
-                        {employeesExpanded ?
-                          <FiChevronDown className="sidebar-chevron" /> :
-                          <FiChevronRight className="sidebar-chevron" />
-                        }
-                      </div>
+                    {/* Interview Management - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'interview-management' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('interview-management')}
+                    >
+                      <span>Interview Management</span>
+                    </div>
 
-                      {employeesExpanded && (
-                        <div className="sidebar-sub-submenu">
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'employee-details' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('employee-details')}
-                          >
-                            <span>Employee Details</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'attendance-summary' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('attendance-summary')}
-                          >
-                            <span>Attendance Summary</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('holiday-calendar')}
-                          >
-                            <span>Holiday Calendar</span>
-                          </div>
-                          <div
-                            className={`Dash-noxtm-sidebar-item sidebar-sub-subitem ${activeSection === 'incentives' ? 'active' : ''}`}
-                            onClick={() => onSectionChange('incentives')}
-                          >
-                            <span>Incentives</span>
-                          </div>
-                        </div>
-                      )}
+                    {/* Letter Templates - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'letter-templates' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('letter-templates')}
+                    >
+                      <span>Letter Templates</span>
+                    </div>
+
+                    {/* HR Manage - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-manage' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('hr-manage')}
+                    >
+                      <span>HR Manage</span>
+                    </div>
+
+                    {/* Employee Details - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'employee-details' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('employee-details')}
+                    >
+                      <span>Employee Details</span>
+                    </div>
+
+                    {/* Attendance Summary - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'attendance-summary' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('attendance-summary')}
+                    >
+                      <span>Attendance Summary</span>
+                    </div>
+
+                    {/* Holiday Calendar - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('holiday-calendar')}
+                    >
+                      <span>Holiday Calendar</span>
+                    </div>
+
+                    {/* Incentives - Direct link */}
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'incentives' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('incentives')}
+                    >
+                      <span>Incentives</span>
                     </div>
                   </div>
                 )}

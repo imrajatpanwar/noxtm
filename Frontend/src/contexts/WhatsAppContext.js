@@ -17,6 +17,8 @@ export function WhatsAppProvider({ children, socket }) {
   const [contacts, setContacts] = useState([]);
   const [messages, setMessages] = useState({});  // { contactId: [messages] }
   const [campaigns, setCampaigns] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [phoneLists, setPhoneLists] = useState([]);
   const [chatbotRules, setChatbotRules] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [qrCode, setQrCode] = useState(null);       // Current QR for linking
@@ -366,6 +368,96 @@ export function WhatsAppProvider({ children, socket }) {
     }
   }, []);
 
+  // Templates
+  const fetchTemplates = useCallback(async (params = {}) => {
+    try {
+      const res = await api.get('/whatsapp/templates', { params });
+      if (res.data.success) setTemplates(res.data.data);
+      return res.data;
+    } catch (e) {
+      console.error('Fetch templates error:', e);
+    }
+  }, []);
+
+  const createTemplate = useCallback(async (data) => {
+    try {
+      const res = await api.post('/whatsapp/templates', data);
+      if (res.data.success) setTemplates(prev => [res.data.data, ...prev]);
+      return res.data;
+    } catch (e) {
+      console.error('Create template error:', e);
+      throw e;
+    }
+  }, []);
+
+  const updateTemplate = useCallback(async (templateId, data) => {
+    try {
+      const res = await api.put(`/whatsapp/templates/${templateId}`, data);
+      if (res.data.success) {
+        setTemplates(prev => prev.map(t => t._id === templateId ? res.data.data : t));
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Update template error:', e);
+      throw e;
+    }
+  }, []);
+
+  const deleteTemplate = useCallback(async (templateId) => {
+    try {
+      await api.delete(`/whatsapp/templates/${templateId}`);
+      setTemplates(prev => prev.filter(t => t._id !== templateId));
+    } catch (e) {
+      console.error('Delete template error:', e);
+      throw e;
+    }
+  }, []);
+
+  // Phone Lists
+  const fetchPhoneLists = useCallback(async () => {
+    try {
+      const res = await api.get('/whatsapp/phone-lists');
+      if (res.data.success) setPhoneLists(res.data.data);
+      return res.data;
+    } catch (e) {
+      console.error('Fetch phone lists error:', e);
+    }
+  }, []);
+
+  const createPhoneList = useCallback(async (data) => {
+    try {
+      const res = await api.post('/whatsapp/phone-lists', data);
+      if (res.data.success) setPhoneLists(prev => [res.data.data, ...prev]);
+      return res.data;
+    } catch (e) {
+      console.error('Create phone list error:', e);
+      throw e;
+    }
+  }, []);
+
+  const updatePhoneList = useCallback(async (listId, data) => {
+    try {
+      const res = await api.put(`/whatsapp/phone-lists/${listId}`, data);
+      if (res.data.success) {
+        setPhoneLists(prev => prev.map(l => l._id === listId ? res.data.data : l));
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Update phone list error:', e);
+      throw e;
+    }
+  }, []);
+
+  const deletePhoneList = useCallback(async (listId) => {
+    try {
+      await api.delete(`/whatsapp/phone-lists/${listId}`);
+      setPhoneLists(prev => prev.filter(l => l._id !== listId));
+    } catch (e) {
+      console.error('Delete phone list error:', e);
+      throw e;
+    }
+  }, []);
+
   // Chatbot Rules
   const fetchChatbotRules = useCallback(async (params = {}) => {
     try {
@@ -427,6 +519,8 @@ export function WhatsAppProvider({ children, socket }) {
     contacts,
     messages,
     campaigns,
+    templates,
+    phoneLists,
     chatbotRules,
     dashboard,
     qrCode,
@@ -459,6 +553,18 @@ export function WhatsAppProvider({ children, socket }) {
     pauseCampaign,
     resumeCampaign,
     deleteCampaign,
+
+    // Template methods
+    fetchTemplates,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+
+    // Phone list methods
+    fetchPhoneLists,
+    createPhoneList,
+    updatePhoneList,
+    deletePhoneList,
 
     // Chatbot methods
     fetchChatbotRules,

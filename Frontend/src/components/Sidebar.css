@@ -22,40 +22,71 @@
 
 /* Search Section */
 .sidebar-search {
-  position: relative;
-  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  margin-bottom: 16px;
+  cursor: text;
+  transition: all 0.2s ease;
 }
 
-.search-input {
-    width: 100%;
-    padding: 8px 31px;
-    border: 2px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 16px;
-    background-color: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    background-color: #ffffff;
-}
-
-.search-input::placeholder {
-    color: #9ca3af;
+.sidebar-search:focus-within {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
 .search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #666;
-    width: 16px;
-    height: 16px;
+  width: 16px;
+  height: 16px;
+  color: #b0b5be;
+  flex-shrink: 0;
+  transition: color 0.2s;
 }
+
+.sidebar-search:focus-within .search-icon {
+  color: #2563eb;
+}
+
+.search-input {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-family: 'Switzer', sans-serif;
+  color: #374151;
+  padding: 0 !important;
+  margin: 0;
+  min-width: 0;
+}
+
+.search-input::placeholder {
+  color: #b0b5be;
+  font-weight: 400;
+}
+
+.search-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  background: #eef0f3;
+  border: 1px solid #d4d7dc;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #858b95;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 
 /* Sidebar Sections */
 .sidebar-section {
@@ -93,11 +124,13 @@
   background-color: #f3f4f6;
   color: #374151;
 }
+
 .Dash-noxtm-sidebar-item.active {
   background-color: #ffffff;
   color: #2b2b2b;
   border: 1px solid #dbeafe;
 }
+
 .Dash-noxtm-sidebar-item.active .sidebar-icon {
   color: #2b2b2b;
 }
@@ -122,11 +155,13 @@
   background-color: #f3f4f6;
   color: #374151;
 }
+
 .sidebar-item.active {
   background-color: #ffffff;
   color: #2b2b2b;
   border: 1px solid #dbeafe;
 }
+
 .sidebar-item.active .sidebar-icon {
   color: #2b2b2b;
 }
@@ -212,8 +247,10 @@
   max-height: 300px;
   overflow-y: auto;
   /* Hide scrollbar for Chrome, Safari and Opera */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* Internet Explorer 10+ */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -314,15 +351,15 @@
   .dashboard-sidebar.open {
     left: 0;
   }
-  
+
   .sidebar-section {
     margin-bottom: 24px;
   }
-  
+
   .sidebar-search {
     margin-bottom: 24px;
   }
-  
+
   .Dash-noxtm-sidebar-item {
     padding: 10px 8px;
   }
