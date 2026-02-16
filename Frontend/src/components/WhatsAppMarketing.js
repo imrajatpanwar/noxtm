@@ -160,7 +160,7 @@ function AccountsTab() {
   const {
     accounts, fetchAccounts, linkAccount, reconnectAccount,
     disconnectAccount, removeAccount, updateAccountSettings,
-    setDefaultAccount, qrCode, loading
+    setDefaultAccount, qrCode, setQrCode, loading
   } = useWhatsApp();
 
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -169,6 +169,13 @@ function AccountsTab() {
   const [settingsForm, setSettingsForm] = useState({});
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  // Auto-close QR modal when an account connects
+  useEffect(() => {
+    if (showLinkModal && accounts.some(a => a.status === 'connected' && !qrCode)) {
+      setShowLinkModal(false);
+    }
+  }, [accounts, qrCode, showLinkModal]);
 
   const handleLink = async () => {
     try {
@@ -207,11 +214,11 @@ function AccountsTab() {
 
       {/* QR Code Modal */}
       {(showLinkModal || qrCode) && (
-        <div className="wa-modal-overlay" onClick={() => setShowLinkModal(false)}>
+        <div className="wa-modal-overlay" onClick={() => { setShowLinkModal(false); setQrCode(null); }}>
           <div className="wa-modal" onClick={e => e.stopPropagation()}>
             <div className="wa-modal-header">
               <h3>Link WhatsApp Account</h3>
-              <button className="wa-modal-close" onClick={() => setShowLinkModal(false)}><FiX size={16} /></button>
+              <button className="wa-modal-close" onClick={() => { setShowLinkModal(false); setQrCode(null); }}><FiX size={16} /></button>
             </div>
             <div className="wa-modal-body wa-qr-container">
               {qrCode ? (
@@ -822,7 +829,7 @@ function CampaignsTab() {
   });
   const [settings, setSettings] = useState({
     delayMin: 10, delayMax: 45, dailyLimit: 100,
-    rampUpEnabled: true, rampUpPercent: 15, randomDelayEnabled: true
+    randomDelayEnabled: true
   });
   const [showSettings, setShowSettings] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -874,7 +881,7 @@ function CampaignsTab() {
       });
       setShowCreateModal(false);
       setForm({ name: '', message: '', accountId: '', targetTags: '', manualPhones: '', scheduledAt: '', templateId: '', phoneListId: '' });
-      setSettings({ delayMin: 10, delayMax: 45, dailyLimit: 100, rampUpEnabled: true, rampUpPercent: 15, randomDelayEnabled: true });
+      setSettings({ delayMin: 10, delayMax: 45, dailyLimit: 100, randomDelayEnabled: true });
       setShowSettings(false);
       setSelectedTemplate(null);
       toast.success('Campaign created');
@@ -984,10 +991,9 @@ function CampaignsTab() {
     if (total <= limit) return formatDuration(total * avgDelay);
     let remaining = total, totalSec = 0, day = 1;
     while (remaining > 0 && day < 100) {
-      const dayLimit = s.rampUpEnabled !== false ? Math.floor(limit * Math.pow(1 + (s.rampUpPercent || 15) / 100, day - 1)) : limit;
+      const dayLimit = day >= 5 ? Infinity : limit * Math.pow(2, day - 1);
       const batch = Math.min(remaining, dayLimit);
       totalSec += batch * avgDelay;
-      if (remaining > batch) totalSec += (24 - ((s.sendHoursEnd || 22) - (s.sendHoursStart || 8))) * 3600;
       remaining -= batch; day++;
     }
     return formatDuration(totalSec);
@@ -1127,24 +1133,24 @@ function CampaignsTab() {
 
                   <div className="wa-settings-checks">
                     <label className="wa-checkbox-label">
-                      <input type="checkbox" checked={settings.rampUpEnabled}
-                        onChange={e => setSettings({ ...settings, rampUpEnabled: e.target.checked })} />
-                      <span>Ramp-up sending — start slow, increase daily by</span>
-                      <input type="number" min={5} max={50} value={settings.rampUpPercent}
-                        onChange={e => setSettings({ ...settings, rampUpPercent: +e.target.value })}
-                        style={{ width: 50, marginLeft: 4 }} disabled={!settings.rampUpEnabled} />
-                      <span>%</span>
-                    </label>
-                    <label className="wa-checkbox-label">
                       <input type="checkbox" checked={settings.randomDelayEnabled}
                         onChange={e => setSettings({ ...settings, randomDelayEnabled: e.target.checked })} />
                       <span>Random delays between messages (anti-ban protection)</span>
                     </label>
                   </div>
-                  <div className="wa-settings-info">
+                  <div className="wa-settings-info" style={{ position: 'relative' }}>
                     <FiAlertCircle size={12} />
-                    Day 1: {settings.dailyLimit} msgs • Day 2: ~{Math.floor(settings.dailyLimit * (1 + settings.rampUpPercent / 100))} msgs •
-                    Delay: {settings.delayMin}s–{settings.delayMax}s random
+                    <span className="wa-limit-label">Limit: {settings.dailyLimit} Max
+                      <span className="wa-limit-tooltip">
+                        <strong>Daily Ramp-up Schedule</strong><br />
+                        Day 1: {settings.dailyLimit} msgs<br />
+                        Day 2: ~{settings.dailyLimit * 2} msgs<br />
+                        Day 3: ~{settings.dailyLimit * 4} msgs<br />
+                        Day 4: ~{settings.dailyLimit * 8} msgs<br />
+                        Day 5: Unlimited
+                      </span>
+                    </span>
+                    • Delay: {settings.delayMin}s–{settings.delayMax}s random
                   </div>
                 </div>
               )}
@@ -1213,9 +1219,7 @@ function CampaignsTab() {
                     {(c.status === 'draft' || c.status === 'scheduled') && (
                       <div className="wa-campaign-estimate">
                         <FiClock size={11} /> Est. time: {calcEstimateForCampaign(c)}
-                        {c.settings?.rampUpEnabled !== false && (
-                          <span> • <FiTrendingUp size={11} /> Ramp-up: Day 1 = {c.settings?.dailyLimit || 100} msgs</span>
-                        )}
+                        <span> • Limit: {c.settings?.dailyLimit || 100} Day 1</span>
                       </div>
                     )}
 
