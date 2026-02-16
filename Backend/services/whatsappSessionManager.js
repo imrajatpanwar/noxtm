@@ -80,12 +80,12 @@ async function startSession(accountId) {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, {
         level: 'silent',
-        trace: () => {},
-        debug: () => {},
-        info: () => {},
+        trace: () => { },
+        debug: () => { },
+        info: () => { },
         warn: console.warn,
         error: console.error,
-        child: () => ({ level: 'silent', trace: () => {}, debug: () => {}, info: () => {}, warn: console.warn, error: console.error })
+        child: () => ({ level: 'silent', trace: () => { }, debug: () => { }, info: () => { }, warn: console.warn, error: console.error })
       })
     },
     browser: Browsers.ubuntu('Noxtm'),
@@ -95,12 +95,12 @@ async function startSession(accountId) {
     markOnlineOnConnect: false,
     logger: {
       level: 'silent',
-      trace: () => {},
-      debug: () => {},
-      info: () => {},
+      trace: () => { },
+      debug: () => { },
+      info: () => { },
       warn: console.warn,
       error: console.error,
-      child: () => ({ level: 'silent', trace: () => {}, debug: () => {}, info: () => {}, warn: console.warn, error: console.error })
+      child: () => ({ level: 'silent', trace: () => { }, debug: () => { }, info: () => { }, warn: console.warn, error: console.error })
     }
   });
 
@@ -292,9 +292,9 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     type = 'location';
     content = `${msg.message.locationMessage.degreesLatitude},${msg.message.locationMessage.degreesLongitude}`;
   } else if (msg.message.protocolMessage || msg.message.senderKeyDistributionMessage ||
-             msg.message.messageContextInfo || msg.message.reactionMessage ||
-             msg.message.ephemeralMessage || msg.message.viewOnceMessage ||
-             msg.message.editedMessage || msg.message.pinInChatMessage) {
+    msg.message.messageContextInfo || msg.message.reactionMessage ||
+    msg.message.ephemeralMessage || msg.message.viewOnceMessage ||
+    msg.message.editedMessage || msg.message.pinInChatMessage) {
     // Skip protocol/system messages - don't log as chat messages
     return;
   } else {
@@ -427,25 +427,46 @@ async function sendMessage(accountId, jid, content, options = {}) {
   let messageContent;
   const type = options.type || 'text';
 
-  switch (type) {
-    case 'image':
-      messageContent = { image: { url: options.mediaUrl }, caption: content || undefined };
-      break;
-    case 'video':
-      messageContent = { video: { url: options.mediaUrl }, caption: content || undefined };
-      break;
-    case 'audio':
-      messageContent = { audio: { url: options.mediaUrl }, mimetype: 'audio/mpeg' };
-      break;
-    case 'document':
-      messageContent = {
-        document: { url: options.mediaUrl },
-        fileName: options.mediaFilename || 'document',
-        mimetype: options.mediaType || 'application/pdf'
-      };
-      break;
-    default:
-      messageContent = { text: content };
+  // Check if buttons are attached (from template)
+  if (options.buttons && Array.isArray(options.buttons) && options.buttons.length > 0) {
+    // Build Baileys interactive button message
+    const templateButtons = options.buttons.map((btn, idx) => {
+      if (btn.type === 'call_to_action' && btn.actionType === 'url') {
+        return { urlButton: { displayText: btn.text, url: btn.actionValue || '' } };
+      } else if (btn.type === 'call_to_action' && btn.actionType === 'phone') {
+        return { callButton: { displayText: btn.text, phoneNumber: btn.actionValue || '' } };
+      } else {
+        // quick_reply
+        return { quickReplyButton: { displayText: btn.text, id: `btn_${idx}` } };
+      }
+    });
+
+    messageContent = {
+      templateButtons,
+      text: content || '',
+      footer: options.footerText || undefined
+    };
+  } else {
+    switch (type) {
+      case 'image':
+        messageContent = { image: { url: options.mediaUrl }, caption: content || undefined };
+        break;
+      case 'video':
+        messageContent = { video: { url: options.mediaUrl }, caption: content || undefined };
+        break;
+      case 'audio':
+        messageContent = { audio: { url: options.mediaUrl }, mimetype: 'audio/mpeg' };
+        break;
+      case 'document':
+        messageContent = {
+          document: { url: options.mediaUrl },
+          fileName: options.mediaFilename || 'document',
+          mimetype: options.mediaType || 'application/pdf'
+        };
+        break;
+      default:
+        messageContent = { text: content };
+    }
   }
 
   // Send the message with error guard
