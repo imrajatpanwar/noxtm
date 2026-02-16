@@ -926,17 +926,10 @@ function initializeRoutes({ io }) {
    */
   router.post('/templates', async (req, res) => {
     try {
-      const {
-        name, category, language, headerType, headerContent,
-        body, footerText, buttons, variables
-      } = req.body;
+      const { name, category, language, body, variables } = req.body;
 
       if (!name || !body) {
         return res.status(400).json({ success: false, message: 'name and body are required' });
-      }
-
-      if (buttons && buttons.length > 3) {
-        return res.status(400).json({ success: false, message: 'Maximum 3 buttons allowed' });
       }
 
       const template = await WhatsAppTemplate.create({
@@ -945,11 +938,7 @@ function initializeRoutes({ io }) {
         name,
         category: category || 'marketing',
         language: language || 'en',
-        headerType: headerType || 'none',
-        headerContent,
         body,
-        footerText,
-        buttons: buttons || [],
         variables: variables || []
       });
 

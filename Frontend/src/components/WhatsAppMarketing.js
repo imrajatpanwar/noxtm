@@ -590,9 +590,7 @@ function TemplatesTab() {
   const [showPreview, setShowPreview] = useState(null);
   const [form, setForm] = useState({
     name: '', category: 'marketing', language: 'en',
-    headerType: 'none', headerContent: '',
-    body: '', footerText: '',
-    buttons: []
+    body: ''
   });
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
@@ -600,9 +598,7 @@ function TemplatesTab() {
   const resetForm = () => {
     setForm({
       name: '', category: 'marketing', language: 'en',
-      headerType: 'none', headerContent: '',
-      body: '', footerText: '',
-      buttons: []
+      body: ''
     });
     setEditingTemplate(null);
   };
@@ -613,36 +609,12 @@ function TemplatesTab() {
       name: tpl.name,
       category: tpl.category || 'marketing',
       language: tpl.language || 'en',
-      headerType: tpl.headerType || 'none',
-      headerContent: tpl.headerContent || '',
-      body: tpl.body || '',
-      footerText: tpl.footerText || '',
-      buttons: tpl.buttons || []
+      body: tpl.body || ''
     });
     setShowModal(true);
   };
 
-  const addButton = () => {
-    if (form.buttons.length >= 3) return;
-    setForm({
-      ...form,
-      buttons: [...form.buttons, { type: 'quick_reply', text: '', actionType: '', actionValue: '' }]
-    });
-  };
 
-  const updateButton = (idx, field, value) => {
-    const updated = [...form.buttons];
-    updated[idx] = { ...updated[idx], [field]: value };
-    if (field === 'type' && value === 'quick_reply') {
-      updated[idx].actionType = '';
-      updated[idx].actionValue = '';
-    }
-    setForm({ ...form, buttons: updated });
-  };
-
-  const removeButton = (idx) => {
-    setForm({ ...form, buttons: form.buttons.filter((_, i) => i !== idx) });
-  };
 
   const extractVariables = (text) => {
     const matches = text.match(/\{\{([^}]+)\}\}/g) || [];
@@ -697,34 +669,9 @@ function TemplatesTab() {
         </div>
         <div className="wa-tpl-phone-body">
           <div className="wa-tpl-phone-bubble">
-            {tpl.headerType === 'text' && tpl.headerContent && (
-              <div className="wa-tpl-phone-header-text">{tpl.headerContent}</div>
-            )}
-            {tpl.headerType === 'image' && (
-              <div className="wa-tpl-phone-media"><FiImage size={24} /><span>Image</span></div>
-            )}
-            {tpl.headerType === 'video' && (
-              <div className="wa-tpl-phone-media"><FiPlay size={24} /><span>Video</span></div>
-            )}
-            {tpl.headerType === 'document' && (
-              <div className="wa-tpl-phone-media"><FiFile size={24} /><span>Document</span></div>
-            )}
             <div className="wa-tpl-phone-text">{tpl.body || 'Your message body here...'}</div>
-            {tpl.footerText && <div className="wa-tpl-phone-footer">{tpl.footerText}</div>}
             <div className="wa-tpl-phone-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
-          {tpl.buttons && tpl.buttons.length > 0 && (
-            <div className="wa-tpl-phone-buttons">
-              {tpl.buttons.map((btn, i) => (
-                <div key={i} className="wa-tpl-phone-btn">
-                  {btn.type === 'call_to_action' && btn.actionType === 'url' && <FiExternalLink size={12} />}
-                  {btn.type === 'call_to_action' && btn.actionType === 'phone' && <FiPhone size={12} />}
-                  {btn.type === 'quick_reply' && <FiMessageSquare size={12} />}
-                  {btn.text || 'Button'}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -767,25 +714,6 @@ function TemplatesTab() {
                 </div>
 
                 <div className="wa-form-group">
-                  <label><FiLayout size={12} /> Header Type</label>
-                  <select value={form.headerType} onChange={e => setForm({ ...form, headerType: e.target.value })}>
-                    <option value="none">None</option>
-                    <option value="text">Text</option>
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="document">Document</option>
-                  </select>
-                </div>
-                {form.headerType !== 'none' && (
-                  <div className="wa-form-group">
-                    <label>{form.headerType === 'text' ? 'Header Text' : 'Media URL'}</label>
-                    <input type="text" value={form.headerContent}
-                      onChange={e => setForm({ ...form, headerContent: e.target.value })}
-                      placeholder={form.headerType === 'text' ? 'Header text...' : 'https://...'} />
-                  </div>
-                )}
-
-                <div className="wa-form-group">
                   <label>Body * <span className="wa-hint">Use {'{{name}}'}, {'{{1}}'} for variables</span></label>
                   <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })}
                     placeholder={'Hi {{name}}, thanks for your interest in {{product}}!'} rows={4} />
@@ -797,51 +725,6 @@ function TemplatesTab() {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                <div className="wa-form-group">
-                  <label>Footer <span className="wa-hint">Optional, max 60 chars</span></label>
-                  <input type="text" value={form.footerText}
-                    onChange={e => setForm({ ...form, footerText: e.target.value.slice(0, 60) })}
-                    placeholder="Powered by YourBrand" />
-                </div>
-
-                {/* Interactive Buttons Builder */}
-                <div className="wa-form-divider">Interactive Buttons (max 3)</div>
-                <div className="wa-tpl-buttons-builder">
-                  {form.buttons.map((btn, idx) => (
-                    <div key={idx} className="wa-tpl-btn-row">
-                      <div className="wa-tpl-btn-fields">
-                        <select value={btn.type} onChange={e => updateButton(idx, 'type', e.target.value)}>
-                          <option value="quick_reply">Quick Reply</option>
-                          <option value="call_to_action">Call to Action</option>
-                        </select>
-                        <input type="text" value={btn.text}
-                          onChange={e => updateButton(idx, 'text', e.target.value.slice(0, 25))}
-                          placeholder="Button text" />
-                        {btn.type === 'call_to_action' && (
-                          <>
-                            <select value={btn.actionType || ''} onChange={e => updateButton(idx, 'actionType', e.target.value)}>
-                              <option value="">Action...</option>
-                              <option value="url">Open URL</option>
-                              <option value="phone">Call Phone</option>
-                            </select>
-                            <input type="text" value={btn.actionValue || ''}
-                              onChange={e => updateButton(idx, 'actionValue', e.target.value)}
-                              placeholder={btn.actionType === 'phone' ? '+1234567890' : 'https://...'} />
-                          </>
-                        )}
-                      </div>
-                      <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => removeButton(idx)}>
-                        <FiTrash2 size={12} />
-                      </button>
-                    </div>
-                  ))}
-                  {form.buttons.length < 3 && (
-                    <button className="wa-btn wa-btn-sm" onClick={addButton}>
-                      <FiPlus size={12} /> Add Button
-                    </button>
-                  )}
                 </div>
 
                 <div className="wa-form-actions">
@@ -879,7 +762,7 @@ function TemplatesTab() {
         <div className="wa-empty">
           <FiFileText size={40} />
           <h3>No templates yet</h3>
-          <p>Create reusable message templates with interactive buttons</p>
+          <p>Create reusable message templates</p>
         </div>
       ) : (
         <div className="wa-template-list">
@@ -896,25 +779,10 @@ function TemplatesTab() {
                   </div>
                   <div className="wa-template-card-meta">
                     <span><FiClock size={10} /> {new Date(tpl.createdAt).toLocaleDateString()}</span>
-                    {tpl.buttons?.length > 0 && (
-                      <span className="wa-template-btn-count">
-                        <FiLayout size={10} /> {tpl.buttons.length} button{tpl.buttons.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <div className="wa-template-card-body">
                   <p className="wa-template-preview-text">{tpl.body.substring(0, 120)}{tpl.body.length > 120 ? '...' : ''}</p>
-                  {tpl.buttons?.length > 0 && (
-                    <div className="wa-template-btn-pills">
-                      {tpl.buttons.map((btn, i) => (
-                        <span key={i} className="wa-template-btn-pill">
-                          {btn.type === 'quick_reply' ? <FiMessageSquare size={10} /> : <FiExternalLink size={10} />}
-                          {btn.text}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <div className="wa-template-card-actions">
                   <button className="wa-btn wa-btn-sm" onClick={() => setShowPreview(tpl)}>
@@ -1169,22 +1037,7 @@ function CampaignsTab() {
                 </select>
               </div>
 
-              {/* Template button preview */}
-              {selectedTemplate && selectedTemplate.buttons?.length > 0 && (
-                <div className="wa-campaign-tpl-preview">
-                  <div className="wa-campaign-tpl-preview-label">
-                    <FiLayout size={12} /> Template buttons attached:
-                  </div>
-                  <div className="wa-template-btn-pills">
-                    {selectedTemplate.buttons.map((btn, i) => (
-                      <span key={i} className="wa-template-btn-pill">
-                        {btn.type === 'quick_reply' ? <FiMessageSquare size={10} /> : <FiExternalLink size={10} />}
-                        {btn.text}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               <div className="wa-form-group">
                 <label>Message * <span className="wa-hint">Use {'{{name}}'} for personalization</span></label>
