@@ -119,8 +119,6 @@ const whatsAppCampaignSchema = new mongoose.Schema({
     delayMax: { type: Number, default: 45 },
     dailyLimit: { type: Number, default: 100 },  // Day 1 limit
     batchSize: { type: Number, default: 10 },
-    sendHoursStart: { type: Number, default: 8 },
-    sendHoursEnd: { type: Number, default: 22 },
     rampUpEnabled: { type: Boolean, default: true },
     rampUpPercent: { type: Number, default: 15 },  // daily increase %
     randomDelayEnabled: { type: Boolean, default: true }

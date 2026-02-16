@@ -953,7 +953,7 @@ function CampaignsTab() {
     name: '', message: '', accountId: '', targetTags: '', manualPhones: '', scheduledAt: '', templateId: '', phoneListId: ''
   });
   const [settings, setSettings] = useState({
-    delayMin: 10, delayMax: 45, dailyLimit: 100, sendHoursStart: 8, sendHoursEnd: 22,
+    delayMin: 10, delayMax: 45, dailyLimit: 100,
     rampUpEnabled: true, rampUpPercent: 15, randomDelayEnabled: true
   });
   const [showSettings, setShowSettings] = useState(false);
@@ -1006,7 +1006,7 @@ function CampaignsTab() {
       });
       setShowCreateModal(false);
       setForm({ name: '', message: '', accountId: '', targetTags: '', manualPhones: '', scheduledAt: '', templateId: '', phoneListId: '' });
-      setSettings({ delayMin: 10, delayMax: 45, dailyLimit: 100, sendHoursStart: 8, sendHoursEnd: 22, rampUpEnabled: true, rampUpPercent: 15, randomDelayEnabled: true });
+      setSettings({ delayMin: 10, delayMax: 45, dailyLimit: 100, rampUpEnabled: true, rampUpPercent: 15, randomDelayEnabled: true });
       setShowSettings(false);
       setSelectedTemplate(null);
       toast.success('Campaign created');
@@ -1271,26 +1271,7 @@ function CampaignsTab() {
                         onChange={e => setSettings({ ...settings, dailyLimit: +e.target.value })} />
                     </div>
                   </div>
-                  <div className="wa-settings-row">
-                    <div className="wa-form-group">
-                      <label>Send Hours Start</label>
-                      <select value={settings.sendHoursStart}
-                        onChange={e => setSettings({ ...settings, sendHoursStart: +e.target.value })}>
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="wa-form-group">
-                      <label>Send Hours End</label>
-                      <select value={settings.sendHoursEnd}
-                        onChange={e => setSettings({ ...settings, sendHoursEnd: +e.target.value })}>
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <option key={i} value={i + 1}>{String(i + 1).padStart(2, '0')}:00</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+
                   <div className="wa-settings-checks">
                     <label className="wa-checkbox-label">
                       <input type="checkbox" checked={settings.rampUpEnabled}
@@ -1310,7 +1291,7 @@ function CampaignsTab() {
                   <div className="wa-settings-info">
                     <FiAlertCircle size={12} />
                     Day 1: {settings.dailyLimit} msgs • Day 2: ~{Math.floor(settings.dailyLimit * (1 + settings.rampUpPercent / 100))} msgs •
-                    Delay: {settings.delayMin}s–{settings.delayMax}s random • Active: {String(settings.sendHoursStart).padStart(2, '0')}:00–{String(settings.sendHoursEnd).padStart(2, '0')}:00
+                    Delay: {settings.delayMin}s–{settings.delayMax}s random
                   </div>
                 </div>
               )}
