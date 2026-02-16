@@ -194,6 +194,10 @@ app.use('/api/findr', findrRoutes);
 const notesRoutes = require('./routes/notes');
 app.use('/api/notes', notesRoutes);
 
+// Interview routes
+const interviewRoutes = require('./routes/interviews');
+app.use('/api/interviews', interviewRoutes);
+
 // Admin panel routes (super admin only)
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);

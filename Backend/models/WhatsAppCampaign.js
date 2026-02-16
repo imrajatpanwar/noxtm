@@ -32,6 +32,12 @@ const whatsAppCampaignSchema = new mongoose.Schema({
     trim: true
   },
 
+  // Optional reference to a message template
+  templateId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WhatsAppTemplate'
+  },
+
   // Message content with variable support: {{name}}, {{phone}}, {{custom}}
   message: {
     type: String,
@@ -56,8 +62,7 @@ const whatsAppCampaignSchema = new mongoose.Schema({
   recipients: [{
     contactId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'WhatsAppContact',
-      required: true
+      ref: 'WhatsAppContact'
     },
     whatsappId: {
       type: String,
@@ -110,12 +115,15 @@ const whatsAppCampaignSchema = new mongoose.Schema({
 
   // Throttle settings
   settings: {
-    delayMin: { type: Number, default: 3 },   // seconds between messages
-    delayMax: { type: Number, default: 8 },
-    dailyLimit: { type: Number, default: 200 },
+    delayMin: { type: Number, default: 10 },    // seconds between messages (random range)
+    delayMax: { type: Number, default: 45 },
+    dailyLimit: { type: Number, default: 100 },  // Day 1 limit
     batchSize: { type: Number, default: 10 },
     sendHoursStart: { type: Number, default: 8 },
-    sendHoursEnd: { type: Number, default: 22 }
+    sendHoursEnd: { type: Number, default: 22 },
+    rampUpEnabled: { type: Boolean, default: true },
+    rampUpPercent: { type: Number, default: 15 },  // daily increase %
+    randomDelayEnabled: { type: Boolean, default: true }
   },
 
   // Auto-computed stats
@@ -132,7 +140,12 @@ const whatsAppCampaignSchema = new mongoose.Schema({
   resumeIndex: {
     type: Number,
     default: 0
-  }
+  },
+
+  // Ramp-up day tracking
+  dayNumber: { type: Number, default: 1 },
+  dailySentCount: { type: Number, default: 0 },
+  lastSendDate: { type: String }
 }, {
   timestamps: true
 });
@@ -143,7 +156,7 @@ whatsAppCampaignSchema.index({ companyId: 1, createdAt: -1 });
 whatsAppCampaignSchema.index({ scheduledAt: 1, status: 1 });
 
 // Update stats before save
-whatsAppCampaignSchema.pre('save', function(next) {
+whatsAppCampaignSchema.pre('save', function (next) {
   if (this.recipients && this.recipients.length > 0) {
     this.stats.total = this.recipients.length;
     this.stats.sent = this.recipients.filter(r => r.status === 'sent').length;
