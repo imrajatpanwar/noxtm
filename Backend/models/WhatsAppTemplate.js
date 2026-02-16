@@ -13,7 +13,7 @@ const buttonSchema = new mongoose.Schema({
     },
     actionType: {
         type: String,
-        enum: ['url', 'phone', null]
+        enum: ['url', 'phone', '', null]
     },
     actionValue: {
         type: String
