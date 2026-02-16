@@ -112,8 +112,6 @@ async function processCampaign(campaignId) {
     delayMin = 10,
     delayMax = 45,
     dailyLimit = 100,
-    sendHoursStart = 0,
-    sendHoursEnd = 24,
     rampUpEnabled = true,
     rampUpPercent = 15,
     randomDelayEnabled = true
@@ -162,11 +160,8 @@ async function processCampaign(campaignId) {
       const futureLimit = rampUpEnabled
         ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, futureDay - 1))
         : dailyLimit;
-      const sendHours = sendHoursEnd - sendHoursStart;
       const batch = Math.min(remainingMsgs, futureLimit);
-      totalSeconds += batch * avgDelay + (sendHours > 0 ? 0 : 0);
-      // Add overnight gap (rough estimate: next day starts after sleep)
-      totalSeconds += (24 - (sendHoursEnd - sendHoursStart)) * 3600;
+      totalSeconds += batch * avgDelay;
       remainingMsgs -= batch;
       futureDay++;
       if (futureDay > dayNum + 100) break; // safety
@@ -198,24 +193,7 @@ async function processCampaign(campaignId) {
       ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, currentDayNum - 1))
       : dailyLimit;
 
-    // Check send hours
-    const now = new Date();
-    const currentHour = now.getHours();
-    if (currentHour < sendHoursStart || currentHour >= sendHoursEnd) {
-      campaign.status = 'paused';
-      campaign.resumeIndex = i;
-      await campaign.save();
-      runningCampaigns.delete(campaignId);
-      emitProgress(campaign.companyId, campaignId, {
-        status: 'paused',
-        reason: 'outside_send_hours',
-        stats: campaign.stats,
-        dayNumber: currentDayNum,
-        dailySentCount: campaign.dailySentCount,
-        dailyLimitToday: currentDayLimit
-      });
-      return;
-    }
+    // Send hours check removed — campaigns start immediately
 
     // Check daily limit
     if (campaign.dailySentCount >= currentDayLimit) {
@@ -267,8 +245,8 @@ async function processCampaign(campaignId) {
       const result = await sessionManager.sendMessage(
         campaign.accountId.toString(),
         jid,
-        sendOptions.type ? sendOptions : { type: 'text', text: messageContent },
-        { campaignId: campaign._id }
+        messageContent,
+        { ...sendOptions, campaignId: campaign._id }
       );
 
       // Update recipient
