@@ -112,8 +112,6 @@ async function processCampaign(campaignId) {
     delayMin = 10,
     delayMax = 45,
     dailyLimit = 100,
-    rampUpEnabled = true,
-    rampUpPercent = 15,
     randomDelayEnabled = true
   } = campaign.settings || {};
 
@@ -136,11 +134,9 @@ async function processCampaign(campaignId) {
     campaign.lastSendDate = today;
   }
 
-  // Calculate today's daily limit with ramp-up
+  // Calculate today's daily limit with ramp-up (doubles each day, unlimited from Day 5)
   const dayNum = campaign.dayNumber || 1;
-  const todayLimit = rampUpEnabled
-    ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, dayNum - 1))
-    : dailyLimit;
+  const todayLimit = dayNum >= 5 ? Infinity : dailyLimit * Math.pow(2, dayNum - 1);
 
   // Calculate estimated time remaining
   const calcEstimatedTime = (remaining) => {
@@ -157,9 +153,7 @@ async function processCampaign(campaignId) {
     remainingMsgs -= canSendToday;
     let futureDay = dayNum + 1;
     while (remainingMsgs > 0) {
-      const futureLimit = rampUpEnabled
-        ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, futureDay - 1))
-        : dailyLimit;
+      const futureLimit = futureDay >= 5 ? Infinity : dailyLimit * Math.pow(2, futureDay - 1);
       const batch = Math.min(remainingMsgs, futureLimit);
       totalSeconds += batch * avgDelay;
       remainingMsgs -= batch;
@@ -190,9 +184,7 @@ async function processCampaign(campaignId) {
 
     // Recalculate today's limit (may have changed if day rolled over)
     const currentDayNum = campaign.dayNumber || 1;
-    const currentDayLimit = rampUpEnabled
-      ? Math.floor(dailyLimit * Math.pow(1 + rampUpPercent / 100, currentDayNum - 1))
-      : dailyLimit;
+    const currentDayLimit = currentDayNum >= 5 ? Infinity : dailyLimit * Math.pow(2, currentDayNum - 1);
 
     // Send hours check removed — campaigns start immediately
 

@@ -2213,6 +2213,46 @@
   line-height: 1.4;
 }
 
+.wa-limit-label {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dashed #1e6faf;
+  font-weight: 600;
+}
+
+.wa-limit-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.wa-limit-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1a1a1a;
+}
+
+.wa-limit-label:hover .wa-limit-tooltip {
+  display: block;
+}
+
 /* ===== Progress Bar ===== */
 .wa-progress-bar {
   position: relative;
