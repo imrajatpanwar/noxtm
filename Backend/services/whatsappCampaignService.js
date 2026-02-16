@@ -1,6 +1,7 @@
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppAccount = require('../models/WhatsAppAccount');
+const WhatsAppTemplate = require('../models/WhatsAppTemplate');
 const sessionManager = require('./whatsappSessionManager');
 
 // Track running campaigns: campaignId -> { paused: bool, aborted: bool }
@@ -169,6 +170,21 @@ async function processCampaign(campaignId) {
     return totalSeconds;
   };
 
+  // Pre-load template buttons (once, outside the loop)
+  let templateButtons = null;
+  let templateFooter = null;
+  if (campaign.templateId) {
+    try {
+      const template = await WhatsAppTemplate.findById(campaign.templateId).lean();
+      if (template && template.buttons && template.buttons.length > 0) {
+        templateButtons = template.buttons;
+        templateFooter = template.footerText || null;
+      }
+    } catch (tplErr) {
+      console.error(`[WA Campaign] Failed to load template:`, tplErr.message);
+    }
+  }
+
   for (let i = startIndex; i < recipients.length; i++) {
     // Check state
     const state = runningCampaigns.get(campaignId);
@@ -240,6 +256,12 @@ async function processCampaign(campaignId) {
         sendOptions.mediaUrl = campaign.mediaUrl;
         sendOptions.filename = campaign.mediaFilename;
         sendOptions.caption = messageContent;
+      }
+
+      // Attach template buttons if available
+      if (templateButtons) {
+        sendOptions.buttons = templateButtons;
+        if (templateFooter) sendOptions.footerText = templateFooter;
       }
 
       const result = await sessionManager.sendMessage(
