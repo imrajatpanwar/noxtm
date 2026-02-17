@@ -8,7 +8,7 @@ const { authenticateToken: auth } = require('../middleware/auth');
 // @access  Private
 router.post('/', auth, async (req, res) => {
     try {
-        const { profileName, liAtCookie, accountName } = req.body;
+        const { profileName, liAtCookie, accountName, allCookies, profileImageUrl } = req.body;
 
         if (!profileName || !liAtCookie) {
             return res.status(400).json({
@@ -17,7 +17,7 @@ router.post('/', auth, async (req, res) => {
             });
         }
 
-        // Check if session with same cookie already exists for this user
+        // Check if session with same li_at cookie already exists for this user
         const existingSession = await LinkedInSession.findOne({
             userId: req.user.id,
             liAtCookie: liAtCookie
@@ -27,6 +27,12 @@ router.post('/', auth, async (req, res) => {
             // Update existing session
             existingSession.profileName = profileName;
             existingSession.status = 'active';
+            if (allCookies && Array.isArray(allCookies)) {
+                existingSession.allCookies = allCookies;
+            }
+            if (profileImageUrl) {
+                existingSession.profileImageUrl = profileImageUrl;
+            }
             await existingSession.save();
 
             return res.json({
@@ -42,6 +48,8 @@ router.post('/', auth, async (req, res) => {
             profileName,
             liAtCookie,
             accountName: accountName || profileName,
+            allCookies: allCookies || [],
+            profileImageUrl: profileImageUrl || '',
             status: 'active'
         });
 

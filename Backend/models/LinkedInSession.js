@@ -14,9 +14,26 @@ const linkedInSessionSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    profileImageUrl: {
+        type: String,
+        default: ''
+    },
     liAtCookie: {
         type: String,
         required: true
+    },
+    allCookies: {
+        type: [{
+            name: String,
+            value: String,
+            domain: String,
+            path: String,
+            secure: Boolean,
+            httpOnly: Boolean,
+            sameSite: String,
+            expirationDate: Number
+        }],
+        default: []
     },
     status: {
         type: String,
