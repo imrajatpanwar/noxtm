@@ -174,9 +174,9 @@ app.use('/api/noxtm-memory', noxtmMemoryRoutes);
 const billingRoutes = require('./routes/billing');
 app.use('/api/billing', billingRoutes);
 
-// LinkedIn Sessions routes
-const linkedinSessionsRoutes = require('./routes/linkedin-sessions');
-app.use('/api/linkedin-sessions', linkedinSessionsRoutes);
+// LinkedIn AI Commenter routes
+const linkedinAiRoutes = require('./routes/linkedin-ai');
+app.use('/api/linkedin-ai', linkedinAiRoutes);
 
 // Google OAuth routes
 const googleAuthRoutes = require('./routes/google-auth');

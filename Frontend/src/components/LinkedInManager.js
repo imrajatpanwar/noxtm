@@ -1,403 +1,326 @@
-/* global chrome */
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiLinkedin, FiEdit3, FiTrash2, FiCheck, FiX, FiExternalLink, FiAlertCircle, FiRefreshCw, FiClock, FiShield, FiZap } from 'react-icons/fi';
-import { toast } from 'sonner';
 import api from '../config/api';
+import { toast } from 'sonner';
+import { FiSettings, FiMessageSquare, FiZap, FiClock, FiTrendingUp, FiRefreshCw } from 'react-icons/fi';
 import './LinkedInManager.css';
 
-// Chrome Extension - Auto-detected via content script
-let DETECTED_EXTENSION_ID = null;
-
 function LinkedInManager() {
-    const [sessions, setSessions] = useState([]);
+    const [settings, setSettings] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [editingId, setEditingId] = useState(null);
-    const [editValue, setEditValue] = useState('');
-    const [extensionInstalled, setExtensionInstalled] = useState(false);
-    const [loggingInId, setLoggingInId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [extensionConnected, setExtensionConnected] = useState(false);
+    const [activeTab, setActiveTab] = useState('settings');
 
-    // Check if extension is installed via content script DOM attribute or message
-    const checkExtension = useCallback(async () => {
-        const extAttr = document.documentElement.getAttribute('data-noxtm-extension');
-        const extId = document.documentElement.getAttribute('data-noxtm-extension-id');
-        if (extAttr === 'true' && extId) {
-            DETECTED_EXTENSION_ID = extId;
-            setExtensionInstalled(true);
-            return;
-        }
-        setExtensionInstalled(false);
-    }, []);
-
-    // Listen for extension messages via content script bridge
+    // Check extension connection
     useEffect(() => {
-        const handleMessage = (event) => {
-            if (event.source !== window) return;
+        const checkExtension = () => {
+            const isInstalled = document.documentElement.getAttribute('data-noxtm-extension') === 'true';
+            setExtensionConnected(isInstalled);
+        };
+
+        checkExtension();
+        const handler = (event) => {
             if (event.data?.type === 'NOXTM_EXTENSION_INSTALLED') {
-                DETECTED_EXTENSION_ID = event.data.extensionId;
-                setExtensionInstalled(true);
-            }
-            if (event.data?.type === 'NOXTM_EXTENSION_AUTH_SYNCED') {
-                setExtensionInstalled(true);
+                setExtensionConnected(true);
             }
         };
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
     }, []);
 
-    // Helper: send message to extension via content script bridge
-    const sendToExtension = (action, payload = {}) => {
-        return new Promise((resolve) => {
-            const handler = (event) => {
-                if (event.source !== window) return;
-                if (event.data?.type === 'NOXTM_EXTENSION_RESPONSE' && event.data?.action === action) {
-                    window.removeEventListener('message', handler);
-                    resolve(event.data.response);
-                }
-            };
-            window.addEventListener('message', handler);
-
-            setTimeout(() => {
-                window.removeEventListener('message', handler);
-                resolve({ success: false, error: 'Extension communication timed out' });
-            }, 8000);
-
-            window.postMessage({
-                direction: 'from-page',
-                action,
-                payload
-            }, '*');
-        });
-    };
-
-    // Fetch all sessions
-    const fetchSessions = useCallback(async () => {
+    // Load data
+    const loadData = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const response = await api.get('/linkedin-sessions');
-            if (response.data.success) {
-                setSessions(response.data.sessions || []);
-            }
+            const [settingsRes, statsRes, historyRes] = await Promise.all([
+                api.get('/linkedin-ai/settings'),
+                api.get('/linkedin-ai/stats'),
+                api.get('/linkedin-ai/history?limit=10')
+            ]);
+
+            if (settingsRes.data.success) setSettings(settingsRes.data.settings);
+            if (statsRes.data.success) setStats(statsRes.data.stats);
+            if (historyRes.data.success) setHistory(historyRes.data.comments);
         } catch (error) {
-            console.error('Error fetching sessions:', error);
-            toast.error('Failed to load LinkedIn accounts');
+            console.error('Error loading LinkedIn AI data:', error);
+            toast.error('Failed to load settings');
         } finally {
             setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        fetchSessions();
-        checkExtension();
-    }, [fetchSessions, checkExtension]);
+    useEffect(() => { loadData(); }, [loadData]);
 
-    // Handle ONE-CLICK LOGIN via extension
-    const handleLogin = async (session) => {
-        if (!extensionInstalled) {
-            toast.error('Chrome Extension not detected. Please install and reload the page.');
-            return;
-        }
-
-        setLoggingInId(session._id);
-
+    // Save settings
+    const saveSettings = async (updates) => {
+        setSaving(true);
         try {
-            // Send all cookies if available, fallback to li_at only
-            const payload = session.allCookies && session.allCookies.length > 0
-                ? { allCookies: session.allCookies }
-                : { liAtCookie: session.liAtCookie };
-
-            const response = await sendToExtension('login_request', payload);
-
-            if (response && response.success) {
-                toast.success(`Opening ${session.accountName || session.profileName}...`);
-
-                // Mark session as used
-                try {
-                    await api.put(`/linkedin-sessions/${session._id}/use`);
-                    fetchSessions();
-                } catch (error) {
-                    console.error('Error marking session as used:', error);
-                }
-            } else {
-                toast.error(response?.error || 'Failed to inject session');
+            const res = await api.put('/linkedin-ai/settings', updates);
+            if (res.data.success) {
+                setSettings(res.data.settings);
+                toast.success('Settings saved');
             }
         } catch (error) {
-            console.error('Login error:', error);
-            toast.error('Failed to login');
+            toast.error('Failed to save settings');
         } finally {
-            setLoggingInId(null);
+            setSaving(false);
         }
     };
 
-    // Handle edit account name
-    const handleStartEdit = (e, session) => {
-        e.stopPropagation();
-        setEditingId(session._id);
-        setEditValue(session.accountName || session.profileName);
+    const handleToggle = (field) => {
+        const newValue = !settings[field];
+        setSettings(prev => ({ ...prev, [field]: newValue }));
+        saveSettings({ [field]: newValue });
     };
 
-    const handleSaveEdit = async (e) => {
-        if (e) e.stopPropagation();
-        if (!editingId) return;
-
-        try {
-            const response = await api.put(`/linkedin-sessions/${editingId}`, {
-                accountName: editValue
-            });
-
-            if (response.data.success) {
-                toast.success('Account name updated');
-                fetchSessions();
-            }
-        } catch (error) {
-            console.error('Error updating session:', error);
-            toast.error('Failed to update account name');
-        } finally {
-            setEditingId(null);
-            setEditValue('');
-        }
+    const handleChange = (field, value) => {
+        setSettings(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleCancelEdit = (e) => {
-        if (e) e.stopPropagation();
-        setEditingId(null);
-        setEditValue('');
+    const handleSave = () => {
+        saveSettings({
+            commentTone: settings.commentTone,
+            commentMaxLength: settings.commentMaxLength,
+            commentLanguage: settings.commentLanguage,
+            customInstructions: settings.customInstructions,
+            dailyLimit: settings.dailyLimit,
+            enabled: settings.enabled
+        });
     };
 
-    // Handle delete session
-    const handleDelete = async (e, session) => {
-        e.stopPropagation();
-        if (!window.confirm(`Remove "${session.accountName || session.profileName}"?`)) {
-            return;
-        }
-
-        try {
-            const response = await api.delete(`/linkedin-sessions/${session._id}`);
-            if (response.data.success) {
-                toast.success('Account removed');
-                fetchSessions();
-            }
-        } catch (error) {
-            console.error('Error deleting session:', error);
-            toast.error('Failed to remove account');
-        }
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
-    // Send auth token to extension via content script bridge
-    const sendTokenToExtension = async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.error('No auth token found. Please login again.');
-            return;
-        }
-
-        const response = await sendToExtension('store_token', { token });
-        if (response && response.success) {
-            toast.success('Connected to extension!');
-            setExtensionInstalled(true);
-        } else {
-            toast.error('Failed to connect. Make sure the extension is installed and reload the page.');
-        }
-    };
-
-    // Get initials for avatar
-    const getInitials = (name) => {
-        if (!name) return 'LI';
-        const parts = name.trim().split(' ');
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
-        return name.substring(0, 2).toUpperCase();
-    };
-
-    // Format relative time
-    const formatTimeAgo = (date) => {
-        if (!date) return 'Never';
-        const now = new Date();
-        const d = new Date(date);
-        const diffMs = now - d;
-        const diffMin = Math.floor(diffMs / 60000);
-        const diffHour = Math.floor(diffMs / 3600000);
-        const diffDay = Math.floor(diffMs / 86400000);
-
-        if (diffMin < 1) return 'Just now';
-        if (diffMin < 60) return `${diffMin}m ago`;
-        if (diffHour < 24) return `${diffHour}h ago`;
-        if (diffDay < 30) return `${diffDay}d ago`;
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-
-    // Session age from creation
-    const getSessionAge = (createdAt) => {
-        if (!createdAt) return '';
-        const now = new Date();
-        const created = new Date(createdAt);
-        const diffDay = Math.floor((now - created) / 86400000);
-
-        if (diffDay === 0) return 'Today';
-        if (diffDay === 1) return '1 day old';
-        if (diffDay < 30) return `${diffDay} days old`;
-        if (diffDay < 365) return `${Math.floor(diffDay / 30)} months old`;
-        return `${Math.floor(diffDay / 365)}y old`;
-    };
+    if (loading) {
+        return (
+            <div className="lim-container">
+                <div className="lim-loading">
+                    <div className="lim-spinner"></div>
+                    <p>Loading AI Commenter settings...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="linkedin-manager">
+        <div className="lim-container">
             {/* Header */}
-            <div className="lm-header">
-                <div className="lm-header-left">
-                    <div className="lm-title-icon">
-                        <FiLinkedin />
-                    </div>
+            <div className="lim-header">
+                <div className="lim-header-left">
+                    <div className="lim-header-icon">✨</div>
                     <div>
-                        <h2 className="lm-title">LinkedIn Accounts</h2>
-                        <p className="lm-subtitle">Manage saved sessions • One-click login</p>
+                        <h1 className="lim-title">LinkedIn AI Commenter</h1>
+                        <p className="lim-subtitle">AI-powered engagement assistant</p>
                     </div>
                 </div>
-                <div className="lm-header-right">
-                    <button className="lm-btn-refresh" onClick={fetchSessions} disabled={loading}>
-                        <FiRefreshCw className={loading ? 'spinning' : ''} />
+                <div className="lim-header-right">
+                    <button className="lim-refresh-btn" onClick={loadData} title="Refresh">
+                        <FiRefreshCw size={16} />
                     </button>
-                    {extensionInstalled ? (
-                        <div className="lm-ext-badge connected">
-                            <span className="lm-ext-dot"></span>
-                            Extension Connected
-                        </div>
-                    ) : (
-                        <button className="lm-btn-connect" onClick={sendTokenToExtension}>
-                            <FiZap /> Connect Extension
-                        </button>
-                    )}
+                    <span className={`lim-ext-badge ${extensionConnected ? 'connected' : ''}`}>
+                        <span className="lim-ext-dot"></span>
+                        {extensionConnected ? 'Extension Connected' : 'Extension Not Found'}
+                    </span>
                 </div>
             </div>
 
-            {/* Extension Warning */}
-            {!extensionInstalled && (
-                <div className="lm-ext-warning">
-                    <FiAlertCircle className="lm-ext-warning-icon" />
-                    <div>
-                        <strong>Chrome Extension Required</strong>
-                        <p>Install the Noxtm LinkedIn Manager extension to capture and inject sessions. Load unpacked from <code>chrome-extension-linkedin/</code></p>
+            {/* Stats Row */}
+            {stats && (
+                <div className="lim-stats-row">
+                    <div className="lim-stat-card">
+                        <FiZap className="lim-stat-icon" />
+                        <div className="lim-stat-info">
+                            <span className="lim-stat-number">{stats.today}</span>
+                            <span className="lim-stat-label">Today</span>
+                        </div>
+                    </div>
+                    <div className="lim-stat-card">
+                        <FiTrendingUp className="lim-stat-icon" />
+                        <div className="lim-stat-info">
+                            <span className="lim-stat-number">{stats.remaining}</span>
+                            <span className="lim-stat-label">Remaining</span>
+                        </div>
+                    </div>
+                    <div className="lim-stat-card">
+                        <FiMessageSquare className="lim-stat-icon" />
+                        <div className="lim-stat-info">
+                            <span className="lim-stat-number">{stats.thisWeek}</span>
+                            <span className="lim-stat-label">This Week</span>
+                        </div>
+                    </div>
+                    <div className="lim-stat-card">
+                        <FiClock className="lim-stat-icon" />
+                        <div className="lim-stat-info">
+                            <span className="lim-stat-number">{stats.total}</span>
+                            <span className="lim-stat-label">All Time</span>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Content */}
-            <div className="lm-content">
-                {loading ? (
-                    <div className="lm-loading">
-                        <div className="lm-loading-spinner"></div>
-                        <p>Loading accounts...</p>
-                    </div>
-                ) : sessions.length === 0 ? (
-                    <div className="lm-empty">
-                        <div className="lm-empty-icon">
-                            <FiLinkedin />
-                        </div>
-                        <h3>No LinkedIn Accounts Saved</h3>
-                        <p>Open LinkedIn in your browser, login to an account, then click <strong>"Grab Session"</strong> in the Chrome Extension popup to save it here.</p>
-                    </div>
-                ) : (
-                    <div className="lm-grid">
-                        {sessions.map((session) => (
-                            <div
-                                key={session._id}
-                                className={`lm-card ${loggingInId === session._id ? 'logging-in' : ''}`}
-                            >
-                                <div className="lm-card-top">
-                                    <div className="lm-card-avatar">
-                                        {session.profileImageUrl ? (
-                                            <img src={session.profileImageUrl} alt="" />
-                                        ) : (
-                                            <span>{getInitials(session.profileName)}</span>
-                                        )}
-                                        <div className={`lm-card-status-dot ${session.status}`}></div>
-                                    </div>
-                                    <div className="lm-card-info">
-                                        {editingId === session._id ? (
-                                            <div className="lm-card-edit">
-                                                <input
-                                                    type="text"
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleSaveEdit(e);
-                                                        if (e.key === 'Escape') handleCancelEdit(e);
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                                <button className="lm-edit-save" onClick={handleSaveEdit}><FiCheck /></button>
-                                                <button className="lm-edit-cancel" onClick={handleCancelEdit}><FiX /></button>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <h4 className="lm-card-name">{session.accountName || session.profileName}</h4>
-                                                {session.accountName && session.accountName !== session.profileName && (
-                                                    <p className="lm-card-profile">{session.profileName}</p>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="lm-card-actions-top">
-                                        <button
-                                            className="lm-btn-icon"
-                                            onClick={(e) => handleStartEdit(e, session)}
-                                            title="Rename"
-                                        >
-                                            <FiEdit3 />
-                                        </button>
-                                        <button
-                                            className="lm-btn-icon delete"
-                                            onClick={(e) => handleDelete(e, session)}
-                                            title="Remove"
-                                        >
-                                            <FiTrash2 />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="lm-card-meta">
-                                    <div className="lm-meta-item">
-                                        <FiShield />
-                                        <span className={`lm-status-text ${session.status}`}>{session.status}</span>
-                                    </div>
-                                    <div className="lm-meta-item">
-                                        <FiClock />
-                                        <span>{session.lastUsed ? `Used ${formatTimeAgo(session.lastUsed)}` : 'Never used'}</span>
-                                    </div>
-                                    {session.allCookies && session.allCookies.length > 0 && (
-                                        <div className="lm-meta-item">
-                                            <FiZap />
-                                            <span>{session.allCookies.length} cookies</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="lm-card-footer">
-                                    <span className="lm-session-age">{getSessionAge(session.createdAt)}</span>
-                                    <button
-                                        className="lm-btn-open"
-                                        onClick={() => handleLogin(session)}
-                                        disabled={!extensionInstalled || loggingInId === session._id}
-                                    >
-                                        {loggingInId === session._id ? (
-                                            <>
-                                                <FiRefreshCw className="spinning" />
-                                                Opening...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FiExternalLink />
-                                                Open
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+            {/* Tab Navigation */}
+            <div className="lim-tabs">
+                <button
+                    className={`lim-tab ${activeTab === 'settings' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('settings')}
+                >
+                    <FiSettings size={14} /> Settings
+                </button>
+                <button
+                    className={`lim-tab ${activeTab === 'history' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    <FiMessageSquare size={14} /> Comment History
+                </button>
             </div>
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && settings && (
+                <div className="lim-settings-panel">
+                    {/* Enable Toggle */}
+                    <div className="lim-setting-row">
+                        <div className="lim-setting-info">
+                            <label className="lim-setting-label">AI Commenting</label>
+                            <span className="lim-setting-desc">Show AI Comment buttons on LinkedIn posts</span>
+                        </div>
+                        <label className="lim-toggle">
+                            <input
+                                type="checkbox"
+                                checked={settings.enabled}
+                                onChange={() => handleToggle('enabled')}
+                            />
+                            <span className="lim-toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    {/* Comment Tone */}
+                    <div className="lim-setting-group">
+                        <label className="lim-setting-label">Comment Tone</label>
+                        <div className="lim-tone-grid">
+                            {['professional', 'casual', 'thoughtful', 'witty', 'supportive'].map(tone => (
+                                <button
+                                    key={tone}
+                                    className={`lim-tone-btn ${settings.commentTone === tone ? 'active' : ''}`}
+                                    onClick={() => handleChange('commentTone', tone)}
+                                >
+                                    {tone === 'professional' && '💼'}
+                                    {tone === 'casual' && '😊'}
+                                    {tone === 'thoughtful' && '🤔'}
+                                    {tone === 'witty' && '😎'}
+                                    {tone === 'supportive' && '🤝'}
+                                    {' '}{tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Max Length */}
+                    <div className="lim-setting-group">
+                        <label className="lim-setting-label">Max Comment Length</label>
+                        <div className="lim-range-wrapper">
+                            <input
+                                type="range"
+                                min="50"
+                                max="500"
+                                value={settings.commentMaxLength}
+                                onChange={(e) => handleChange('commentMaxLength', parseInt(e.target.value))}
+                                className="lim-range"
+                            />
+                            <span className="lim-range-value">{settings.commentMaxLength} chars</span>
+                        </div>
+                    </div>
+
+                    {/* Language */}
+                    <div className="lim-setting-group">
+                        <label className="lim-setting-label">Language</label>
+                        <select
+                            value={settings.commentLanguage}
+                            onChange={(e) => handleChange('commentLanguage', e.target.value)}
+                            className="lim-select"
+                        >
+                            <option value="English">English</option>
+                            <option value="Hindi">Hindi</option>
+                            <option value="Spanish">Spanish</option>
+                            <option value="French">French</option>
+                            <option value="German">German</option>
+                            <option value="Portuguese">Portuguese</option>
+                            <option value="Arabic">Arabic</option>
+                        </select>
+                    </div>
+
+                    {/* Daily Limit */}
+                    <div className="lim-setting-group">
+                        <label className="lim-setting-label">Daily Limit</label>
+                        <input
+                            type="number"
+                            min="5"
+                            max="200"
+                            value={settings.dailyLimit}
+                            onChange={(e) => handleChange('dailyLimit', parseInt(e.target.value) || 50)}
+                            className="lim-input"
+                        />
+                    </div>
+
+                    {/* Custom Instructions */}
+                    <div className="lim-setting-group">
+                        <label className="lim-setting-label">Custom Instructions <span className="lim-optional">(optional)</span></label>
+                        <textarea
+                            value={settings.customInstructions || ''}
+                            onChange={(e) => handleChange('customInstructions', e.target.value)}
+                            placeholder="e.g. Always mention my expertise in AI/ML when relevant..."
+                            className="lim-textarea"
+                            maxLength={500}
+                        />
+                    </div>
+
+                    {/* Save Button */}
+                    <button className="lim-save-btn" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save Settings'}
+                    </button>
+                </div>
+            )}
+
+            {/* History Tab */}
+            {activeTab === 'history' && (
+                <div className="lim-history-panel">
+                    {history.length === 0 ? (
+                        <div className="lim-empty">
+                            <FiMessageSquare size={32} />
+                            <p>No comments generated yet</p>
+                            <span>Go to LinkedIn and click "✨ AI Comment" on a post!</span>
+                        </div>
+                    ) : (
+                        <div className="lim-history-list">
+                            {history.map(item => (
+                                <div key={item._id} className="lim-history-item">
+                                    <div className="lim-history-meta">
+                                        <span className="lim-history-author">
+                                            Replied to <strong>{item.postAuthor}</strong>
+                                        </span>
+                                        <span className="lim-history-time">{formatDate(item.createdAt)}</span>
+                                    </div>
+                                    <div className="lim-history-post-snippet">
+                                        {item.postTextSnippet?.substring(0, 100)}...
+                                    </div>
+                                    <div className="lim-history-comment">
+                                        "{item.generatedComment}"
+                                    </div>
+                                    <div className="lim-history-badges">
+                                        <span className={`lim-badge ${item.wasPosted ? 'posted' : 'generated'}`}>
+                                            {item.wasPosted ? '✅ Posted' : '💬 Generated'}
+                                        </span>
+                                        <span className="lim-badge tone">{item.tone}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
