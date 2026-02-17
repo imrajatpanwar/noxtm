@@ -1,6 +1,6 @@
 /* global chrome */
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiLinkedin, FiEdit3, FiTrash2, FiCheck, FiX, FiLogIn, FiPlus, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiLinkedin, FiEdit3, FiTrash2, FiCheck, FiX, FiExternalLink, FiAlertCircle, FiRefreshCw, FiClock, FiShield, FiZap } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import './LinkedInManager.css';
@@ -14,10 +14,10 @@ function LinkedInManager() {
     const [editingId, setEditingId] = useState(null);
     const [editValue, setEditValue] = useState('');
     const [extensionInstalled, setExtensionInstalled] = useState(false);
+    const [loggingInId, setLoggingInId] = useState(null);
 
     // Check if extension is installed via content script DOM attribute or message
     const checkExtension = useCallback(async () => {
-        // Method 1: Check DOM attribute set by content script
         const extAttr = document.documentElement.getAttribute('data-noxtm-extension');
         const extId = document.documentElement.getAttribute('data-noxtm-extension-id');
         if (extAttr === 'true' && extId) {
@@ -25,9 +25,6 @@ function LinkedInManager() {
             setExtensionInstalled(true);
             return;
         }
-
-        // Method 2: Listen for postMessage from content script
-        // (handled in useEffect below)
         setExtensionInstalled(false);
     }, []);
 
@@ -59,11 +56,10 @@ function LinkedInManager() {
             };
             window.addEventListener('message', handler);
 
-            // Timeout after 5 seconds
             setTimeout(() => {
                 window.removeEventListener('message', handler);
                 resolve({ success: false, error: 'Extension communication timed out' });
-            }, 5000);
+            }, 8000);
 
             window.postMessage({
                 direction: 'from-page',
@@ -94,20 +90,25 @@ function LinkedInManager() {
         checkExtension();
     }, [fetchSessions, checkExtension]);
 
-    // Handle login via extension
+    // Handle ONE-CLICK LOGIN via extension
     const handleLogin = async (session) => {
         if (!extensionInstalled) {
             toast.error('Chrome Extension not detected. Please install and reload the page.');
             return;
         }
 
+        setLoggingInId(session._id);
+
         try {
-            const response = await sendToExtension('login_request', {
-                liAtCookie: session.liAtCookie
-            });
+            // Send all cookies if available, fallback to li_at only
+            const payload = session.allCookies && session.allCookies.length > 0
+                ? { allCookies: session.allCookies }
+                : { liAtCookie: session.liAtCookie };
+
+            const response = await sendToExtension('login_request', payload);
 
             if (response && response.success) {
-                toast.success(`Logging into ${session.accountName || session.profileName}...`);
+                toast.success(`Opening ${session.accountName || session.profileName}...`);
 
                 // Mark session as used
                 try {
@@ -122,16 +123,20 @@ function LinkedInManager() {
         } catch (error) {
             console.error('Login error:', error);
             toast.error('Failed to login');
+        } finally {
+            setLoggingInId(null);
         }
     };
 
     // Handle edit account name
-    const handleStartEdit = (session) => {
+    const handleStartEdit = (e, session) => {
+        e.stopPropagation();
         setEditingId(session._id);
         setEditValue(session.accountName || session.profileName);
     };
 
-    const handleSaveEdit = async () => {
+    const handleSaveEdit = async (e) => {
+        if (e) e.stopPropagation();
         if (!editingId) return;
 
         try {
@@ -152,14 +157,16 @@ function LinkedInManager() {
         }
     };
 
-    const handleCancelEdit = () => {
+    const handleCancelEdit = (e) => {
+        if (e) e.stopPropagation();
         setEditingId(null);
         setEditValue('');
     };
 
     // Handle delete session
-    const handleDelete = async (session) => {
-        if (!window.confirm(`Are you sure you want to remove "${session.accountName || session.profileName}"?`)) {
+    const handleDelete = async (e, session) => {
+        e.stopPropagation();
+        if (!window.confirm(`Remove "${session.accountName || session.profileName}"?`)) {
             return;
         }
 
@@ -192,135 +199,203 @@ function LinkedInManager() {
         }
     };
 
-    // Format date
-    const formatDate = (date) => {
-        if (!date) return '—';
-        return new Date(date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
+    // Get initials for avatar
+    const getInitials = (name) => {
+        if (!name) return 'LI';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    };
+
+    // Format relative time
+    const formatTimeAgo = (date) => {
+        if (!date) return 'Never';
+        const now = new Date();
+        const d = new Date(date);
+        const diffMs = now - d;
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffHour = Math.floor(diffMs / 3600000);
+        const diffDay = Math.floor(diffMs / 86400000);
+
+        if (diffMin < 1) return 'Just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHour < 24) return `${diffHour}h ago`;
+        if (diffDay < 30) return `${diffDay}d ago`;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    // Session age from creation
+    const getSessionAge = (createdAt) => {
+        if (!createdAt) return '';
+        const now = new Date();
+        const created = new Date(createdAt);
+        const diffDay = Math.floor((now - created) / 86400000);
+
+        if (diffDay === 0) return 'Today';
+        if (diffDay === 1) return '1 day old';
+        if (diffDay < 30) return `${diffDay} days old`;
+        if (diffDay < 365) return `${Math.floor(diffDay / 30)} months old`;
+        return `${Math.floor(diffDay / 365)}y old`;
     };
 
     return (
         <div className="linkedin-manager">
-            <div className="linkedin-manager-header">
-                <div className="linkedin-manager-title">
-                    <FiLinkedin className="linkedin-icon" />
-                    <h2>LinkedIn Accounts</h2>
+            {/* Header */}
+            <div className="lm-header">
+                <div className="lm-header-left">
+                    <div className="lm-title-icon">
+                        <FiLinkedin />
+                    </div>
+                    <div>
+                        <h2 className="lm-title">LinkedIn Accounts</h2>
+                        <p className="lm-subtitle">Manage saved sessions • One-click login</p>
+                    </div>
                 </div>
-                <div className="linkedin-manager-actions">
-                    <button className="btn-refresh" onClick={fetchSessions} disabled={loading}>
+                <div className="lm-header-right">
+                    <button className="lm-btn-refresh" onClick={fetchSessions} disabled={loading}>
                         <FiRefreshCw className={loading ? 'spinning' : ''} />
-                        Refresh
                     </button>
                     {extensionInstalled ? (
-                        <span className="extension-status connected">
-                            <FiCheck /> Extension Connected
-                        </span>
+                        <div className="lm-ext-badge connected">
+                            <span className="lm-ext-dot"></span>
+                            Extension Connected
+                        </div>
                     ) : (
-                        <button className="btn-connect" onClick={sendTokenToExtension}>
-                            <FiPlus /> Connect Extension
+                        <button className="lm-btn-connect" onClick={sendTokenToExtension}>
+                            <FiZap /> Connect Extension
                         </button>
                     )}
                 </div>
             </div>
 
+            {/* Extension Warning */}
             {!extensionInstalled && (
-                <div className="extension-notice">
-                    <FiAlertCircle />
+                <div className="lm-ext-warning">
+                    <FiAlertCircle className="lm-ext-warning-icon" />
                     <div>
                         <strong>Chrome Extension Required</strong>
-                        <p>Install the Noxtm LinkedIn Manager extension to grab and inject sessions.</p>
-                        <p className="extension-path">Load from: <code>chrome-extension-linkedin/</code></p>
+                        <p>Install the Noxtm LinkedIn Manager extension to capture and inject sessions. Load unpacked from <code>chrome-extension-linkedin/</code></p>
                     </div>
                 </div>
             )}
 
-            <div className="linkedin-manager-content">
+            {/* Content */}
+            <div className="lm-content">
                 {loading ? (
-                    <div className="loading-state">Loading accounts...</div>
+                    <div className="lm-loading">
+                        <div className="lm-loading-spinner"></div>
+                        <p>Loading accounts...</p>
+                    </div>
                 ) : sessions.length === 0 ? (
-                    <div className="empty-state">
-                        <FiLinkedin className="empty-icon" />
-                        <h3>No LinkedIn Accounts</h3>
-                        <p>Use the Chrome extension while logged into LinkedIn to grab sessions.</p>
+                    <div className="lm-empty">
+                        <div className="lm-empty-icon">
+                            <FiLinkedin />
+                        </div>
+                        <h3>No LinkedIn Accounts Saved</h3>
+                        <p>Open LinkedIn in your browser, login to an account, then click <strong>"Grab Session"</strong> in the Chrome Extension popup to save it here.</p>
                     </div>
                 ) : (
-                    <table className="linkedin-table">
-                        <thead>
-                            <tr>
-                                <th>Account Name</th>
-                                <th>Profile Name</th>
-                                <th>Status</th>
-                                <th>Last Used</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sessions.map((session) => (
-                                <tr key={session._id}>
-                                    <td className="account-name-cell">
+                    <div className="lm-grid">
+                        {sessions.map((session) => (
+                            <div
+                                key={session._id}
+                                className={`lm-card ${loggingInId === session._id ? 'logging-in' : ''}`}
+                            >
+                                <div className="lm-card-top">
+                                    <div className="lm-card-avatar">
+                                        {session.profileImageUrl ? (
+                                            <img src={session.profileImageUrl} alt="" />
+                                        ) : (
+                                            <span>{getInitials(session.profileName)}</span>
+                                        )}
+                                        <div className={`lm-card-status-dot ${session.status}`}></div>
+                                    </div>
+                                    <div className="lm-card-info">
                                         {editingId === session._id ? (
-                                            <div className="edit-inline">
+                                            <div className="lm-card-edit">
                                                 <input
                                                     type="text"
                                                     value={editValue}
                                                     onChange={(e) => setEditValue(e.target.value)}
                                                     autoFocus
                                                     onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleSaveEdit();
-                                                        if (e.key === 'Escape') handleCancelEdit();
+                                                        if (e.key === 'Enter') handleSaveEdit(e);
+                                                        if (e.key === 'Escape') handleCancelEdit(e);
                                                     }}
+                                                    onClick={(e) => e.stopPropagation()}
                                                 />
-                                                <button className="btn-icon save" onClick={handleSaveEdit}>
-                                                    <FiCheck />
-                                                </button>
-                                                <button className="btn-icon cancel" onClick={handleCancelEdit}>
-                                                    <FiX />
-                                                </button>
+                                                <button className="lm-edit-save" onClick={handleSaveEdit}><FiCheck /></button>
+                                                <button className="lm-edit-cancel" onClick={handleCancelEdit}><FiX /></button>
                                             </div>
                                         ) : (
-                                            <span className="account-name">
-                                                {session.accountName || session.profileName}
-                                            </span>
+                                            <>
+                                                <h4 className="lm-card-name">{session.accountName || session.profileName}</h4>
+                                                {session.accountName && session.accountName !== session.profileName && (
+                                                    <p className="lm-card-profile">{session.profileName}</p>
+                                                )}
+                                            </>
                                         )}
-                                    </td>
-                                    <td className="profile-name">{session.profileName}</td>
-                                    <td>
-                                        <span className={`status-badge ${session.status}`}>
-                                            {session.status}
-                                        </span>
-                                    </td>
-                                    <td className="last-used">{formatDate(session.lastUsed)}</td>
-                                    <td className="actions-cell">
+                                    </div>
+                                    <div className="lm-card-actions-top">
                                         <button
-                                            className="btn-login"
-                                            onClick={() => handleLogin(session)}
-                                            disabled={!extensionInstalled}
-                                            title="Login with this account"
-                                        >
-                                            <FiLogIn /> Login
-                                        </button>
-                                        <button
-                                            className="btn-icon edit"
-                                            onClick={() => handleStartEdit(session)}
-                                            title="Edit name"
+                                            className="lm-btn-icon"
+                                            onClick={(e) => handleStartEdit(e, session)}
+                                            title="Rename"
                                         >
                                             <FiEdit3 />
                                         </button>
                                         <button
-                                            className="btn-icon delete"
-                                            onClick={() => handleDelete(session)}
-                                            title="Remove account"
+                                            className="lm-btn-icon delete"
+                                            onClick={(e) => handleDelete(e, session)}
+                                            title="Remove"
                                         >
                                             <FiTrash2 />
                                         </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+
+                                <div className="lm-card-meta">
+                                    <div className="lm-meta-item">
+                                        <FiShield />
+                                        <span className={`lm-status-text ${session.status}`}>{session.status}</span>
+                                    </div>
+                                    <div className="lm-meta-item">
+                                        <FiClock />
+                                        <span>{session.lastUsed ? `Used ${formatTimeAgo(session.lastUsed)}` : 'Never used'}</span>
+                                    </div>
+                                    {session.allCookies && session.allCookies.length > 0 && (
+                                        <div className="lm-meta-item">
+                                            <FiZap />
+                                            <span>{session.allCookies.length} cookies</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="lm-card-footer">
+                                    <span className="lm-session-age">{getSessionAge(session.createdAt)}</span>
+                                    <button
+                                        className="lm-btn-open"
+                                        onClick={() => handleLogin(session)}
+                                        disabled={!extensionInstalled || loggingInId === session._id}
+                                    >
+                                        {loggingInId === session._id ? (
+                                            <>
+                                                <FiRefreshCw className="spinning" />
+                                                Opening...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiExternalLink />
+                                                Open
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
         </div>
