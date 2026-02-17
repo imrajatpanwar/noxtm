@@ -111,10 +111,9 @@ function LinkedInManager() {
             {/* Header */}
             <div className="lim-header">
                 <div className="lim-header-left">
-                    <div className="lim-header-icon">✨</div>
                     <div>
-                        <h1 className="lim-title">LinkedIn AI Commenter</h1>
-                        <p className="lim-subtitle">AI-powered engagement assistant</p>
+                        <h1 className="lim-title">AI Commenter</h1>
+                        <p className="lim-subtitle">LinkedIn engagement assistant</p>
                     </div>
                 </div>
                 <div className="lim-header-right">
@@ -207,12 +206,7 @@ function LinkedInManager() {
                                     className={`lim-tone-btn ${settings.commentTone === tone ? 'active' : ''}`}
                                     onClick={() => handleChange('commentTone', tone)}
                                 >
-                                    {tone === 'professional' && '💼'}
-                                    {tone === 'casual' && '😊'}
-                                    {tone === 'thoughtful' && '🤔'}
-                                    {tone === 'witty' && '😎'}
-                                    {tone === 'supportive' && '🤝'}
-                                    {' '}{tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                    {tone.charAt(0).toUpperCase() + tone.slice(1)}
                                 </button>
                             ))}
                         </div>
@@ -289,9 +283,9 @@ function LinkedInManager() {
                 <div className="lim-history-panel">
                     {history.length === 0 ? (
                         <div className="lim-empty">
-                            <FiMessageSquare size={32} />
+                            <FiMessageSquare size={24} />
                             <p>No comments generated yet</p>
-                            <span>Go to LinkedIn and click "✨ AI Comment" on a post!</span>
+                            <span>Go to LinkedIn and click the AI Comment button on any post.</span>
                         </div>
                     ) : (
                         <div className="lim-history-list">
@@ -311,7 +305,7 @@ function LinkedInManager() {
                                     </div>
                                     <div className="lim-history-badges">
                                         <span className={`lim-badge ${item.wasPosted ? 'posted' : 'generated'}`}>
-                                            {item.wasPosted ? '✅ Posted' : '💬 Generated'}
+                                            {item.wasPosted ? 'Posted' : 'Generated'}
                                         </span>
                                         <span className="lim-badge tone">{item.tone}</span>
                                     </div>
