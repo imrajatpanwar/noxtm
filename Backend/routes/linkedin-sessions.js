@@ -19,7 +19,7 @@ router.post('/', auth, async (req, res) => {
 
         // Check if session with same li_at cookie already exists for this user
         const existingSession = await LinkedInSession.findOne({
-            userId: req.user.id,
+            userId: req.user.userId,
             liAtCookie: liAtCookie
         });
 
@@ -44,7 +44,7 @@ router.post('/', auth, async (req, res) => {
 
         // Create new session
         const session = new LinkedInSession({
-            userId: req.user.id,
+            userId: req.user.userId,
             profileName,
             liAtCookie,
             accountName: accountName || profileName,
@@ -75,7 +75,7 @@ router.post('/', auth, async (req, res) => {
 // @access  Private
 router.get('/', auth, async (req, res) => {
     try {
-        const sessions = await LinkedInSession.find({ userId: req.user.id })
+        const sessions = await LinkedInSession.find({ userId: req.user.userId })
             .sort({ createdAt: -1 });
 
         res.json({
@@ -99,7 +99,7 @@ router.get('/:id', auth, async (req, res) => {
     try {
         const session = await LinkedInSession.findOne({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user.userId
         });
 
         if (!session) {
@@ -132,7 +132,7 @@ router.put('/:id', auth, async (req, res) => {
 
         const session = await LinkedInSession.findOne({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user.userId
         });
 
         if (!session) {
@@ -174,7 +174,7 @@ router.put('/:id/use', auth, async (req, res) => {
     try {
         const session = await LinkedInSession.findOne({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user.userId
         });
 
         if (!session) {
@@ -208,7 +208,7 @@ router.delete('/:id', auth, async (req, res) => {
     try {
         const session = await LinkedInSession.findOneAndDelete({
             _id: req.params.id,
-            userId: req.user.id
+            userId: req.user.userId
         });
 
         if (!session) {
