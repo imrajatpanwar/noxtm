@@ -1,0 +1,490 @@
+.lt {
+    padding: 0;
+}
+
+.lt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.lt-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.lt-subtitle {
+    color: #888;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.lt-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #4a6cf7, #6366f1);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lt-add-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Filters */
+.lt-filters {
+    margin-bottom: 20px;
+}
+
+.lt-category-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.lt-category-pills button {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #888;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lt-category-pills button.active {
+    background: rgba(100, 100, 255, 0.15);
+    border-color: rgba(100, 100, 255, 0.3);
+    color: #8b8bff;
+}
+
+.lt-category-pills button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Grid */
+.lt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.lt-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.lt-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+}
+
+.lt-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 0;
+}
+
+.lt-card-category {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.lt-card-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.lt-card-actions button {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+}
+
+.lt-card-actions button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.lt-card-actions button.delete:hover {
+    background: rgba(255, 100, 100, 0.15);
+    color: #f66;
+}
+
+.lt-card-body {
+    padding: 14px 16px;
+}
+
+.lt-card-body h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #fff;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lt-card-subject {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 6px 0 0;
+}
+
+.lt-card-preview {
+    font-size: 0.8rem;
+    color: #666;
+    margin: 8px 0 0;
+    line-height: 1.5;
+}
+
+.lt-card-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.75rem;
+    color: #666;
+}
+
+/* Modal */
+.lt-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: ltFadeIn 0.2s ease;
+}
+
+@keyframes ltFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.lt-modal {
+    width: 500px;
+    max-width: 90vw;
+    max-height: 90vh;
+    background: #1e1e36;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.lt-modal-large {
+    width: 700px;
+}
+
+.lt-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.lt-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.lt-modal-header button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lt-modal-header button:hover {
+    background: rgba(255, 100, 100, 0.15);
+    color: #f66;
+}
+
+.lt-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.lt-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.lt-form-group {
+    margin-bottom: 16px;
+}
+
+.lt-form-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.lt-form-group input,
+.lt-form-group select,
+.lt-form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.lt-form-group input:focus,
+.lt-form-group select:focus,
+.lt-form-group textarea:focus {
+    border-color: rgba(100, 100, 255, 0.5);
+}
+
+.lt-form-group select option {
+    background: #1a1a2e;
+}
+
+.lt-form-group textarea {
+    resize: vertical;
+    font-family: 'Consolas', 'Monaco', monospace;
+    line-height: 1.5;
+}
+
+.lt-form-hint {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* Variable Pills */
+.lt-var-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.lt-var-label {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.lt-var-pill {
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+    color: #6b6bff;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: monospace;
+    transition: all 0.15s;
+}
+
+.lt-var-pill:hover {
+    background: rgba(100, 100, 255, 0.15);
+    border-color: rgba(100, 100, 255, 0.3);
+}
+
+.lt-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.lt-cancel-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: #ccc;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.lt-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.lt-save-btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #4a6cf7, #6366f1);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.lt-save-btn:hover {
+    opacity: 0.9;
+}
+
+.lt-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Generated Letter */
+.lt-generated-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.lt-generated-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.lt-generated-actions button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+    color: #ccc;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.lt-generated-actions button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.lt-generated-subject {
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: #ccc;
+}
+
+.lt-generated-content {
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #ddd;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Empty & Loading */
+.lt-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.lt-empty p {
+    margin-top: 10px;
+}
+
+.lt-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #888;
+}
+
+.lt-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid #6366f1;
+    border-radius: 50%;
+    animation: ltspin 0.8s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes ltspin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .lt-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .lt-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lt-form-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,520 @@
+.emp-details {
+    padding: 0;
+    position: relative;
+}
+
+.emp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.emp-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.emp-subtitle {
+    color: #888;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.emp-view-toggle {
+    display: flex;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.emp-view-toggle button {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.emp-view-toggle button.active {
+    background: rgba(100, 100, 255, 0.2);
+    color: #8b8bff;
+}
+
+/* Filters */
+.emp-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.emp-search-box {
+    flex: 1;
+    position: relative;
+}
+
+.emp-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 1rem;
+}
+
+.emp-search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.emp-search-box input:focus {
+    border-color: rgba(100, 100, 255, 0.4);
+}
+
+.emp-dept-filter {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #ccc;
+    font-size: 0.85rem;
+    outline: none;
+    min-width: 180px;
+    cursor: pointer;
+}
+
+.emp-dept-filter option {
+    background: #1a1a2e;
+    color: #ccc;
+}
+
+/* Grid View */
+.emp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.emp-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.emp-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateY(-1px);
+}
+
+.emp-card.selected {
+    border-color: rgba(100, 100, 255, 0.4);
+    background: rgba(100, 100, 255, 0.08);
+}
+
+.emp-card-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.emp-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emp-card-initials {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4a6cf7, #6366f1);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.emp-card-info h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #fff;
+    font-weight: 600;
+}
+
+.emp-card-title {
+    font-size: 0.78rem;
+    color: #888;
+    margin: 2px 0 0;
+}
+
+.emp-card-dept {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 1px 0 0;
+}
+
+.emp-role-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.role-owner {
+    background: rgba(255, 180, 60, 0.15);
+    color: #fb3;
+}
+
+.role-manager {
+    background: rgba(100, 200, 255, 0.15);
+    color: #6cf;
+}
+
+.role-employee {
+    background: rgba(100, 200, 100, 0.15);
+    color: #6c6;
+}
+
+/* Table View */
+.emp-table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.emp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.emp-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.78rem;
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+}
+
+.emp-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.emp-table th.sortable:hover {
+    color: #aaa;
+}
+
+.emp-table td {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: #ccc;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.emp-table tr {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.emp-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.emp-table tr.selected {
+    background: rgba(100, 100, 255, 0.08);
+}
+
+.emp-table-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.emp-table-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.emp-table-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emp-table-avatar span {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4a6cf7, #6366f1);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.emp-table-email {
+    color: #888 !important;
+}
+
+.emp-table-date {
+    color: #666 !important;
+    font-size: 0.8rem !important;
+}
+
+/* Detail Panel */
+.emp-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100;
+    display: flex;
+    justify-content: flex-end;
+    animation: empFadeIn 0.2s ease;
+}
+
+@keyframes empFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.emp-detail-panel {
+    width: 400px;
+    max-width: 90vw;
+    height: 100vh;
+    background: #1a1a2e;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 24px;
+    overflow-y: auto;
+    animation: empSlideIn 0.3s ease;
+    position: relative;
+}
+
+@keyframes empSlideIn {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.emp-detail-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: #888;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.emp-detail-close:hover {
+    background: rgba(255, 100, 100, 0.15);
+    color: #f66;
+}
+
+.emp-detail-header {
+    text-align: center;
+    padding: 20px 0 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 20px;
+}
+
+.emp-detail-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    overflow: hidden;
+    margin: 0 auto 14px;
+}
+
+.emp-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emp-detail-initials {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4a6cf7, #6366f1);
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.emp-detail-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.emp-detail-role {
+    color: #888;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.emp-detail-info {
+    margin-bottom: 24px;
+}
+
+.emp-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #ccc;
+    font-size: 0.85rem;
+}
+
+.emp-detail-row svg {
+    color: #666;
+    flex-shrink: 0;
+}
+
+.emp-detail-attendance h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #fff;
+    margin: 0 0 14px;
+}
+
+.emp-att-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.emp-att-stat {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+}
+
+.emp-att-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.emp-att-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* Empty & Loading */
+.emp-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.emp-empty p {
+    margin-top: 12px;
+}
+
+.emp-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #888;
+}
+
+.emp-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid #6366f1;
+    border-radius: 50%;
+    animation: empspin 0.8s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes empspin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+    .emp-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .emp-filters {
+        flex-direction: column;
+    }
+
+    .emp-grid {
+        grid-template-columns: 1fr;
+    }
+}

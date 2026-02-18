@@ -198,6 +198,22 @@ app.use('/api/notes', notesRoutes);
 const interviewRoutes = require('./routes/interviews');
 app.use('/api/interviews', interviewRoutes);
 
+// HR Management routes
+const hrRoutes = require('./routes/hr');
+app.use('/api/hr', hrRoutes);
+
+const attendanceRoutes = require('./routes/attendance');
+app.use('/api/attendance', attendanceRoutes);
+
+const holidaysRoutes = require('./routes/holidays');
+app.use('/api/holidays', holidaysRoutes);
+
+const letterTemplateRoutes = require('./routes/letter-templates');
+app.use('/api/letter-templates', letterTemplateRoutes);
+
+const incentivesRoutes = require('./routes/incentives');
+app.use('/api/incentives', incentivesRoutes);
+
 // Admin panel routes (super admin only)
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);

@@ -55,6 +55,11 @@ const companySchema = new mongoose.Schema({
     expiresAt: { type: Date, required: true, default: () => new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) }, // 48 hours
     status: { type: String, enum: ["pending", "accepted", "expired"], default: "pending" }
   }],
+  hrSettings: {
+    workingHoursPerDay: { type: Number, default: 8 },
+    workingDays: { type: [String], default: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
+    halfDayThresholdHours: { type: Number, default: 4 }
+  },
   subscription: {
     plan: { type: String, enum: ["Trial", "Noxtm", "Enterprise"], default: "Trial" },
     status: { type: String, enum: ["trial", "active", "inactive", "cancelled", "expired"], default: "trial" },
@@ -91,7 +96,7 @@ const companySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-companySchema.pre("save", function(next) {
+companySchema.pre("save", function (next) {
   this.updatedAt = Date.now();
   next();
 });
