@@ -22,7 +22,6 @@ import Messaging from './Messaging';
 import HrOverview from './HrOverview';
 import InterviewManagement from './InterviewManagement';
 import LetterTemplates from './LetterTemplates';
-import HrManage from './HrManage';
 import EmployeeDetails from './EmployeeDetails';
 import AttendanceSummary from './AttendanceSummary';
 import HolidayCalendar from './HolidayCalendar';
@@ -171,6 +170,26 @@ function Dashboard({ user, onLogout }) {
     return () => window.removeEventListener('dashboard:navigateToSettings', handleNavigateToSettings);
   }, []);
 
+  // Heartbeat for automated attendance tracking (every 5 minutes)
+  useEffect(() => {
+    const sendHeartbeat = async () => {
+      try {
+        await api.post('/attendance/heartbeat');
+      } catch (err) {
+        // Silently fail - attendance tracking is non-critical
+        console.debug('[HEARTBEAT] Failed:', err.message);
+      }
+    };
+
+    // Send initial heartbeat on dashboard mount
+    sendHeartbeat();
+
+    // Set up interval for subsequent heartbeats
+    const interval = setInterval(sendHeartbeat, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleSectionChange = (section) => {
     setActiveSection(section);
   };
@@ -229,8 +248,6 @@ function Dashboard({ user, onLogout }) {
         return <InterviewManagement />;
       case 'letter-templates':
         return <LetterTemplates />;
-      case 'hr-manage':
-        return <HrManage />;
       case 'employee-details':
         return <EmployeeDetails />;
       case 'attendance-summary':

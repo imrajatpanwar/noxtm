@@ -290,7 +290,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'HR Overview', section: 'hr-overview', category: 'HR Management' },
     { name: 'Interview Management', section: 'interview-management', category: 'HR Management' },
     { name: 'Letter Templates', section: 'letter-templates', category: 'HR Management' },
-    { name: 'HR Manage', section: 'hr-manage', category: 'HR Management' },
     { name: 'Employees', section: 'employees', category: 'HR Management' },
     { name: 'Employee Details', section: 'employee-details', category: 'HR Management' },
     { name: 'Attendance Summary', section: 'attendance-summary', category: 'HR Management' },
@@ -686,14 +685,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                       onClick={() => onSectionChange('letter-templates')}
                     >
                       <span>Letter Templates</span>
-                    </div>
-
-                    {/* HR Manage - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-manage' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('hr-manage')}
-                    >
-                      <span>HR Manage</span>
                     </div>
 
                     {/* Employee Details - Direct link */}
