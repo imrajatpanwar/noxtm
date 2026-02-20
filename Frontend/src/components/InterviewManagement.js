@@ -296,14 +296,14 @@ function InterviewManagement() {
 
   return (
     <div className="interview-management">
-      {/* Header */}
+      {/* Hero Header */}
       <div className="im-header">
         <div className="im-header-left">
           <h1>Interview Management</h1>
           <p>Manage candidate interviews, scheduling, and evaluations</p>
         </div>
         <div className="im-header-right">
-          <button className="btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn-header" onClick={() => setShowModal(true)}>
             <FiPlus /> Schedule Interview
           </button>
         </div>
@@ -351,6 +351,7 @@ function InterviewManagement() {
         </div>
       )}
 
+      <div className="im-content-area">
       {/* Tabs and Filters */}
       <div className="im-filters">
         <div className="im-tabs">
@@ -408,7 +409,9 @@ function InterviewManagement() {
           </div>
         ) : filteredInterviews.length === 0 ? (
           <div className="im-empty">
-            <FiCalendar size={48} />
+            <div className="empty-icon-wrapper">
+              <FiCalendar size={36} />
+            </div>
             <h3>No interviews found</h3>
             <p>Schedule your first interview to get started</p>
             <button className="btn-primary" onClick={() => setShowModal(true)}>
@@ -420,87 +423,89 @@ function InterviewManagement() {
             const TypeIcon = getTypeIcon(interview.interviewType);
             return (
               <div key={interview._id} className="interview-card" onClick={() => openDetails(interview)}>
-                <div className="interview-card-header">
-                  <div className="candidate-info">
-                    <div className="candidate-avatar">
-                      {interview.candidateName?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="candidate-details">
-                      <h3>{interview.candidateName}</h3>
-                      <p>{interview.position}</p>
-                      <span className="department">{interview.department}</span>
-                    </div>
-                  </div>
-                  <div className="interview-badges">
-                    <span 
-                      className="status-badge" 
-                      style={{ background: getStatusColor(interview.status) }}
-                    >
-                      {STATUS_OPTIONS.find(s => s.value === interview.status)?.label}
-                    </span>
-                    <span className="type-badge">
-                      <TypeIcon size={14} />
-                      {INTERVIEW_TYPES.find(t => t.value === interview.interviewType)?.label}
-                    </span>
-                    {interview.interviewRound && interview.totalRounds && (
-                      <span className="round-badge">
-                        Round {interview.interviewRound}/{interview.totalRounds}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="interview-card-body">
-                  <div className="interview-time">
-                    <FiCalendar size={16} />
-                    <span>
-                      {new Date(interview.scheduledAt).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </span>
-                    <FiClock size={16} />
-                    <span>
-                      {new Date(interview.scheduledAt).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                    <span className="duration">({interview.duration} min)</span>
-                  </div>
-                  
-                  {interview.interviewers?.length > 0 && (
-                    <div className="interviewers">
-                      <FiUsers size={16} />
-                      <div className="interviewer-avatars">
-                        {interview.interviewers.slice(0, 3).map((int, idx) => (
-                          <div key={idx} className="interviewer-avatar" title={int.userId?.fullName}>
-                            {int.userId?.fullName?.charAt(0).toUpperCase()}
-                          </div>
-                        ))}
-                        {interview.interviewers.length > 3 && (
-                          <div className="interviewer-more">+{interview.interviewers.length - 3}</div>
-                        )}
+                <div className="interview-card-inner">
+                  <div className="interview-card-header">
+                    <div className="candidate-info">
+                      <div className="candidate-avatar">
+                        {interview.candidateName?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="candidate-details">
+                        <h3>{interview.candidateName}</h3>
+                        <p>{interview.position}</p>
+                        <span className="department">{interview.department}</span>
                       </div>
                     </div>
-                  )}
-                  
-                  {interview.overallRating && (
-                    <div className="rating-display">
-                      {renderRatingStars(Math.round(interview.overallRating))}
-                      <span>{interview.overallRating}/5</span>
+                    <div className="interview-badges">
+                      <span 
+                        className="status-badge" 
+                        style={{ background: getStatusColor(interview.status) }}
+                      >
+                        {STATUS_OPTIONS.find(s => s.value === interview.status)?.label}
+                      </span>
+                      <span className="type-badge">
+                        <TypeIcon size={14} />
+                        {INTERVIEW_TYPES.find(t => t.value === interview.interviewType)?.label}
+                      </span>
+                      {interview.interviewRound && interview.totalRounds && (
+                        <span className="round-badge">
+                          Round {interview.interviewRound}/{interview.totalRounds}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
                   
-                  {interview.overallRecommendation && interview.overallRecommendation !== 'neutral' && (
-                    <div 
-                      className="recommendation-badge"
-                      style={{ background: RECOMMENDATION_COLORS[interview.overallRecommendation] }}
-                    >
-                      {interview.overallRecommendation.replace('-', ' ').toUpperCase()}
+                  <div className="interview-card-body">
+                    <div className="interview-time">
+                      <FiCalendar size={15} />
+                      <span>
+                        {new Date(interview.scheduledAt).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                      <FiClock size={15} />
+                      <span>
+                        {new Date(interview.scheduledAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                      <span className="duration">({interview.duration} min)</span>
                     </div>
-                  )}
+                    
+                    {interview.interviewers?.length > 0 && (
+                      <div className="interviewers">
+                        <FiUsers size={15} />
+                        <div className="interviewer-avatars">
+                          {interview.interviewers.slice(0, 3).map((int, idx) => (
+                            <div key={idx} className="interviewer-avatar" title={int.userId?.fullName}>
+                              {int.userId?.fullName?.charAt(0).toUpperCase()}
+                            </div>
+                          ))}
+                          {interview.interviewers.length > 3 && (
+                            <div className="interviewer-more">+{interview.interviewers.length - 3}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {interview.overallRating && (
+                      <div className="rating-display">
+                        {renderRatingStars(Math.round(interview.overallRating))}
+                        <span>{interview.overallRating}/5</span>
+                      </div>
+                    )}
+                    
+                    {interview.overallRecommendation && interview.overallRecommendation !== 'neutral' && (
+                      <div 
+                        className="recommendation-badge"
+                        style={{ background: RECOMMENDATION_COLORS[interview.overallRecommendation] }}
+                      >
+                        {interview.overallRecommendation.replace('-', ' ').toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="interview-card-actions" onClick={(e) => e.stopPropagation()}>
@@ -535,6 +540,8 @@ function InterviewManagement() {
           </button>
         </div>
       )}
+
+      </div>{/* end im-content-area */}
 
       {/* Schedule Modal */}
       {showModal && (
