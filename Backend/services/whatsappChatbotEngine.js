@@ -76,9 +76,11 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
     const aiResponse = await generateAIResponse(bot, accountId, companyId, contact, messageText);
     if (aiResponse) {
       cooldowns.set(cooldownKey, Date.now());
-      bot.totalReplies = (bot.totalReplies || 0) + 1;
-      bot.lastReplyAt = new Date();
-      await bot.save();
+      // Use atomic update to avoid race condition on concurrent messages
+      await WhatsAppChatbot.updateOne(
+        { _id: bot._id },
+        { $inc: { totalReplies: 1 }, $set: { lastReplyAt: new Date() } }
+      );
       return aiResponse;
     }
   } catch (err) {

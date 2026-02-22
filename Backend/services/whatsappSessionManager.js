@@ -417,11 +417,13 @@ async function sendMessage(accountId, jid, content, options = {}) {
     throw new Error('Daily message limit reached');
   }
 
-  // Simulate typing if enabled (skip for automated/chatbot replies)
-  if (account.settings.typingSimulation && !options.isAutomated) {
+  // Simulate typing (shorter for automated bot replies, normal for manual)
+  if (account.settings.typingSimulation) {
     try {
       await session.socket.sendPresenceUpdate('composing', jid);
-      const typingDelay = 1000 + Math.random() * 2000; // 1-3 seconds
+      const typingDelay = options.isAutomated
+        ? 500 + Math.random() * 1000   // 0.5-1.5s for bot
+        : 1000 + Math.random() * 2000; // 1-3s for manual
       await new Promise(r => setTimeout(r, typingDelay));
       await session.socket.sendPresenceUpdate('paused', jid);
     } catch (e) {
