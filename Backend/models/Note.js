@@ -40,6 +40,11 @@ const noteSchema = new mongoose.Schema({
     trim: true,
     maxlength: 30
   }],
+  // Bot access - when 'botgit' is assigned, this note becomes part of AI knowledge base
+  botgitAccess: {
+    type: Boolean,
+    default: false
+  },
   // Assignment fields - multiple users can be assigned
   assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -89,5 +94,6 @@ noteSchema.index({ userId: 1, archived: 1, pinned: -1, updatedAt: -1 });
 noteSchema.index({ userId: 1, tags: 1 });
 noteSchema.index({ 'assignments.userId': 1, 'assignments.status': 1 });
 noteSchema.index({ assignedTo: 1 });
+noteSchema.index({ companyId: 1, botgitAccess: 1 });
 
 module.exports = mongoose.model('Note', noteSchema);

@@ -118,11 +118,12 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
 
-  // If notes access is enabled, fetch notes as knowledge base
-  if (bot.notesAccess) {
+  // Fetch notes that have botgit assigned as knowledge base
+  {
     try {
       const notes = await Note.find({
         companyId,
+        botgitAccess: true,
         archived: { $ne: true }
       })
         .select('title content')
