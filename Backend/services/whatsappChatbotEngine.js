@@ -1,189 +1,215 @@
-const WhatsAppChatbotRule = require('../models/WhatsAppChatbotRule');
+const WhatsAppChatbot = require('../models/WhatsAppChatbot');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
+const Note = require('../models/Note');
 const axios = require('axios');
 
+// Provider endpoint configs
+const PROVIDERS = {
+  openrouter: {
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    headerFn: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://noxtm.com',
+      'X-Title': 'NOXTM WhatsApp Bot'
+    })
+  },
+  openai: {
+    url: 'https://api.openai.com/v1/chat/completions',
+    headerFn: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    })
+  },
+  anthropic: {
+    url: 'https://api.anthropic.com/v1/messages',
+    headerFn: (apiKey) => ({
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01'
+    })
+  },
+  groq: {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    headerFn: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    })
+  },
+  together: {
+    url: 'https://api.together.xyz/v1/chat/completions',
+    headerFn: (apiKey) => ({
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    })
+  }
+};
+
 /**
- * Process incoming message through chatbot rules
- * @param {string} accountId - WhatsApp Account ID
- * @param {string} companyId - Company ID
- * @param {Object} contact - WhatsAppContact document
- * @param {string} messageText - Incoming message text
- * @param {Map} cooldowns - Cooldown tracking map
- * @returns {Object|null} Response to send, or null if no rule matched
+ * Process incoming message through AI chatbot
  */
 async function processIncomingMessage(accountId, companyId, contact, messageText, cooldowns) {
   if (!messageText || !messageText.trim()) return null;
 
-  const text = messageText.trim().toLowerCase();
+  // Fetch chatbot config for this company
+  const bot = await WhatsAppChatbot.findOne({ companyId, enabled: true });
+  if (!bot) return null;
+  if (!bot.apiKey) return null;
 
-  // Fetch active rules for this account (or global rules with null accountId)
-  const rules = await WhatsAppChatbotRule.find({
-    companyId,
-    isActive: true,
-    $or: [
-      { accountId },
-      { accountId: null }
-    ]
-  }).sort({ priority: 1 });
-
-  if (!rules.length) return null;
-
-  let aiFallbackRule = null;
-
-  for (const rule of rules) {
-    // AI fallback is only used if no other rule matches
-    if (rule.triggerType === 'ai-fallback') {
-      aiFallbackRule = rule;
-      continue;
-    }
-
-    // Check cooldown
-    const cooldownKey = `${accountId}:${contact.whatsappId}:${rule._id}`;
-    const lastTriggered = cooldowns.get(cooldownKey);
-    if (lastTriggered && (Date.now() - lastTriggered) < rule.cooldownMinutes * 60 * 1000) {
-      continue; // Still in cooldown
-    }
-
-    // Check if trigger matches
-    let matched = false;
-
-    switch (rule.triggerType) {
-      case 'keyword':
-        matched = text === (rule.triggerValue || '').toLowerCase();
-        break;
-      case 'contains':
-        matched = text.includes((rule.triggerValue || '').toLowerCase());
-        break;
-      case 'starts-with':
-        matched = text.startsWith((rule.triggerValue || '').toLowerCase());
-        break;
-      case 'regex':
-        try {
-          const regex = new RegExp(rule.triggerValue, 'i');
-          matched = regex.test(messageText);
-        } catch (e) {
-          // Invalid regex — skip
-        }
-        break;
-    }
-
-    if (matched) {
-      // Set cooldown
-      cooldowns.set(cooldownKey, Date.now());
-
-      // Update stats
-      rule.stats.triggered = (rule.stats.triggered || 0) + 1;
-      rule.stats.responded = (rule.stats.responded || 0) + 1;
-      await rule.save();
-
-      // Build response
-      return buildResponse(rule, contact, messageText);
+  // Check if this bot applies to this account
+  if (bot.accountIds && bot.accountIds.length > 0) {
+    if (!bot.accountIds.some(id => id.toString() === accountId.toString())) {
+      return null;
     }
   }
 
-  // No rule matched — try AI fallback
-  if (aiFallbackRule) {
-    const cooldownKey = `${accountId}:${contact.whatsappId}:${aiFallbackRule._id}`;
-    const lastTriggered = cooldowns.get(cooldownKey);
-    if (lastTriggered && (Date.now() - lastTriggered) < aiFallbackRule.cooldownMinutes * 60 * 1000) {
-      return null;
-    }
+  // Check cooldown
+  const cooldownKey = `bot:${companyId}:${contact.whatsappId}`;
+  const lastTriggered = cooldowns.get(cooldownKey);
+  if (lastTriggered && (Date.now() - lastTriggered) < bot.cooldownMinutes * 60 * 1000) {
+    return null;
+  }
 
-    try {
-      const aiResponse = await generateAIResponse(aiFallbackRule, accountId, companyId, contact, messageText);
-      if (aiResponse) {
-        cooldowns.set(cooldownKey, Date.now());
-        aiFallbackRule.stats.triggered = (aiFallbackRule.stats.triggered || 0) + 1;
-        aiFallbackRule.stats.responded = (aiFallbackRule.stats.responded || 0) + 1;
-        await aiFallbackRule.save();
-        return aiResponse;
-      }
-    } catch (err) {
-      console.error('[WA Chatbot] AI fallback error:', err.message);
+  try {
+    const aiResponse = await generateAIResponse(bot, accountId, companyId, contact, messageText);
+    if (aiResponse) {
+      cooldowns.set(cooldownKey, Date.now());
+      bot.totalReplies = (bot.totalReplies || 0) + 1;
+      bot.lastReplyAt = new Date();
+      await bot.save();
+      return aiResponse;
     }
+  } catch (err) {
+    console.error('[WA Bot] AI response error:', err.message);
   }
 
   return null;
 }
 
 /**
- * Build a response from a rule-based match
+ * Generate AI response using configured provider
  */
-function buildResponse(rule, contact, messageText) {
-  let content = rule.responseContent || '';
-
-  // Variable replacement
-  content = content.replace(/{{name}}/gi, contact.pushName || contact.phoneNumber || '');
-  content = content.replace(/{{phone}}/gi, contact.phoneNumber || '');
-
-  return {
-    type: rule.responseType === 'ai' ? 'text' : rule.responseType,
-    content,
-    mediaUrl: rule.responseMediaUrl || null,
-    ruleId: rule._id
-  };
-}
-
-/**
- * Generate AI response using OpenAI-compatible API
- */
-async function generateAIResponse(rule, accountId, companyId, contact, messageText) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.warn('[WA Chatbot] No OPENAI_API_KEY set, skipping AI response');
-    return null;
-  }
-
-  // Fetch last 5 messages for context
+async function generateAIResponse(bot, accountId, companyId, contact, messageText) {
   const recentMessages = await WhatsAppMessage.find({
     accountId,
     contactId: contact._id
   })
     .sort({ timestamp: -1 })
-    .limit(5)
+    .limit(6)
     .lean();
 
-  // Build conversation history
   const conversationHistory = recentMessages.reverse().map(msg => ({
     role: msg.direction === 'inbound' ? 'user' : 'assistant',
     content: msg.content || '[media]'
   }));
 
-  // Add current message
   conversationHistory.push({ role: 'user', content: messageText });
 
-  const systemPrompt = (rule.aiPrompt || 'You are a helpful business assistant.')
-    + `\n\nCustomer name: ${contact.pushName || 'Unknown'}`
-    + `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`
-    + '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
+  // Build system prompt
+  let systemPrompt = bot.botPersonality || 'You are a helpful business assistant.';
+  systemPrompt += `\n\nYour name is "${bot.botName || 'botgit'}".`;
+  systemPrompt += `\nCustomer name: ${contact.pushName || 'Unknown'}`;
+  systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
+  systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
+  systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
+
+  // If notes access is enabled, fetch notes as knowledge base
+  if (bot.notesAccess) {
+    try {
+      const notes = await Note.find({
+        companyId,
+        archived: { $ne: true }
+      })
+        .select('title content')
+        .sort({ updatedAt: -1 })
+        .limit(10)
+        .lean();
+
+      if (notes.length > 0) {
+        const notesContext = notes
+          .map(n => `[${n.title}]: ${(n.content || '').substring(0, 500)}`)
+          .join('\n\n');
+        systemPrompt += `\n\n--- KNOWLEDGE BASE (Company Notes) ---\n${notesContext}\n--- END KNOWLEDGE BASE ---`;
+        systemPrompt += '\nUse the knowledge base above to answer questions when relevant.';
+      }
+    } catch (err) {
+      console.error('[WA Bot] Failed to fetch notes:', err.message);
+    }
+  }
+
+  if (bot.provider === 'anthropic') {
+    return callAnthropicAPI(bot, systemPrompt, conversationHistory);
+  } else {
+    return callOpenAICompatibleAPI(bot, systemPrompt, conversationHistory);
+  }
+}
+
+/**
+ * Call OpenAI-compatible API (OpenAI, OpenRouter, Groq, Together, Custom)
+ */
+async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
+  const provider = PROVIDERS[bot.provider];
+  const url = bot.provider === 'custom' ? bot.customEndpoint : provider?.url;
+  const headers = bot.provider === 'custom'
+    ? { 'Authorization': `Bearer ${bot.apiKey}`, 'Content-Type': 'application/json' }
+    : provider?.headerFn(bot.apiKey);
+
+  if (!url) {
+    console.warn('[WA Bot] No endpoint configured for provider:', bot.provider);
+    return null;
+  }
 
   try {
-    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: rule.aiModel || 'gpt-4o-mini',
+    const response = await axios.post(url, {
+      model: bot.model,
       messages: [
         { role: 'system', content: systemPrompt },
-        ...conversationHistory
+        ...messages
       ],
-      max_tokens: rule.aiMaxTokens || 300,
-      temperature: 0.7
+      max_tokens: bot.maxTokens || 300,
+      temperature: bot.temperature || 0.7
     }, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
+      headers,
+      timeout: 20000
     });
 
-    const aiContent = response.data.choices?.[0]?.message?.content;
-    if (aiContent) {
-      return {
-        type: 'text',
-        content: aiContent.trim(),
-        ruleId: rule._id
-      };
+    const content = response.data.choices?.[0]?.message?.content;
+    if (content) {
+      return { type: 'text', content: content.trim(), ruleId: null };
     }
   } catch (err) {
-    console.error('[WA Chatbot] OpenAI API error:', err.response?.data?.error?.message || err.message);
+    console.error(`[WA Bot] ${bot.provider} API error:`, err.response?.data?.error?.message || err.message);
+  }
+
+  return null;
+}
+
+/**
+ * Call Anthropic API (different request format)
+ */
+async function callAnthropicAPI(bot, systemPrompt, messages) {
+  const headers = PROVIDERS.anthropic.headerFn(bot.apiKey);
+
+  try {
+    const response = await axios.post(PROVIDERS.anthropic.url, {
+      model: bot.model || 'claude-sonnet-4-20250514',
+      max_tokens: bot.maxTokens || 300,
+      system: systemPrompt,
+      messages: messages.map(m => ({
+        role: m.role === 'system' ? 'user' : m.role,
+        content: m.content
+      }))
+    }, {
+      headers,
+      timeout: 20000
+    });
+
+    const content = response.data.content?.[0]?.text;
+    if (content) {
+      return { type: 'text', content: content.trim(), ruleId: null };
+    }
+  } catch (err) {
+    console.error('[WA Bot] Anthropic API error:', err.response?.data?.error?.message || err.message);
   }
 
   return null;

@@ -95,7 +95,7 @@ function DashboardTab() {
     { label: 'Total Contacts', value: dashboard.totalContacts || 0, icon: FiUsers, color: '#1a1a1a' },
     { label: 'Messages Today', value: dashboard.messagesToday || 0, icon: FiSend, color: '#2563eb' },
     { label: 'Active Campaigns', value: dashboard.activeCampaigns || 0, icon: FiZap, color: '#d97706' },
-    { label: 'Chatbot Rules', value: dashboard.activeRules || 0, icon: FiActivity, color: '#7c3aed' }
+    { label: 'Chatbot', value: dashboard.chatbotEnabled ? 'Active' : 'Off', sub: `${dashboard.chatbotTotalReplies || 0} replies`, icon: FiActivity, color: '#7c3aed' }
   ];
 
   return (
@@ -1386,253 +1386,280 @@ function CampaignsTab() {
 }
 
 // =====================================================
-// CHATBOT TAB
+// CHATBOT TAB — AI Bot Settings
 // =====================================================
+const PROVIDERS = [
+  { id: 'openrouter', name: 'OpenRouter', desc: 'Access 100+ models (Gemini, Claude, Llama, etc.)', placeholder: 'sk-or-...' },
+  { id: 'openai', name: 'OpenAI', desc: 'GPT-4o, GPT-4, GPT-3.5', placeholder: 'sk-...' },
+  { id: 'anthropic', name: 'Anthropic', desc: 'Claude 4, Claude 3.5 Sonnet', placeholder: 'sk-ant-...' },
+  { id: 'groq', name: 'Groq', desc: 'Ultra-fast Llama, Mixtral inference', placeholder: 'gsk_...' },
+  { id: 'together', name: 'Together AI', desc: 'Open-source models at scale', placeholder: 'tok_...' },
+  { id: 'custom', name: 'Custom Endpoint', desc: 'Any OpenAI-compatible API', placeholder: 'your-api-key' }
+];
+
+const DEFAULT_MODELS = {
+  openrouter: ['google/gemini-2.0-flash-001', 'anthropic/claude-sonnet-4', 'meta-llama/llama-4-maverick', 'openai/gpt-4o', 'mistralai/mistral-large'],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+  together: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
+  custom: []
+};
+
 function ChatbotTab() {
-  const {
-    chatbotRules, fetchChatbotRules, createChatbotRule,
-    updateChatbotRule, deleteChatbotRule, accounts
-  } = useWhatsApp();
+  const { chatbot, fetchChatbot, updateChatbot, testChatbot, accounts } = useWhatsApp();
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingRule, setEditingRule] = useState(null);
   const [form, setForm] = useState({
-    name: '', accountId: '', triggerType: 'keyword', triggerValue: '',
-    responseType: 'text', responseContent: '', aiPrompt: '',
-    priority: 100, cooldownMinutes: 5, isActive: true
+    botName: 'botgit',
+    botPersonality: 'You are a helpful, professional business assistant. Be concise, friendly, and accurate.',
+    enabled: false,
+    provider: 'openrouter',
+    apiKey: '',
+    model: 'google/gemini-2.0-flash-001',
+    customEndpoint: '',
+    maxTokens: 300,
+    temperature: 0.7,
+    notesAccess: false,
+    cooldownMinutes: 1,
+    accountIds: []
   });
 
-  useEffect(() => { fetchChatbotRules(); }, [fetchChatbotRules]);
+  const [saving, setSaving] = useState(false);
+  const [testMsg, setTestMsg] = useState('');
+  const [testReply, setTestReply] = useState(null);
+  const [testing, setTesting] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  const resetForm = () => setForm({
-    name: '', accountId: '', triggerType: 'keyword', triggerValue: '',
-    responseType: 'text', responseContent: '', aiPrompt: '',
-    priority: 100, cooldownMinutes: 5, isActive: true
-  });
+  useEffect(() => { fetchChatbot(); }, [fetchChatbot]);
 
-  const handleSubmit = async () => {
-    if (!form.name || !form.triggerType || !form.responseType) {
-      toast.error('Name, trigger type, and response type are required');
+  useEffect(() => {
+    if (chatbot) {
+      setForm({
+        botName: chatbot.botName || 'botgit',
+        botPersonality: chatbot.botPersonality || '',
+        enabled: chatbot.enabled || false,
+        provider: chatbot.provider || 'openrouter',
+        apiKey: chatbot.apiKey || '',
+        model: chatbot.model || 'google/gemini-2.0-flash-001',
+        customEndpoint: chatbot.customEndpoint || '',
+        maxTokens: chatbot.maxTokens || 300,
+        temperature: chatbot.temperature || 0.7,
+        notesAccess: chatbot.notesAccess || false,
+        cooldownMinutes: chatbot.cooldownMinutes || 1,
+        accountIds: chatbot.accountIds || []
+      });
+      setDirty(false);
+    }
+  }, [chatbot]);
+
+  const updateField = (key, val) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: val };
+      // auto-set default model when provider changes
+      if (key === 'provider') {
+        const models = DEFAULT_MODELS[val] || [];
+        next.model = models[0] || '';
+      }
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.apiKey && form.enabled) {
+      toast.error('API key is required to enable the bot');
       return;
     }
+    setSaving(true);
     try {
-      const data = { ...form, accountId: form.accountId || undefined };
-      if (editingRule) {
-        await updateChatbotRule(editingRule, data);
-        toast.success('Rule updated');
-      } else {
-        await createChatbotRule(data);
-        toast.success('Rule created');
-      }
-      setShowModal(false);
-      setEditingRule(null);
-      resetForm();
+      await updateChatbot(form);
+      toast.success('Chatbot settings saved');
+      setDirty(false);
     } catch (e) {
-      toast.error(e.response?.data?.message || e.message);
+      toast.error(e.response?.data?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleEdit = (rule) => {
-    setEditingRule(rule._id);
-    setForm({
-      name: rule.name,
-      accountId: rule.accountId || '',
-      triggerType: rule.triggerType,
-      triggerValue: rule.triggerValue || '',
-      responseType: rule.responseType,
-      responseContent: rule.responseContent || '',
-      aiPrompt: rule.aiPrompt || '',
-      priority: rule.priority || 100,
-      cooldownMinutes: rule.cooldownMinutes || 5,
-      isActive: rule.isActive !== false
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (ruleId) => {
-    if (window.confirm('Delete this chatbot rule?')) {
-      try { await deleteChatbotRule(ruleId); toast.success('Rule deleted'); } catch (e) { toast.error(e.message); }
+  const handleTest = async () => {
+    if (!testMsg.trim()) return;
+    setTesting(true);
+    setTestReply(null);
+    try {
+      const res = await testChatbot(testMsg.trim());
+      setTestReply(res.data?.reply || res.reply || 'No response');
+    } catch (e) {
+      setTestReply('Error: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setTesting(false);
     }
   };
 
-  const toggleActive = async (rule) => {
-    try { await updateChatbotRule(rule._id, { isActive: !rule.isActive }); } catch (e) { toast.error(e.message); }
-  };
-
-  const getTriggerIcon = (type) => {
-    const map = { keyword: FiHash, contains: FiSearch, regex: FiEdit2, any: FiMessageSquare };
-    return map[type] || FiHash;
-  };
+  const selectedProvider = PROVIDERS.find(p => p.id === form.provider) || PROVIDERS[0];
+  const modelOptions = DEFAULT_MODELS[form.provider] || [];
 
   return (
     <div className="wa-chatbot">
+      {/* Header with master toggle */}
       <div className="wa-section-header">
-        <h2>Chatbot Rules</h2>
-        <button className="wa-btn wa-btn-primary" onClick={() => {
-          setEditingRule(null);
-          resetForm();
-          setShowModal(true);
-        }}>
-          <FiPlus size={14} /> New Rule
-        </button>
+        <div>
+          <h2>AI Chatbot</h2>
+          <p style={{ fontSize: '12px', color: '#888', margin: '2px 0 0' }}>
+            Auto-reply to WhatsApp messages using AI
+            {chatbot?.totalReplies > 0 && <span> · {chatbot.totalReplies} total replies</span>}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {dirty && <button className="wa-btn wa-btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>}
+          <div
+            className={`wa-toggle-pill ${form.enabled ? 'active' : ''}`}
+            onClick={() => updateField('enabled', !form.enabled)}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: form.enabled ? '#25d36618' : '#f5f5f5', border: `1px solid ${form.enabled ? '#25d366' : '#e0e0e0'}` }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: form.enabled ? '#25d366' : '#ccc' }} />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: form.enabled ? '#25d366' : '#888' }}>
+              {form.enabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="wa-modal-overlay" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>
-          <div className="wa-modal wa-modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="wa-modal-header">
-              <h3><FiActivity size={16} /> {editingRule ? 'Edit Rule' : 'Create Rule'}</h3>
-              <button className="wa-modal-close" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>
-                <FiX size={16} />
-              </button>
+      <div className="wa-bot-settings">
+        {/* Bot Identity Section */}
+        <div className="wa-bot-section">
+          <div className="wa-bot-section-title"><FiActivity size={14} /> Bot Identity</div>
+          <div className="wa-form-row">
+            <div className="wa-form-group">
+              <label>Bot Name</label>
+              <input type="text" value={form.botName} onChange={e => updateField('botName', e.target.value)}
+                placeholder="botgit" maxLength={50} />
             </div>
-            <div className="wa-modal-body">
-              <div className="wa-form-row">
-                <div className="wa-form-group">
-                  <label>Rule Name *</label>
-                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Welcome Message" />
-                </div>
-                <div className="wa-form-group">
-                  <label>Account (optional)</label>
-                  <select value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })}>
-                    <option value="">All Accounts</option>
-                    {accounts.map(a => (
-                      <option key={a._id} value={a._id}>{a.displayName || a.phoneNumber}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div className="wa-form-group">
+              <label>Accounts</label>
+              <select value={form.accountIds.length === 0 ? 'all' : 'specific'}
+                onChange={e => updateField('accountIds', e.target.value === 'all' ? [] : (form.accountIds.length ? form.accountIds : []))}>
+                <option value="all">All Connected Accounts</option>
+                <option value="specific">Specific Accounts</option>
+              </select>
+            </div>
+          </div>
+          {form.accountIds.length > 0 || (accounts.length > 0 && form.accountIds !== undefined && document.querySelector && false) ? null : null}
+          {form.accountIds.length >= 0 && accounts.length > 0 && (
+            <div className="wa-form-group" style={{ display: form.accountIds.length === 0 && !document.querySelector('.specific-selected') ? 'none' : 'block' }}>
+            </div>
+          )}
+          <div className="wa-form-group">
+            <label>Personality / System Prompt</label>
+            <textarea value={form.botPersonality} onChange={e => updateField('botPersonality', e.target.value)}
+              placeholder="You are a helpful, professional business assistant..."
+              rows={3} maxLength={2000} />
+            <span className="wa-char-count">{form.botPersonality.length}/2000</span>
+          </div>
+        </div>
 
-              <div className="wa-form-divider">Trigger</div>
-              <div className="wa-form-row">
-                <div className="wa-form-group">
-                  <label>Trigger Type *</label>
-                  <select value={form.triggerType} onChange={e => setForm({ ...form, triggerType: e.target.value })}>
-                    <option value="keyword">Exact Keyword</option>
-                    <option value="contains">Contains</option>
-                    <option value="regex">Regex Pattern</option>
-                    <option value="any">Any Message</option>
-                  </select>
-                </div>
-                {form.triggerType !== 'any' && (
-                  <div className="wa-form-group">
-                    <label>Trigger Value</label>
-                    <input type="text" value={form.triggerValue}
-                      onChange={e => setForm({ ...form, triggerValue: e.target.value })}
-                      placeholder={form.triggerType === 'keyword' ? 'hello' : form.triggerType === 'contains' ? 'pricing' : '/^hi|hello$/i'} />
-                  </div>
-                )}
+        {/* Provider Section */}
+        <div className="wa-bot-section">
+          <div className="wa-bot-section-title"><FiSettings size={14} /> AI Provider</div>
+          <div className="wa-provider-grid">
+            {PROVIDERS.map(p => (
+              <div key={p.id}
+                className={`wa-provider-card ${form.provider === p.id ? 'selected' : ''}`}
+                onClick={() => updateField('provider', p.id)}>
+                <div className="wa-provider-name">{p.name}</div>
+                <div className="wa-provider-desc">{p.desc}</div>
               </div>
+            ))}
+          </div>
 
-              <div className="wa-form-divider">Response</div>
-              <div className="wa-form-group">
-                <label>Response Type *</label>
-                <select value={form.responseType} onChange={e => setForm({ ...form, responseType: e.target.value })}>
-                  <option value="text">Text Message</option>
-                  <option value="template">Template</option>
-                  <option value="ai">AI-Generated</option>
+          <div className="wa-form-row" style={{ marginTop: '16px' }}>
+            <div className="wa-form-group" style={{ flex: 2 }}>
+              <label>API Key</label>
+              <input type="password" value={form.apiKey} onChange={e => updateField('apiKey', e.target.value)}
+                placeholder={selectedProvider.placeholder} />
+            </div>
+            <div className="wa-form-group" style={{ flex: 1 }}>
+              <label>Model</label>
+              {modelOptions.length > 0 ? (
+                <select value={form.model} onChange={e => updateField('model', e.target.value)}>
+                  {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-              </div>
-
-              {(form.responseType === 'text' || form.responseType === 'template') && (
-                <div className="wa-form-group">
-                  <label>Response Content *</label>
-                  <textarea value={form.responseContent}
-                    onChange={e => setForm({ ...form, responseContent: e.target.value })}
-                    placeholder="Hello! Thanks for reaching out..." rows={4} />
-                </div>
+              ) : (
+                <input type="text" value={form.model} onChange={e => updateField('model', e.target.value)}
+                  placeholder="model-name" />
               )}
+            </div>
+          </div>
 
-              {form.responseType === 'ai' && (
-                <div className="wa-form-group">
-                  <label>AI Prompt</label>
-                  <textarea value={form.aiPrompt}
-                    onChange={e => setForm({ ...form, aiPrompt: e.target.value })}
-                    placeholder="You are a helpful customer support agent for our company..." rows={4} />
-                </div>
-              )}
+          {form.provider === 'custom' && (
+            <div className="wa-form-group">
+              <label>Custom Endpoint URL</label>
+              <input type="text" value={form.customEndpoint} onChange={e => updateField('customEndpoint', e.target.value)}
+                placeholder="https://your-api.com/v1/chat/completions" />
+            </div>
+          )}
+        </div>
 
-              <div className="wa-form-divider">Settings</div>
-              <div className="wa-form-row">
-                <div className="wa-form-group">
-                  <label>Priority (lower = higher)</label>
-                  <input type="number" value={form.priority}
-                    onChange={e => setForm({ ...form, priority: parseInt(e.target.value) })} />
-                </div>
-                <div className="wa-form-group">
-                  <label>Cooldown (minutes)</label>
-                  <input type="number" value={form.cooldownMinutes}
-                    onChange={e => setForm({ ...form, cooldownMinutes: parseInt(e.target.value) })} />
-                </div>
-              </div>
-              <div className="wa-form-group">
-                <label className="wa-checkbox-label">
-                  <input type="checkbox" checked={form.isActive}
-                    onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                  Rule is active
-                </label>
-              </div>
+        {/* Knowledge & Settings Section */}
+        <div className="wa-bot-section">
+          <div className="wa-bot-section-title"><FiFileText size={14} /> Knowledge & Settings</div>
 
-              <div className="wa-form-actions">
-                <button className="wa-btn" onClick={() => { setShowModal(false); setEditingRule(null); resetForm(); }}>Cancel</button>
-                <button className="wa-btn wa-btn-primary" onClick={handleSubmit}>
-                  {editingRule ? 'Update Rule' : 'Create Rule'}
-                </button>
-              </div>
+          <div className="wa-bot-toggle-row" onClick={() => updateField('notesAccess', !form.notesAccess)}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '13px' }}>Notes Access</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Allow bot to search your Notes as a knowledge base for answering questions</div>
+            </div>
+            <button className={`wa-toggle ${form.notesAccess ? 'active' : ''}`}>
+              <span className="wa-toggle-knob" />
+            </button>
+          </div>
+
+          <div className="wa-form-row" style={{ marginTop: '16px' }}>
+            <div className="wa-form-group">
+              <label>Max Tokens</label>
+              <input type="number" value={form.maxTokens} onChange={e => updateField('maxTokens', Math.max(50, Math.min(4000, parseInt(e.target.value) || 300)))}
+                min={50} max={4000} />
+              <span className="wa-help-text">Response length limit (50-4000)</span>
+            </div>
+            <div className="wa-form-group">
+              <label>Temperature</label>
+              <input type="number" value={form.temperature} onChange={e => updateField('temperature', Math.max(0, Math.min(2, parseFloat(e.target.value) || 0.7)))}
+                min={0} max={2} step={0.1} />
+              <span className="wa-help-text">0 = focused, 2 = creative</span>
+            </div>
+            <div className="wa-form-group">
+              <label>Cooldown (min)</label>
+              <input type="number" value={form.cooldownMinutes} onChange={e => updateField('cooldownMinutes', Math.max(0, parseInt(e.target.value) || 1))}
+                min={0} />
+              <span className="wa-help-text">Wait time per contact</span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Rules List */}
-      {chatbotRules.length === 0 ? (
-        <div className="wa-empty">
-          <FiActivity size={40} />
-          <h3>No chatbot rules yet</h3>
-          <p>Create rules to automatically respond to incoming WhatsApp messages</p>
-        </div>
-      ) : (
-        <div className="wa-rules-list">
-          {chatbotRules.map(rule => {
-            const TriggerIcon = getTriggerIcon(rule.triggerType);
-            return (
-              <div key={rule._id} className={`wa-rule-card ${!rule.isActive ? 'inactive' : ''}`}>
-                <div className="wa-rule-header">
-                  <div className="wa-rule-title">
-                    <h4>{rule.name}</h4>
-                    <div className="wa-rule-meta">
-                      <span className="wa-rule-type"><TriggerIcon size={10} /> {rule.triggerType}</span>
-                      {rule.triggerValue && <span className="wa-rule-value">{rule.triggerValue}</span>}
-                      <span className="wa-rule-priority">P{rule.priority}</span>
-                    </div>
-                  </div>
-                  <div className="wa-rule-controls">
-                    <button className={`wa-toggle ${rule.isActive ? 'active' : ''}`}
-                      onClick={() => toggleActive(rule)}>
-                      <span className="wa-toggle-knob" />
-                    </button>
-                    <button className="wa-btn wa-btn-sm" onClick={() => handleEdit(rule)}><FiEdit2 size={12} /></button>
-                    <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleDelete(rule._id)}><FiTrash2 size={12} /></button>
-                  </div>
-                </div>
-                <div className="wa-rule-body">
-                  <div className="wa-rule-response">
-                    <span className="wa-response-type">{rule.responseType}</span>
-                    <p>{rule.responseType === 'ai' ? (rule.aiPrompt || '').substring(0, 100) : (rule.responseContent || '').substring(0, 100)}
-                      {((rule.responseContent || rule.aiPrompt || '').length > 100) && '...'}
-                    </p>
-                  </div>
-                  {rule.cooldownMinutes > 0 && (
-                    <span className="wa-cooldown"><FiClock size={10} /> {rule.cooldownMinutes}min cooldown</span>
-                  )}
-                </div>
+        {/* Test Section */}
+        <div className="wa-bot-section">
+          <div className="wa-bot-section-title"><FiMessageSquare size={14} /> Test Bot</div>
+          <div className="wa-test-area">
+            <div className="wa-test-input-row">
+              <input type="text" value={testMsg} onChange={e => setTestMsg(e.target.value)}
+                placeholder="Type a test message..."
+                onKeyDown={e => e.key === 'Enter' && handleTest()}
+                disabled={testing} />
+              <button className="wa-btn wa-btn-primary" onClick={handleTest} disabled={testing || !testMsg.trim()}>
+                {testing ? <FiRefreshCw size={14} className="wa-spin" /> : <FiSend size={14} />}
+              </button>
+            </div>
+            {testReply && (
+              <div className="wa-test-reply">
+                <div className="wa-test-reply-label"><FiActivity size={12} /> {form.botName || 'botgit'}</div>
+                <div className="wa-test-reply-text">{testReply}</div>
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

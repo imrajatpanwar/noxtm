@@ -2323,3 +2323,154 @@
   border-radius: 6px;
   margin: 6px 0;
 }
+
+/* =====================================================
+   AI CHATBOT SETTINGS
+   ===================================================== */
+.wa-bot-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wa-bot-section {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.wa-bot-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+/* Provider Grid */
+.wa-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.wa-provider-card {
+  padding: 12px 14px;
+  border: 1.5px solid #f0f0f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fafafa;
+}
+
+.wa-provider-card:hover {
+  border-color: #e0e0e0;
+  background: #fff;
+}
+
+.wa-provider-card.selected {
+  border-color: #1a1a1a;
+  background: #fff;
+  box-shadow: 0 0 0 1px #1a1a1a;
+}
+
+.wa-provider-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.wa-provider-desc {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+}
+
+/* Bot Toggle Row */
+.wa-bot-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wa-bot-toggle-row:hover {
+  background: #fafafa;
+}
+
+/* Character count */
+.wa-char-count {
+  display: block;
+  text-align: right;
+  font-size: 10px;
+  color: #d1d5db;
+  margin-top: 4px;
+}
+
+/* Help text under inputs */
+.wa-help-text {
+  display: block;
+  font-size: 10px;
+  color: #d1d5db;
+  margin-top: 3px;
+}
+
+/* Test Area */
+.wa-test-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wa-test-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.wa-test-input-row input {
+  flex: 1;
+}
+
+.wa-test-reply {
+  background: #f8faf8;
+  border: 1px solid #e8f5e8;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.wa-test-reply-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #25d366;
+  margin-bottom: 6px;
+}
+
+.wa-test-reply-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Spin animation */
+@keyframes wa-spin-anim {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.wa-spin {
+  animation: wa-spin-anim 1s linear infinite;
+}
