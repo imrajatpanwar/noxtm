@@ -1398,11 +1398,46 @@ const PROVIDERS = [
 ];
 
 const DEFAULT_MODELS = {
-  openrouter: ['google/gemini-2.0-flash-001', 'anthropic/claude-sonnet-4', 'meta-llama/llama-4-maverick', 'openai/gpt-4o', 'mistralai/mistral-large'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  anthropic: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
-  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
-  together: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
+  openrouter: [
+    { id: 'deepseek/deepseek-chat-v3-0324:free', label: 'DeepSeek V3.2', free: true },
+    { id: 'meta-llama/llama-4-maverick:free', label: 'Meta Llama 4 Maverick', free: true },
+    { id: 'meta-llama/llama-4-scout:free', label: 'Meta Llama 4 Scout', free: true },
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Meta Llama 3.3 70B Instruct', free: true },
+    { id: 'deepseek/deepseek-r1-zero:free', label: 'DeepSeek R1 Zero', free: true },
+    { id: 'qwen/qwen3-235b-a22b:free', label: 'Qwen3-235B-A22B', free: true },
+    { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
+    { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
+    { id: 'openai/gpt-4o', label: 'GPT-4o' },
+    { id: 'mistralai/mistral-large', label: 'Mistral Large' },
+  ],
+  openai: [
+    { id: 'gpt-4o', label: 'GPT-4o' },
+    { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { id: 'gpt-4', label: 'GPT-4' },
+    { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    { id: 'o1', label: 'o1' },
+    { id: 'o1-mini', label: 'o1 Mini' },
+    { id: 'o1-preview', label: 'o1 Preview' },
+  ],
+  anthropic: [
+    { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { id: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
+    { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+    { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+    { id: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+    { id: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+    { id: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+    { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+    { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+  ],
+  together: [
+    { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
+    { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1', label: 'Mixtral 8x7B' },
+  ],
   custom: []
 };
 
@@ -1415,11 +1450,10 @@ function ChatbotTab() {
     enabled: false,
     provider: 'openrouter',
     apiKey: '',
-    model: 'google/gemini-2.0-flash-001',
+    model: 'deepseek/deepseek-chat-v3-0324:free',
     customEndpoint: '',
     maxTokens: 300,
     temperature: 0.7,
-    notesAccess: false,
     cooldownMinutes: 1,
     accountIds: []
   });
@@ -1440,12 +1474,12 @@ function ChatbotTab() {
         enabled: chatbot.enabled || false,
         provider: chatbot.provider || 'openrouter',
         apiKey: chatbot.apiKey || '',
-        model: chatbot.model || 'google/gemini-2.0-flash-001',
+        model: chatbot.model || 'deepseek/deepseek-chat-v3-0324:free',
         customEndpoint: chatbot.customEndpoint || '',
         maxTokens: chatbot.maxTokens || 300,
         temperature: chatbot.temperature || 0.7,
         notesAccess: chatbot.notesAccess || false,
-        cooldownMinutes: chatbot.cooldownMinutes || 1,
+        cooldownMinutes: chatbot.cooldownMinutes ?? 0,
         accountIds: chatbot.accountIds || []
       });
       setDirty(false);
@@ -1458,7 +1492,7 @@ function ChatbotTab() {
       // auto-set default model when provider changes
       if (key === 'provider') {
         const models = DEFAULT_MODELS[val] || [];
-        next.model = models[0] || '';
+        next.model = models[0]?.id || models[0] || '';
       }
       return next;
     });
@@ -1537,20 +1571,42 @@ function ChatbotTab() {
               <input type="text" value={form.botName} onChange={e => updateField('botName', e.target.value)}
                 placeholder="botgit" maxLength={50} />
             </div>
-            <div className="wa-form-group">
-              <label>Accounts</label>
-              <select value={form.accountIds.length === 0 ? 'all' : 'specific'}
-                onChange={e => updateField('accountIds', e.target.value === 'all' ? [] : (form.accountIds.length ? form.accountIds : []))}>
-                <option value="all">All Connected Accounts</option>
-                <option value="specific">Specific Accounts</option>
-              </select>
-            </div>
           </div>
-          {form.accountIds.length > 0 || (accounts.length > 0 && form.accountIds !== undefined && document.querySelector && false) ? null : null}
-          {form.accountIds.length >= 0 && accounts.length > 0 && (
-            <div className="wa-form-group" style={{ display: form.accountIds.length === 0 && !document.querySelector('.specific-selected') ? 'none' : 'block' }}>
+
+          {/* Account Selection */}
+          <div className="wa-form-group">
+            <label>Accounts</label>
+            <div className="wa-account-chips">
+              <div
+                className={`wa-account-chip ${form.accountIds.length === 0 ? 'selected' : ''}`}
+                onClick={() => updateField('accountIds', [])}
+              >
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: form.accountIds.length === 0 ? '#25d366' : '#ccc' }} />
+                All Accounts
+              </div>
+              {accounts.filter(a => a.status === 'connected').map(acc => {
+                const isSelected = form.accountIds.includes(acc._id);
+                return (
+                  <div key={acc._id}
+                    className={`wa-account-chip ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      const current = form.accountIds.length === 0 ? [] : [...form.accountIds];
+                      if (isSelected) {
+                        const next = current.filter(id => id !== acc._id);
+                        updateField('accountIds', next.length === 0 ? [] : next);
+                      } else {
+                        updateField('accountIds', [...current, acc._id]);
+                      }
+                    }}
+                  >
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isSelected ? '#25d366' : '#ccc' }} />
+                    {acc.displayName || acc.phoneNumber || acc._id.slice(-6)}
+                  </div>
+                );
+              })}
             </div>
-          )}
+            <span className="wa-help-text">{form.accountIds.length === 0 ? 'Bot replies on all connected accounts' : `Bot replies on ${form.accountIds.length} selected account${form.accountIds.length > 1 ? 's' : ''}`}</span>
+          </div>
           <div className="wa-form-group">
             <label>Personality / System Prompt</label>
             <textarea value={form.botPersonality} onChange={e => updateField('botPersonality', e.target.value)}
@@ -1584,7 +1640,11 @@ function ChatbotTab() {
               <label>Model</label>
               {modelOptions.length > 0 ? (
                 <select value={form.model} onChange={e => updateField('model', e.target.value)}>
-                  {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                  {modelOptions.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}{m.free ? ' ✦ Free' : ''}
+                    </option>
+                  ))}
                 </select>
               ) : (
                 <input type="text" value={form.model} onChange={e => updateField('model', e.target.value)}
@@ -1638,22 +1698,48 @@ function ChatbotTab() {
         {/* Test Section */}
         <div className="wa-bot-section">
           <div className="wa-bot-section-title"><FiMessageSquare size={14} /> Test Bot</div>
-          <div className="wa-test-area">
-            <div className="wa-test-input-row">
+          <div className="wa-test-chat">
+            <div className="wa-test-chat-window">
+              {!testReply && !testing && (
+                <div className="wa-test-empty">
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                  <div style={{ fontWeight: 600, fontSize: '14px', color: '#374151' }}>Test your bot</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>Send a message to see how <strong>{form.botName || 'botgit'}</strong> responds</div>
+                </div>
+              )}
+              {testMsg.trim() && (testing || testReply) && (
+                <div className="wa-test-msg wa-test-msg-user">
+                  <div className="wa-test-bubble wa-test-bubble-user">{testMsg}</div>
+                </div>
+              )}
+              {testing && (
+                <div className="wa-test-msg wa-test-msg-bot">
+                  <div className="wa-test-bubble wa-test-bubble-bot">
+                    <span className="wa-test-typing">
+                      <span className="wa-test-dot" /><span className="wa-test-dot" /><span className="wa-test-dot" />
+                    </span>
+                  </div>
+                </div>
+              )}
+              {testReply && !testing && (
+                <div className="wa-test-msg wa-test-msg-bot">
+                  <div className="wa-test-avatar">🤖</div>
+                  <div>
+                    <div className="wa-test-bot-name">{form.botName || 'botgit'}</div>
+                    <div className="wa-test-bubble wa-test-bubble-bot">{testReply}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="wa-test-input-bar">
               <input type="text" value={testMsg} onChange={e => setTestMsg(e.target.value)}
-                placeholder="Type a test message..."
+                placeholder={`Message ${form.botName || 'botgit'}...`}
                 onKeyDown={e => e.key === 'Enter' && handleTest()}
                 disabled={testing} />
-              <button className="wa-btn wa-btn-primary" onClick={handleTest} disabled={testing || !testMsg.trim()}>
-                {testing ? <FiRefreshCw size={14} className="wa-spin" /> : <FiSend size={14} />}
+              <button className="wa-test-send-btn" onClick={handleTest} disabled={testing || !testMsg.trim()}>
+                {testing ? <FiRefreshCw size={16} className="wa-spin" /> : <FiSend size={16} />}
               </button>
             </div>
-            {testReply && (
-              <div className="wa-test-reply">
-                <div className="wa-test-reply-label"><FiActivity size={12} /> {form.botName || 'botgit'}</div>
-                <div className="wa-test-reply-text">{testReply}</div>
-              </div>
-            )}
           </div>
         </div>
       </div>
