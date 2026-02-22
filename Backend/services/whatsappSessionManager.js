@@ -14,6 +14,45 @@ const chatbotCooldowns = new Map();
 // Reference to Socket.IO instance (set via init)
 let io = null;
 
+/**
+ * Split text into chunks by word limit, breaking at sentence boundaries when possible
+ */
+function splitByWordLimit(text, maxWords) {
+  if (!maxWords || maxWords <= 0) return [text];
+  const words = text.split(/\s+/);
+  if (words.length <= maxWords) return [text];
+
+  const chunks = [];
+  let current = [];
+
+  for (const word of words) {
+    current.push(word);
+    if (current.length >= maxWords) {
+      // Try to break at sentence end within last ~30% of chunk
+      const joined = current.join(' ');
+      const cutoff = Math.floor(joined.length * 0.7);
+      const lastSentenceEnd = Math.max(
+        joined.lastIndexOf('. ', joined.length),
+        joined.lastIndexOf('! ', joined.length),
+        joined.lastIndexOf('? ', joined.length),
+        joined.lastIndexOf('.\n', joined.length)
+      );
+      if (lastSentenceEnd > cutoff) {
+        chunks.push(joined.substring(0, lastSentenceEnd + 1).trim());
+        const remaining = joined.substring(lastSentenceEnd + 1).trim();
+        current = remaining ? remaining.split(/\s+/) : [];
+      } else {
+        chunks.push(joined.trim());
+        current = [];
+      }
+    }
+  }
+  if (current.length > 0) {
+    chunks.push(current.join(' ').trim());
+  }
+  return chunks.filter(c => c.length > 0);
+}
+
 // Reference to chatbot engine (set via init to avoid circular deps)
 let chatbotEngine = null;
 
@@ -381,12 +420,20 @@ async function handleIncomingMessage(accountId, companyId, msg) {
       try {
         const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
         if (response) {
-          await sendMessage(accountId, jid, response.content, {
-            type: response.type || 'text',
-            mediaUrl: response.mediaUrl,
-            isAutomated: true,
-            chatbotReply: true
-          });
+          // Split long replies into multiple messages if maxWordsPerMsg is set
+          const chunks = splitByWordLimit(response.content, response.maxWordsPerMsg);
+          for (let i = 0; i < chunks.length; i++) {
+            await sendMessage(accountId, jid, chunks[i], {
+              type: response.type || 'text',
+              mediaUrl: i === 0 ? response.mediaUrl : undefined,
+              isAutomated: true,
+              chatbotReply: true
+            });
+            // Small delay between chunks so they arrive in order
+            if (i < chunks.length - 1) {
+              await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
+            }
+          }
         }
       } catch (err) {
         console.error(`[WA] Chatbot error for ${accountId}:`, err.message);
