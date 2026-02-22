@@ -375,22 +375,23 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     }
   });
 
-  // Run chatbot engine
+  // Run chatbot engine (fire-and-forget to not block message processing)
   if (chatbotEngine && content) {
-    try {
-      const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
-      if (response) {
-        // Send automated response
-        await sendMessage(accountId, jid, response.content, {
-          type: response.type || 'text',
-          mediaUrl: response.mediaUrl,
-          isAutomated: true,
-          chatbotReply: true
-        });
+    setImmediate(async () => {
+      try {
+        const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
+        if (response) {
+          await sendMessage(accountId, jid, response.content, {
+            type: response.type || 'text',
+            mediaUrl: response.mediaUrl,
+            isAutomated: true,
+            chatbotReply: true
+          });
+        }
+      } catch (err) {
+        console.error(`[WA] Chatbot error for ${accountId}:`, err.message);
       }
-    } catch (err) {
-      console.error(`[WA] Chatbot error for ${accountId}:`, err.message);
-    }
+    });
   }
 }
 
@@ -416,8 +417,8 @@ async function sendMessage(accountId, jid, content, options = {}) {
     throw new Error('Daily message limit reached');
   }
 
-  // Simulate typing if enabled
-  if (account.settings.typingSimulation) {
+  // Simulate typing if enabled (skip for automated/chatbot replies)
+  if (account.settings.typingSimulation && !options.isAutomated) {
     try {
       await session.socket.sendPresenceUpdate('composing', jid);
       const typingDelay = 1000 + Math.random() * 2000; // 1-3 seconds
