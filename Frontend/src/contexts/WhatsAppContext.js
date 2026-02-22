@@ -25,6 +25,7 @@ export function WhatsAppProvider({ children, socket }) {
   const [linkingAccountId, setLinkingAccountId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [campaignProgress, setCampaignProgress] = useState({});  // { campaignId: progress }
+  const [botTyping, setBotTyping] = useState({});  // { contactId: true/false }
   const socketRef = useRef(socket);
 
   useEffect(() => {
@@ -129,12 +130,25 @@ export function WhatsAppProvider({ children, socket }) {
       }
     };
 
+    // Bot typing indicator
+    const handleBotTyping = (data) => {
+      const { contactId, typing } = data;
+      setBotTyping(prev => ({ ...prev, [contactId]: typing }));
+      // Auto-clear after 60s safety net
+      if (typing) {
+        setTimeout(() => {
+          setBotTyping(prev => ({ ...prev, [contactId]: false }));
+        }, 60000);
+      }
+    };
+
     socket.on('whatsapp:qr', handleQR);
     socket.on('whatsapp:connected', handleConnected);
     socket.on('whatsapp:disconnected', handleDisconnected);
     socket.on('whatsapp:new-message', handleNewMessage);
     socket.on('whatsapp:message-status', handleStatusUpdate);
     socket.on('whatsapp:campaign:progress', handleCampaignProgress);
+    socket.on('whatsapp:bot-typing', handleBotTyping);
 
     return () => {
       socket.off('whatsapp:qr', handleQR);
@@ -143,6 +157,7 @@ export function WhatsAppProvider({ children, socket }) {
       socket.off('whatsapp:new-message', handleNewMessage);
       socket.off('whatsapp:message-status', handleStatusUpdate);
       socket.off('whatsapp:campaign:progress', handleCampaignProgress);
+      socket.off('whatsapp:bot-typing', handleBotTyping);
     };
   }, [socket]);
 
@@ -556,6 +571,7 @@ export function WhatsAppProvider({ children, socket }) {
     linkingAccountId,
     loading,
     campaignProgress,
+    botTyping,
 
     // Account methods
     fetchAccounts,

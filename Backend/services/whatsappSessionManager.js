@@ -411,6 +411,13 @@ async function handleIncomingMessage(accountId, companyId, msg) {
           } catch (e) { /* best effort */ }
         }
 
+        // Emit typing indicator to frontend
+        emitToCompany(companyId, 'whatsapp:bot-typing', {
+          accountId,
+          contactId: contact._id.toString(),
+          typing: true
+        });
+
         const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
         if (response) {
           // Split long replies into multiple messages if maxSentencesPerMsg is set
@@ -428,6 +435,13 @@ async function handleIncomingMessage(accountId, companyId, msg) {
             }
           }
 
+          // Clear typing indicator
+          emitToCompany(companyId, 'whatsapp:bot-typing', {
+            accountId,
+            contactId: contact._id.toString(),
+            typing: false
+          });
+
           // Fire-and-forget: extract keypoints + detect scheduling
           if (chatbotEngine.extractKeypointsAndSchedule) {
             chatbotEngine.extractKeypointsAndSchedule(
@@ -435,9 +449,22 @@ async function handleIncomingMessage(accountId, companyId, msg) {
               accountId, companyId, contact, content, response.content
             ).catch(e => console.error('[WA] Keypoint extraction error:', e.message));
           }
+        } else {
+          // No response generated — clear typing
+          emitToCompany(companyId, 'whatsapp:bot-typing', {
+            accountId,
+            contactId: contact._id.toString(),
+            typing: false
+          });
         }
       } catch (err) {
         console.error(`[WA] Chatbot error for ${accountId}:`, err.message);
+        // Clear typing indicator on error
+        emitToCompany(companyId, 'whatsapp:bot-typing', {
+          accountId,
+          contactId: contact._id.toString(),
+          typing: false
+        });
       }
     });
   }

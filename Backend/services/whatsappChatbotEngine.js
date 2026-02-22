@@ -151,6 +151,14 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   }
 }
 
+// Fallback models for OpenRouter when primary model is unavailable
+const OPENROUTER_FALLBACKS = [
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-235b-a22b:free',
+  'deepseek/deepseek-r1-zero:free',
+  'google/gemma-3-27b-it:free'
+];
+
 /**
  * Call OpenAI-compatible API (OpenAI, OpenRouter, Groq, Together, Custom)
  */
@@ -166,36 +174,58 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
     return null;
   }
 
-  const payload = {
-    model: bot.model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...messages
-    ],
-    max_tokens: bot.maxTokens || 300,
-    temperature: bot.temperature || 0.7
-  };
+  // Build list of models to try: primary + fallbacks for OpenRouter
+  const modelsToTry = [bot.model];
+  if (bot.provider === 'openrouter') {
+    for (const fb of OPENROUTER_FALLBACKS) {
+      if (fb !== bot.model) modelsToTry.push(fb);
+    }
+  }
 
-  // Try up to 2 times (initial + 1 retry)
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (const modelId of modelsToTry) {
+    const payload = {
+      model: modelId,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      max_tokens: bot.maxTokens || 300,
+      temperature: bot.temperature || 0.7
+    };
+
     try {
       const response = await axios.post(url, payload, {
         headers,
-        timeout: 15000
+        timeout: 20000
       });
 
       const content = response.data.choices?.[0]?.message?.content;
       if (content) {
+        if (modelId !== bot.model) {
+          console.log(`[WA Bot] Primary model ${bot.model} failed, succeeded with fallback: ${modelId}`);
+        }
         return { type: 'text', content: content.trim(), ruleId: null };
       }
-      break; // Got response but no content, don't retry
     } catch (err) {
-      console.error(`[WA Bot] ${bot.provider} API error (attempt ${attempt + 1}):`, err.response?.data?.error?.message || err.message);
-      if (attempt === 0 && (!err.response || err.response.status >= 500)) {
-        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+      const errMsg = err.response?.data?.error?.message || err.message;
+      console.error(`[WA Bot] ${bot.provider} API error (model: ${modelId}):`, errMsg);
+      // If rate limited or model not found on OpenRouter, try next fallback
+      if (bot.provider === 'openrouter' && modelsToTry.length > 1) {
+        await new Promise(r => setTimeout(r, 500));
         continue;
       }
-      break; // Client error or 2nd attempt, don't retry
+      // For non-OpenRouter: retry once on server errors
+      if (!err.response || err.response.status >= 500) {
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+          const retryRes = await axios.post(url, payload, { headers, timeout: 20000 });
+          const retryContent = retryRes.data.choices?.[0]?.message?.content;
+          if (retryContent) return { type: 'text', content: retryContent.trim(), ruleId: null };
+        } catch (retryErr) {
+          console.error(`[WA Bot] ${bot.provider} retry failed:`, retryErr.response?.data?.error?.message || retryErr.message);
+        }
+      }
+      break;
     }
   }
 

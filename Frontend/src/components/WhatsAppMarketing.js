@@ -382,7 +382,7 @@ function AccountsTab() {
 // CHATS TAB
 // =====================================================
 function ChatsTab() {
-  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage, fetchKeypoints, addKeypoint, deleteKeypoint, fetchScheduledMessages, cancelScheduledMessage } = useWhatsApp();
+  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage, fetchKeypoints, addKeypoint, deleteKeypoint, fetchScheduledMessages, cancelScheduledMessage, botTyping } = useWhatsApp();
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [messageInput, setMessageInput] = useState('');
@@ -567,7 +567,14 @@ function ChatsTab() {
               </div>
               <div className="wa-chat-header-info">
                 <h3>{selectedContact.pushName || selectedContact.phoneNumber}</h3>
-                <span className="wa-chat-phone">{selectedContact.phoneNumber}</span>
+                {botTyping[selectedContact._id] ? (
+                  <span className="wa-bot-typing-indicator">
+                    <span className="wa-typing-dots"><span></span><span></span><span></span></span>
+                    Bot is typing...
+                  </span>
+                ) : (
+                  <span className="wa-chat-phone">{selectedContact.phoneNumber}</span>
+                )}
               </div>
               {selectedContact.tags?.length > 0 && (
                 <div className="wa-chat-tags">
