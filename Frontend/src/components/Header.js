@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
+import { FiSettings, FiLogOut, FiClock } from 'react-icons/fi';
 import NotificationCenter from './NotificationCenter';
 import { MessagingContext } from '../contexts/MessagingContext';
 import api from '../config/api';
@@ -17,22 +17,24 @@ const HeaderAvatar = ({ user, size = 32 }) => {
   const profileImg = user.profileImage || user.avatarUrl || user.photoUrl || user.avatar || user.profilePicture || user.image;
 
   return (
-    <div
-      className="header-team-avatar"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.4,
-        background: profileImg ? 'transparent' : bgColor
-      }}
-      title={displayName}
-    >
-      {profileImg ? (
-        <img src={profileImg} alt={displayName} />
-      ) : (
-        <span>{initials}</span>
-      )}
-      <span className="header-team-active-dot" />
+    <div className="header-team-avatar-wrap">
+      <div
+        className="header-team-avatar"
+        style={{
+          width: size,
+          height: size,
+          fontSize: size * 0.4,
+          background: profileImg ? 'transparent' : bgColor
+        }}
+      >
+        {profileImg ? (
+          <img src={profileImg} alt={displayName} />
+        ) : (
+          <span>{initials}</span>
+        )}
+        <span className="header-team-active-dot" />
+      </div>
+      <div className="header-team-tooltip">{displayName}</div>
     </div>
   );
 };
@@ -43,7 +45,15 @@ function Header({ user, onLogout }) {
   const [companyUsers, setCompanyUsers] = useState([]);
   const [showTeamPopup, setShowTeamPopup] = useState(false);
   const dropdownRef = useRef(null);
+  const attTimerRef = useRef(null);
   const { onlineUsers } = useContext(MessagingContext);
+
+  // Attendance timer state
+  const [attClockedIn, setAttClockedIn] = useState(false);
+  const [attSessionStart, setAttSessionStart] = useState(null);
+  const [attElapsed, setAttElapsed] = useState(0);
+  const [attTotalMin, setAttTotalMin] = useState(0);
+  const [attWorkingHours, setAttWorkingHours] = useState(8);
 
   const handleLogin = () => {
     navigate('/login');
@@ -85,6 +95,48 @@ function Header({ user, onLogout }) {
     const userId = u._id || u.id;
     return onlineUsers?.includes(userId?.toString());
   });
+
+  // Attendance timer — fetch today's data
+  useEffect(() => {
+    if (!user) return;
+    const fetchToday = async () => {
+      try {
+        const res = await api.get('/attendance/today');
+        if (res.data.success) {
+          setAttClockedIn(!!res.data.isClockedIn);
+          setAttSessionStart(res.data.activeSessionStart ? new Date(res.data.activeSessionStart) : null);
+          setAttTotalMin(res.data.attendance?.totalMinutes || 0);
+          setAttWorkingHours(res.data.workingHoursPerDay || 8);
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchToday();
+    const interval = setInterval(fetchToday, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Live timer tick
+  useEffect(() => {
+    if (attClockedIn && attSessionStart) {
+      const tick = () => setAttElapsed(Math.floor((new Date() - new Date(attSessionStart)) / 1000));
+      tick();
+      attTimerRef.current = setInterval(tick, 1000);
+      return () => clearInterval(attTimerRef.current);
+    } else {
+      setAttElapsed(0);
+      if (attTimerRef.current) clearInterval(attTimerRef.current);
+    }
+  }, [attClockedIn, attSessionStart]);
+
+  const fmtTime = (sec) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const attRemainSec = Math.max(0, attWorkingHours * 3600 - Math.floor(attTotalMin * 60) - attElapsed);
+  const attIsOvertime = (attTotalMin * 60 + attElapsed) >= (attWorkingHours * 3600);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -175,6 +227,14 @@ function Header({ user, onLogout }) {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+              {attClockedIn && (
+                <div className={`header-timer ${attIsOvertime ? 'overtime' : ''}`}>
+                  <span className="header-timer-dot" />
+                  <FiClock size={13} />
+                  <span className="header-timer-time">{fmtTime(attRemainSec)}</span>
+                  <span className="header-timer-label">{attIsOvertime ? 'OT' : 'left'}</span>
                 </div>
               )}
               <NotificationCenter />
