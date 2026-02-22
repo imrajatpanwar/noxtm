@@ -131,6 +131,7 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
+  systemPrompt += '\nNEVER use roleplay actions, asterisk actions, or theatrical expressions like *clears throat*, *smiles*, *nods*, etc. Just write plain text replies.';
   systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
   systemPrompt += '\nYou can respond in any language the customer uses. Match their language naturally.';
   systemPrompt += '\nYou have access to the full conversation history above. Use it to give contextual, relevant responses.';
