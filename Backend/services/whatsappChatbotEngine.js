@@ -83,8 +83,8 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
         { _id: bot._id },
         { $inc: { totalReplies: 1 }, $set: { lastReplyAt: new Date() } }
       );
-      // Pass maxWordsPerMsg so session manager can split if needed
-      aiResponse.maxWordsPerMsg = bot.maxWordsPerMsg || 0;
+      // Pass maxSentencesPerMsg so session manager can split if needed
+      aiResponse.maxSentencesPerMsg = bot.maxSentencesPerMsg || 0;
       return aiResponse;
     }
   } catch (err) {

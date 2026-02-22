@@ -783,7 +783,7 @@ function initializeRoutes({ io }) {
       const {
         botName, botPersonality, enabled, accountIds,
         provider, apiKey, model, customEndpoint,
-        maxTokens, temperature, notesAccess, cooldownMinutes, maxWordsPerMsg
+        maxTokens, temperature, notesAccess, cooldownMinutes, maxSentencesPerMsg
       } = req.body;
 
       let bot = await WhatsAppChatbot.findOne({ companyId: req.user.companyId });
@@ -808,7 +808,7 @@ function initializeRoutes({ io }) {
       if (temperature !== undefined) bot.temperature = temperature;
       if (notesAccess !== undefined) bot.notesAccess = notesAccess;
       if (cooldownMinutes !== undefined) bot.cooldownMinutes = cooldownMinutes;
-      if (maxWordsPerMsg !== undefined) bot.maxWordsPerMsg = maxWordsPerMsg;
+      if (maxSentencesPerMsg !== undefined) bot.maxSentencesPerMsg = maxSentencesPerMsg;
 
       await bot.save();
       res.json({ success: true, data: bot });

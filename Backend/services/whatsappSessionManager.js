@@ -15,40 +15,25 @@ const chatbotCooldowns = new Map();
 let io = null;
 
 /**
- * Split text into chunks by word limit, breaking at sentence boundaries when possible
+ * Split text into chunks by sentence limit
+ * Splits at sentence boundaries (. ! ? followed by space or end)
  */
-function splitByWordLimit(text, maxWords) {
-  if (!maxWords || maxWords <= 0) return [text];
-  const words = text.split(/\s+/);
-  if (words.length <= maxWords) return [text];
+function splitBySentenceLimit(text, maxSentences) {
+  if (!maxSentences || maxSentences <= 0) return [text];
+
+  // Split text into sentences
+  const sentences = text.match(/[^.!?]*[.!?]+[\s]*/g) || [text];
+  // Clean up: if last part has no punctuation, capture it
+  const joined = sentences.join('');
+  const remainder = text.substring(joined.length).trim();
+  if (remainder) sentences.push(remainder);
+
+  if (sentences.length <= maxSentences) return [text];
 
   const chunks = [];
-  let current = [];
-
-  for (const word of words) {
-    current.push(word);
-    if (current.length >= maxWords) {
-      // Try to break at sentence end within last ~30% of chunk
-      const joined = current.join(' ');
-      const cutoff = Math.floor(joined.length * 0.7);
-      const lastSentenceEnd = Math.max(
-        joined.lastIndexOf('. ', joined.length),
-        joined.lastIndexOf('! ', joined.length),
-        joined.lastIndexOf('? ', joined.length),
-        joined.lastIndexOf('.\n', joined.length)
-      );
-      if (lastSentenceEnd > cutoff) {
-        chunks.push(joined.substring(0, lastSentenceEnd + 1).trim());
-        const remaining = joined.substring(lastSentenceEnd + 1).trim();
-        current = remaining ? remaining.split(/\s+/) : [];
-      } else {
-        chunks.push(joined.trim());
-        current = [];
-      }
-    }
-  }
-  if (current.length > 0) {
-    chunks.push(current.join(' ').trim());
+  for (let i = 0; i < sentences.length; i += maxSentences) {
+    const chunk = sentences.slice(i, i + maxSentences).join('').trim();
+    if (chunk) chunks.push(chunk);
   }
   return chunks.filter(c => c.length > 0);
 }
@@ -428,8 +413,8 @@ async function handleIncomingMessage(accountId, companyId, msg) {
 
         const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
         if (response) {
-          // Split long replies into multiple messages if maxWordsPerMsg is set
-          const chunks = splitByWordLimit(response.content, response.maxWordsPerMsg);
+          // Split long replies into multiple messages if maxSentencesPerMsg is set
+          const chunks = splitBySentenceLimit(response.content, response.maxSentencesPerMsg);
           for (let i = 0; i < chunks.length; i++) {
             await sendMessage(accountId, jid, chunks[i], {
               type: response.type || 'text',
@@ -480,16 +465,15 @@ async function sendMessage(accountId, jid, content, options = {}) {
     throw new Error('Daily message limit reached');
   }
 
-  // Simulate typing based on WPM (65-75 WPM for bot, 1-3s for manual)
+  // Simulate typing: 75 WPM, 0 words = 8s, 75 words = 48s (linear: 8s + wordCount/75 * 40s)
   if (account.settings.typingSimulation) {
     try {
       await session.socket.sendPresenceUpdate('composing', jid);
       let typingDelay;
       if (options.isAutomated) {
-        // Calculate realistic typing time: 65-75 WPM
-        const wordCount = (content || '').split(/\s+/).length;
-        const wpm = 65 + Math.random() * 10; // 65-75 WPM
-        typingDelay = Math.max(600, Math.min(8000, (wordCount / wpm) * 60 * 1000));
+        const wordCount = (content || '').split(/\s+/).filter(w => w).length;
+        // 0 words = 8s, 75 words = 48s, linear scale
+        typingDelay = 8000 + (wordCount / 75) * 40000;
       } else {
         typingDelay = 1000 + Math.random() * 2000; // 1-3s for manual
       }
