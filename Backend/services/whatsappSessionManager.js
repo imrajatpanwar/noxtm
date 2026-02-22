@@ -380,7 +380,7 @@ async function handleIncomingMessage(accountId, companyId, msg) {
           type: response.type || 'text',
           mediaUrl: response.mediaUrl,
           isAutomated: true,
-          chatbotRuleId: response.ruleId
+          chatbotReply: true
         });
       }
     } catch (err) {
@@ -394,7 +394,7 @@ async function handleIncomingMessage(accountId, companyId, msg) {
  * @param {string} accountId - Account ID
  * @param {string} jid - WhatsApp JID (e.g. 919876543210@s.whatsapp.net)
  * @param {string} content - Message text
- * @param {Object} options - { type, mediaUrl, mediaType, isAutomated, chatbotRuleId, campaignId }
+ * @param {Object} options - { type, mediaUrl, mediaType, isAutomated, chatbotReply, campaignId }
  * @returns {Promise<Object>} Saved message document
  */
 async function sendMessage(accountId, jid, content, options = {}) {
@@ -498,7 +498,7 @@ async function sendMessage(accountId, jid, content, options = {}) {
     whatsappMessageId: result.key.id,
     status: 'sent',
     isAutomated: options.isAutomated || false,
-    chatbotRuleId: options.chatbotRuleId || null,
+    chatbotReply: options.chatbotReply || false,
     campaignId: options.campaignId || null,
     timestamp: new Date()
   });

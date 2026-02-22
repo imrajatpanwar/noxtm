@@ -77,9 +77,10 @@ const whatsAppMessageSchema = new mongoose.Schema({
     default: false
   },
 
-  chatbotRuleId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'WhatsAppChatbotRule'
+  // Was chatbot automated reply
+  chatbotReply: {
+    type: Boolean,
+    default: false
   },
 
   // Quoted/reply-to message

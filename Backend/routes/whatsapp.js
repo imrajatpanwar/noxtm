@@ -7,7 +7,7 @@ const WhatsAppAccount = require('../models/WhatsAppAccount');
 const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
-const WhatsAppChatbotRule = require('../models/WhatsAppChatbotRule');
+const WhatsAppChatbot = require('../models/WhatsAppChatbot');
 const WhatsAppTemplate = require('../models/WhatsAppTemplate');
 const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
 
@@ -147,7 +147,7 @@ function initializeRoutes({ io }) {
         WhatsAppContact.deleteMany({ accountId: account._id }),
         WhatsAppMessage.deleteMany({ accountId: account._id }),
         WhatsAppCampaign.deleteMany({ accountId: account._id }),
-        WhatsAppChatbotRule.deleteMany({ accountId: account._id }),
+        WhatsAppChatbot.updateMany({ companyId }, { $pull: { accountIds: account._id.toString() } }),
         account.deleteOne()
       ]);
 
@@ -755,141 +755,114 @@ function initializeRoutes({ io }) {
   });
 
   // =====================================================
-  // CHATBOT RULES
+  // AI CHATBOT
   // =====================================================
 
   /**
-   * GET /api/whatsapp/chatbot-rules
-   * List all chatbot rules for the company
+   * GET /api/whatsapp/chatbot
+   * Get chatbot config for the company
    */
-  router.get('/chatbot-rules', async (req, res) => {
+  router.get('/chatbot', async (req, res) => {
     try {
-      const { accountId } = req.query;
-
-      const filter = { companyId: req.user.companyId };
-      if (accountId) filter.accountId = accountId;
-
-      const rules = await WhatsAppChatbotRule.find(filter)
-        .sort({ priority: 1 })
-        .lean();
-
-      res.json({ success: true, data: rules });
+      let bot = await WhatsAppChatbot.findOne({ companyId: req.user.companyId }).lean();
+      res.json({ success: true, data: bot || null });
     } catch (error) {
-      console.error('[WA Routes] Get chatbot rules error:', error);
+      console.error('[WA Routes] Get chatbot error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   });
 
   /**
-   * POST /api/whatsapp/chatbot-rules
-   * Create a new chatbot rule
+   * PUT /api/whatsapp/chatbot
+   * Create or update chatbot config
    */
-  router.post('/chatbot-rules', async (req, res) => {
+  router.put('/chatbot', async (req, res) => {
     try {
       const {
-        accountId, name, triggerType, triggerValue,
-        responseType, responseContent, responseMediaUrl,
-        aiPrompt, aiModel, aiMaxTokens,
-        priority, cooldownMinutes, isActive
+        botName, botPersonality, enabled, accountIds,
+        provider, apiKey, model, customEndpoint,
+        maxTokens, temperature, notesAccess, cooldownMinutes
       } = req.body;
 
-      if (!name || !triggerType || !responseType) {
-        return res.status(400).json({ success: false, message: 'name, triggerType, and responseType required' });
+      let bot = await WhatsAppChatbot.findOne({ companyId: req.user.companyId });
+
+      if (!bot) {
+        bot = new WhatsAppChatbot({
+          companyId: req.user.companyId,
+          createdBy: req.user._id
+        });
       }
 
-      const rule = await WhatsAppChatbotRule.create({
-        companyId: req.user.companyId,
-        accountId: accountId || null,
-        createdBy: req.user._id,
-        name,
-        triggerType,
-        triggerValue,
-        responseType,
-        responseContent,
-        responseMediaUrl,
-        aiPrompt,
-        aiModel,
-        aiMaxTokens,
-        priority: priority || 100,
-        cooldownMinutes: cooldownMinutes || 5,
-        isActive: isActive !== false
-      });
+      // Update fields if provided
+      if (botName !== undefined) bot.botName = botName;
+      if (botPersonality !== undefined) bot.botPersonality = botPersonality;
+      if (enabled !== undefined) bot.enabled = enabled;
+      if (accountIds !== undefined) bot.accountIds = accountIds;
+      if (provider !== undefined) bot.provider = provider;
+      if (apiKey !== undefined) bot.apiKey = apiKey;
+      if (model !== undefined) bot.model = model;
+      if (customEndpoint !== undefined) bot.customEndpoint = customEndpoint;
+      if (maxTokens !== undefined) bot.maxTokens = maxTokens;
+      if (temperature !== undefined) bot.temperature = temperature;
+      if (notesAccess !== undefined) bot.notesAccess = notesAccess;
+      if (cooldownMinutes !== undefined) bot.cooldownMinutes = cooldownMinutes;
 
-      res.status(201).json({ success: true, data: rule });
+      await bot.save();
+      res.json({ success: true, data: bot });
     } catch (error) {
-      console.error('[WA Routes] Create chatbot rule error:', error);
+      console.error('[WA Routes] Update chatbot error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   });
 
   /**
-   * PUT /api/whatsapp/chatbot-rules/:id
-   * Update a chatbot rule
+   * POST /api/whatsapp/chatbot/test
+   * Test the chatbot with a sample message
    */
-  router.put('/chatbot-rules/:id', async (req, res) => {
+  router.post('/chatbot/test', async (req, res) => {
     try {
-      const rule = await WhatsAppChatbotRule.findOne({
-        _id: req.params.id,
-        companyId: req.user.companyId
-      });
+      const { message } = req.body;
+      if (!message) return res.status(400).json({ success: false, message: 'message required' });
 
-      if (!rule) return res.status(404).json({ success: false, message: 'Rule not found' });
-
-      const fields = ['name', 'accountId', 'triggerType', 'triggerValue', 'responseType',
-        'responseContent', 'responseMediaUrl', 'aiPrompt', 'aiModel', 'aiMaxTokens',
-        'priority', 'cooldownMinutes', 'isActive'];
-
-      fields.forEach(field => {
-        if (req.body[field] !== undefined) rule[field] = req.body[field];
-      });
-
-      await rule.save();
-      res.json({ success: true, data: rule });
-    } catch (error) {
-      console.error('[WA Routes] Update chatbot rule error:', error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
-  /**
-   * DELETE /api/whatsapp/chatbot-rules/:id
-   */
-  router.delete('/chatbot-rules/:id', async (req, res) => {
-    try {
-      const rule = await WhatsAppChatbotRule.findOneAndDelete({
-        _id: req.params.id,
-        companyId: req.user.companyId
-      });
-
-      if (!rule) return res.status(404).json({ success: false, message: 'Rule not found' });
-
-      res.json({ success: true, message: 'Rule deleted' });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
-  /**
-   * POST /api/whatsapp/chatbot-rules/reorder
-   * Bulk update priorities for chatbot rules
-   */
-  router.post('/chatbot-rules/reorder', async (req, res) => {
-    try {
-      const { rules } = req.body; // [{ id, priority }]
-      if (!rules || !Array.isArray(rules)) {
-        return res.status(400).json({ success: false, message: 'rules array required' });
+      const bot = await WhatsAppChatbot.findOne({ companyId: req.user.companyId });
+      if (!bot || !bot.apiKey) {
+        return res.status(400).json({ success: false, message: 'Chatbot not configured or API key missing' });
       }
 
-      const updates = rules.map(r =>
-        WhatsAppChatbotRule.updateOne(
-          { _id: r.id, companyId: req.user.companyId },
-          { priority: r.priority }
-        )
+      const whatsappChatbotEngine = require('../services/whatsappChatbotEngine');
+      // Create a mock contact/cooldowns for testing
+      const mockContact = {
+        _id: 'test',
+        pushName: req.user.fullName || req.user.name || 'Test User',
+        phoneNumber: '0000000000',
+        whatsappId: 'test@test'
+      };
+      const mockCooldowns = new Map();
+
+      // Temporarily enable for test
+      const wasEnabled = bot.enabled;
+      if (!wasEnabled) {
+        bot.enabled = true;
+        await bot.save();
+      }
+
+      const response = await whatsappChatbotEngine.processIncomingMessage(
+        'test-account', req.user.companyId, mockContact, message, mockCooldowns
       );
 
-      await Promise.all(updates);
-      res.json({ success: true, message: 'Rules reordered' });
+      // Restore state if we temp-enabled
+      if (!wasEnabled) {
+        bot.enabled = false;
+        await bot.save();
+      }
+
+      if (response) {
+        res.json({ success: true, reply: response.content });
+      } else {
+        res.json({ success: false, message: 'No response generated' });
+      }
     } catch (error) {
+      console.error('[WA Routes] Test chatbot error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   });
@@ -1089,7 +1062,7 @@ function initializeRoutes({ io }) {
     try {
       const companyId = req.user.companyId;
 
-      const [accounts, totalContacts, messagesToday, activeCampaigns, activeRules] = await Promise.all([
+      const [accounts, totalContacts, messagesToday, activeCampaigns, chatbotConfig] = await Promise.all([
         WhatsAppAccount.find({ companyId }).select('displayName phoneNumber status profilePicture dailyMessageCount isDefault').lean(),
         WhatsAppContact.countDocuments({ companyId }),
         WhatsAppMessage.countDocuments({
@@ -1097,7 +1070,7 @@ function initializeRoutes({ io }) {
           timestamp: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
         }),
         WhatsAppCampaign.countDocuments({ companyId, status: { $in: ['sending', 'scheduled'] } }),
-        WhatsAppChatbotRule.countDocuments({ companyId, isActive: true })
+        WhatsAppChatbot.findOne({ companyId }).lean()
       ]);
 
       // Messages stats for last 7 days
@@ -1125,7 +1098,8 @@ function initializeRoutes({ io }) {
           totalContacts,
           messagesToday,
           activeCampaigns,
-          activeRules,
+          chatbotEnabled: chatbotConfig?.enabled || false,
+          chatbotTotalReplies: chatbotConfig?.totalReplies || 0,
           messageStats
         }
       });

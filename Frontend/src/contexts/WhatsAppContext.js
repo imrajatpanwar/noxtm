@@ -19,7 +19,7 @@ export function WhatsAppProvider({ children, socket }) {
   const [campaigns, setCampaigns] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [phoneLists, setPhoneLists] = useState([]);
-  const [chatbotRules, setChatbotRules] = useState([]);
+  const [chatbot, setChatbot] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [qrCode, setQrCode] = useState(null);       // Current QR for linking
   const [linkingAccountId, setLinkingAccountId] = useState(null);
@@ -458,60 +458,37 @@ export function WhatsAppProvider({ children, socket }) {
     }
   }, []);
 
-  // Chatbot Rules
-  const fetchChatbotRules = useCallback(async (params = {}) => {
+  // Chatbot Config
+  const fetchChatbot = useCallback(async () => {
     try {
-      const res = await api.get('/whatsapp/chatbot-rules', { params });
-      if (res.data.success) setChatbotRules(res.data.data);
+      const res = await api.get('/whatsapp/chatbot');
+      if (res.data.success) setChatbot(res.data.data);
       return res.data;
     } catch (e) {
-      console.error('Fetch rules error:', e);
+      console.error('Fetch chatbot error:', e);
     }
   }, []);
 
-  const createChatbotRule = useCallback(async (data) => {
+  const updateChatbot = useCallback(async (data) => {
     try {
-      const res = await api.post('/whatsapp/chatbot-rules', data);
-      if (res.data.success) setChatbotRules(prev => [...prev, res.data.data]);
+      const res = await api.put('/whatsapp/chatbot', data);
+      if (res.data.success) setChatbot(res.data.data);
       return res.data;
     } catch (e) {
-      console.error('Create rule error:', e);
+      console.error('Update chatbot error:', e);
       throw e;
     }
   }, []);
 
-  const updateChatbotRule = useCallback(async (ruleId, data) => {
+  const testChatbot = useCallback(async (message) => {
     try {
-      const res = await api.put(`/whatsapp/chatbot-rules/${ruleId}`, data);
-      if (res.data.success) {
-        setChatbotRules(prev => prev.map(r => r._id === ruleId ? res.data.data : r));
-      }
+      const res = await api.post('/whatsapp/chatbot/test', { message });
       return res.data;
     } catch (e) {
-      console.error('Update rule error:', e);
+      console.error('Test chatbot error:', e);
       throw e;
     }
   }, []);
-
-  const deleteChatbotRule = useCallback(async (ruleId) => {
-    try {
-      await api.delete(`/whatsapp/chatbot-rules/${ruleId}`);
-      setChatbotRules(prev => prev.filter(r => r._id !== ruleId));
-    } catch (e) {
-      console.error('Delete rule error:', e);
-      throw e;
-    }
-  }, []);
-
-  const reorderRules = useCallback(async (rules) => {
-    try {
-      await api.post('/whatsapp/chatbot-rules/reorder', { rules });
-      await fetchChatbotRules();
-    } catch (e) {
-      console.error('Reorder rules error:', e);
-      throw e;
-    }
-  }, [fetchChatbotRules]);
 
   const value = {
     // State
@@ -521,7 +498,7 @@ export function WhatsAppProvider({ children, socket }) {
     campaigns,
     templates,
     phoneLists,
-    chatbotRules,
+    chatbot,
     dashboard,
     qrCode,
     linkingAccountId,
@@ -567,11 +544,9 @@ export function WhatsAppProvider({ children, socket }) {
     deletePhoneList,
 
     // Chatbot methods
-    fetchChatbotRules,
-    createChatbotRule,
-    updateChatbotRule,
-    deleteChatbotRule,
-    reorderRules,
+    fetchChatbot,
+    updateChatbot,
+    testChatbot,
 
     // Dashboard
     fetchDashboard,
