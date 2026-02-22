@@ -63,11 +63,13 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
     }
   }
 
-  // Check cooldown
+  // Check cooldown (skip if cooldownMinutes is 0)
   const cooldownKey = `bot:${companyId}:${contact.whatsappId}`;
-  const lastTriggered = cooldowns.get(cooldownKey);
-  if (lastTriggered && (Date.now() - lastTriggered) < bot.cooldownMinutes * 60 * 1000) {
-    return null;
+  if (bot.cooldownMinutes > 0) {
+    const lastTriggered = cooldowns.get(cooldownKey);
+    if (lastTriggered && (Date.now() - lastTriggered) < bot.cooldownMinutes * 60 * 1000) {
+      return null;
+    }
   }
 
   try {
@@ -90,18 +92,24 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
  * Generate AI response using configured provider
  */
 async function generateAIResponse(bot, accountId, companyId, contact, messageText) {
+  // Parallel fetch: message history + notes (don't wait sequentially)
   let recentMessages = [];
-  try {
-    recentMessages = await WhatsAppMessage.find({
-      accountId,
-      contactId: contact._id
-    })
+  let notes = [];
+
+  const [msgResult, notesResult] = await Promise.allSettled([
+    WhatsAppMessage.find({ accountId, contactId: contact._id })
       .sort({ timestamp: -1 })
       .limit(6)
-      .lean();
-  } catch (e) {
-    // Ignore - happens in test mode with mock IDs
-  }
+      .lean(),
+    Note.find({ companyId, botgitAccess: true, archived: { $ne: true } })
+      .select('title content')
+      .sort({ updatedAt: -1 })
+      .limit(10)
+      .lean()
+  ]);
+
+  if (msgResult.status === 'fulfilled') recentMessages = msgResult.value;
+  if (notesResult.status === 'fulfilled') notes = notesResult.value;
 
   const conversationHistory = recentMessages.reverse().map(msg => ({
     role: msg.direction === 'inbound' ? 'user' : 'assistant',
@@ -117,30 +125,15 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
+  systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
 
-  // Fetch notes that have botgit assigned as knowledge base
-  {
-    try {
-      const notes = await Note.find({
-        companyId,
-        botgitAccess: true,
-        archived: { $ne: true }
-      })
-        .select('title content')
-        .sort({ updatedAt: -1 })
-        .limit(10)
-        .lean();
-
-      if (notes.length > 0) {
-        const notesContext = notes
-          .map(n => `[${n.title}]: ${(n.content || '').substring(0, 500)}`)
-          .join('\n\n');
-        systemPrompt += `\n\n--- KNOWLEDGE BASE (Company Notes) ---\n${notesContext}\n--- END KNOWLEDGE BASE ---`;
-        systemPrompt += '\nUse the knowledge base above to answer questions when relevant.';
-      }
-    } catch (err) {
-      console.error('[WA Bot] Failed to fetch notes:', err.message);
-    }
+  // Attach notes as knowledge base
+  if (notes.length > 0) {
+    const notesContext = notes
+      .map(n => `[${n.title}]: ${(n.content || '').substring(0, 500)}`)
+      .join('\n\n');
+    systemPrompt += `\n\n--- KNOWLEDGE BASE (Company Notes) ---\n${notesContext}\n--- END KNOWLEDGE BASE ---`;
+    systemPrompt += '\nUse the knowledge base above to answer questions when relevant.';
   }
 
   if (bot.provider === 'anthropic') {
@@ -165,26 +158,37 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
     return null;
   }
 
-  try {
-    const response = await axios.post(url, {
-      model: bot.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages
-      ],
-      max_tokens: bot.maxTokens || 300,
-      temperature: bot.temperature || 0.7
-    }, {
-      headers,
-      timeout: 20000
-    });
+  const payload = {
+    model: bot.model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ],
+    max_tokens: bot.maxTokens || 300,
+    temperature: bot.temperature || 0.7
+  };
 
-    const content = response.data.choices?.[0]?.message?.content;
-    if (content) {
-      return { type: 'text', content: content.trim(), ruleId: null };
+  // Try up to 2 times (initial + 1 retry)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await axios.post(url, payload, {
+        headers,
+        timeout: 15000
+      });
+
+      const content = response.data.choices?.[0]?.message?.content;
+      if (content) {
+        return { type: 'text', content: content.trim(), ruleId: null };
+      }
+      break; // Got response but no content, don't retry
+    } catch (err) {
+      console.error(`[WA Bot] ${bot.provider} API error (attempt ${attempt + 1}):`, err.response?.data?.error?.message || err.message);
+      if (attempt === 0 && (!err.response || err.response.status >= 500)) {
+        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+        continue;
+      }
+      break; // Client error or 2nd attempt, don't retry
     }
-  } catch (err) {
-    console.error(`[WA Bot] ${bot.provider} API error:`, err.response?.data?.error?.message || err.message);
   }
 
   return null;
@@ -196,26 +200,37 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
 async function callAnthropicAPI(bot, systemPrompt, messages) {
   const headers = PROVIDERS.anthropic.headerFn(bot.apiKey);
 
-  try {
-    const response = await axios.post(PROVIDERS.anthropic.url, {
-      model: bot.model || 'claude-sonnet-4-20250514',
-      max_tokens: bot.maxTokens || 300,
-      system: systemPrompt,
-      messages: messages.map(m => ({
-        role: m.role === 'system' ? 'user' : m.role,
-        content: m.content
-      }))
-    }, {
-      headers,
-      timeout: 20000
-    });
+  const payload = {
+    model: bot.model || 'claude-sonnet-4-20250514',
+    max_tokens: bot.maxTokens || 300,
+    system: systemPrompt,
+    messages: messages.map(m => ({
+      role: m.role === 'system' ? 'user' : m.role,
+      content: m.content
+    }))
+  };
 
-    const content = response.data.content?.[0]?.text;
-    if (content) {
-      return { type: 'text', content: content.trim(), ruleId: null };
+  // Try up to 2 times (initial + 1 retry)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await axios.post(PROVIDERS.anthropic.url, payload, {
+        headers,
+        timeout: 15000
+      });
+
+      const content = response.data.content?.[0]?.text;
+      if (content) {
+        return { type: 'text', content: content.trim(), ruleId: null };
+      }
+      break;
+    } catch (err) {
+      console.error(`[WA Bot] Anthropic API error (attempt ${attempt + 1}):`, err.response?.data?.error?.message || err.message);
+      if (attempt === 0 && (!err.response || err.response.status >= 500)) {
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+      break;
     }
-  } catch (err) {
-    console.error('[WA Bot] Anthropic API error:', err.response?.data?.error?.message || err.message);
   }
 
   return null;

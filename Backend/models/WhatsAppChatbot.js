@@ -82,7 +82,7 @@ const whatsAppChatbotSchema = new mongoose.Schema({
   // Cooldown per contact (minutes) to avoid spamming
   cooldownMinutes: {
     type: Number,
-    default: 1,
+    default: 0,
     min: 0
   },
 
