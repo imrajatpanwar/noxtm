@@ -1,5 +1,7 @@
 const WhatsAppChatbot = require('../models/WhatsAppChatbot');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
+const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
+const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
 const Note = require('../models/Note');
 const axios = require('axios');
 
@@ -103,7 +105,7 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   const [msgResult, notesResult] = await Promise.allSettled([
     WhatsAppMessage.find({ accountId, contactId: contact._id })
       .sort({ timestamp: -1 })
-      .limit(6)
+      .limit(30)
       .lean(),
     Note.find({ companyId, botgitAccess: true, archived: { $ne: true } })
       .select('title content')
@@ -130,6 +132,8 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
   systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
+  systemPrompt += '\nYou can respond in any language the customer uses. Match their language naturally.';
+  systemPrompt += '\nYou have access to the full conversation history above. Use it to give contextual, relevant responses.';
 
   // Attach notes as knowledge base
   if (notes.length > 0) {
@@ -240,6 +244,126 @@ async function callAnthropicAPI(bot, systemPrompt, messages) {
   return null;
 }
 
+/**
+ * Extract keypoints and detect scheduling requests from conversation (fire-and-forget)
+ */
+async function extractKeypointsAndSchedule(bot, accountId, companyId, contact, messageText, aiReply) {
+  try {
+    const extractPrompt = `You are an analyst. Given the latest user message and bot reply, extract:
+1. Key conversation points (max 3, skip trivial greetings)
+2. If the user asked to be contacted/messaged later (e.g. "message me after 5 min", "remind me in 1 hour", "call me after 3 days")
+
+Respond ONLY with valid JSON, no markdown, no explanation:
+{
+  "keypoints": [{"text": "short point max 80 chars", "category": "info|interest|request|issue|followup|general"}],
+  "schedule": null or {"delay_minutes": number, "message": "follow-up message to send", "reason": "why scheduling"}
+}
+
+If no meaningful keypoints, return empty array. If no scheduling request, set schedule to null.
+Categories: info=shared information, interest=showed interest in product/service, request=asked for something, issue=reported problem, followup=needs follow-up, general=other`;
+
+    const messages = [
+      { role: 'user', content: `User message: "${messageText}"\n\nBot reply: "${aiReply}"` }
+    ];
+
+    let extractResult = null;
+
+    if (bot.provider === 'anthropic') {
+      const headers = PROVIDERS.anthropic.headerFn(bot.apiKey);
+      const response = await axios.post(PROVIDERS.anthropic.url, {
+        model: bot.model || 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: extractPrompt,
+        messages: messages.map(m => ({ role: m.role, content: m.content }))
+      }, { headers, timeout: 12000 });
+      extractResult = response.data.content?.[0]?.text;
+    } else {
+      const provider = PROVIDERS[bot.provider];
+      const url = bot.provider === 'custom' ? bot.customEndpoint : provider?.url;
+      const headers = bot.provider === 'custom'
+        ? { 'Authorization': `Bearer ${bot.apiKey}`, 'Content-Type': 'application/json' }
+        : provider?.headerFn(bot.apiKey);
+      if (!url) return;
+
+      const response = await axios.post(url, {
+        model: bot.model,
+        messages: [{ role: 'system', content: extractPrompt }, ...messages],
+        max_tokens: 300,
+        temperature: 0.3
+      }, { headers, timeout: 12000 });
+      extractResult = response.data.choices?.[0]?.message?.content;
+    }
+
+    if (!extractResult) return;
+
+    // Parse JSON from AI response
+    let parsed;
+    try {
+      // Strip markdown code fences if present
+      const cleaned = extractResult.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      console.error('[WA Bot] Failed to parse keypoint extraction JSON:', e.message);
+      return;
+    }
+
+    // Save keypoints
+    if (parsed.keypoints && Array.isArray(parsed.keypoints) && parsed.keypoints.length > 0) {
+      const keypointDocs = parsed.keypoints
+        .filter(kp => kp.text && kp.text.length > 3)
+        .slice(0, 3)
+        .map(kp => ({
+          companyId,
+          accountId,
+          contactId: contact._id,
+          text: kp.text.substring(0, 500),
+          category: ['info', 'interest', 'request', 'issue', 'followup', 'general'].includes(kp.category)
+            ? kp.category : 'general',
+          source: 'ai'
+        }));
+
+      if (keypointDocs.length > 0) {
+        await WhatsAppKeypoint.insertMany(keypointDocs);
+        console.log(`[WA Bot] Saved ${keypointDocs.length} keypoints for contact ${contact.pushName || contact.whatsappId}`);
+      }
+    }
+
+    // Handle scheduling
+    if (parsed.schedule && parsed.schedule.delay_minutes && parsed.schedule.message) {
+      const delayMin = Math.max(1, Math.min(parsed.schedule.delay_minutes, 43200)); // 1 min to 30 days
+      const scheduledAt = new Date(Date.now() + delayMin * 60 * 1000);
+      const jid = contact.whatsappId.includes('@') ? contact.whatsappId : `${contact.whatsappId}@s.whatsapp.net`;
+
+      const scheduledMsg = await WhatsAppScheduledMsg.create({
+        companyId,
+        accountId,
+        contactId: contact._id,
+        jid,
+        content: parsed.schedule.message.substring(0, 2000),
+        scheduledAt,
+        status: 'pending',
+        reason: (parsed.schedule.reason || 'User requested follow-up').substring(0, 500)
+      });
+
+      // Also save a keypoint linking to the scheduled message
+      await WhatsAppKeypoint.create({
+        companyId,
+        accountId,
+        contactId: contact._id,
+        text: `Follow-up scheduled in ${delayMin} min: ${parsed.schedule.message.substring(0, 100)}`,
+        category: 'followup',
+        source: 'ai',
+        scheduledMsgId: scheduledMsg._id
+      });
+
+      console.log(`[WA Bot] Scheduled message for ${contact.pushName || contact.whatsappId} in ${delayMin} minutes`);
+    }
+  } catch (err) {
+    console.error('[WA Bot] Keypoint extraction error:', err.message);
+  }
+}
+
 module.exports = {
-  processIncomingMessage
+  processIncomingMessage,
+  extractKeypointsAndSchedule
 };

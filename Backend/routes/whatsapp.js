@@ -10,6 +10,8 @@ const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppChatbot = require('../models/WhatsAppChatbot');
 const WhatsAppTemplate = require('../models/WhatsAppTemplate');
 const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
+const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
+const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
 
 const sessionManager = require('../services/whatsappSessionManager');
 const campaignService = require('../services/whatsappCampaignService');
@@ -1046,6 +1048,110 @@ function initializeRoutes({ io }) {
       });
       if (!list) return res.status(404).json({ success: false, message: 'Phone list not found' });
       res.json({ success: true, message: 'Phone list deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // =====================================================
+  // KEYPOINTS
+  // =====================================================
+
+  /**
+   * GET /api/whatsapp/keypoints/:contactId
+   * Get all keypoints for a contact
+   */
+  router.get('/keypoints/:contactId', async (req, res) => {
+    try {
+      const keypoints = await WhatsAppKeypoint.find({
+        companyId: req.user.companyId,
+        contactId: req.params.contactId
+      }).sort({ createdAt: -1 }).limit(100).lean();
+      res.json({ success: true, data: keypoints });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * POST /api/whatsapp/keypoints
+   * Manually add a keypoint
+   */
+  router.post('/keypoints', async (req, res) => {
+    try {
+      const { contactId, accountId, text, category } = req.body;
+      if (!contactId || !text) {
+        return res.status(400).json({ success: false, message: 'contactId and text are required' });
+      }
+      const keypoint = await WhatsAppKeypoint.create({
+        companyId: req.user.companyId,
+        accountId: accountId || null,
+        contactId,
+        text: text.substring(0, 500),
+        category: category || 'general',
+        source: 'manual'
+      });
+      res.json({ success: true, data: keypoint });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/whatsapp/keypoints/:id
+   * Delete a keypoint
+   */
+  router.delete('/keypoints/:id', async (req, res) => {
+    try {
+      const kp = await WhatsAppKeypoint.findOneAndDelete({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+      if (!kp) return res.status(404).json({ success: false, message: 'Keypoint not found' });
+      res.json({ success: true, message: 'Keypoint deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // =====================================================
+  // SCHEDULED MESSAGES
+  // =====================================================
+
+  /**
+   * GET /api/whatsapp/scheduled-messages
+   * Get all scheduled messages for the company (optional ?contactId= filter)
+   */
+  router.get('/scheduled-messages', async (req, res) => {
+    try {
+      const query = { companyId: req.user.companyId };
+      if (req.query.contactId) query.contactId = req.query.contactId;
+      if (req.query.status) query.status = req.query.status;
+
+      const messages = await WhatsAppScheduledMsg.find(query)
+        .sort({ scheduledAt: -1 })
+        .limit(100)
+        .populate('contactId', 'pushName phoneNumber whatsappId')
+        .lean();
+      res.json({ success: true, data: messages });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/whatsapp/scheduled-messages/:id/cancel
+   * Cancel a pending scheduled message
+   */
+  router.put('/scheduled-messages/:id/cancel', async (req, res) => {
+    try {
+      const msg = await WhatsAppScheduledMsg.findOneAndUpdate(
+        { _id: req.params.id, companyId: req.user.companyId, status: 'pending' },
+        { $set: { status: 'cancelled' } },
+        { new: true }
+      );
+      if (!msg) return res.status(404).json({ success: false, message: 'Scheduled message not found or not pending' });
+      res.json({ success: true, data: msg });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

@@ -4222,6 +4222,10 @@ const whatsappSessionManager = require('./services/whatsappSessionManager');
 const whatsappChatbotEngine = require('./services/whatsappChatbotEngine');
 whatsappSessionManager.init(io, whatsappChatbotEngine);
 
+// Start scheduled message processor
+const scheduledMessageProcessor = require('./services/scheduledMessageProcessor');
+scheduledMessageProcessor.start();
+
 // ===== EXTENSION AUTHENTICATION ROUTES =====
 // No authentication middleware - these routes handle their own auth
 app.use('/api/auth/extension', extensionAuthRoutes);
