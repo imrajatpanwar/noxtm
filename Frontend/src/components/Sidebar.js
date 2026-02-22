@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useContext } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiActivity, FiExternalLink } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiExternalLink } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { useModules } from '../contexts/ModuleContext';
@@ -17,7 +17,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
-  const [seoManagementExpanded, setSeoManagementExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
@@ -125,7 +124,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Marketing': true,
         'HR Management': true,
         'Finance Management': true,
-        'SEO Management': true,
         'Internal Policies': true,
         'Settings & Configuration': true,
         'Workspace Settings': true,
@@ -144,7 +142,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Marketing': true,
         'HR Management': true,
         'Finance Management': true,
-        'SEO Management': true,
         'Internal Policies': true,
         'Settings & Configuration': false,
         'Workspace Settings': true,
@@ -163,7 +160,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Marketing': false,
         'HR Management': false,
         'Finance Management': true,
-        'SEO Management': false,
         'Internal Policies': false,
         'Settings & Configuration': false,
         'Workspace Settings': false,
@@ -182,7 +178,6 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Marketing': hasPermission(MODULES.MARKETING),
         'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
         'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
-        'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
         'Workspace Settings': false, // Team Members don't get workspace settings
@@ -200,7 +195,6 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Marketing': hasPermission(MODULES.MARKETING),
       'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
       'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
-      'SEO Management': hasPermission(MODULES.SEO_MANAGEMENT),
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
@@ -247,10 +241,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     setSocialMediaExpanded(!socialMediaExpanded);
   };
 
-  const toggleSeoManagement = () => {
-    setSeoManagementExpanded(!seoManagementExpanded);
-  };
-
   // All sidebar items for search functionality
   const allSidebarItems = [
     // Dashboard
@@ -273,6 +263,7 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Projects
     { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
+    { name: 'Products', section: 'products', category: 'Projects' },
 
     // Team Communication
     { name: 'Message', section: 'message', category: 'Team Communication' },
@@ -292,7 +283,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Letter Templates', section: 'letter-templates', category: 'HR Management' },
     { name: 'Employees', section: 'employees', category: 'HR Management' },
     { name: 'Employee Details', section: 'employee-details', category: 'HR Management' },
-    { name: 'Attendance Summary', section: 'attendance-summary', category: 'HR Management' },
     { name: 'Holiday Calendar', section: 'holiday-calendar', category: 'HR Management' },
     { name: 'Incentives', section: 'incentives', category: 'HR Management' },
 
@@ -305,12 +295,6 @@ function Sidebar({ activeSection, onSectionChange }) {
     // Internal Policies
     { name: 'Company Policies', section: 'company-policies', category: 'Internal Policies' },
     { name: 'Company Handbook', section: 'company-handbook', category: 'Internal Policies' },
-
-    // SEO Management
-    { name: 'Website Analytics', section: 'website-analytics', category: 'SEO Management' },
-    { name: 'SEO Insights', section: 'seo-insights', category: 'SEO Management' },
-    { name: 'Web Settings', section: 'web-settings', category: 'SEO Management' },
-    { name: 'Website Blogs', section: 'blogs', category: 'SEO Management' },
 
     // Settings & Configuration
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
@@ -513,6 +497,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                 <FiFolder className="sidebar-icon" />
                 <span>Client / Projects</span>
               </div>
+              <div
+                className={`Dash-noxtm-sidebar-item ${activeSection === 'products' ? 'active' : ''}`}
+                onClick={() => onSectionChange('products')}
+              >
+                <FiPackage className="sidebar-icon" />
+                <span>Products</span>
+              </div>
             </div>
           )}
 
@@ -695,14 +686,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                       <span>Employee Details</span>
                     </div>
 
-                    {/* Attendance Summary - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'attendance-summary' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('attendance-summary')}
-                    >
-                      <span>Attendance Summary</span>
-                    </div>
-
                     {/* Holiday Calendar - Direct link */}
                     <div
                       className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
@@ -792,56 +775,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* SEO Management Section */}
-          {hasPermissionForSection('SEO Management') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">SEO MANAGEMENT</h4>
-
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'seo-management' ? 'active' : ''}`}
-                  onClick={toggleSeoManagement}
-                >
-                  <FiActivity className="sidebar-icon" />
-                  <span>SEO Management</span>
-                  {seoManagementExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {seoManagementExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'website-analytics' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('website-analytics')}
-                    >
-                      <span>Website Analytics</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'seo-insights' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('seo-insights')}
-                    >
-                      <span>SEO Insights</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'web-settings' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('web-settings')}
-                    >
-                      <span>Web Settings</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'blogs' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('blogs')}
-                    >
-                      <span>Website Blogs</span>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 

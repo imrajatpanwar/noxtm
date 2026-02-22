@@ -45,6 +45,11 @@ const invoiceSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  currency: {
+    type: String,
+    enum: ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'],
+    default: 'USD'
+  },
   items: {
     type: [invoiceItemSchema],
     required: true,
@@ -68,14 +73,38 @@ const invoiceSchema = new mongoose.Schema({
   },
   taxRate: {
     type: Number,
-    default: 0.1, // 10% default tax rate
+    default: 0.1,
     min: 0,
     max: 1
+  },
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  discountType: {
+    type: String,
+    enum: ['percentage', 'fixed'],
+    default: 'percentage'
   },
   total: {
     type: Number,
     required: true,
     min: 0
+  },
+  paymentTerms: {
+    type: String,
+    enum: ['due-on-receipt', 'net-15', 'net-30', 'net-60', 'net-90', 'custom'],
+    default: 'net-30'
+  },
+  recurring: {
+    type: Boolean,
+    default: false
+  },
+  recurringInterval: {
+    type: String,
+    enum: ['weekly', 'monthly', 'quarterly', 'yearly'],
+    default: 'monthly'
   },
   status: {
     type: String,
@@ -129,8 +158,18 @@ invoiceSchema.pre('save', function(next) {
     this.subtotal = this.items.reduce((sum, item) => {
       return sum + (item.quantity * item.price);
     }, 0);
-    this.tax = this.subtotal * (this.taxRate || 0.1);
-    this.total = this.subtotal + this.tax;
+
+    // Apply discount
+    let discountAmount = 0;
+    if (this.discount > 0) {
+      discountAmount = this.discountType === 'percentage'
+        ? this.subtotal * (this.discount / 100)
+        : this.discount;
+    }
+
+    const afterDiscount = this.subtotal - discountAmount;
+    this.tax = afterDiscount * (this.taxRate || 0.1);
+    this.total = afterDiscount + this.tax;
   }
   
   this.updatedAt = Date.now();

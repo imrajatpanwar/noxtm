@@ -201,6 +201,10 @@
   color: #6b7280;
 }
 
+.notification-icon.mail {
+  color: #3b82f6;
+}
+
 .notification-text {
   flex: 1;
 }

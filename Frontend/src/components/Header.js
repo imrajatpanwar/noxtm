@@ -1,13 +1,49 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
 import NotificationCenter from './NotificationCenter';
+import { MessagingContext } from '../contexts/MessagingContext';
+import api from '../config/api';
 import './header.css';
+
+// Header avatar component
+const HeaderAvatar = ({ user, size = 32 }) => {
+  if (!user) return null;
+  const displayName = user.fullName || user.name || user.email?.split('@')[0] || 'User';
+  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
+  const colorIndex = displayName.charCodeAt(0) % colors.length;
+  const bgColor = colors[colorIndex];
+  const profileImg = user.profileImage || user.avatarUrl || user.photoUrl || user.avatar || user.profilePicture || user.image;
+
+  return (
+    <div
+      className="header-team-avatar"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.4,
+        background: profileImg ? 'transparent' : bgColor
+      }}
+      title={displayName}
+    >
+      {profileImg ? (
+        <img src={profileImg} alt={displayName} />
+      ) : (
+        <span>{initials}</span>
+      )}
+      <span className="header-team-active-dot" />
+    </div>
+  );
+};
 
 function Header({ user, onLogout }) {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [showTeamPopup, setShowTeamPopup] = useState(false);
   const dropdownRef = useRef(null);
+  const { onlineUsers } = useContext(MessagingContext);
 
   const handleLogin = () => {
     navigate('/login');
@@ -29,6 +65,26 @@ function Header({ user, onLogout }) {
     }, 50);
     setShowDropdown(false);
   };
+
+  // Fetch company users for active team display
+  useEffect(() => {
+    if (!user) return;
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get('/users/company-members');
+        const users = res.data.members || res.data || [];
+        setCompanyUsers(Array.isArray(users) ? users : []);
+      } catch (err) {
+        console.debug('[HEADER] Failed to fetch company users:', err.message);
+      }
+    };
+    fetchUsers();
+  }, [user]);
+
+  const activeUsers = companyUsers.filter(u => {
+    const userId = u._id || u.id;
+    return onlineUsers?.includes(userId?.toString());
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -87,6 +143,40 @@ function Header({ user, onLogout }) {
             </>
           ) : (
             <>
+              {activeUsers.length > 0 && (
+                <div className="header-active-team">
+                  <div className="header-active-team-avatars">
+                    {activeUsers.slice(0, 5).map((u, index) => (
+                      <div
+                        key={u._id || u.id}
+                        className="header-team-avatar-overlap"
+                        style={{ zIndex: 10 - index }}
+                      >
+                        <HeaderAvatar user={u} size={30} />
+                      </div>
+                    ))}
+                    {activeUsers.length > 5 && (
+                      <div
+                        className="header-team-more-overlap"
+                        onMouseEnter={() => setShowTeamPopup(true)}
+                        onMouseLeave={() => setShowTeamPopup(false)}
+                      >
+                        +{activeUsers.length - 5}
+                        {showTeamPopup && (
+                          <div className="header-team-popup">
+                            {activeUsers.slice(5).map(u => (
+                              <div key={u._id || u.id} className="header-team-popup-item">
+                                <HeaderAvatar user={u} size={24} />
+                                <span>{u.fullName || u.name || u.email}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <NotificationCenter />
               <div className="profile-container" ref={dropdownRef}>
                 <button
