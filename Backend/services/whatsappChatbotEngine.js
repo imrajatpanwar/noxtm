@@ -3,6 +3,7 @@ const WhatsAppMessage = require('../models/WhatsAppMessage');
 const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
 const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
 const Note = require('../models/Note');
+const Company = require('../models/Company');
 const axios = require('axios');
 
 // Provider endpoint configs
@@ -53,10 +54,22 @@ const PROVIDERS = {
 async function processIncomingMessage(accountId, companyId, contact, messageText, cooldowns) {
   if (!messageText || !messageText.trim()) return null;
 
-  // Fetch chatbot config for this company
-  const bot = await WhatsAppChatbot.findOne({ companyId, enabled: true });
+  // Fetch chatbot config and company AI settings in parallel
+  const [bot, company] = await Promise.all([
+    WhatsAppChatbot.findOne({ companyId, enabled: true }),
+    Company.findById(companyId).select('aiSettings').lean()
+  ]);
+
   if (!bot) return null;
-  if (!bot.apiKey) return null;
+
+  // Get AI config from company-level settings (new) or fall back to bot-level (legacy)
+  const ai = company?.aiSettings || {};
+  const provider = ai.provider || bot.provider || 'openrouter';
+  const apiKey = ai.apiKey || bot.apiKey || '';
+  const model = ai.model || bot.model || '';
+  const customEndpoint = ai.customEndpoint || bot.customEndpoint || '';
+
+  if (!apiKey) return null;
 
   // Check if this bot applies to this account
   if (bot.accountIds && bot.accountIds.length > 0) {
@@ -75,7 +88,7 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
   }
 
   try {
-    const aiResponse = await generateAIResponse(bot, accountId, companyId, contact, messageText);
+    const aiResponse = await generateAIResponse(bot, accountId, companyId, contact, messageText, { provider, apiKey, model, customEndpoint });
     if (aiResponse) {
       cooldowns.set(cooldownKey, Date.now());
       // Use atomic update to avoid race condition on concurrent messages
@@ -97,7 +110,7 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
 /**
  * Generate AI response using configured provider
  */
-async function generateAIResponse(bot, accountId, companyId, contact, messageText) {
+async function generateAIResponse(bot, accountId, companyId, contact, messageText, aiConfig) {
   // Parallel fetch: message history + notes (don't wait sequentially)
   let recentMessages = [];
   let notes = [];
@@ -145,10 +158,10 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
     systemPrompt += '\nUse the knowledge base above to answer questions when relevant.';
   }
 
-  if (bot.provider === 'anthropic') {
-    return callAnthropicAPI(bot, systemPrompt, conversationHistory);
+  if (aiConfig.provider === 'anthropic') {
+    return callAnthropicAPI(bot, systemPrompt, conversationHistory, aiConfig);
   } else {
-    return callOpenAICompatibleAPI(bot, systemPrompt, conversationHistory);
+    return callOpenAICompatibleAPI(bot, systemPrompt, conversationHistory, aiConfig);
   }
 }
 
@@ -163,23 +176,23 @@ const OPENROUTER_FALLBACKS = [
 /**
  * Call OpenAI-compatible API (OpenAI, OpenRouter, Groq, Together, Custom)
  */
-async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
-  const provider = PROVIDERS[bot.provider];
-  const url = bot.provider === 'custom' ? bot.customEndpoint : provider?.url;
-  const headers = bot.provider === 'custom'
-    ? { 'Authorization': `Bearer ${bot.apiKey}`, 'Content-Type': 'application/json' }
-    : provider?.headerFn(bot.apiKey);
+async function callOpenAICompatibleAPI(bot, systemPrompt, messages, aiConfig) {
+  const provider = PROVIDERS[aiConfig.provider];
+  const url = aiConfig.provider === 'custom' ? aiConfig.customEndpoint : provider?.url;
+  const headers = aiConfig.provider === 'custom'
+    ? { 'Authorization': `Bearer ${aiConfig.apiKey}`, 'Content-Type': 'application/json' }
+    : provider?.headerFn(aiConfig.apiKey);
 
   if (!url) {
-    console.warn('[WA Bot] No endpoint configured for provider:', bot.provider);
+    console.warn('[WA Bot] No endpoint configured for provider:', aiConfig.provider);
     return null;
   }
 
   // Build list of models to try: primary + fallbacks for OpenRouter
-  const modelsToTry = [bot.model];
-  if (bot.provider === 'openrouter') {
+  const modelsToTry = [aiConfig.model];
+  if (aiConfig.provider === 'openrouter') {
     for (const fb of OPENROUTER_FALLBACKS) {
-      if (fb !== bot.model) modelsToTry.push(fb);
+      if (fb !== aiConfig.model) modelsToTry.push(fb);
     }
   }
 
@@ -202,16 +215,16 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
 
       const content = response.data.choices?.[0]?.message?.content;
       if (content) {
-        if (modelId !== bot.model) {
-          console.log(`[WA Bot] Primary model ${bot.model} failed, succeeded with fallback: ${modelId}`);
+        if (modelId !== aiConfig.model) {
+          console.log(`[WA Bot] Primary model ${aiConfig.model} failed, succeeded with fallback: ${modelId}`);
         }
         return { type: 'text', content: content.trim(), ruleId: null };
       }
     } catch (err) {
       const errMsg = err.response?.data?.error?.message || err.message;
-      console.error(`[WA Bot] ${bot.provider} API error (model: ${modelId}):`, errMsg);
+      console.error(`[WA Bot] ${aiConfig.provider} API error (model: ${modelId}):`, errMsg);
       // If rate limited or model not found on OpenRouter, try next fallback
-      if (bot.provider === 'openrouter' && modelsToTry.length > 1) {
+      if (aiConfig.provider === 'openrouter' && modelsToTry.length > 1) {
         await new Promise(r => setTimeout(r, 500));
         continue;
       }
@@ -223,7 +236,7 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
           const retryContent = retryRes.data.choices?.[0]?.message?.content;
           if (retryContent) return { type: 'text', content: retryContent.trim(), ruleId: null };
         } catch (retryErr) {
-          console.error(`[WA Bot] ${bot.provider} retry failed:`, retryErr.response?.data?.error?.message || retryErr.message);
+          console.error(`[WA Bot] ${aiConfig.provider} retry failed:`, retryErr.response?.data?.error?.message || retryErr.message);
         }
       }
       break;
@@ -236,11 +249,11 @@ async function callOpenAICompatibleAPI(bot, systemPrompt, messages) {
 /**
  * Call Anthropic API (different request format)
  */
-async function callAnthropicAPI(bot, systemPrompt, messages) {
-  const headers = PROVIDERS.anthropic.headerFn(bot.apiKey);
+async function callAnthropicAPI(bot, systemPrompt, messages, aiConfig) {
+  const headers = PROVIDERS.anthropic.headerFn(aiConfig.apiKey);
 
   const payload = {
-    model: bot.model || 'claude-sonnet-4-20250514',
+    model: aiConfig.model || 'claude-sonnet-4-20250514',
     max_tokens: bot.maxTokens || 300,
     system: systemPrompt,
     messages: messages.map(m => ({

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid, FiCpu, FiSend } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -74,6 +74,66 @@ function WorkspaceSettings({ user, onLogout }) {
   const [attLoading, setAttLoading] = useState(false);
   const timerRef = useRef(null);
 
+  // AI Settings state
+  const [aiSettings, setAiSettings] = useState({ provider: 'openrouter', apiKey: '', model: 'deepseek/deepseek-chat-v3-0324:free', customEndpoint: '' });
+  const [aiDirty, setAiDirty] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiTestReply, setAiTestReply] = useState(null);
+  const [aiTestMsg, setAiTestMsg] = useState('');
+
+  const AI_PROVIDERS = [
+    { id: 'openrouter', name: 'OpenRouter', desc: 'Access 100+ models (Gemini, Claude, Llama, etc.)', placeholder: 'sk-or-...' },
+    { id: 'openai', name: 'OpenAI', desc: 'GPT-4o, GPT-4, GPT-3.5', placeholder: 'sk-...' },
+    { id: 'anthropic', name: 'Anthropic', desc: 'Claude 4, Claude 3.5 Sonnet', placeholder: 'sk-ant-...' },
+    { id: 'groq', name: 'Groq', desc: 'Ultra-fast Llama, Mixtral inference', placeholder: 'gsk_...' },
+    { id: 'together', name: 'Together AI', desc: 'Open-source models at scale', placeholder: 'tok_...' },
+    { id: 'custom', name: 'Custom Endpoint', desc: 'Any OpenAI-compatible API', placeholder: 'your-api-key' }
+  ];
+
+  const AI_MODELS = {
+    openrouter: [
+      { id: 'deepseek/deepseek-chat-v3-0324:free', label: 'DeepSeek V3.2', free: true },
+      { id: 'meta-llama/llama-4-maverick:free', label: 'Meta Llama 4 Maverick', free: true },
+      { id: 'meta-llama/llama-4-scout:free', label: 'Meta Llama 4 Scout', free: true },
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Meta Llama 3.3 70B Instruct', free: true },
+      { id: 'deepseek/deepseek-r1-zero:free', label: 'DeepSeek R1 Zero', free: true },
+      { id: 'qwen/qwen3-235b-a22b:free', label: 'Qwen3-235B-A22B', free: true },
+      { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
+      { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
+      { id: 'openai/gpt-4o', label: 'GPT-4o' },
+      { id: 'mistralai/mistral-large', label: 'Mistral Large' },
+    ],
+    openai: [
+      { id: 'gpt-4o', label: 'GPT-4o' },
+      { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+      { id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { id: 'gpt-4', label: 'GPT-4' },
+      { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+      { id: 'o1', label: 'o1' },
+      { id: 'o1-mini', label: 'o1 Mini' },
+    ],
+    anthropic: [
+      { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+      { id: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
+      { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+      { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+      { id: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+      { id: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+      { id: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+    ],
+    groq: [
+      { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+      { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+      { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+    ],
+    together: [
+      { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
+      { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1', label: 'Mixtral 8x7B' },
+    ],
+    custom: []
+  };
+
   const handleEditToggle = () => {
     if (isEditing) {
       setEditedWorkspace({ ...workspaceData });
@@ -93,6 +153,72 @@ function WorkspaceSettings({ user, onLogout }) {
       ...prev,
       [field]: value
     }));
+  };
+
+  // AI Settings functions
+  const fetchAiSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/company/ai-settings');
+      if (res.data.success && res.data.aiSettings) {
+        setAiSettings({
+          provider: res.data.aiSettings.provider || 'openrouter',
+          apiKey: res.data.aiSettings.apiKey || '',
+          model: res.data.aiSettings.model || 'deepseek/deepseek-chat-v3-0324:free',
+          customEndpoint: res.data.aiSettings.customEndpoint || ''
+        });
+      }
+    } catch (e) { /* ignore — fresh company */ }
+  }, []);
+
+  const handleAiChange = (field, value) => {
+    setAiSettings(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'provider') {
+        const models = AI_MODELS[value] || [];
+        next.model = models[0]?.id || '';
+      }
+      return next;
+    });
+    setAiDirty(true);
+  };
+
+  const handleAiSave = async () => {
+    if (!aiSettings.apiKey) {
+      toast.error('API key is required');
+      return;
+    }
+    setAiSaving(true);
+    try {
+      await api.put('/company/ai-settings', aiSettings);
+      toast.success('AI settings saved');
+      setAiDirty(false);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to save AI settings');
+    } finally {
+      setAiSaving(false);
+    }
+  };
+
+  const handleAiTest = async () => {
+    if (!aiSettings.apiKey) {
+      toast.error('Please add an API key first');
+      return;
+    }
+    setAiTesting(true);
+    setAiTestReply(null);
+    try {
+      // Save first if dirty
+      if (aiDirty) {
+        await api.put('/company/ai-settings', aiSettings);
+        setAiDirty(false);
+      }
+      const res = await api.post('/company/ai-settings/test', { message: aiTestMsg || undefined });
+      setAiTestReply(res.data.reply || 'No response');
+    } catch (e) {
+      setAiTestReply('Error: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setAiTesting(false);
+    }
   };
 
   // Fetch company members
@@ -516,6 +642,7 @@ function WorkspaceSettings({ user, onLogout }) {
       }
     } else if (activeTab === 'general') {
       fetchCompanyDetails();
+      fetchAiSettings();
       // Fetch billing info
       (async () => {
         try {
@@ -528,7 +655,7 @@ function WorkspaceSettings({ user, onLogout }) {
         } catch (e) { /* billing may not be available */ }
       })();
     }
-  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchTodayAttendance, user?.companyId]);
+  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchTodayAttendance, fetchAiSettings, user?.companyId]);
 
   const renderGeneralSettings = () => {
     const sub = companyDetails?.subscription || {};
@@ -770,6 +897,115 @@ function WorkspaceSettings({ user, onLogout }) {
             </div>
           </div>
         )}
+
+        {/* AI Provider Settings Card */}
+        <div className="wsg-card">
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon ai"><FiCpu size={18} /></div>
+              <div>
+                <h3>AI Provider</h3>
+                <span className="wsg-card-sub">Configure AI for WhatsApp Bot, AI Commenter & more</span>
+              </div>
+            </div>
+            {aiDirty && (
+              <button className="wsg-save-btn" onClick={handleAiSave} disabled={aiSaving}>
+                <FiSave size={14} /> {aiSaving ? 'Saving...' : 'Save'}
+              </button>
+            )}
+          </div>
+
+          {/* Provider Selection Grid */}
+          <div className="wsg-ai-provider-grid">
+            {AI_PROVIDERS.map(p => (
+              <div
+                key={p.id}
+                className={`wsg-ai-provider-card ${aiSettings.provider === p.id ? 'selected' : ''}`}
+                onClick={() => handleAiChange('provider', p.id)}
+              >
+                <div className="wsg-ai-provider-name">{p.name}</div>
+                <div className="wsg-ai-provider-desc">{p.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* API Key & Model Row */}
+          <div className="wsg-ai-fields">
+            <div className="wsg-ai-field" style={{ flex: 2 }}>
+              <label>API Key</label>
+              <input
+                type="password"
+                value={aiSettings.apiKey}
+                onChange={e => handleAiChange('apiKey', e.target.value)}
+                placeholder={AI_PROVIDERS.find(p => p.id === aiSettings.provider)?.placeholder || 'Enter API key'}
+              />
+            </div>
+            <div className="wsg-ai-field" style={{ flex: 1 }}>
+              <label>Model</label>
+              {(AI_MODELS[aiSettings.provider] || []).length > 0 ? (
+                <select value={aiSettings.model} onChange={e => handleAiChange('model', e.target.value)}>
+                  {(AI_MODELS[aiSettings.provider] || []).map(m => (
+                    <option key={m.id} value={m.id}>{m.label}{m.free ? ' ✦ Free' : ''}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={aiSettings.model}
+                  onChange={e => handleAiChange('model', e.target.value)}
+                  placeholder="model-name"
+                />
+              )}
+            </div>
+          </div>
+
+          {aiSettings.provider === 'custom' && (
+            <div className="wsg-ai-fields" style={{ marginTop: '8px' }}>
+              <div className="wsg-ai-field" style={{ flex: 1 }}>
+                <label>Custom Endpoint URL</label>
+                <input
+                  type="text"
+                  value={aiSettings.customEndpoint}
+                  onChange={e => handleAiChange('customEndpoint', e.target.value)}
+                  placeholder="https://your-api.com/v1/chat/completions"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Test API Section */}
+          <div className="wsg-ai-test-section">
+            <div className="wsg-ai-test-head">
+              <h4><FiSend size={14} /> Test API</h4>
+            </div>
+            <div className="wsg-ai-test-body">
+              <div className="wsg-ai-test-input-row">
+                <input
+                  type="text"
+                  value={aiTestMsg}
+                  onChange={e => setAiTestMsg(e.target.value)}
+                  placeholder="Type a test message (or leave empty for default)..."
+                  onKeyDown={e => e.key === 'Enter' && handleAiTest()}
+                  disabled={aiTesting}
+                />
+                <button className="wsg-ai-test-btn" onClick={handleAiTest} disabled={aiTesting || !aiSettings.apiKey}>
+                  {aiTesting ? 'Testing...' : 'Test'}
+                </button>
+              </div>
+              {aiTestReply && (
+                <div className={`wsg-ai-test-reply ${aiTestReply.startsWith('Error') ? 'error' : 'success'}`}>
+                  <span className="wsg-ai-test-reply-label">{aiTestReply.startsWith('Error') ? 'Error' : 'AI Response'}:</span>
+                  <p>{aiTestReply}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="wsg-ai-info">
+            <FiAlertCircle size={13} />
+            <span>This AI provider is used across all AI features: WhatsApp Bot, AI Commenter, and more.</span>
+          </div>
+        </div>
       </div>
     );
   };

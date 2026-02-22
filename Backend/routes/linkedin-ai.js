@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
+const axios = require('axios');
 const { authenticateToken } = require('../middleware/auth');
 const LinkedInAISettings = require('../models/LinkedInAISettings');
 const LinkedInAIComment = require('../models/LinkedInAIComment');
+const Company = require('../models/Company');
 
 const auth = authenticateToken;
 
@@ -52,12 +54,18 @@ router.post('/generate-comment', auth, async (req, res) => {
             });
         }
 
-        // Get Anthropic API key from environment
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
+        // Get company AI settings
+        const companyId = req.user.companyId;
+        const company = companyId ? await Company.findById(companyId).select('aiSettings').lean() : null;
+        const ai = company?.aiSettings || {};
+        const aiProvider = ai.provider || 'anthropic';
+        const aiKey = ai.apiKey || process.env.ANTHROPIC_API_KEY;
+        const aiModel = ai.model || 'claude-sonnet-4-20250514';
+
+        if (!aiKey) {
             return res.status(500).json({
                 success: false,
-                message: 'Anthropic API key not configured. Add ANTHROPIC_API_KEY to server environment.'
+                message: 'AI API key not configured. Go to Workspace Settings → General to set up your AI provider.'
             });
         }
 
@@ -93,16 +101,52 @@ Rules:
             ? `LinkedIn post by ${postAuthor}:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a comment:`
             : `LinkedIn post:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a comment:`;
 
-        // Call Anthropic API
-        const client = new Anthropic({ apiKey });
-        const message = await client.messages.create({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 300,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: userPrompt }]
-        });
+        let generatedComment;
 
-        const generatedComment = message.content[0].text.trim();
+        if (aiProvider === 'anthropic') {
+            // Anthropic API
+            const client = new Anthropic({ apiKey: aiKey });
+            const message = await client.messages.create({
+                model: aiModel,
+                max_tokens: 300,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }]
+            });
+            generatedComment = message.content[0].text.trim();
+        } else {
+            // OpenAI-compatible API (OpenRouter, OpenAI, Groq, Together, Custom)
+            const providerUrls = {
+                openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+                openai: 'https://api.openai.com/v1/chat/completions',
+                groq: 'https://api.groq.com/openai/v1/chat/completions',
+                together: 'https://api.together.xyz/v1/chat/completions',
+                custom: ai.customEndpoint
+            };
+            const url = providerUrls[aiProvider];
+            if (!url) throw new Error('Invalid AI provider: ' + aiProvider);
+
+            const headers = { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' };
+            if (aiProvider === 'openrouter') {
+                headers['HTTP-Referer'] = 'https://noxtm.com';
+                headers['X-Title'] = 'NOXTM AI Commenter';
+            }
+
+            const response = await axios.post(url, {
+                model: aiModel,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 300,
+                temperature: 0.7
+            }, { headers, timeout: 15000 });
+
+            generatedComment = (response.data?.choices?.[0]?.message?.content || '').trim();
+        }
+
+        if (!generatedComment) {
+            return res.status(500).json({ success: false, message: 'No response from AI' });
+        }
 
         // Save to history
         await LinkedInAIComment.create({

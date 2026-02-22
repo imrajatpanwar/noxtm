@@ -2504,6 +2504,7 @@ app.get('/api/company/details', authenticateToken, async (req, res) => {
             : null
         } : null,
         emailSettings: company.emailSettings || {},
+        aiSettings: company.aiSettings || {},
         createdAt: company.createdAt
       }
     });
@@ -2513,6 +2514,123 @@ app.get('/api/company/details', authenticateToken, async (req, res) => {
       message: 'Server error while fetching company details',
       error: error.message
     });
+  }
+});
+
+// =====================================================
+// COMPANY AI SETTINGS
+// =====================================================
+
+// GET /api/company/ai-settings — Get company AI provider config
+app.get('/api/company/ai-settings', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    if (!user || !user.companyId) {
+      return res.status(404).json({ success: false, message: 'No company found' });
+    }
+    const company = await Company.findById(user.companyId).select('aiSettings').lean();
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'Company not found' });
+    }
+    res.json({ success: true, aiSettings: company.aiSettings || {} });
+  } catch (error) {
+    console.error('Get AI settings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/company/ai-settings — Update company AI provider config
+app.put('/api/company/ai-settings', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    if (!user || !user.companyId) {
+      return res.status(404).json({ success: false, message: 'No company found' });
+    }
+
+    const { provider, apiKey, model, customEndpoint } = req.body;
+    const update = {};
+    if (provider !== undefined) update['aiSettings.provider'] = provider;
+    if (apiKey !== undefined) update['aiSettings.apiKey'] = apiKey;
+    if (model !== undefined) update['aiSettings.model'] = model;
+    if (customEndpoint !== undefined) update['aiSettings.customEndpoint'] = customEndpoint;
+
+    const company = await Company.findByIdAndUpdate(
+      user.companyId,
+      { $set: update },
+      { new: true }
+    ).select('aiSettings');
+
+    res.json({ success: true, aiSettings: company.aiSettings });
+  } catch (error) {
+    console.error('Update AI settings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/company/ai-settings/test — Test AI API connection
+app.post('/api/company/ai-settings/test', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+    if (!user || !user.companyId) {
+      return res.status(404).json({ success: false, message: 'No company found' });
+    }
+
+    const company = await Company.findById(user.companyId).select('aiSettings').lean();
+    const ai = company?.aiSettings;
+    if (!ai || !ai.apiKey) {
+      return res.status(400).json({ success: false, message: 'API key not configured' });
+    }
+
+    const axios = require('axios');
+    const { message } = req.body;
+    const testMessage = message || 'Hello, this is a test. Reply with "API connection successful!" in one sentence.';
+
+    // Provider configs
+    const providerConfigs = {
+      openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', headers: { 'Authorization': `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://noxtm.com', 'X-Title': 'NOXTM' } },
+      openai: { url: 'https://api.openai.com/v1/chat/completions', headers: { 'Authorization': `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' } },
+      groq: { url: 'https://api.groq.com/openai/v1/chat/completions', headers: { 'Authorization': `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' } },
+      together: { url: 'https://api.together.xyz/v1/chat/completions', headers: { 'Authorization': `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' } },
+      custom: { url: ai.customEndpoint, headers: { 'Authorization': `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' } }
+    };
+
+    if (ai.provider === 'anthropic') {
+      // Anthropic has different API format
+      const Anthropic = require('@anthropic-ai/sdk');
+      const client = new Anthropic({ apiKey: ai.apiKey });
+      const response = await client.messages.create({
+        model: ai.model || 'claude-3-haiku-20240307',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: testMessage }]
+      });
+      const reply = response.content?.[0]?.text || 'No response';
+      return res.json({ success: true, reply, model: ai.model, provider: ai.provider });
+    }
+
+    const config = providerConfigs[ai.provider];
+    if (!config || !config.url) {
+      return res.status(400).json({ success: false, message: 'Invalid provider or endpoint' });
+    }
+
+    const response = await axios.post(config.url, {
+      model: ai.model,
+      messages: [
+        { role: 'system', content: 'You are a test assistant. Be very brief.' },
+        { role: 'user', content: testMessage }
+      ],
+      max_tokens: 100,
+      temperature: 0.5
+    }, { headers: config.headers, timeout: 15000 });
+
+    const reply = response.data?.choices?.[0]?.message?.content || 'No response';
+    res.json({ success: true, reply, model: ai.model, provider: ai.provider });
+  } catch (error) {
+    console.error('Test AI settings error:', error.response?.data || error.message);
+    const errMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+    res.status(500).json({ success: false, message: errMsg });
   }
 });
 

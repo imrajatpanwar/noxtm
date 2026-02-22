@@ -1550,58 +1550,6 @@ function CampaignsTab() {
 // =====================================================
 // CHATBOT TAB — AI Bot Settings
 // =====================================================
-const PROVIDERS = [
-  { id: 'openrouter', name: 'OpenRouter', desc: 'Access 100+ models (Gemini, Claude, Llama, etc.)', placeholder: 'sk-or-...' },
-  { id: 'openai', name: 'OpenAI', desc: 'GPT-4o, GPT-4, GPT-3.5', placeholder: 'sk-...' },
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude 4, Claude 3.5 Sonnet', placeholder: 'sk-ant-...' },
-  { id: 'groq', name: 'Groq', desc: 'Ultra-fast Llama, Mixtral inference', placeholder: 'gsk_...' },
-  { id: 'together', name: 'Together AI', desc: 'Open-source models at scale', placeholder: 'tok_...' },
-  { id: 'custom', name: 'Custom Endpoint', desc: 'Any OpenAI-compatible API', placeholder: 'your-api-key' }
-];
-
-const DEFAULT_MODELS = {
-  openrouter: [
-    { id: 'deepseek/deepseek-chat-v3-0324:free', label: 'DeepSeek V3.2', free: true },
-    { id: 'meta-llama/llama-4-maverick:free', label: 'Meta Llama 4 Maverick', free: true },
-    { id: 'meta-llama/llama-4-scout:free', label: 'Meta Llama 4 Scout', free: true },
-    { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Meta Llama 3.3 70B Instruct', free: true },
-    { id: 'deepseek/deepseek-r1-zero:free', label: 'DeepSeek R1 Zero', free: true },
-    { id: 'qwen/qwen3-235b-a22b:free', label: 'Qwen3-235B-A22B', free: true },
-    { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
-    { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
-    { id: 'openai/gpt-4o', label: 'GPT-4o' },
-    { id: 'mistralai/mistral-large', label: 'Mistral Large' },
-  ],
-  openai: [
-    { id: 'gpt-4o', label: 'GPT-4o' },
-    { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    { id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { id: 'gpt-4', label: 'GPT-4' },
-    { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    { id: 'o1', label: 'o1' },
-    { id: 'o1-mini', label: 'o1 Mini' },
-    { id: 'o1-preview', label: 'o1 Preview' },
-  ],
-  anthropic: [
-    { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-    { id: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-    { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-    { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-    { id: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
-    { id: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-    { id: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
-  ],
-  groq: [
-    { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-    { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-    { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
-  ],
-  together: [
-    { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
-    { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1', label: 'Mixtral 8x7B' },
-  ],
-  custom: []
-};
 
 function ChatbotTab() {
   const { chatbot, fetchChatbot, updateChatbot, testChatbot, accounts } = useWhatsApp();
@@ -1610,10 +1558,6 @@ function ChatbotTab() {
     botName: 'botgit',
     botPersonality: 'You are a helpful, professional business assistant. Be concise, friendly, and accurate.',
     enabled: false,
-    provider: 'openrouter',
-    apiKey: '',
-    model: 'deepseek/deepseek-chat-v3-0324:free',
-    customEndpoint: '',
     maxTokens: 300,
     temperature: 0.7,
     cooldownMinutes: 1,
@@ -1635,10 +1579,6 @@ function ChatbotTab() {
         botName: chatbot.botName || 'botgit',
         botPersonality: chatbot.botPersonality || '',
         enabled: chatbot.enabled || false,
-        provider: chatbot.provider || 'openrouter',
-        apiKey: chatbot.apiKey || '',
-        model: chatbot.model || 'deepseek/deepseek-chat-v3-0324:free',
-        customEndpoint: chatbot.customEndpoint || '',
         maxTokens: chatbot.maxTokens || 300,
         temperature: chatbot.temperature || 0.7,
         notesAccess: chatbot.notesAccess || false,
@@ -1651,23 +1591,11 @@ function ChatbotTab() {
   }, [chatbot]);
 
   const updateField = (key, val) => {
-    setForm(prev => {
-      const next = { ...prev, [key]: val };
-      // auto-set default model when provider changes
-      if (key === 'provider') {
-        const models = DEFAULT_MODELS[val] || [];
-        next.model = models[0]?.id || models[0] || '';
-      }
-      return next;
-    });
+    setForm(prev => ({ ...prev, [key]: val }));
     setDirty(true);
   };
 
   const handleSave = async () => {
-    if (!form.apiKey && form.enabled) {
-      toast.error('API key is required to enable the bot');
-      return;
-    }
     setSaving(true);
     try {
       await updateChatbot(form);
@@ -1693,9 +1621,6 @@ function ChatbotTab() {
       setTesting(false);
     }
   };
-
-  const selectedProvider = PROVIDERS.find(p => p.id === form.provider) || PROVIDERS[0];
-  const modelOptions = DEFAULT_MODELS[form.provider] || [];
 
   return (
     <div className="wa-chatbot">
@@ -1780,50 +1705,13 @@ function ChatbotTab() {
           </div>
         </div>
 
-        {/* Provider Section */}
+        {/* AI Provider Notice */}
         <div className="wa-bot-section">
           <div className="wa-bot-section-title"><FiSettings size={14} /> AI Provider</div>
-          <div className="wa-provider-grid">
-            {PROVIDERS.map(p => (
-              <div key={p.id}
-                className={`wa-provider-card ${form.provider === p.id ? 'selected' : ''}`}
-                onClick={() => updateField('provider', p.id)}>
-                <div className="wa-provider-name">{p.name}</div>
-                <div className="wa-provider-desc">{p.desc}</div>
-              </div>
-            ))}
+          <div style={{ padding: '16px', background: '#f5f3ff', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#6366f1' }}>
+            <FiAlertCircle size={16} />
+            <span>AI Provider is configured in <strong>Workspace Settings → General</strong>. The same provider & model is used for WhatsApp Bot, AI Commenter, and all AI features.</span>
           </div>
-
-          <div className="wa-form-row" style={{ marginTop: '16px' }}>
-            <div className="wa-form-group" style={{ flex: 2 }}>
-              <label>API Key</label>
-              <input type="password" value={form.apiKey} onChange={e => updateField('apiKey', e.target.value)}
-                placeholder={selectedProvider.placeholder} />
-            </div>
-            <div className="wa-form-group" style={{ flex: 1 }}>
-              <label>Model</label>
-              {modelOptions.length > 0 ? (
-                <select value={form.model} onChange={e => updateField('model', e.target.value)}>
-                  {modelOptions.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}{m.free ? ' ✦ Free' : ''}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input type="text" value={form.model} onChange={e => updateField('model', e.target.value)}
-                  placeholder="model-name" />
-              )}
-            </div>
-          </div>
-
-          {form.provider === 'custom' && (
-            <div className="wa-form-group">
-              <label>Custom Endpoint URL</label>
-              <input type="text" value={form.customEndpoint} onChange={e => updateField('customEndpoint', e.target.value)}
-                placeholder="https://your-api.com/v1/chat/completions" />
-            </div>
-          )}
         </div>
 
         {/* Knowledge & Settings Section */}

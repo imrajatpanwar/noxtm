@@ -85,6 +85,12 @@ const companySchema = new mongoose.Schema({
     senderEmailAccountId: { type: String, default: '' },
     templateId: { type: String, default: '' }
   },
+  aiSettings: {
+    provider: { type: String, enum: ['openrouter', 'openai', 'anthropic', 'groq', 'together', 'custom'], default: 'openrouter' },
+    apiKey: { type: String, default: '' },
+    model: { type: String, default: 'deepseek/deepseek-chat-v3-0324:free' },
+    customEndpoint: { type: String, default: '' }
+  },
   billing: {
     emailCredits: { type: Number, default: 0 },
     totalPurchased: { type: Number, default: 0 },
