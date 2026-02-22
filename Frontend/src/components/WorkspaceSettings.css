@@ -3794,3 +3794,215 @@ input:checked+.toggle-slider:before {
     justify-content: center;
   }
 }
+
+/* =====================================================
+   AI PROVIDER SETTINGS
+   ===================================================== */
+.wsg-card-icon.ai {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+}
+
+.wsg-ai-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  padding: 0 20px;
+  margin: 16px 0;
+}
+
+.wsg-ai-provider-card {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.wsg-ai-provider-card:hover {
+  border-color: #a5b4fc;
+  background: #f5f3ff;
+}
+
+.wsg-ai-provider-card.selected {
+  border-color: #6366f1;
+  background: #f5f3ff;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+.wsg-ai-provider-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.wsg-ai-provider-desc {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.wsg-ai-fields {
+  display: flex;
+  gap: 14px;
+  padding: 0 20px;
+  margin-top: 12px;
+}
+
+.wsg-ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wsg-ai-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wsg-ai-field input,
+.wsg-ai-field select {
+  padding: 9px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.wsg-ai-field input:focus,
+.wsg-ai-field select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+/* Test API Section */
+.wsg-ai-test-section {
+  margin: 18px 20px 0;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wsg-ai-test-head {
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.wsg-ai-test-head h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.wsg-ai-test-body {
+  padding: 14px;
+}
+
+.wsg-ai-test-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.wsg-ai-test-input-row input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.wsg-ai-test-input-row input:focus {
+  border-color: #6366f1;
+}
+
+.wsg-ai-test-btn {
+  padding: 9px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.wsg-ai-test-btn:hover {
+  opacity: 0.9;
+}
+
+.wsg-ai-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wsg-ai-test-reply {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wsg-ai-test-reply.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.wsg-ai-test-reply.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.wsg-ai-test-reply-label {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.wsg-ai-test-reply p {
+  margin: 0;
+}
+
+.wsg-ai-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  margin-top: 14px;
+  background: #f5f3ff;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 12px 12px;
+  font-size: 12px;
+  color: #6366f1;
+}
+
+@media (max-width: 900px) {
+  .wsg-ai-provider-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .wsg-ai-fields {
+    flex-direction: column;
+  }
+}

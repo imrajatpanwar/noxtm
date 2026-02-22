@@ -828,8 +828,16 @@ function initializeRoutes({ io }) {
       if (!message) return res.status(400).json({ success: false, message: 'message required' });
 
       const bot = await WhatsAppChatbot.findOne({ companyId: req.user.companyId });
-      if (!bot || !bot.apiKey) {
-        return res.status(400).json({ success: false, message: 'Chatbot not configured or API key missing' });
+      if (!bot) {
+        return res.status(400).json({ success: false, message: 'Chatbot not configured' });
+      }
+
+      // Check company-level AI settings for API key
+      const Company = require('../models/Company');
+      const company = await Company.findById(req.user.companyId).select('aiSettings').lean();
+      const aiKey = company?.aiSettings?.apiKey || bot.apiKey;
+      if (!aiKey) {
+        return res.status(400).json({ success: false, message: 'AI API key not configured. Go to Workspace Settings → General to set up your AI provider.' });
       }
 
       const whatsappChatbotEngine = require('../services/whatsappChatbotEngine');
