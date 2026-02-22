@@ -519,9 +519,8 @@
   border: 1px solid #f0f0f0;
   border-radius: 12px;
   overflow: hidden;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 160px);
   min-height: 520px;
-  max-height: 800px;
   background: #fff;
 }
 
@@ -750,6 +749,49 @@
 .wa-chat-phone {
   font-size: 11px;
   color: #9ca3af;
+}
+
+/* Bot typing indicator in header */
+.wa-bot-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #25d366;
+  font-weight: 500;
+  animation: wa-typing-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes wa-typing-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.wa-typing-dots {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.wa-typing-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #25d366;
+  animation: wa-header-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.wa-typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.wa-typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes wa-header-dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
 }
 
 .wa-chat-tags {

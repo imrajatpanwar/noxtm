@@ -333,8 +333,8 @@ function Dashboard({ user, onLogout }) {
       {/* Mail Poller - silent background component for email notifications */}
       <MailPoller />
 
-      {/* Chat Widget - hide when Messages section is open */}
-      {activeSection !== 'message' && (
+      {/* Chat Widget - hide when Messages or WhatsApp section is open */}
+      {activeSection !== 'message' && activeSection !== 'whatsapp-marketing' && (
         <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
       )}
 
