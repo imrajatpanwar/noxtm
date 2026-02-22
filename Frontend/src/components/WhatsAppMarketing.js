@@ -1606,14 +1606,11 @@ function ChatbotTab() {
         <div className="wa-bot-section">
           <div className="wa-bot-section-title"><FiFileText size={14} /> Knowledge & Settings</div>
 
-          <div className="wa-bot-toggle-row" onClick={() => updateField('notesAccess', !form.notesAccess)}>
+          <div className="wa-bot-toggle-row" style={{ cursor: 'default' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: '13px' }}>Notes Access</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>Allow bot to search your Notes as a knowledge base for answering questions</div>
+              <div style={{ fontWeight: 600, fontSize: '13px' }}>📝 Notes as Knowledge Base</div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Assign <strong>botgit</strong> to specific Notes to let the bot use them as context. Go to Notes → Assign to → select botgit.</div>
             </div>
-            <button className={`wa-toggle ${form.notesAccess ? 'active' : ''}`}>
-              <span className="wa-toggle-knob" />
-            </button>
           </div>
 
           <div className="wa-form-row" style={{ marginTop: '16px' }}>

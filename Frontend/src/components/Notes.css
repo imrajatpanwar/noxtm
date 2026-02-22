@@ -983,6 +983,45 @@
   color: #999;
 }
 
+/* --- Botgit AI Identity --- */
+.botgit-badge {
+  border-color: #25d366 !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+
+.botgit-avatar {
+  background: #dcfce7 !important;
+  border: 1.5px solid #25d366 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.botgit-option {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.botgit-option .notes-assign-name {
+  color: #166534;
+  font-weight: 600;
+}
+
+.botgit-option .notes-assign-email {
+  color: #25d366;
+}
+
+/* Botgit avatar on note cards */
+.botgit-card-avatar {
+  background: #dcfce7 !important;
+  border: 2px solid #25d366 !important;
+  color: #166534 !important;
+  font-size: 11px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* --- Modal Footer --- */
 .notes-modal-footer {
   display: flex;

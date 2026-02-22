@@ -197,40 +197,56 @@ router.put('/:id', async (req, res) => {
     if (archived !== undefined) update.archived = archived;
     if (tags !== undefined) update.tags = Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean).slice(0, 10) : [];
 
-    // Handle assignment - support multiple users
+    // Handle assignment - support multiple users + botgit
     if (assignedTo !== undefined) {
       if (assignedTo && (Array.isArray(assignedTo) ? assignedTo.length > 0 : assignedTo)) {
-        const assignedUserIds = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
+        const rawIds = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
         
-        // Verify all target users exist and are in same company
-        const currentUser = await User.findById(userId).select('companyId').lean();
-        const targetUsers = await User.find({ _id: { $in: assignedUserIds } }).select('companyId').lean();
+        // Separate botgit from real user IDs
+        const hasBotgit = rawIds.includes('botgit');
+        const assignedUserIds = rawIds.filter(id => id !== 'botgit');
         
-        if (targetUsers.length !== assignedUserIds.length) {
-          return res.status(400).json({ success: false, message: 'One or more target users not found' });
-        }
-        
-        // Verify all users are in same company
-        if (currentUser.companyId) {
-          const invalidUsers = targetUsers.filter(u => 
-            !u.companyId || u.companyId.toString() !== currentUser.companyId.toString()
-          );
-          if (invalidUsers.length > 0) {
-            return res.status(403).json({ success: false, message: 'Can only assign to users in your company' });
-          }
-        }
+        // Set botgit access flag
+        update.botgitAccess = hasBotgit;
 
-        update.assignedTo = assignedUserIds;
-        update.assignedBy = userId;
-        update.assignmentStatus = 'pending';
-        update.assignedAt = new Date();
-        
-        // Create assignments array for tracking individual responses
-        update.assignments = assignedUserIds.map(uid => ({
-          userId: uid,
-          status: 'pending',
-          assignedAt: new Date()
-        }));
+        if (assignedUserIds.length > 0) {
+          // Verify all target users exist and are in same company
+          const currentUser = await User.findById(userId).select('companyId').lean();
+          const targetUsers = await User.find({ _id: { $in: assignedUserIds } }).select('companyId').lean();
+          
+          if (targetUsers.length !== assignedUserIds.length) {
+            return res.status(400).json({ success: false, message: 'One or more target users not found' });
+          }
+          
+          // Verify all users are in same company
+          if (currentUser.companyId) {
+            const invalidUsers = targetUsers.filter(u => 
+              !u.companyId || u.companyId.toString() !== currentUser.companyId.toString()
+            );
+            if (invalidUsers.length > 0) {
+              return res.status(403).json({ success: false, message: 'Can only assign to users in your company' });
+            }
+          }
+
+          update.assignedTo = assignedUserIds;
+          update.assignedBy = userId;
+          update.assignmentStatus = 'pending';
+          update.assignedAt = new Date();
+          
+          // Create assignments array for tracking individual responses
+          update.assignments = assignedUserIds.map(uid => ({
+            userId: uid,
+            status: 'pending',
+            assignedAt: new Date()
+          }));
+        } else {
+          // Only botgit assigned, no real users
+          update.assignedTo = [];
+          update.assignedBy = hasBotgit ? userId : null;
+          update.assignmentStatus = hasBotgit ? 'accepted' : 'none';
+          update.assignedAt = hasBotgit ? new Date() : null;
+          update.assignments = [];
+        }
       } else {
         // Remove assignment
         update.assignedTo = [];
@@ -238,6 +254,7 @@ router.put('/:id', async (req, res) => {
         update.assignmentStatus = 'none';
         update.assignedAt = null;
         update.assignments = [];
+        update.botgitAccess = false;
       }
     }
 
