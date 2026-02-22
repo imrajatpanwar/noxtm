@@ -490,6 +490,58 @@ export function WhatsAppProvider({ children, socket }) {
     }
   }, []);
 
+  // ===== KEYPOINT METHODS =====
+  const fetchKeypoints = useCallback(async (contactId) => {
+    try {
+      const res = await api.get(`/whatsapp/keypoints/${contactId}`);
+      return res.data;
+    } catch (e) {
+      console.error('Fetch keypoints error:', e);
+      return { success: false, data: [] };
+    }
+  }, []);
+
+  const addKeypoint = useCallback(async (data) => {
+    try {
+      const res = await api.post('/whatsapp/keypoints', data);
+      return res.data;
+    } catch (e) {
+      console.error('Add keypoint error:', e);
+      throw e;
+    }
+  }, []);
+
+  const deleteKeypoint = useCallback(async (id) => {
+    try {
+      const res = await api.delete(`/whatsapp/keypoints/${id}`);
+      return res.data;
+    } catch (e) {
+      console.error('Delete keypoint error:', e);
+      throw e;
+    }
+  }, []);
+
+  // ===== SCHEDULED MESSAGE METHODS =====
+  const fetchScheduledMessages = useCallback(async (params = {}) => {
+    try {
+      const res = await api.get('/whatsapp/scheduled-messages', { params });
+      return res.data;
+    } catch (e) {
+      console.error('Fetch scheduled messages error:', e);
+      return { success: false, data: [] };
+    }
+  }, []);
+
+  const cancelScheduledMessage = useCallback(async (id) => {
+    try {
+      const res = await api.put(`/whatsapp/scheduled-messages/${id}/cancel`);
+      return res.data;
+    } catch (e) {
+      console.error('Cancel scheduled message error:', e);
+      throw e;
+    }
+  }, []);
+
   const value = {
     // State
     accounts,
@@ -547,6 +599,15 @@ export function WhatsAppProvider({ children, socket }) {
     fetchChatbot,
     updateChatbot,
     testChatbot,
+
+    // Keypoint methods
+    fetchKeypoints,
+    addKeypoint,
+    deleteKeypoint,
+
+    // Scheduled message methods
+    fetchScheduledMessages,
+    cancelScheduledMessage,
 
     // Dashboard
     fetchDashboard,

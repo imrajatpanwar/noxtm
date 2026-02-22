@@ -418,6 +418,14 @@ async function handleIncomingMessage(accountId, companyId, msg) {
   if (chatbotEngine && content) {
     setImmediate(async () => {
       try {
+        // Mark message as read (blue tick) before replying
+        const session = sessions.get(accountId);
+        if (session?.socket) {
+          try {
+            await session.socket.readMessages([msg.key]);
+          } catch (e) { /* best effort */ }
+        }
+
         const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
         if (response) {
           // Split long replies into multiple messages if maxWordsPerMsg is set
@@ -433,6 +441,14 @@ async function handleIncomingMessage(accountId, companyId, msg) {
             if (i < chunks.length - 1) {
               await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
             }
+          }
+
+          // Fire-and-forget: extract keypoints + detect scheduling
+          if (chatbotEngine.extractKeypointsAndSchedule) {
+            chatbotEngine.extractKeypointsAndSchedule(
+              await require('../models/WhatsAppChatbot').findOne({ companyId, enabled: true }),
+              accountId, companyId, contact, content, response.content
+            ).catch(e => console.error('[WA] Keypoint extraction error:', e.message));
           }
         }
       } catch (err) {
@@ -464,13 +480,19 @@ async function sendMessage(accountId, jid, content, options = {}) {
     throw new Error('Daily message limit reached');
   }
 
-  // Simulate typing (shorter for automated bot replies, normal for manual)
+  // Simulate typing based on WPM (65-75 WPM for bot, 1-3s for manual)
   if (account.settings.typingSimulation) {
     try {
       await session.socket.sendPresenceUpdate('composing', jid);
-      const typingDelay = options.isAutomated
-        ? 500 + Math.random() * 1000   // 0.5-1.5s for bot
-        : 1000 + Math.random() * 2000; // 1-3s for manual
+      let typingDelay;
+      if (options.isAutomated) {
+        // Calculate realistic typing time: 65-75 WPM
+        const wordCount = (content || '').split(/\s+/).length;
+        const wpm = 65 + Math.random() * 10; // 65-75 WPM
+        typingDelay = Math.max(600, Math.min(8000, (wordCount / wpm) * 60 * 1000));
+      } else {
+        typingDelay = 1000 + Math.random() * 2000; // 1-3s for manual
+      }
       await new Promise(r => setTimeout(r, typingDelay));
       await session.socket.sendPresenceUpdate('paused', jid);
     } catch (e) {

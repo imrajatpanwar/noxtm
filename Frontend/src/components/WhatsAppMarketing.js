@@ -8,7 +8,8 @@ import {
   FiTrash2, FiRefreshCw, FiWifi, FiWifiOff, FiStar, FiX, FiClock, FiEdit2,
   FiPlay, FiPause, FiCheck, FiCheckCircle, FiAlertCircle, FiTrendingUp,
   FiBarChart2, FiFile, FiTag, FiHash, FiActivity,
-  FiFileText, FiExternalLink, FiPhone, FiEye, FiLayout, FiImage, FiList
+  FiFileText, FiExternalLink, FiPhone, FiEye, FiLayout, FiImage, FiList,
+  FiBookmark, FiCalendar, FiXCircle
 } from 'react-icons/fi';
 import './WhatsAppMarketing.css';
 
@@ -381,12 +382,18 @@ function AccountsTab() {
 // CHATS TAB
 // =====================================================
 function ChatsTab() {
-  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage } = useWhatsApp();
+  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage, fetchKeypoints, addKeypoint, deleteKeypoint, fetchScheduledMessages, cancelScheduledMessage } = useWhatsApp();
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sending, setSending] = useState(false);
+  const [showKeypoints, setShowKeypoints] = useState(false);
+  const [keypoints, setKeypoints] = useState([]);
+  const [scheduledMsgs, setScheduledMsgs] = useState([]);
+  const [keypointInput, setKeypointInput] = useState('');
+  const [keypointCategory, setKeypointCategory] = useState('general');
+  const [keypointTab, setKeypointTab] = useState('keypoints'); // 'keypoints' | 'scheduled'
   const messagesEndRef = useRef(null);
 
   const connectedAccounts = accounts.filter(a => a.status === 'connected');
@@ -411,6 +418,55 @@ function ChatsTab() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedContact]);
+
+  // Load keypoints + scheduled msgs when contact or panel changes
+  useEffect(() => {
+    if (selectedContact && showKeypoints) {
+      fetchKeypoints(selectedContact._id).then(res => {
+        if (res.success) setKeypoints(res.data);
+      });
+      fetchScheduledMessages({ contactId: selectedContact._id }).then(res => {
+        if (res.success) setScheduledMsgs(res.data);
+      });
+    }
+  }, [selectedContact, showKeypoints, fetchKeypoints, fetchScheduledMessages]);
+
+  const handleAddKeypoint = async () => {
+    if (!keypointInput.trim() || !selectedContact) return;
+    try {
+      const res = await addKeypoint({
+        contactId: selectedContact._id,
+        accountId: selectedAccount,
+        text: keypointInput.trim(),
+        category: keypointCategory
+      });
+      if (res.success) {
+        setKeypoints(prev => [res.data, ...prev]);
+        setKeypointInput('');
+      }
+    } catch (e) {
+      toast.error('Failed to add keypoint');
+    }
+  };
+
+  const handleDeleteKeypoint = async (id) => {
+    try {
+      await deleteKeypoint(id);
+      setKeypoints(prev => prev.filter(kp => kp._id !== id));
+    } catch (e) {
+      toast.error('Failed to delete keypoint');
+    }
+  };
+
+  const handleCancelScheduled = async (id) => {
+    try {
+      await cancelScheduledMessage(id);
+      setScheduledMsgs(prev => prev.map(m => m._id === id ? { ...m, status: 'cancelled' } : m));
+      toast.success('Scheduled message cancelled');
+    } catch (e) {
+      toast.error('Failed to cancel');
+    }
+  };
 
   const handleSend = async () => {
     if (!messageInput.trim() || !selectedContact || !selectedAccount || sending) return;
@@ -520,6 +576,10 @@ function ChatsTab() {
                   ))}
                 </div>
               )}
+              <button className={`wa-keypoints-toggle ${showKeypoints ? 'active' : ''}`}
+                onClick={() => setShowKeypoints(!showKeypoints)} title="Keypoints & Scheduled">
+                <FiBookmark size={16} />
+              </button>
             </div>
 
             <div className="wa-messages-area">
@@ -571,6 +631,101 @@ function ChatsTab() {
                 <FiSend size={16} />
               </button>
             </div>
+
+            {/* Keypoints Panel */}
+            {showKeypoints && (
+              <div className="wa-keypoints-panel">
+                <div className="wa-keypoints-panel-header">
+                  <div className="wa-keypoints-tabs">
+                    <button className={keypointTab === 'keypoints' ? 'active' : ''}
+                      onClick={() => setKeypointTab('keypoints')}>
+                      <FiBookmark size={12} /> Keypoints ({keypoints.length})
+                    </button>
+                    <button className={keypointTab === 'scheduled' ? 'active' : ''}
+                      onClick={() => setKeypointTab('scheduled')}>
+                      <FiCalendar size={12} /> Scheduled ({scheduledMsgs.length})
+                    </button>
+                  </div>
+                  <button className="wa-keypoints-close" onClick={() => setShowKeypoints(false)}>
+                    <FiX size={14} />
+                  </button>
+                </div>
+
+                {keypointTab === 'keypoints' && (
+                  <div className="wa-keypoints-content">
+                    <div className="wa-keypoint-add">
+                      <input placeholder="Add keypoint..."
+                        value={keypointInput} onChange={e => setKeypointInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleAddKeypoint()} />
+                      <select value={keypointCategory} onChange={e => setKeypointCategory(e.target.value)}>
+                        <option value="general">General</option>
+                        <option value="info">Info</option>
+                        <option value="interest">Interest</option>
+                        <option value="request">Request</option>
+                        <option value="issue">Issue</option>
+                        <option value="followup">Follow-up</option>
+                      </select>
+                      <button onClick={handleAddKeypoint} disabled={!keypointInput.trim()}>
+                        <FiPlus size={12} />
+                      </button>
+                    </div>
+                    <div className="wa-keypoints-list">
+                      {keypoints.length === 0 ? (
+                        <div className="wa-empty-sm"><p>No keypoints yet</p></div>
+                      ) : (
+                        keypoints.map(kp => (
+                          <div key={kp._id} className={`wa-keypoint-item ${kp.category}`}>
+                            <div className="wa-keypoint-top">
+                              <span className={`wa-kp-cat ${kp.category}`}>{kp.category}</span>
+                              <span className="wa-kp-source">{kp.source === 'ai' ? '🤖' : '✏️'}</span>
+                              <span className="wa-kp-time">{new Date(kp.createdAt).toLocaleDateString()}</span>
+                              <button className="wa-kp-del" onClick={() => handleDeleteKeypoint(kp._id)}>
+                                <FiX size={10} />
+                              </button>
+                            </div>
+                            <p className="wa-kp-text">{kp.text}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {keypointTab === 'scheduled' && (
+                  <div className="wa-keypoints-content">
+                    <div className="wa-keypoints-list">
+                      {scheduledMsgs.length === 0 ? (
+                        <div className="wa-empty-sm"><p>No scheduled messages</p></div>
+                      ) : (
+                        scheduledMsgs.map(msg => (
+                          <div key={msg._id} className={`wa-scheduled-item ${msg.status}`}>
+                            <div className="wa-scheduled-top">
+                              <span className={`wa-sched-status ${msg.status}`}>{msg.status}</span>
+                              <span className="wa-sched-time">
+                                <FiClock size={10} /> {new Date(msg.scheduledAt).toLocaleString()}
+                              </span>
+                              {msg.status === 'pending' && (
+                                <button className="wa-sched-cancel" onClick={() => handleCancelScheduled(msg._id)}>
+                                  <FiXCircle size={12} /> Cancel
+                                </button>
+                              )}
+                            </div>
+                            <p className="wa-sched-content">{msg.content}</p>
+                            {msg.reason && <p className="wa-sched-reason">{msg.reason}</p>}
+                            {msg.status === 'sent' && msg.sentAt && (
+                              <p className="wa-sched-sent">Sent: {new Date(msg.sentAt).toLocaleString()}</p>
+                            )}
+                            {msg.status === 'failed' && msg.error && (
+                              <p className="wa-sched-error">Error: {msg.error}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="wa-no-chat">
