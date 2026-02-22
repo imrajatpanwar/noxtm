@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-mongoose.connect(process.env.MONGO_URI).then(async () => {
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
+mongoose.connect(uri).then(async () => {
   const r = await mongoose.connection.db.collection('whatsappchatbots').findOne({});
   console.log('cooldownMinutes:', r.cooldownMinutes);
   console.log('enabled:', r.enabled);
