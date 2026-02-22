@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiClock, FiActivity } from 'react-icons/fi';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import Sidebar from './Sidebar';
@@ -23,7 +24,6 @@ import HrOverview from './HrOverview';
 import InterviewManagement from './InterviewManagement';
 import LetterTemplates from './LetterTemplates';
 import EmployeeDetails from './EmployeeDetails';
-import AttendanceSummary from './AttendanceSummary';
 import HolidayCalendar from './HolidayCalendar';
 import Incentives from './Incentives';
 import BillingPayments from './BillingPayments';
@@ -31,12 +31,9 @@ import PaymentRecords from './PaymentRecords';
 import ExpenseManagement from './ExpenseManagement';
 import CompanyPolicies from './CompanyPolicies';
 import CompanyHandbook from './CompanyHandbook';
+import Products from './Products';
 import ManageIntegrations from './ManageIntegrations';
-import WebSettings from './WebSettings';
-import Blogs from './Blogs';
 import UsersRoles from './UsersRoles';
-import WebsiteAnalytics from './WebsiteAnalytics';
-import SeoInsights from './SeoInsights';
 import WorkspaceSettings from './WorkspaceSettings';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
@@ -45,6 +42,7 @@ import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
 import ChatWidget from './ChatWidget';
 import NoxtmChatAdmin from './NoxtmChatAdmin';
+import MailPoller from './MailPoller';
 import LinkedInManager from './LinkedInManager';
 import SocialMediaCalendar from './SocialMediaCalendar';
 import './Dashboard.css';
@@ -57,6 +55,15 @@ function Dashboard({ user, onLogout }) {
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedTradeShow, setSelectedTradeShow] = useState(null);
+
+  // Attendance timer state
+  const [attClockedIn, setAttClockedIn] = useState(false);
+  const [attSessionStart, setAttSessionStart] = useState(null);
+  const [attElapsed, setAttElapsed] = useState(0);
+  const [attTotalMin, setAttTotalMin] = useState(0);
+  const [attWorkingHours, setAttWorkingHours] = useState(8);
+  const [attTimerExpanded, setAttTimerExpanded] = useState(false);
+  const attTimerRef = useRef(null);
 
   const isAdmin = currentUser?.role === 'Admin';
 
@@ -172,23 +179,80 @@ function Dashboard({ user, onLogout }) {
 
   // Heartbeat for automated attendance tracking (every 5 minutes)
   useEffect(() => {
+    // Auto clock-in when user opens dashboard
+    const autoClockIn = async () => {
+      try {
+        const res = await api.post('/attendance/clock-in');
+        if (res.data.success) {
+          setAttClockedIn(true);
+          setAttSessionStart(new Date(res.data.activeSessionStart));
+        }
+      } catch (err) {
+        // Already clocked in - fetch today to get session info
+        console.debug('[ATTENDANCE] Auto clock-in:', err.response?.data?.message || err.message);
+      }
+    };
+
+    // Fetch today's attendance to sync state
+    const fetchToday = async () => {
+      try {
+        const res = await api.get('/attendance/today');
+        if (res.data.success) {
+          setAttClockedIn(!!res.data.isClockedIn);
+          setAttSessionStart(res.data.activeSessionStart ? new Date(res.data.activeSessionStart) : null);
+          setAttTotalMin(res.data.attendance?.totalMinutes || 0);
+          setAttWorkingHours(res.data.workingHoursPerDay || 8);
+        }
+      } catch (e) { /* silent */ }
+    };
+
     const sendHeartbeat = async () => {
       try {
         await api.post('/attendance/heartbeat');
       } catch (err) {
-        // Silently fail - attendance tracking is non-critical
         console.debug('[HEARTBEAT] Failed:', err.message);
       }
     };
 
-    // Send initial heartbeat on dashboard mount
+    // Auto clock-in on dashboard mount, fetch state, then start heartbeat
+    autoClockIn().then(fetchToday);
     sendHeartbeat();
 
     // Set up interval for subsequent heartbeats
     const interval = setInterval(sendHeartbeat, 5 * 60 * 1000); // 5 minutes
 
-    return () => clearInterval(interval);
+    // Refresh attendance stats every 5 min too
+    const attInterval = setInterval(fetchToday, 5 * 60 * 1000);
+
+    return () => { clearInterval(interval); clearInterval(attInterval); };
   }, []);
+
+  // Live timer tick
+  useEffect(() => {
+    if (attClockedIn && attSessionStart) {
+      const tick = () => {
+        setAttElapsed(Math.floor((new Date() - new Date(attSessionStart)) / 1000));
+      };
+      tick();
+      attTimerRef.current = setInterval(tick, 1000);
+      return () => clearInterval(attTimerRef.current);
+    } else {
+      setAttElapsed(0);
+      if (attTimerRef.current) clearInterval(attTimerRef.current);
+    }
+  }, [attClockedIn, attSessionStart]);
+
+  // Format seconds to HH:MM:SS
+  const fmtTime = (sec) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const attProgressPct = Math.min(100, Math.round(((attTotalMin * 60 + attElapsed) / (attWorkingHours * 3600)) * 100));
+  const attRemainSec = Math.max(0, attWorkingHours * 3600 - Math.floor(attTotalMin * 60) - attElapsed);
+  const attIsOvertime = (attTotalMin * 60 + attElapsed) >= (attWorkingHours * 3600);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
@@ -249,9 +313,8 @@ function Dashboard({ user, onLogout }) {
       case 'letter-templates':
         return <LetterTemplates />;
       case 'employee-details':
-        return <EmployeeDetails />;
       case 'attendance-summary':
-        return <AttendanceSummary />;
+        return <EmployeeDetails />;
       case 'holiday-calendar':
         return <HolidayCalendar />;
       case 'incentives':
@@ -270,19 +333,14 @@ function Dashboard({ user, onLogout }) {
         return <CompanyPolicies />;
       case 'company-handbook':
         return <CompanyHandbook />;
+      // Products
+      case 'products':
+        return <Products />;
       // Settings & Configuration
       case 'manage-integrations':
         return <ManageIntegrations />;
-      case 'web-settings':
-        return <WebSettings />;
-      case 'blogs':
-        return <Blogs />;
       case 'users-roles':
         return <UsersRoles />;
-      case 'website-analytics':
-        return <WebsiteAnalytics />;
-      case 'seo-insights':
-        return <SeoInsights />;
       case 'content-calendar':
         return <SocialMediaCalendar />;
       case 'linkedin':
@@ -334,9 +392,39 @@ function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
+      {/* Mail Poller - silent background component for email notifications */}
+      <MailPoller />
+
       {/* Chat Widget - hide when Messages section is open */}
       {activeSection !== 'message' && (
         <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
+      )}
+
+      {/* Floating Attendance Timer */}
+      {attClockedIn && (
+        <div className={`att-float-timer ${attTimerExpanded ? 'expanded' : ''} ${attIsOvertime ? 'overtime' : ''}`} onClick={() => setAttTimerExpanded(!attTimerExpanded)}>
+          <div className="att-float-compact">
+            <span className="att-float-pulse" />
+            <FiClock size={14} />
+            <span className="att-float-time">{fmtTime(attRemainSec)}</span>
+            <span className="att-float-hint">{attIsOvertime ? 'OT' : 'left'}</span>
+          </div>
+          {attTimerExpanded && (
+            <div className="att-float-details">
+              <div className="att-float-row">
+                <span className="att-float-label">Worked</span>
+                <span className="att-float-val">{((attTotalMin + attElapsed / 60) / 60).toFixed(1)}h / {attWorkingHours}h</span>
+              </div>
+              <div className="att-float-progress-track">
+                <div className={`att-float-progress-fill ${attIsOvertime ? 'complete' : ''}`} style={{ width: `${attProgressPct}%` }} />
+              </div>
+              <div className="att-float-row">
+                <span className="att-float-label"><FiActivity size={11} /> {attIsOvertime ? 'Overtime' : 'Tracking'}</span>
+                <span className="att-float-val att-float-active">Active</span>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

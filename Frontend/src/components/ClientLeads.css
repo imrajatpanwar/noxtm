@@ -928,6 +928,412 @@
 .cl-btn-delete:hover { background: #fee2e2; }
 
 /* ========================================
+   Star / Important Button
+   ======================================== */
+
+.cl-star-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #d4d4d4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.cl-star-btn:hover { color: #f59e0b; background: #fffbeb; }
+
+.cl-star-btn.active {
+  color: #f59e0b;
+}
+
+.cl-star-btn.active svg { fill: #f59e0b; }
+
+/* Panel star */
+.cl-panel-star-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #d4d4d4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.cl-panel-star-btn:hover { color: #f59e0b; border-color: #f59e0b; background: #fffbeb; }
+
+.cl-panel-star-btn.active {
+  color: #f59e0b;
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.cl-panel-star-btn.active svg { fill: #f59e0b; }
+
+/* Star filter in toolbar */
+.cl-btn-star {
+  padding: 8px 10px !important;
+  min-width: unset !important;
+}
+
+.cl-btn-star.active {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+/* Clear filters button */
+.cl-clear-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Switzer', sans-serif;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.cl-clear-filters:hover { background: #fee2e2; border-color: #fca5a5; }
+
+/* Active stat card */
+.cl-stat-active {
+  border-color: #f59e0b !important;
+  background: #fffbeb;
+}
+
+/* ========================================
+   Label Manager Panel
+   ======================================== */
+
+.cl-label-manager {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  animation: cl-modal-in 0.2s ease;
+}
+
+.cl-label-manager-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cl-label-manager-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0a0a0a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cl-label-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #737373;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.12s;
+}
+
+.cl-label-close:hover { background: #f5f5f5; color: #0a0a0a; }
+
+/* Create label row */
+.cl-label-create-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f5f5f5;
+  flex-wrap: wrap;
+}
+
+.cl-label-input {
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Switzer', sans-serif;
+  color: #0a0a0a;
+  outline: none;
+  flex: 1;
+  min-width: 140px;
+  transition: border-color 0.15s;
+}
+
+.cl-label-input:focus { border-color: #0a0a0a; }
+.cl-label-input::placeholder { color: #a3a3a3; }
+
+.cl-label-color-picker {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cl-color-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.cl-color-dot:hover { transform: scale(1.15); }
+
+.cl-color-dot.active {
+  border-color: #0a0a0a;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px white, 0 0 0 4px currentColor;
+}
+
+.cl-btn-sm {
+  padding: 7px 14px !important;
+  font-size: 12px !important;
+  gap: 5px !important;
+  border-radius: 6px !important;
+}
+
+/* Label list */
+.cl-label-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.cl-label-list::-webkit-scrollbar { width: 3px; }
+.cl-label-list::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 2px; }
+
+.cl-label-item {
+  padding: 6px 0;
+  border-bottom: 1px solid #f9f9f9;
+}
+
+.cl-label-item:last-child { border-bottom: none; }
+
+.cl-label-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cl-label-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cl-label-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.cl-label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cl-label-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.cl-label-action-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #737373;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  transition: all 0.12s;
+  padding: 0;
+}
+
+.cl-label-action-btn:hover { background: #f5f5f5; color: #0a0a0a; }
+
+.cl-label-del:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+
+.cl-label-empty {
+  font-size: 13px;
+  color: #a3a3a3;
+  text-align: center;
+  padding: 16px 0;
+  margin: 0;
+}
+
+/* ========================================
+   Labels in Table
+   ======================================== */
+
+.cl-labels-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 180px;
+}
+
+.cl-label-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.cl-label-tag-removable {
+  padding-right: 4px;
+}
+
+.cl-label-remove {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  padding: 0;
+  opacity: 0.6;
+  transition: all 0.12s;
+  margin-left: 2px;
+}
+
+.cl-label-remove:hover { opacity: 1; background: rgba(0,0,0,0.08); }
+
+/* ========================================
+   Labels in Side Panel
+   ======================================== */
+
+.cl-panel-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.cl-label-add-wrap {
+  position: relative;
+}
+
+.cl-label-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #fafafa;
+  border: 1px dashed #d4d4d4;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #737373;
+  cursor: pointer;
+  font-family: 'Switzer', sans-serif;
+  transition: all 0.12s;
+}
+
+.cl-label-add-btn:hover { border-color: #0a0a0a; color: #0a0a0a; background: #f5f5f5; }
+
+.cl-label-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 10;
+  padding: 4px;
+  animation: cl-modal-in 0.15s ease;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cl-label-dropdown-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #a3a3a3;
+  text-align: center;
+}
+
+.cl-label-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0a0a0a;
+  cursor: pointer;
+  border-radius: 5px;
+  font-family: 'Switzer', sans-serif;
+  transition: background 0.1s;
+}
+
+.cl-label-dropdown-item:hover { background: #f5f5f5; }
+
+/* ========================================
    Responsive
    ======================================== */
 

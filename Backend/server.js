@@ -174,6 +174,14 @@ app.use('/api/noxtm-memory', noxtmMemoryRoutes);
 const billingRoutes = require('./routes/billing');
 app.use('/api/billing', billingRoutes);
 
+// Salary routes
+const salaryRoutes = require('./routes/salaries');
+app.use('/api/salaries', salaryRoutes);
+
+// Expense routes
+const expenseRoutes = require('./routes/expenses');
+app.use('/api/expenses', expenseRoutes);
+
 // LinkedIn AI Commenter routes
 const linkedinAiRoutes = require('./routes/linkedin-ai');
 app.use('/api/linkedin-ai', linkedinAiRoutes);
@@ -207,12 +215,24 @@ app.use('/api/attendance', attendanceRoutes);
 
 const holidaysRoutes = require('./routes/holidays');
 app.use('/api/holidays', holidaysRoutes);
+const leavesRoutes = require('./routes/leaves');
+app.use('/api/leaves', leavesRoutes);
 
 const letterTemplateRoutes = require('./routes/letter-templates');
 app.use('/api/letter-templates', letterTemplateRoutes);
 
 const incentivesRoutes = require('./routes/incentives');
 app.use('/api/incentives', incentivesRoutes);
+
+// Company Policies & Handbook routes
+const companyPoliciesRoutes = require('./routes/company-policies');
+app.use('/api/company-policies', companyPoliciesRoutes);
+const handbookRoutes = require('./routes/handbook');
+app.use('/api/handbook', handbookRoutes);
+
+// Products routes
+const productsRoutes = require('./routes/products');
+app.use('/api/products', productsRoutes);
 
 // Admin panel routes (super admin only)
 const adminRoutes = require('./routes/admin');
@@ -2474,7 +2494,17 @@ app.get('/api/company/details', authenticateToken, async (req, res) => {
         address: company.address,
         owner: company.owner,
         memberCount: company.members.length,
-        subscription: company.subscription
+        subscription: company.subscription,
+        billing: company.billing ? {
+          emailCredits: company.billing.emailCredits || 0,
+          totalPurchased: company.billing.totalPurchased || 0,
+          totalUsed: company.billing.totalUsed || 0,
+          lastPurchase: company.billing.purchaseHistory?.length > 0
+            ? company.billing.purchaseHistory[company.billing.purchaseHistory.length - 1]
+            : null
+        } : null,
+        emailSettings: company.emailSettings || {},
+        createdAt: company.createdAt
       }
     });
   } catch (error) {

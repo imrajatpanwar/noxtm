@@ -1,43 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import TaskManager from './TaskManager';
 import { useModules } from '../contexts/ModuleContext';
-import { MessagingContext } from '../contexts/MessagingContext';
 import api from '../config/api';
 import './Overview.css';
-
-// User avatar component
-const UserAvatar = ({ user, size = 28 }) => {
-  if (!user) return null;
-
-  const displayName = user.fullName || user.name || user.email?.split('@')[0] || 'User';
-  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-
-  const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
-  const colorIndex = displayName.charCodeAt(0) % colors.length;
-  const bgColor = colors[colorIndex];
-
-  // Check all possible profile image field variations
-  const profileImg = user.profileImage || user.avatarUrl || user.photoUrl || user.avatar || user.profilePicture || user.image;
-
-  return (
-    <div
-      className="active-team-avatar"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.4,
-        background: profileImg ? 'transparent' : bgColor
-      }}
-      title={displayName}
-    >
-      {profileImg ? (
-        <img src={profileImg} alt={displayName} />
-      ) : (
-        <span>{initials}</span>
-      )}
-    </div>
-  );
-};
 
 // Revenue Graph Component
 const RevenueGraph = () => {
@@ -312,31 +277,6 @@ const RevenueGraph = () => {
 };
 
 function Overview({ error }) {
-  const [companyUsers, setCompanyUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showPopup, setShowPopup] = useState(false);
-  const { onlineUsers } = useContext(MessagingContext);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const usersRes = await api.get('/users/company-members');
-        const users = usersRes.data.members || usersRes.data || [];
-        setCompanyUsers(Array.isArray(users) ? users : []);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching overview data:', err);
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  // Filter to show only currently logged-in users
-  const activeUsers = companyUsers.filter(user => {
-    const userId = user._id || user.id;
-    return onlineUsers.includes(userId?.toString());
-  });
 
   return (
     <div className="overview-wrapper">
@@ -352,46 +292,8 @@ function Overview({ error }) {
           <RevenueGraph />
         </div>
 
-        {/* Right side - Active Team + Task Manager */}
+        {/* Right side - Task Manager */}
         <div className="overview-right">
-          {!loading && activeUsers.length > 0 && (
-            <div className="active-team-section">
-              <div className="active-team-header">
-                <span className="active-team-label">ACTIVE TEAM</span>
-                <span className="active-team-count">{activeUsers.length}</span>
-              </div>
-              <div className="active-team-avatars-horizontal">
-                {activeUsers.slice(0, 5).map((user, index) => (
-                  <div
-                    key={user._id}
-                    className="active-team-avatar-overlap"
-                    style={{ zIndex: 10 - index }}
-                  >
-                    <UserAvatar user={user} size={40} />
-                  </div>
-                ))}
-                {activeUsers.length > 5 && (
-                  <div
-                    className="active-team-more-overlap"
-                    onMouseEnter={() => setShowPopup(true)}
-                    onMouseLeave={() => setShowPopup(false)}
-                  >
-                    +{activeUsers.length - 5}
-                    {showPopup && (
-                      <div className="active-team-popup">
-                        {activeUsers.slice(5).map(user => (
-                          <div key={user._id} className="popup-user-item">
-                            <UserAvatar user={user} size={28} />
-                            <span>{user.fullName || user.name || user.email}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
           <TaskManager isWidget={true} />
         </div>
       </div>

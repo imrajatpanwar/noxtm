@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -30,6 +30,10 @@ function WorkspaceSettings({ user, onLogout }) {
 
   const [editedWorkspace, setEditedWorkspace] = useState({ ...workspaceData });
 
+  // Billing state
+  const [billingInfo, setBillingInfo] = useState(null);
+  const [billingUsage, setBillingUsage] = useState(null);
+
   // Company members state
   const [companyMembers, setCompanyMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -59,6 +63,16 @@ function WorkspaceSettings({ user, onLogout }) {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Attendance state
+  const [attToday, setAttToday] = useState(null);
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [activeSessionStart, setActiveSessionStart] = useState(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [totalWorkedMin, setTotalWorkedMin] = useState(0);
+  const [workingHoursPerDay, setWorkingHoursPerDay] = useState(8);
+  const [attLoading, setAttLoading] = useState(false);
+  const timerRef = useRef(null);
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -288,6 +302,42 @@ function WorkspaceSettings({ user, onLogout }) {
     }));
   };
 
+  // Fetch today's attendance
+  const fetchTodayAttendance = useCallback(async () => {
+    setAttLoading(true);
+    try {
+      const res = await api.get('/attendance/today');
+      if (res.data.success) {
+        setAttToday(res.data.attendance);
+        setIsClockedIn(!!res.data.isClockedIn);
+        setActiveSessionStart(res.data.activeSessionStart ? new Date(res.data.activeSessionStart) : null);
+        setWorkingHoursPerDay(res.data.workingHoursPerDay || 8);
+        setTotalWorkedMin(res.data.attendance?.totalMinutes || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+    } finally {
+      setAttLoading(false);
+    }
+  }, []);
+
+  // Live timer for active session
+  useEffect(() => {
+    if (isClockedIn && activeSessionStart) {
+      const tick = () => {
+        const now = new Date();
+        const secSinceStart = Math.floor((now - new Date(activeSessionStart)) / 1000);
+        setElapsedSec(secSinceStart);
+      };
+      tick();
+      timerRef.current = setInterval(tick, 1000);
+      return () => clearInterval(timerRef.current);
+    } else {
+      setElapsedSec(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  }, [isClockedIn, activeSessionStart]);
+
   // Fetch profile data
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
@@ -459,106 +509,270 @@ function WorkspaceSettings({ user, onLogout }) {
       fetchCompanyDetails();
     } else if (activeTab === 'profile') {
       fetchProfile();
+      fetchTodayAttendance();
       if (user?.companyId) {
         fetchCompanyMembers();
         fetchCompanyDetails();
       }
+    } else if (activeTab === 'general') {
+      fetchCompanyDetails();
+      // Fetch billing info
+      (async () => {
+        try {
+          const [infoRes, usageRes] = await Promise.all([
+            api.get('/billing/info'),
+            api.get('/billing/usage')
+          ]);
+          if (infoRes.data.success) setBillingInfo(infoRes.data.billing);
+          if (usageRes.data.success) setBillingUsage(usageRes.data.usage);
+        } catch (e) { /* billing may not be available */ }
+      })();
     }
-  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, user?.companyId]);
+  }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchTodayAttendance, user?.companyId]);
 
-  const renderGeneralSettings = () => (
-    <div className="workspace-tab-content">
-      {/* Minimal Workspace Card */}
-      <div className="ws-minimal-card">
-        <div className="ws-minimal-header">
-          <h3>Workspace</h3>
+  const renderGeneralSettings = () => {
+    const sub = companyDetails?.subscription || {};
+    const bill = billingInfo || {};
+    const usage = billingUsage || {};
+    const planName = sub.plan || workspaceData.plan || 'Trial';
+    const subStatus = sub.status || 'inactive';
+    const isActive = ['active', 'trial'].includes(subStatus);
+    const startDate = sub.startDate ? new Date(sub.startDate) : null;
+    const endDate = sub.endDate ? new Date(sub.endDate) : null;
+    const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const memberCount = companyDetails?.memberCount || workspaceData.members;
+    const emailQuota = companyDetails?.emailSettings?.emailQuota;
+    const storageUsedPct = emailQuota ? Math.min(100, Math.round((emailQuota.usedMB / emailQuota.totalMB) * 100)) : 85;
+
+    return (
+      <div className="workspace-tab-content">
+        {/* Workspace Info Card */}
+        <div className="wsg-card">
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon"><FiGrid size={18} /></div>
+              <div>
+                <h3>Workspace Overview</h3>
+                <span className="wsg-card-sub">General workspace configuration & details</span>
+              </div>
+            </div>
+            {!isEditing ? (
+              <button className="wsg-edit-btn" onClick={handleEditToggle}><FiEdit3 size={14} /> Edit</button>
+            ) : (
+              <div className="wsg-head-actions">
+                <button className="wsg-save-btn" onClick={handleSave}><FiSave size={14} /> Save</button>
+                <button className="wsg-cancel-btn" onClick={handleEditToggle}>Cancel</button>
+              </div>
+            )}
+          </div>
+
           {!isEditing ? (
-            <button className="ws-minimal-edit-btn" onClick={handleEditToggle}>
-              Edit
-            </button>
+            <div className="wsg-fields">
+              <div className="wsg-field"><label>Workspace Name</label><p>{companyDetails?.companyName || workspaceData.name}</p></div>
+              <div className="wsg-field"><label>Type</label><p>{workspaceData.type}</p></div>
+              <div className="wsg-field"><label>Industry</label><p>{companyDetails?.industry || '—'}</p></div>
+              <div className="wsg-field"><label>Team Size</label><p>{companyDetails?.size || '—'}</p></div>
+              <div className="wsg-field wsg-full"><label>Description</label><p>{workspaceData.description || '—'}</p></div>
+              {companyDetails?.address && (
+                <div className="wsg-field wsg-full"><label>Address</label><p>{companyDetails.address}</p></div>
+              )}
+            </div>
           ) : (
-            <div className="ws-minimal-actions">
-              <button className="ws-minimal-save-btn" onClick={handleSave}>
-                <FiSave /> Save
-              </button>
-              <button className="ws-minimal-cancel-btn" onClick={handleEditToggle}>
-                Cancel
-              </button>
+            <div className="wsg-fields">
+              <div className="wsg-field"><label>Workspace Name</label><input type="text" value={editedWorkspace.name} onChange={(e) => handleInputChange('name', e.target.value)} /></div>
+              <div className="wsg-field"><label>Type</label>
+                <select value={editedWorkspace.type} onChange={(e) => handleInputChange('type', e.target.value)}>
+                  <option value="Business">Business</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Enterprise">Enterprise</option>
+                  <option value="Educational">Educational</option>
+                </select>
+              </div>
+              <div className="wsg-field wsg-full"><label>Description</label><input type="text" value={editedWorkspace.description} onChange={(e) => handleInputChange('description', e.target.value)} /></div>
             </div>
           )}
         </div>
 
-        {!isEditing ? (
-          <div className="ws-minimal-grid">
-            <div className="ws-minimal-field">
-              <label>Name</label>
-              <p>{workspaceData.name}</p>
-            </div>
-            <div className="ws-minimal-field">
-              <label>Type</label>
-              <p>{workspaceData.type}</p>
-            </div>
-            <div className="ws-minimal-field ws-minimal-full">
-              <label>Description</label>
-              <p>{workspaceData.description || '—'}</p>
+        {/* Quick Stats Row */}
+        <div className="wsg-stats-row">
+          <div className="wsg-stat-box">
+            <div className="wsg-stat-ic blue"><FiUsers size={18} /></div>
+            <div className="wsg-stat-body">
+              <span className="wsg-stat-num">{memberCount}</span>
+              <span className="wsg-stat-label">Team Members</span>
             </div>
           </div>
-        ) : (
-          <div className="ws-minimal-grid">
-            <div className="ws-minimal-field">
-              <label>Name</label>
-              <input
-                type="text"
-                value={editedWorkspace.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-              />
+          <div className="wsg-stat-box">
+            <div className="wsg-stat-ic green"><FiBriefcase size={18} /></div>
+            <div className="wsg-stat-body">
+              <span className="wsg-stat-num">{workspaceData.projects}</span>
+              <span className="wsg-stat-label">Projects</span>
             </div>
-            <div className="ws-minimal-field">
-              <label>Type</label>
-              <select
-                value={editedWorkspace.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-              >
-                <option value="Business">Business</option>
-                <option value="Personal">Personal</option>
-                <option value="Enterprise">Enterprise</option>
-                <option value="Educational">Educational</option>
-              </select>
+          </div>
+          <div className="wsg-stat-box">
+            <div className="wsg-stat-ic amber"><FiMail size={18} /></div>
+            <div className="wsg-stat-body">
+              <span className="wsg-stat-num">{bill.emailCredits != null ? bill.emailCredits.toLocaleString() : '0'}</span>
+              <span className="wsg-stat-label">Email Credits</span>
             </div>
-            <div className="ws-minimal-field ws-minimal-full">
-              <label>Description</label>
-              <input
-                type="text"
-                value={editedWorkspace.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-              />
+          </div>
+          <div className="wsg-stat-box">
+            <div className="wsg-stat-ic purple"><FiHardDrive size={18} /></div>
+            <div className="wsg-stat-body">
+              <span className="wsg-stat-num">{storageUsedPct}%</span>
+              <span className="wsg-stat-label">Storage Used</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscription & Billing Card */}
+        <div className="wsg-card">
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon billing"><FiCreditCard size={18} /></div>
+              <div>
+                <h3>Subscription & Billing</h3>
+                <span className="wsg-card-sub">Your current plan, usage, and billing details</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Plan Banner */}
+          <div className={`wsg-plan-banner ${planName.toLowerCase()}`}>
+            <div className="wsg-plan-left">
+              <div className="wsg-plan-badge">
+                <FiAward size={16} />
+                <span>{planName}</span>
+              </div>
+              <span className={`wsg-plan-status ${isActive ? 'active' : 'inactive'}`}>
+                <span className="wsg-plan-status-dot" />
+                {subStatus.charAt(0).toUpperCase() + subStatus.slice(1)}
+              </span>
+            </div>
+            <div className="wsg-plan-right">
+              {daysLeft !== null && (
+                <div className="wsg-plan-days">
+                  <span className="wsg-plan-days-num">{daysLeft}</span>
+                  <span className="wsg-plan-days-label">days left</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Subscription Details Grid */}
+          <div className="wsg-sub-grid">
+            <div className="wsg-sub-item">
+              <div className="wsg-sub-item-ic"><FiCalendar size={14} /></div>
+              <div>
+                <span className="wsg-sub-item-label">Start Date</span>
+                <span className="wsg-sub-item-val">{fmtDate(startDate)}</span>
+              </div>
+            </div>
+            <div className="wsg-sub-item">
+              <div className="wsg-sub-item-ic"><FiClock size={14} /></div>
+              <div>
+                <span className="wsg-sub-item-label">End Date</span>
+                <span className="wsg-sub-item-val">{fmtDate(endDate)}</span>
+              </div>
+            </div>
+            <div className="wsg-sub-item">
+              <div className="wsg-sub-item-ic"><FiRefreshCw size={14} /></div>
+              <div>
+                <span className="wsg-sub-item-label">Billing Cycle</span>
+                <span className="wsg-sub-item-val">{user?.subscription?.billingCycle || 'Monthly'}</span>
+              </div>
+            </div>
+            <div className="wsg-sub-item">
+              <div className="wsg-sub-item-ic"><FiUsers size={14} /></div>
+              <div>
+                <span className="wsg-sub-item-label">Team Seats</span>
+                <span className="wsg-sub-item-val">{memberCount} members</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Email Credits Section */}
+          <div className="wsg-credits-section">
+            <div className="wsg-credits-head">
+              <h4><FiZap size={15} /> Email Credits</h4>
+            </div>
+            <div className="wsg-credits-grid">
+              <div className="wsg-credit-box">
+                <span className="wsg-credit-num">{bill.emailCredits != null ? bill.emailCredits.toLocaleString() : '0'}</span>
+                <span className="wsg-credit-label">Available</span>
+              </div>
+              <div className="wsg-credit-box">
+                <span className="wsg-credit-num">{bill.totalPurchased != null ? bill.totalPurchased.toLocaleString() : '0'}</span>
+                <span className="wsg-credit-label">Total Purchased</span>
+              </div>
+              <div className="wsg-credit-box">
+                <span className="wsg-credit-num">{bill.totalUsed != null ? bill.totalUsed.toLocaleString() : '0'}</span>
+                <span className="wsg-credit-label">Total Used</span>
+              </div>
+            </div>
+
+            {/* Usage Bar */}
+            <div className="wsg-usage-section">
+              <div className="wsg-usage-head">
+                <span>Monthly Usage</span>
+                <span className="wsg-usage-nums">{usage.thisMonth || 0} emails this month</span>
+              </div>
+              <div className="wsg-usage-bar-track">
+                <div className="wsg-usage-bar-fill" style={{ width: `${bill.totalPurchased > 0 ? Math.min(100, Math.round(((usage.thisMonth || 0) / bill.totalPurchased) * 100)) : 0}%` }} />
+              </div>
+              <div className="wsg-usage-foot">
+                <span>Last month: {usage.lastMonth || 0} emails</span>
+                <span>All time: {usage.total || 0} emails</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Storage */}
+          <div className="wsg-storage-section">
+            <div className="wsg-storage-head">
+              <h4><FiHardDrive size={15} /> Storage</h4>
+              <span className="wsg-storage-pct">{storageUsedPct}% used</span>
+            </div>
+            <div className="wsg-storage-bar-track">
+              <div className={`wsg-storage-bar-fill ${storageUsedPct > 85 ? 'warning' : ''}`} style={{ width: `${storageUsedPct}%` }} />
+            </div>
+            <div className="wsg-storage-foot">
+              <span>{emailQuota ? `${(emailQuota.usedMB / 1024).toFixed(1)}GB` : '8.5GB'} used</span>
+              <span>{emailQuota ? `${(emailQuota.totalMB / 1024).toFixed(0)}GB` : '10GB'} total</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Owner Info Card */}
+        {companyDetails?.owner && (
+          <div className="wsg-card wsg-compact">
+            <div className="wsg-card-head">
+              <div className="wsg-card-head-left">
+                <div className="wsg-card-icon owner"><FiShield size={18} /></div>
+                <div>
+                  <h3>Account Owner</h3>
+                  <span className="wsg-card-sub">Primary account holder</span>
+                </div>
+              </div>
+            </div>
+            <div className="wsg-owner-row">
+              <div className="wsg-owner-info">
+                <span className="wsg-owner-name">{companyDetails.owner.fullName}</span>
+                <span className="wsg-owner-email">{companyDetails.owner.email}</span>
+              </div>
+              {companyDetails.createdAt && (
+                <div className="wsg-owner-since">
+                  <span className="wsg-owner-since-label">Member since</span>
+                  <span className="wsg-owner-since-val">{fmtDate(companyDetails.createdAt)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
-
-        <div className="ws-minimal-divider"></div>
-
-        <div className="ws-minimal-grid">
-          <div className="ws-minimal-field">
-            <label>Plan</label>
-            <p className="ws-minimal-plan">{workspaceData.plan}</p>
-          </div>
-          <div className="ws-minimal-field">
-            <label>Team Members</label>
-            <p>{workspaceData.members}</p>
-          </div>
-          <div className="ws-minimal-field">
-            <label>Projects</label>
-            <p>{workspaceData.projects}</p>
-          </div>
-          <div className="ws-minimal-field">
-            <label>Storage</label>
-            <p>{workspaceData.storage}</p>
-          </div>
-        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMembersSettings = () => {
     const getInitials = (name) => {
@@ -1171,11 +1385,26 @@ function WorkspaceSettings({ user, onLogout }) {
 
     const avatarFileInputRef = React.createRef();
 
+    // Attendance timer helpers
+    const fmtTimer = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+    const totalWorkedHrs = totalWorkedMin / 60;
+    const totalMandatorySec = workingHoursPerDay * 3600;
+    // Reverse countdown: total mandatory - (worked minutes in seconds + current session elapsed)
+    const totalWorkedSec = Math.floor(totalWorkedMin * 60) + elapsedSec;
+    const remainingSec = Math.max(0, totalMandatorySec - totalWorkedSec);
+    const progressPct = Math.min(100, Math.round((totalWorkedSec / totalMandatorySec) * 100));
+    const sessionsToday = attToday?.sessions || [];
+    const isOvertime = totalWorkedSec >= totalMandatorySec;
+
     return (
       <div className="workspace-tab-content">
-        {/* ===== Profile Hero Card ===== */}
+        {/* ===== Profile Hero Card (clean, no dark cover) ===== */}
         <div className="pf-hero">
-          <div className="pf-hero-bg"></div>
           <div className="pf-hero-content">
             <div className="pf-hero-left">
               <div className="pf-avatar-wrapper" onClick={() => avatarFileInputRef.current?.click()}>
@@ -1244,6 +1473,49 @@ function WorkspaceSettings({ user, onLogout }) {
                 <span>{companyDetails.companyName}</span>
               </div>
             )}
+          </div>
+
+          {/* ===== Attendance Strip — Reverse Countdown ===== */}
+          <div className={`pf-att-strip ${isOvertime ? 'overtime' : ''}`}>
+            {/* Left: countdown timer */}
+            <div className="pf-att-strip-left">
+              {isClockedIn && <span className="pf-att-strip-pulse" />}
+              <div className="pf-att-strip-countdown">
+                <span className="pf-att-strip-timer">{fmtTimer(remainingSec)}</span>
+                <span className="pf-att-strip-hint">{isOvertime ? 'Overtime' : 'Remaining'}</span>
+              </div>
+            </div>
+
+            {/* Center: progress bar */}
+            <div className="pf-att-strip-center">
+              <div className="pf-att-strip-bar-track">
+                <div
+                  className={`pf-att-strip-bar-fill ${isOvertime ? 'complete' : progressPct >= 75 ? 'almost' : ''}`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <div className="pf-att-strip-bar-labels">
+                <span>{totalWorkedHrs.toFixed(1)}h worked</span>
+                <span>{progressPct}% of {workingHoursPerDay}h</span>
+              </div>
+            </div>
+
+            {/* Right: quick stats chips */}
+            <div className="pf-att-strip-right">
+              <div className="pf-att-strip-chip">
+                <span className="pf-att-strip-chip-val">{sessionsToday.length}</span>
+                <span className="pf-att-strip-chip-lbl">Sessions</span>
+              </div>
+              <div className="pf-att-strip-chip">
+                <span className="pf-att-strip-chip-val">
+                  {sessionsToday.length > 0 ? new Date(sessionsToday[0].loginAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                </span>
+                <span className="pf-att-strip-chip-lbl">First In</span>
+              </div>
+              {isClockedIn && (
+                <span className="pf-att-strip-live">● Live</span>
+              )}
+            </div>
           </div>
         </div>
 

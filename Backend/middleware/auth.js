@@ -22,6 +22,9 @@ const authenticateToken = (req, res, next) => {
     // Normalize: ensure _id is always available (JWT stores userId, but many routes use _id)
     decoded._id = decoded._id || decoded.userId;
     decoded.userId = decoded.userId || decoded._id;
+    // Normalize: ensure company is always available (JWT stores companyId, but many routes use company)
+    decoded.company = decoded.company || decoded.companyId;
+    decoded.companyId = decoded.companyId || decoded.company;
     req.user = decoded;
     next();
   } catch (error) {

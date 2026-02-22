@@ -1,4 +1,4 @@
-/* ===== Social Media Calendar — Premium B&W Design ===== */
+﻿/* ===== Social Media Calendar â€” Premium B&W Design ===== */
 .smc-container {
     font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
     max-width: 100%;
@@ -166,6 +166,7 @@
     outline: none;
     width: 160px;
     font-family: 'Switzer', sans-serif;
+    color: #1a1a1a;
 }
 
 .smc-search-box:focus-within {
@@ -248,7 +249,7 @@
 .acct-delete {
     background: none;
     border: none;
-    color: #d1d5db;
+    color: #374151;
     cursor: pointer;
     padding: 2px;
     display: flex;
@@ -450,7 +451,7 @@
 }
 
 .smc-day-cell.other-month .smc-day-number {
-    color: #d1d5db;
+    color: #374151;
 }
 
 .smc-day-cell.today {
@@ -488,7 +489,7 @@
     position: absolute;
     bottom: 4px;
     right: 4px;
-    color: #d1d5db;
+    color: #374151;
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -929,7 +930,7 @@
 }
 
 .text-muted {
-    color: #d1d5db;
+    color: #374151;
 }
 
 /* Status Badge */
@@ -1051,7 +1052,7 @@
 
 .upload-icon {
     margin-bottom: 8px;
-    color: #d1d5db;
+    color: #374151;
 }
 
 .smc-upload-area p {
@@ -1066,7 +1067,7 @@
 
 .smc-upload-hint {
     font-size: 11px;
-    color: #d1d5db;
+    color: #374151;
 }
 
 /* Media Grid */
@@ -1098,7 +1099,7 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.4);
     color: #fff;
     border: none;
     cursor: pointer;
@@ -1237,7 +1238,7 @@
 /* Empty State */
 .smc-empty {
     text-align: center;
-    color: #d1d5db;
+    color: #374151;
     font-size: 13px;
     padding: 20px;
 }
@@ -1356,3 +1357,4 @@
         font-size: 10px;
     }
 }
+

@@ -58,7 +58,13 @@ const companySchema = new mongoose.Schema({
   hrSettings: {
     workingHoursPerDay: { type: Number, default: 8 },
     workingDays: { type: [String], default: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
-    halfDayThresholdHours: { type: Number, default: 4 }
+    halfDayThresholdHours: { type: Number, default: 4 },
+    salaryDeductions: {
+      paidLeavePercent: { type: Number, default: 0, min: 0, max: 100 },
+      halfDayPercent: { type: Number, default: 50, min: 0, max: 100 },
+      latePercent: { type: Number, default: 0, min: 0, max: 100 },
+      absentPercent: { type: Number, default: 100, min: 0, max: 100 }
+    }
   },
   subscription: {
     plan: { type: String, enum: ["Trial", "Noxtm", "Enterprise"], default: "Trial" },

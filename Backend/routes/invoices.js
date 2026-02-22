@@ -75,7 +75,7 @@ router.get('/:id', auth, async (req, res) => {
 // Create new invoice
 router.post('/', auth, async (req, res) => {
   try {
-    const { clientName, companyName, email, phone, items, dueDate, notes, clientId } = req.body;
+    const { clientName, companyName, email, phone, items, dueDate, notes, clientId, currency, discount, discountType, paymentTerms, taxRate, recurring, recurringInterval } = req.body;
 
     // Validate required fields
     if (!clientName || !companyName || !email || !phone || !items || !dueDate) {
@@ -99,7 +99,14 @@ router.post('/', auth, async (req, res) => {
       dueDate,
       notes: notes || '',
       userId: req.user.userId,
-      clientId: clientId || null
+      clientId: clientId || null,
+      currency: currency || 'USD',
+      discount: discount || 0,
+      discountType: discountType || 'percentage',
+      paymentTerms: paymentTerms || 'net-30',
+      taxRate: taxRate !== undefined ? taxRate : 0.1,
+      recurring: recurring || false,
+      recurringInterval: recurringInterval || 'monthly'
     });
 
     await newInvoice.save();
@@ -129,7 +136,7 @@ router.post('/', auth, async (req, res) => {
 // Update invoice
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { clientName, companyName, email, phone, items, dueDate, notes } = req.body;
+    const { clientName, companyName, email, phone, items, dueDate, notes, currency, discount, discountType, paymentTerms, taxRate, recurring, recurringInterval } = req.body;
 
     // Validate items if provided
     if (items && (!Array.isArray(items) || items.length === 0)) {
@@ -144,6 +151,13 @@ router.put('/:id', auth, async (req, res) => {
       items,
       dueDate,
       notes,
+      currency,
+      discount,
+      discountType,
+      paymentTerms,
+      taxRate,
+      recurring,
+      recurringInterval,
       updatedAt: new Date()
     };
 
@@ -288,6 +302,81 @@ router.get('/stats/summary', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching invoice stats:', error);
     res.status(500).json({ message: 'Error fetching statistics', error: error.message });
+  }
+});
+
+// Duplicate invoice
+router.post('/:id/duplicate', auth, async (req, res) => {
+  try {
+    const original = await Invoice.findOne({
+      invoiceNumber: req.params.id,
+      userId: req.user.userId
+    });
+
+    if (!original) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    const invoiceNumber = await Invoice.generateInvoiceNumber();
+
+    const duplicate = new Invoice({
+      invoiceNumber,
+      clientName: original.clientName,
+      companyName: original.companyName,
+      email: original.email,
+      phone: original.phone,
+      items: original.items,
+      currency: original.currency,
+      discount: original.discount,
+      discountType: original.discountType,
+      taxRate: original.taxRate,
+      paymentTerms: original.paymentTerms,
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      notes: original.notes,
+      userId: req.user.userId,
+      clientId: original.clientId
+    });
+
+    await duplicate.save();
+
+    const formattedInvoice = {
+      ...duplicate.toObject(),
+      id: duplicate.invoiceNumber,
+      createdAt: new Date(duplicate.createdAt).toISOString().split('T')[0],
+      dueDate: new Date(duplicate.dueDate).toISOString().split('T')[0]
+    };
+
+    res.status(201).json(formattedInvoice);
+  } catch (error) {
+    console.error('Error duplicating invoice:', error);
+    res.status(500).json({ message: 'Error duplicating invoice', error: error.message });
+  }
+});
+
+// Send invoice via email
+router.post('/:id/send', auth, async (req, res) => {
+  try {
+    const invoice = await Invoice.findOne({
+      invoiceNumber: req.params.id,
+      userId: req.user.userId
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendInvoiceNotification(invoice);
+    } catch (emailError) {
+      console.error('Error sending invoice email:', emailError);
+      return res.status(500).json({ message: 'Failed to send email' });
+    }
+
+    res.json({ message: 'Invoice sent successfully' });
+  } catch (error) {
+    console.error('Error sending invoice:', error);
+    res.status(500).json({ message: 'Error sending invoice', error: error.message });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiBell, FiX, FiCheck, FiInfo, FiAlertCircle } from 'react-icons/fi';
+import { FiBell, FiX, FiCheck, FiInfo, FiAlertCircle, FiMail } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import './NotificationCenter.css';
 
@@ -33,6 +33,18 @@ function NotificationCenter() {
     setNotifications(savedNotifications);
     setUnreadCount(savedNotifications.filter(n => !n.read).length);
   }, [currentUser]);
+
+  // Listen for external notification updates (e.g. from MailPoller)
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const handleExternalUpdate = () => {
+      const saved = JSON.parse(localStorage.getItem(`notifications_${currentUser.id}`) || '[]');
+      setNotifications(saved);
+      setUnreadCount(saved.filter(n => !n.read).length);
+    };
+    window.addEventListener('notifications:update', handleExternalUpdate);
+    return () => window.removeEventListener('notifications:update', handleExternalUpdate);
+  }, [currentUser?.id]);
 
   // Save notifications to localStorage when they change
   useEffect(() => {
@@ -73,8 +85,20 @@ function NotificationCenter() {
         return <FiInfo className="notification-icon info" />;
       case 'success':
         return <FiCheck className="notification-icon success" />;
+      case 'mail':
+        return <FiMail className="notification-icon mail" />;
       default:
         return <FiBell className="notification-icon default" />;
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.read) markAsRead(notification.id);
+    if (notification.type === 'new_email') {
+      const mailUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
+      const token = localStorage.getItem('token');
+      const url = token ? `${mailUrl}?auth_token=${encodeURIComponent(token)}` : mailUrl;
+      window.open(url, '_blank');
     }
   };
 
@@ -137,7 +161,7 @@ function NotificationCenter() {
                 <div 
                   key={notification.id}
                   className={`notification-item ${notification.read ? 'read' : 'unread'}`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="notification-content">
                     <div className="notification-icon-wrapper">

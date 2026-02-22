@@ -9,6 +9,186 @@ const Company = require('../models/Company');
 router.use(authenticateToken);
 
 // ============================================
+// GET /api/attendance/today - Get today's attendance for logged-in user
+// ============================================
+router.get('/today', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await User.findById(userId).select('companyId').lean();
+        if (!user || !user.companyId) {
+            return res.json({ success: true, attendance: null });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const attendance = await Attendance.findOne({ userId, date: today }).lean();
+
+        const company = await Company.findById(user.companyId).select('hrSettings').lean();
+        const workingHoursPerDay = company?.hrSettings?.workingHoursPerDay || 8;
+
+        if (!attendance) {
+            return res.json({
+                success: true,
+                attendance: null,
+                workingHoursPerDay,
+                isClockedIn: false
+            });
+        }
+
+        // Check if there's an active (open) session
+        const lastSession = attendance.sessions?.[attendance.sessions.length - 1];
+        const isClockedIn = lastSession && !lastSession.logoutAt;
+
+        // Calculate total minutes including live active session
+        let totalMinutes = 0;
+        for (const session of attendance.sessions) {
+            if (session.loginAt && session.logoutAt) {
+                totalMinutes += Math.round((new Date(session.logoutAt) - new Date(session.loginAt)) / 60000);
+            } else if (session.loginAt && !session.logoutAt) {
+                totalMinutes += Math.round((new Date() - new Date(session.loginAt)) / 60000);
+            }
+        }
+
+        res.json({
+            success: true,
+            attendance: {
+                ...attendance,
+                totalMinutes,
+                totalHours: Math.round(totalMinutes / 6) / 10
+            },
+            workingHoursPerDay,
+            isClockedIn,
+            activeSessionStart: isClockedIn ? lastSession.loginAt : null
+        });
+    } catch (error) {
+        console.error('Error fetching today attendance:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// POST /api/attendance/clock-in - Explicitly clock in
+// ============================================
+router.post('/clock-in', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await User.findById(userId).select('companyId').lean();
+        if (!user || !user.companyId) {
+            return res.status(400).json({ success: false, message: 'No company associated' });
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        let attendance = await Attendance.findOne({ userId, date: today });
+
+        if (attendance) {
+            // Check if already clocked in (open session)
+            const lastSession = attendance.sessions[attendance.sessions.length - 1];
+            if (lastSession && !lastSession.logoutAt) {
+                return res.status(400).json({ success: false, message: 'Already clocked in' });
+            }
+            // Start new session
+            attendance.sessions.push({ loginAt: now });
+        } else {
+            attendance = new Attendance({
+                userId,
+                companyId: user.companyId,
+                date: today,
+                sessions: [{ loginAt: now }],
+                status: 'present'
+            });
+        }
+
+        await attendance.save();
+
+        res.json({
+            success: true,
+            message: 'Clocked in successfully',
+            attendance: {
+                date: today,
+                totalMinutes: attendance.totalMinutes,
+                sessionsCount: attendance.sessions.length,
+                status: attendance.status
+            },
+            activeSessionStart: now
+        });
+    } catch (error) {
+        console.error('Error clocking in:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// POST /api/attendance/clock-out - Explicitly clock out
+// ============================================
+router.post('/clock-out', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await User.findById(userId).select('companyId').lean();
+        if (!user || !user.companyId) {
+            return res.status(400).json({ success: false, message: 'No company associated' });
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        const attendance = await Attendance.findOne({ userId, date: today });
+        if (!attendance) {
+            return res.status(400).json({ success: false, message: 'No attendance record for today. Clock in first.' });
+        }
+
+        const lastSession = attendance.sessions[attendance.sessions.length - 1];
+        if (!lastSession || lastSession.logoutAt) {
+            return res.status(400).json({ success: false, message: 'Not currently clocked in' });
+        }
+
+        lastSession.logoutAt = now;
+        lastSession.durationMinutes = Math.round((now - new Date(lastSession.loginAt)) / 60000);
+
+        // Recalculate total
+        let totalMinutes = 0;
+        for (const session of attendance.sessions) {
+            if (session.loginAt && session.logoutAt) {
+                totalMinutes += Math.round((new Date(session.logoutAt) - new Date(session.loginAt)) / 60000);
+            }
+        }
+        attendance.totalMinutes = totalMinutes;
+
+        // Determine status
+        const company = await Company.findById(user.companyId).select('hrSettings').lean();
+        const workingHours = company?.hrSettings?.workingHoursPerDay || 8;
+        const halfDayThreshold = company?.hrSettings?.halfDayThresholdHours || 4;
+        const totalHours = totalMinutes / 60;
+
+        if (totalHours >= workingHours) {
+            attendance.status = 'present';
+        } else if (totalHours >= halfDayThreshold) {
+            attendance.status = 'half-day';
+        } else {
+            attendance.status = 'present';
+        }
+
+        await attendance.save();
+
+        res.json({
+            success: true,
+            message: 'Clocked out successfully',
+            attendance: {
+                date: today,
+                totalMinutes: attendance.totalMinutes,
+                totalHours: Math.round(totalMinutes / 6) / 10,
+                sessionsCount: attendance.sessions.length,
+                status: attendance.status,
+                lastSessionDuration: lastSession.durationMinutes
+            }
+        });
+    } catch (error) {
+        console.error('Error clocking out:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
 // POST /api/attendance/heartbeat - Auto-track dashboard session
 // Called by frontend every 5 minutes while dashboard is open
 // ============================================

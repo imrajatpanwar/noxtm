@@ -200,3 +200,153 @@
   margin: 0;
   font-family: 'Switzer', sans-serif;
 }
+
+/* ========================================
+   Floating Attendance Timer
+   ======================================== */
+
+.att-float-timer {
+  position: fixed;
+  bottom: 24px;
+  left: 304px;
+  z-index: 900;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.3);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Switzer', sans-serif;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.att-float-timer.overtime {
+  background: linear-gradient(135deg, #78350f, #92400e);
+}
+
+.att-float-timer:hover {
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.4);
+  transform: translateY(-2px);
+}
+
+.att-float-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+.att-float-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+  animation: att-float-pulse-anim 1.4s ease-in-out infinite;
+}
+
+.att-float-timer.overtime .att-float-pulse {
+  background: #fbbf24;
+}
+
+@keyframes att-float-pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.att-float-compact svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.att-float-time {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.att-float-hint {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.att-float-timer.overtime .att-float-hint {
+  color: #fbbf24;
+}
+
+/* Expanded details */
+.att-float-details {
+  padding: 0 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 10px;
+  animation: att-float-expand 0.2s ease;
+}
+
+@keyframes att-float-expand {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 120px; }
+}
+
+.att-float-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.att-float-label {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.att-float-val {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.att-float-active {
+  color: #22c55e;
+}
+
+.att-float-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.att-float-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #22c55e);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.att-float-progress-fill.complete {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+/* Responsive — move timer when sidebar collapses */
+@media (max-width: 768px) {
+  .att-float-timer {
+    left: 16px;
+    bottom: 16px;
+  }
+}

@@ -72,7 +72,15 @@ const exhibitorSchema = new mongoose.Schema({
     followUp: {
       type: String,
       trim: true
-    }
+    },
+    isImportant: {
+      type: Boolean,
+      default: false
+    },
+    labels: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ContactLabel'
+    }]
   }],
   extractedAt: {
     type: Date
