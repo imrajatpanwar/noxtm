@@ -18,8 +18,10 @@ let io = null;
 let chatbotEngine = null;
 
 const SESSIONS_DIR = path.join(__dirname, '..', 'whatsapp-sessions');
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 15;
 const RETRY_BASE_DELAY = 2000; // 2 seconds
+const HEALTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+let healthCheckTimer = null;
 
 /**
  * Initialize the session manager
@@ -93,6 +95,9 @@ async function startSession(accountId) {
     generateHighQualityLinkPreview: false,
     syncFullHistory: false,
     markOnlineOnConnect: false,
+    keepAliveIntervalMs: 30000,
+    retryRequestDelayMs: 2000,
+    connectTimeoutMs: 60000,
     logger: {
       level: 'silent',
       trace: () => { },
@@ -589,9 +594,67 @@ async function restoreAllSessions() {
         await WhatsAppAccount.findByIdAndUpdate(account._id, { status: 'disconnected' });
       }
     }
+
+    // Start periodic health monitor
+    startHealthCheck();
   } catch (err) {
     console.error('[WA] Error restoring sessions:', err.message);
   }
+}
+
+/**
+ * Periodic health check - restart dead/disconnected sessions
+ * Runs every 5 minutes to ensure sessions stay alive even without any user logged in
+ */
+function startHealthCheck() {
+  if (healthCheckTimer) clearInterval(healthCheckTimer);
+
+  healthCheckTimer = setInterval(async () => {
+    try {
+      // Find accounts that should be connected but have no active session
+      const connectedAccounts = await WhatsAppAccount.find({ status: 'connected' });
+
+      for (const account of connectedAccounts) {
+        const accountId = account._id.toString();
+        const session = sessions.get(accountId);
+
+        // If no session exists or socket is null/closed, restart it
+        if (!session || !session.socket) {
+          console.log(`[WA Health] Reviving dead session for ${account.phoneNumber || accountId}`);
+          try {
+            sessions.delete(accountId); // Clean up stale entry
+            await startSession(accountId);
+          } catch (err) {
+            console.error(`[WA Health] Failed to revive ${accountId}:`, err.message);
+          }
+        }
+      }
+
+      // Also check for accounts marked 'disconnected' that have valid session files (recover from max_retries)
+      const disconnectedAccounts = await WhatsAppAccount.find({ status: 'disconnected' });
+      for (const account of disconnectedAccounts) {
+        const sessionDir = path.join(SESSIONS_DIR, account.sessionFolder);
+        const credsFile = path.join(sessionDir, 'creds.json');
+
+        // Only attempt if creds exist (was previously linked, not logged out)
+        if (fs.existsSync(credsFile)) {
+          const accountId = account._id.toString();
+          if (!sessions.has(accountId)) {
+            console.log(`[WA Health] Attempting to recover disconnected session for ${account.phoneNumber || accountId}`);
+            try {
+              await startSession(accountId);
+            } catch (err) {
+              console.error(`[WA Health] Recovery failed for ${accountId}:`, err.message);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[WA Health] Health check error:', err.message);
+    }
+  }, HEALTH_CHECK_INTERVAL);
+
+  console.log('[WA] Session health monitor started (every 5 minutes)');
 }
 
 /**
@@ -599,6 +662,10 @@ async function restoreAllSessions() {
  */
 async function stopAllSessions() {
   console.log(`[WA] Stopping ${sessions.size} WhatsApp sessions...`);
+  if (healthCheckTimer) {
+    clearInterval(healthCheckTimer);
+    healthCheckTimer = null;
+  }
   for (const [accountId] of sessions) {
     try {
       await disconnectSession(accountId);
