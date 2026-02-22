@@ -86,8 +86,8 @@ const whatsAppChatbotSchema = new mongoose.Schema({
     min: 0
   },
 
-  // Max words per message — long replies get split into multiple messages
-  maxWordsPerMsg: {
+  // Max sentences per message — long replies get split into multiple messages
+  maxSentencesPerMsg: {
     type: Number,
     default: 0,
     min: 0

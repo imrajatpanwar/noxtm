@@ -1610,7 +1610,7 @@ function ChatbotTab() {
     maxTokens: 300,
     temperature: 0.7,
     cooldownMinutes: 1,
-    maxWordsPerMsg: 0,
+    maxSentencesPerMsg: 0,
     accountIds: []
   });
 
@@ -1636,7 +1636,7 @@ function ChatbotTab() {
         temperature: chatbot.temperature || 0.7,
         notesAccess: chatbot.notesAccess || false,
         cooldownMinutes: chatbot.cooldownMinutes ?? 0,
-        maxWordsPerMsg: chatbot.maxWordsPerMsg ?? 0,
+        maxSentencesPerMsg: chatbot.maxSentencesPerMsg ?? 0,
         accountIds: chatbot.accountIds || []
       });
       setDirty(false);
@@ -1850,10 +1850,10 @@ function ChatbotTab() {
               <span className="wa-help-text">Wait time per contact</span>
             </div>
             <div className="wa-form-group">
-              <label>Max Words / Msg</label>
-              <input type="number" value={form.maxWordsPerMsg} onChange={e => updateField('maxWordsPerMsg', Math.max(0, parseInt(e.target.value) || 0))}
+              <label>Max Sentences / Msg</label>
+              <input type="number" value={form.maxSentencesPerMsg} onChange={e => updateField('maxSentencesPerMsg', Math.max(0, parseInt(e.target.value) || 0))}
                 min={0} />
-              <span className="wa-help-text">0 = single msg, or split into parts</span>
+              <span className="wa-help-text">0 = single msg, or split by sentences</span>
             </div>
           </div>
         </div>
