@@ -522,8 +522,7 @@ async function sendMessage(accountId, jid, content, options = {}) {
       let typingDelay;
       if (options.isAutomated) {
         const wordCount = (content || '').split(/\s+/).filter(w => w).length;
-        // 0 words = 8s, 75 words = 48s, linear scale
-        typingDelay = 8000 + (wordCount / 75) * 40000;
+        typingDelay = (wordCount / 75) * 5000;
       } else {
         typingDelay = 1000 + Math.random() * 2000; // 1-3s for manual
       }
