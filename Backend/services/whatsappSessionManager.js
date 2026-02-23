@@ -11,6 +11,10 @@ const sessions = new Map();
 // Cooldown tracking for chatbot: `${accountId}:${contactJid}:${ruleId}` -> timestamp
 const chatbotCooldowns = new Map();
 
+// Dedup: track recently processed Baileys message IDs to prevent double-processing
+const processedMsgIds = new Set();
+const DEDUP_TTL = 60000; // 60 seconds
+
 // Reference to Socket.IO instance (set via init)
 let io = null;
 
@@ -286,6 +290,15 @@ async function startSession(accountId) {
 async function handleIncomingMessage(accountId, companyId, msg) {
   // Skip status broadcasts, reactions to own messages, etc.
   if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') return;
+
+  // Dedup: skip if we already processed this exact Baileys message ID
+  const dedupKey = `${accountId}:${msg.key.id}`;
+  if (processedMsgIds.has(dedupKey)) {
+    console.log(`[WA] Skipping duplicate message ${msg.key.id}`);
+    return;
+  }
+  processedMsgIds.add(dedupKey);
+  setTimeout(() => processedMsgIds.delete(dedupKey), DEDUP_TTL);
 
   const jid = msg.key.remoteJid;
   const pushName = msg.pushName || '';

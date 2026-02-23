@@ -78,18 +78,25 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
     }
   }
 
-  // Check cooldown (skip if cooldownMinutes is 0)
+  // Check cooldown — always enforce a minimum 10-second internal cooldown
   const cooldownKey = `bot:${companyId}:${contact.whatsappId}`;
-  if (bot.cooldownMinutes > 0) {
-    const lastTriggered = cooldowns.get(cooldownKey);
-    if (lastTriggered && (Date.now() - lastTriggered) < bot.cooldownMinutes * 60 * 1000) {
-      return null;
-    }
+  const cooldownMs = Math.max(10000, (bot.cooldownMinutes || 0) * 60 * 1000);
+  const lastTriggered = cooldowns.get(cooldownKey);
+  if (lastTriggered && (Date.now() - lastTriggered) < cooldownMs) {
+    return null;
   }
 
   try {
     const aiResponse = await generateAIResponse(bot, accountId, companyId, contact, messageText, { provider, apiKey, model, customEndpoint });
     if (aiResponse) {
+      // Strip any roleplay actions that slipped through (with or without asterisks)
+      if (aiResponse.content) {
+        aiResponse.content = aiResponse.content
+          .replace(/\*[^*]{1,60}\*/g, '')           // *action text*
+          .replace(/^\s*(smiles|grins|nods|waves|laughs|chuckles|sighs|leans|clears throat|speaks|looks|bows|winks|pauses|takes a deep breath)[^.!?\n]{0,40}/gim, '')
+          .replace(/\n{3,}/g, '\n\n')               // collapse excess newlines
+          .trim();
+      }
       cooldowns.set(cooldownKey, Date.now());
       // Use atomic update to avoid race condition on concurrent messages
       await WhatsAppChatbot.updateOne(
@@ -146,7 +153,7 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
-  systemPrompt += '\nCRITICAL RULE: NEVER EVER use asterisk actions, roleplay actions, stage directions, or theatrical expressions. This means absolutely NO text between asterisks like *clears throat*, *smiles*, *leans in*, *speaks enthusiastically*, etc. Just write normal plain text. Violation of this rule is unacceptable.';
+  systemPrompt += '\nCRITICAL RULE: NEVER EVER use roleplay actions, stage directions, or theatrical expressions — with or without asterisks. Do NOT write things like "smiles warmly", "clears throat", "leans in", "nods", "speaks enthusiastically", *smiles*, *leans in*, etc. No narration of actions or emotions. Just write normal conversational plain text like a real human texting on WhatsApp.';
   systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
   systemPrompt += '\nKeep your reply in ONE single message. Do NOT split your response into multiple paragraphs or sections. Be conversational and direct — like texting a friend, not writing an essay.';
   systemPrompt += '\nYou can respond in any language the customer uses. Match their language naturally.';
