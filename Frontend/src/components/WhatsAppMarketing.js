@@ -1734,7 +1734,7 @@ function ChatbotTab() {
               <label>Max Tokens</label>
               <input type="number" value={form.maxTokens} onChange={e => updateField('maxTokens', Math.max(50, Math.min(4000, parseInt(e.target.value) || 300)))}
                 min={50} max={4000} />
-              <span className="wa-help-text">Response length limit (50-4000)</span>
+              <span className="wa-help-text">Max reply length (100=short, 300=medium)</span>
             </div>
             <div className="wa-form-group">
               <label>Temperature</label>
