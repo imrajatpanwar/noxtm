@@ -93,6 +93,21 @@ const whatsAppChatbotSchema = new mongoose.Schema({
     min: 0
   },
 
+  // Max messages per reply — caps how many split messages can be sent (0 = unlimited)
+  maxMsgsPerReply: {
+    type: Number,
+    default: 1,
+    min: 0
+  },
+
+  // Delay in seconds between split messages (on top of typing simulation)
+  msgDelaySec: {
+    type: Number,
+    default: 3,
+    min: 0,
+    max: 30
+  },
+
   // Stats
   totalReplies: {
     type: Number,

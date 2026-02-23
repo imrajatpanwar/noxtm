@@ -421,7 +421,17 @@ async function handleIncomingMessage(accountId, companyId, msg) {
         const response = await chatbotEngine.processIncomingMessage(accountId, companyId, contact, content, chatbotCooldowns);
         if (response) {
           // Split long replies into multiple messages if maxSentencesPerMsg is set
-          const chunks = splitBySentenceLimit(response.content, response.maxSentencesPerMsg);
+          let chunks = splitBySentenceLimit(response.content, response.maxSentencesPerMsg);
+          // Cap chunks if maxMsgsPerReply is set
+          const maxMsgs = response.maxMsgsPerReply || 0;
+          if (maxMsgs > 0 && chunks.length > maxMsgs) {
+            // Merge overflow chunks into the last allowed chunk
+            const kept = chunks.slice(0, maxMsgs - 1);
+            const merged = chunks.slice(maxMsgs - 1).join(' ');
+            kept.push(merged);
+            chunks = kept;
+          }
+          const delaySec = response.msgDelaySec ?? 3;
           for (let i = 0; i < chunks.length; i++) {
             await sendMessage(accountId, jid, chunks[i], {
               type: response.type || 'text',
@@ -429,9 +439,9 @@ async function handleIncomingMessage(accountId, companyId, msg) {
               isAutomated: true,
               chatbotReply: true
             });
-            // Small delay between chunks so they arrive in order
+            // Pacing delay between chunks (typing sim already runs inside sendMessage)
             if (i < chunks.length - 1) {
-              await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
+              await new Promise(r => setTimeout(r, delaySec * 1000));
             }
           }
 

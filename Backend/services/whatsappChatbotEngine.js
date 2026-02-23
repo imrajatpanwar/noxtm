@@ -98,6 +98,8 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
       );
       // Pass maxSentencesPerMsg so session manager can split if needed
       aiResponse.maxSentencesPerMsg = bot.maxSentencesPerMsg || 0;
+      aiResponse.maxMsgsPerReply = bot.maxMsgsPerReply ?? 1;
+      aiResponse.msgDelaySec = bot.msgDelaySec ?? 3;
       return aiResponse;
     }
   } catch (err) {
@@ -144,8 +146,9 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
   systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
   systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
   systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
-  systemPrompt += '\nNEVER use roleplay actions, asterisk actions, or theatrical expressions like *clears throat*, *smiles*, *nods*, etc. Just write plain text replies.';
+  systemPrompt += '\nCRITICAL RULE: NEVER EVER use asterisk actions, roleplay actions, stage directions, or theatrical expressions. This means absolutely NO text between asterisks like *clears throat*, *smiles*, *leans in*, *speaks enthusiastically*, etc. Just write normal plain text. Violation of this rule is unacceptable.';
   systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
+  systemPrompt += '\nKeep your reply in ONE single message. Do NOT split your response into multiple paragraphs or sections. Be conversational and direct — like texting a friend, not writing an essay.';
   systemPrompt += '\nYou can respond in any language the customer uses. Match their language naturally.';
   systemPrompt += '\nYou have access to the full conversation history above. Use it to give contextual, relevant responses.';
 
