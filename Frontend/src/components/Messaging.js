@@ -528,7 +528,7 @@ function Messaging() {
       try {
         const targetId = conversation.targetUser._id || conversation.targetUser.id;
         const response = await api.post('/messaging/conversations/direct', {
-          participantId: targetId
+          recipientId: targetId
         });
         const newConv = response.data.conversation || response.data;
         setSelectedConversation(newConv);
