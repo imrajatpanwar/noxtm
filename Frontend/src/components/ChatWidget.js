@@ -8,9 +8,16 @@ import './ChatWidget.css';
 
 const ChatWidget = ({ onNavigateToMessages }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState('list'); // 'list' | 'noxtm-chat'
+  const [view, setView] = useState('list'); // 'list' | 'noxtm-chat' | 'dm-chat'
   const [conversations, setConversations] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
+
+  // DM chat state
+  const [dmConversation, setDmConversation] = useState(null);
+  const [dmMessages, setDmMessages] = useState([]);
+  const [dmInput, setDmInput] = useState('');
+  const [dmLoading, setDmLoading] = useState(false);
+  const [dmLoadingMsgs, setDmLoadingMsgs] = useState(false);
 
   // Noxtm chat state
   const [noxtmMessages, setNoxtmMessages] = useState([]);
@@ -56,14 +63,14 @@ const ChatWidget = ({ onNavigateToMessages }) => {
 
   // Auto-scroll in Noxtm chat
   useEffect(() => {
-    if (view === 'noxtm-chat') {
+    if (view === 'noxtm-chat' || view === 'dm-chat') {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [noxtmMessages, noxtmLoading, view]);
+  }, [noxtmMessages, noxtmLoading, dmMessages, dmLoading, view]);
 
-  // Focus input when entering Noxtm chat
+  // Focus input when entering chat views
   useEffect(() => {
-    if (view === 'noxtm-chat' && inputRef.current) {
+    if ((view === 'noxtm-chat' || view === 'dm-chat') && inputRef.current) {
       inputRef.current.focus();
     }
   }, [view]);
@@ -114,6 +121,56 @@ const ChatWidget = ({ onNavigateToMessages }) => {
   const openNoxtmChat = () => {
     setView('noxtm-chat');
     loadNoxtmHistory();
+  };
+
+  const openDmChat = async (conv) => {
+    setDmConversation(conv);
+    setDmMessages([]);
+    setView('dm-chat');
+    setDmLoadingMsgs(true);
+    try {
+      const res = await api.get(`/messaging/conversations/${conv._id}/messages?limit=50`);
+      setDmMessages(res.data.messages || []);
+      // Mark as read
+      api.post(`/messaging/conversations/${conv._id}/mark-read`).catch(() => {});
+    } catch (err) {
+      console.error('Failed to load DM messages:', err);
+    } finally {
+      setDmLoadingMsgs(false);
+    }
+  };
+
+  const handleSendDm = async () => {
+    if (!dmInput.trim() || dmLoading || !dmConversation) return;
+    const msg = dmInput.trim();
+    setDmInput('');
+    const tempId = 'temp-' + Date.now();
+    const tempMsg = { _id: tempId, sender: { _id: currentUser._id }, content: msg, createdAt: new Date().toISOString() };
+    setDmMessages(prev => [...prev, tempMsg]);
+    setDmLoading(true);
+    try {
+      const res = await api.post(`/messaging/conversations/${dmConversation._id}/messages`, { content: msg });
+      const saved = res.data.message || res.data;
+      setDmMessages(prev => prev.map(m => m._id === tempId ? saved : m));
+      // Update preview in list
+      setConversations(prev => prev.map(c =>
+        c._id === dmConversation._id
+          ? { ...c, lastMessage: { content: msg, timestamp: new Date() }, unreadCount: 0 }
+          : c
+      ));
+    } catch (err) {
+      toast.error('Failed to send message');
+      setDmMessages(prev => prev.filter(m => m._id !== tempId));
+    } finally {
+      setDmLoading(false);
+    }
+  };
+
+  const handleDmKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendDm();
+    }
   };
 
   const handleSendNoxtm = async () => {
@@ -239,10 +296,7 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                     <div
                       key={conv._id}
                       className="chat-widget-conv-item"
-                      onClick={() => {
-                        setIsOpen(false);
-                        if (onNavigateToMessages) onNavigateToMessages();
-                      }}
+                      onClick={() => openDmChat(conv)}
                     >
                       <div className="chat-widget-conv-avatar">
                         {getConversationInitials(conv)}
@@ -272,6 +326,83 @@ const ChatWidget = ({ onNavigateToMessages }) => {
               }}>
                 <FiMessageCircle size={14} />
                 <span>Open Messages</span>
+              </div>
+            </>
+          )}
+
+          {/* === DM CHAT VIEW === */}
+          {view === 'dm-chat' && dmConversation && (
+            <>
+              <div className="chat-widget-header chat-widget-header-noxtm">
+                <div className="chat-widget-header-left">
+                  <button className="chat-widget-back" onClick={() => setView('list')}>
+                    <FiChevronLeft size={18} />
+                  </button>
+                  <div className="chat-widget-noxtm-avatar-sm" style={{ background: '#6366f1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
+                    {getConversationInitials(dmConversation)}
+                  </div>
+                  <div>
+                    <div className="chat-widget-header-name">{getConversationName(dmConversation)}</div>
+                    <div className="chat-widget-header-status">{dmConversation.type === 'group' ? 'Group' : 'Team Member'}</div>
+                  </div>
+                </div>
+                <button className="chat-widget-close" onClick={() => { setIsOpen(false); setView('list'); }}>
+                  <MdClose size={18} />
+                </button>
+              </div>
+
+              <div className="chat-widget-messages">
+                {dmLoadingMsgs ? (
+                  <div className="chat-widget-loading">Loading messages...</div>
+                ) : dmMessages.length === 0 ? (
+                  <div className="chat-widget-welcome">
+                    <p>No messages yet. Say hi!</p>
+                  </div>
+                ) : (
+                  dmMessages.map((msg) => {
+                    const isMe = (msg.sender?._id || msg.sender) === currentUser._id ||
+                                 (msg.sender?._id || msg.sender)?.toString() === currentUser._id?.toString();
+                    return (
+                      <div key={msg._id} className={`chat-widget-msg ${isMe ? 'user' : 'assistant'}`}>
+                        {!isMe && (
+                          <div style={{ fontSize: 10, color: '#888', marginBottom: 2, paddingLeft: 2 }}>
+                            {msg.sender?.fullName || 'Team'}
+                          </div>
+                        )}
+                        <div className="chat-widget-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                        <div className="chat-widget-msg-time">
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {dmLoading && (
+                  <div className="chat-widget-msg user">
+                    <div className="chat-widget-typing"><span></span><span></span><span></span></div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="chat-widget-input-area">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={dmInput}
+                  onChange={(e) => setDmInput(e.target.value)}
+                  onKeyPress={handleDmKeyPress}
+                  placeholder="Type a message..."
+                  disabled={dmLoading}
+                  maxLength={2000}
+                />
+                <button
+                  onClick={handleSendDm}
+                  disabled={!dmInput.trim() || dmLoading}
+                  className="chat-widget-send"
+                >
+                  <MdSend size={18} />
+                </button>
               </div>
             </>
           )}
