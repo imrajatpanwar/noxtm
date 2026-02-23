@@ -7,6 +7,8 @@ const User = require('../models/User');
 const InstalledModule = require('../models/InstalledModule');
 const TradeShow = require('../models/TradeShow');
 const Exhibitor = require('../models/Exhibitor');
+const TrendingService = require('../models/TrendingService');
+const TargetedCompany = require('../models/TargetedCompany');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
@@ -39,6 +41,19 @@ router.get('/settings', auth, async (req, res) => {
             console.error('Error checking ExhibitOS module:', e);
         }
 
+        // Check if AgencyOS module is active for this user
+        let agencyOSActive = false;
+        try {
+            const agencyModule = await InstalledModule.findOne({
+                userId: userId,
+                moduleId: 'AgencyOS',
+                status: 'active'
+            });
+            agencyOSActive = !!agencyModule;
+        } catch (e) {
+            console.error('Error checking AgencyOS module:', e);
+        }
+
         // Fetch trade shows if ExhibitOS is active
         let tradeShows = [];
         if (exhibitOSActive) {
@@ -64,6 +79,34 @@ router.get('/settings', auth, async (req, res) => {
                 }
             } catch (e) {
                 console.error('Error fetching trade shows for findr:', e);
+            }
+        }
+
+        // Fetch trending services if AgencyOS is active
+        let trendingServices = [];
+        if (agencyOSActive) {
+            try {
+                const query = user.companyId
+                    ? { companyId: user.companyId }
+                    : { createdBy: user._id };
+
+                trendingServices = await TrendingService.find(query)
+                    .select('serviceName fullName location industry')
+                    .sort({ createdAt: -1 });
+
+                // Add targeted company count for each trending service
+                for (let i = 0; i < trendingServices.length; i++) {
+                    const count = await TargetedCompany.countDocuments({
+                        trendingServiceId: trendingServices[i]._id,
+                        companyId: user.companyId
+                    });
+                    trendingServices[i] = {
+                        ...trendingServices[i].toObject(),
+                        targetedCompanyCount: count
+                    };
+                }
+            } catch (e) {
+                console.error('Error fetching trending services for findr:', e);
             }
         }
 
@@ -101,6 +144,8 @@ router.get('/settings', auth, async (req, res) => {
                 selectedCampaignId: null,
                 exhibitOSActive,
                 tradeShows,
+                agencyOSActive,
+                trendingServices,
                 message: 'No campaigns found. Create a Chrome Extension campaign in the dashboard.'
             });
         }
@@ -142,7 +187,9 @@ router.get('/settings', auth, async (req, res) => {
             }),
             selectedCampaignId: user.findrSettings?.selectedCampaignId || null,
             exhibitOSActive,
-            tradeShows
+            tradeShows,
+            agencyOSActive,
+            trendingServices
         });
     } catch (error) {
         console.error('Error fetching findr settings:', error);
@@ -479,6 +526,79 @@ router.get('/campaign-status/:id', auth, async (req, res) => {
         res.json({ success: true, status: campaign.status, name: campaign.name });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============ AGENCY OS ENDPOINTS (Chrome Extension) ============
+
+// GET /findr/trending-services/:id/targeted-companies
+router.get('/trending-services/:trendingServiceId/targeted-companies', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { trendingServiceId } = req.params;
+
+        const user = await User.findById(userId).select('companyId');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const targetedCompanies = await TargetedCompany.find({
+            trendingServiceId,
+            companyId: user.companyId
+        }).sort({ createdAt: -1 });
+
+        const trendingService = await TrendingService.findById(trendingServiceId)
+            .select('serviceName fullName location');
+
+        res.json({
+            success: true,
+            trendingService: trendingService || {},
+            targetedCompanies
+        });
+    } catch (error) {
+        console.error('Error fetching targeted companies for findr:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch targeted companies', error: error.message });
+    }
+});
+
+// POST /findr/trending-services/:id/targeted-companies
+router.post('/trending-services/:trendingServiceId/targeted-companies', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { trendingServiceId } = req.params;
+        const { companyName, companyEmail, phone, address, website, linkedIn, contacts } = req.body;
+
+        const user = await User.findById(userId).select('companyId');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (!companyName) {
+            return res.status(400).json({ success: false, message: 'Company name is required' });
+        }
+
+        const targetedCompany = new TargetedCompany({
+            trendingServiceId,
+            companyName,
+            companyEmail: companyEmail || '',
+            location: address || '',
+            website: website || '',
+            contacts: contacts || [],
+            createdBy: userId,
+            companyId: user.companyId,
+            extractedAt: new Date()
+        });
+
+        await targetedCompany.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Targeted company added successfully',
+            targetedCompany
+        });
+    } catch (error) {
+        console.error('Error adding targeted company from findr:', error);
+        res.status(500).json({ success: false, message: 'Failed to add targeted company', error: error.message });
     }
 });
 

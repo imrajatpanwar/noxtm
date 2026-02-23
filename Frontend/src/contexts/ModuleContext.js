@@ -111,12 +111,20 @@ export const ModuleProvider = ({ children }) => {
       if (response.ok && data.success) {
         // Update state
         setInstalledModules(prev => {
-          if (!prev.includes(moduleId)) {
-            const newModules = [...prev, moduleId];
-            localStorage.setItem('installedModules', JSON.stringify(newModules));
-            return newModules;
+          let newModules = [...prev];
+
+          // Mutual exclusion: AgencyOS and ExhibitOS cannot be active together
+          if (moduleId === 'AgencyOS') {
+            newModules = newModules.filter(m => m !== 'ExhibitOS');
+          } else if (moduleId === 'ExhibitOS') {
+            newModules = newModules.filter(m => m !== 'AgencyOS');
           }
-          return prev;
+
+          if (!newModules.includes(moduleId)) {
+            newModules.push(moduleId);
+          }
+          localStorage.setItem('installedModules', JSON.stringify(newModules));
+          return newModules;
         });
         return { success: true, message: data.message };
       } else {

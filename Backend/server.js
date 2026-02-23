@@ -142,6 +142,14 @@ app.use('/api/lead-campaigns', leadCampaignsRoutes);
 const exhibitorsRoutes = require('./routes/exhibitors');
 app.use('/api', exhibitorsRoutes);
 
+// Trending Services routes (Agency OS)
+const trendingServicesRoutes = require('./routes/trending-services');
+app.use('/api/trending-services', trendingServicesRoutes);
+
+// Targeted Companies routes (Agency OS)
+const targetedCompaniesRoutes = require('./routes/targeted-companies');
+app.use('/api', targetedCompaniesRoutes);
+
 // Campaign routes
 const campaignsRoutes = require('./routes/campaigns');
 app.use('/api/campaigns', campaignsRoutes);

@@ -1493,6 +1493,15 @@ function WorkspaceSettings({ user, onLogout }) {
         require: 'Noxtm Chat',
         lastUpdate: '08 Feb 2026',
         logo: <div className="module-logo-placeholder" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 8, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18 }}>CA</div>
+      },
+      {
+        id: 'AgencyOS',
+        name: 'Agency OS',
+        company: 'Digital Marketing Agency',
+        description: 'Agency OS is your all-in-one tool for digital marketing agencies. Manage trending services, track targeted companies, and organize contacts — all from a single dashboard built for agency workflows.',
+        require: 'N/A',
+        lastUpdate: '14 Jun 2025',
+        logo: <div className="module-logo-placeholder" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', borderRadius: 8, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18 }}>AO</div>
       }
     ];
 

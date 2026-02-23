@@ -34,11 +34,24 @@ router.post('/install', auth, async (req, res) => {
     const { moduleId } = req.body;
 
     // Validate moduleId
-    if (!moduleId || !['BotGit', 'ExhibitOS', 'ChatAutomation', 'WhatsAppMarketing'].includes(moduleId)) {
+    if (!moduleId || !['BotGit', 'ExhibitOS', 'ChatAutomation', 'WhatsAppMarketing', 'AgencyOS'].includes(moduleId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid module ID',
       });
+    }
+
+    // Mutual exclusion: ExhibitOS and AgencyOS cannot be active at the same time
+    if (moduleId === 'AgencyOS') {
+      await InstalledModule.findOneAndUpdate(
+        { userId: req.user.userId, moduleId: 'ExhibitOS', status: 'active' },
+        { status: 'inactive' }
+      );
+    } else if (moduleId === 'ExhibitOS') {
+      await InstalledModule.findOneAndUpdate(
+        { userId: req.user.userId, moduleId: 'AgencyOS', status: 'active' },
+        { status: 'inactive' }
+      );
     }
 
     // Check if module is already installed
@@ -101,7 +114,7 @@ router.delete('/:moduleId/uninstall', auth, async (req, res) => {
     const { moduleId } = req.params;
 
     // Validate moduleId
-    if (!['BotGit', 'ExhibitOS', 'ChatAutomation'].includes(moduleId)) {
+    if (!['BotGit', 'ExhibitOS', 'ChatAutomation', 'AgencyOS'].includes(moduleId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid module ID',
