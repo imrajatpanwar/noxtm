@@ -36,6 +36,8 @@ import UsersRoles from './UsersRoles';
 import WorkspaceSettings from './WorkspaceSettings';
 import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
+import TrendingServices from './TrendingServices';
+import TargetedCompanyList from './TargetedCompanyList';
 import LeadsMetrics from './LeadsMetrics';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
@@ -54,6 +56,7 @@ function Dashboard({ user, onLogout }) {
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedTradeShow, setSelectedTradeShow] = useState(null);
+  const [selectedTrendingService, setSelectedTrendingService] = useState(null);
 
   const isAdmin = currentUser?.role === 'Admin';
 
@@ -198,8 +201,11 @@ function Dashboard({ user, onLogout }) {
 
   const handleNavigate = (section, data) => {
     setActiveSection(section);
-    if (data) {
+    if (section === 'exhibitor-list' && data) {
       setSelectedTradeShow(data);
+    }
+    if (section === 'targeted-company-list' && data) {
+      setSelectedTrendingService(data);
     }
   };
 
@@ -221,6 +227,10 @@ function Dashboard({ user, onLogout }) {
         return <GlobalTradeShow onNavigate={handleNavigate} />;
       case 'exhibitor-list':
         return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
+      case 'trending-services':
+        return <TrendingServices onNavigate={handleNavigate} />;
+      case 'targeted-company-list':
+        return <TargetedCompanyList trendingService={selectedTrendingService} onNavigate={handleNavigate} />;
       case 'our-projects':
         return <ProjectManagement />;
       case 'project-delivered':

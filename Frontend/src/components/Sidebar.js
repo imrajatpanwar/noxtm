@@ -430,6 +430,19 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
+              {/* Trending Services Section - Only show if AgencyOS module is installed */}
+              {isModuleInstalled('AgencyOS') && (
+                <div className="sidebar-item-container">
+                  <div
+                    className={`Dash-noxtm-sidebar-item ${activeSection === 'trending-services' ? 'active' : ''}`}
+                    onClick={() => onSectionChange('trending-services')}
+                  >
+                    <FiGlobe className="sidebar-icon" />
+                    <span>Trending Services</span>
+                  </div>
+                </div>
+              )}
+
               {/* Lead Management Section */}
               <div className="sidebar-item-container">
                 <div
