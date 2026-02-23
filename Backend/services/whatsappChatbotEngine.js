@@ -96,6 +96,13 @@ async function processIncomingMessage(accountId, companyId, contact, messageText
           .replace(/^\s*(smiles|grins|nods|waves|laughs|chuckles|sighs|leans|clears throat|speaks|looks|bows|winks|pauses|takes a deep breath)[^.!?\n]{0,40}/gim, '')
           .replace(/\n{3,}/g, '\n\n')               // collapse excess newlines
           .trim();
+        // Hard cap: if response is way too long, truncate at last sentence within limit
+        const maxChars = (bot.maxTokens || 300) * 3; // rough token-to-char ratio
+        if (aiResponse.content.length > maxChars) {
+          const truncated = aiResponse.content.substring(0, maxChars);
+          const lastSentence = truncated.search(/[.!?][^.!?]*$/);
+          aiResponse.content = lastSentence > 0 ? truncated.substring(0, lastSentence + 1) : truncated;
+        }
       }
       cooldowns.set(cooldownKey, Date.now());
       // Use atomic update to avoid race condition on concurrent messages
@@ -146,18 +153,19 @@ async function generateAIResponse(bot, accountId, companyId, contact, messageTex
 
   conversationHistory.push({ role: 'user', content: messageText });
 
-  // Build system prompt
-  let systemPrompt = bot.botPersonality || 'You are a helpful business assistant.';
+  // Build system prompt — personality first, then minimal guardrails
+  let systemPrompt = bot.botPersonality || 'You are a helpful business assistant. Keep replies short — 2-4 sentences max.';
   systemPrompt += `\n\nYour name is "${bot.botName || 'botgit'}".`;
   systemPrompt += `\nCustomer name: ${contact.pushName || 'Unknown'}`;
   systemPrompt += `\nCustomer phone: ${contact.phoneNumber || 'Unknown'}`;
-  systemPrompt += '\n\nKeep responses concise and under 200 words. Be professional and friendly.';
-  systemPrompt += '\nDo NOT reveal you are an AI or bot. Respond naturally as a human assistant.';
-  systemPrompt += '\nCRITICAL RULE: NEVER EVER use roleplay actions, stage directions, or theatrical expressions — with or without asterisks. Do NOT write things like "smiles warmly", "clears throat", "leans in", "nods", "speaks enthusiastically", *smiles*, *leans in*, etc. No narration of actions or emotions. Just write normal conversational plain text like a real human texting on WhatsApp.';
-  systemPrompt += '\nNEVER apologize for delays or say "sorry for the late reply". Just respond directly to the message.';
-  systemPrompt += '\nKeep your reply in ONE single message. Do NOT split your response into multiple paragraphs or sections. Be conversational and direct — like texting a friend, not writing an essay.';
-  systemPrompt += '\nYou can respond in any language the customer uses. Match their language naturally.';
-  systemPrompt += '\nYou have access to the full conversation history above. Use it to give contextual, relevant responses.';
+  systemPrompt += '\n\nHARD RULES (override everything else):';
+  systemPrompt += '\n- MAXIMUM 3-5 short lines per reply. Never more. No paragraphs, no essays.';
+  systemPrompt += '\n- Write like a WhatsApp text — short, punchy, human. Not an email.';
+  systemPrompt += '\n- Do NOT reveal you are an AI or bot.';
+  systemPrompt += '\n- NEVER use roleplay actions with or without asterisks (no "smiles warmly", no *leans in*, etc).';
+  systemPrompt += '\n- NEVER apologize for delays or previous messages.';
+  systemPrompt += '\n- Match the customer\'s language naturally.';
+  systemPrompt += '\n- You have the full conversation history above. Use it for context.';
 
   // Attach notes as knowledge base
   if (notes.length > 0) {
