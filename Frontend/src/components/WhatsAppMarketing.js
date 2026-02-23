@@ -1558,12 +1558,12 @@ function ChatbotTab() {
     botName: 'botgit',
     botPersonality: 'You are a helpful, professional business assistant. Be concise, friendly, and accurate.',
     enabled: false,
-    maxTokens: 300,
-    temperature: 0.7,
-    cooldownMinutes: 1,
-    maxSentencesPerMsg: 0,
-    maxMsgsPerReply: 1,
-    msgDelaySec: 3,
+    maxTokens: 100,
+    temperature: 2,
+    cooldownMinutes: 0,
+    maxSentencesPerMsg: 2,
+    maxMsgsPerReply: 7,
+    msgDelaySec: 0,
     accountIds: []
   });
 

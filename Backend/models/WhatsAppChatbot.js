@@ -61,14 +61,14 @@ const whatsAppChatbotSchema = new mongoose.Schema({
   // AI settings
   maxTokens: {
     type: Number,
-    default: 300,
+    default: 100,
     min: 50,
     max: 4000
   },
 
   temperature: {
     type: Number,
-    default: 0.7,
+    default: 2,
     min: 0,
     max: 2
   },
@@ -89,21 +89,21 @@ const whatsAppChatbotSchema = new mongoose.Schema({
   // Max sentences per message — long replies get split into multiple messages
   maxSentencesPerMsg: {
     type: Number,
-    default: 0,
+    default: 2,
     min: 0
   },
 
   // Max messages per reply — caps how many split messages can be sent (0 = unlimited)
   maxMsgsPerReply: {
     type: Number,
-    default: 1,
+    default: 7,
     min: 0
   },
 
   // Delay in seconds between split messages (on top of typing simulation)
   msgDelaySec: {
     type: Number,
-    default: 3,
+    default: 0,
     min: 0,
     max: 30
   },
