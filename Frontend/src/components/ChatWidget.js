@@ -360,8 +360,11 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                   </div>
                 ) : (
                   dmMessages.map((msg) => {
-                    const isMe = (msg.sender?._id || msg.sender) === currentUser._id ||
-                                 (msg.sender?._id || msg.sender)?.toString() === currentUser._id?.toString();
+                    const msgContent = msg.content || msg.text || (msg.fileName ? `📎 ${msg.fileName}` : null);
+                    if (!msgContent) return null;
+                    const senderId = (msg.sender?._id || msg.sender)?.toString();
+                    const isMe = senderId === currentUser._id?.toString();
+                    const msgTime = msg.createdAt || msg.timestamp || msg.updatedAt;
                     return (
                       <div key={msg._id} className={`chat-widget-msg ${isMe ? 'user' : 'assistant'}`}>
                         {!isMe && (
@@ -369,9 +372,9 @@ const ChatWidget = ({ onNavigateToMessages }) => {
                             {msg.sender?.fullName || 'Team'}
                           </div>
                         )}
-                        <div className="chat-widget-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                        <div className="chat-widget-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msgContent}</div>
                         <div className="chat-widget-msg-time">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msgTime ? new Date(msgTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </div>
                       </div>
                     );
