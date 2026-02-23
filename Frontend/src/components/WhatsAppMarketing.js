@@ -1562,6 +1562,8 @@ function ChatbotTab() {
     temperature: 0.7,
     cooldownMinutes: 1,
     maxSentencesPerMsg: 0,
+    maxMsgsPerReply: 1,
+    msgDelaySec: 3,
     accountIds: []
   });
 
@@ -1584,6 +1586,8 @@ function ChatbotTab() {
         notesAccess: chatbot.notesAccess || false,
         cooldownMinutes: chatbot.cooldownMinutes ?? 0,
         maxSentencesPerMsg: chatbot.maxSentencesPerMsg ?? 0,
+        maxMsgsPerReply: chatbot.maxMsgsPerReply ?? 1,
+        msgDelaySec: chatbot.msgDelaySec ?? 3,
         accountIds: chatbot.accountIds || []
       });
       setDirty(false);
@@ -1749,6 +1753,21 @@ function ChatbotTab() {
               <input type="number" value={form.maxSentencesPerMsg} onChange={e => updateField('maxSentencesPerMsg', Math.max(0, parseInt(e.target.value) || 0))}
                 min={0} />
               <span className="wa-help-text">0 = single msg, or split by sentences</span>
+            </div>
+          </div>
+
+          <div className="wa-form-row" style={{ marginTop: '12px' }}>
+            <div className="wa-form-group">
+              <label>Max Msgs / Reply</label>
+              <input type="number" value={form.maxMsgsPerReply} onChange={e => updateField('maxMsgsPerReply', Math.max(0, Math.min(10, parseInt(e.target.value) || 0)))}
+                min={0} max={10} />
+              <span className="wa-help-text">Cap split messages (0 = unlimited, 1 = single)</span>
+            </div>
+            <div className="wa-form-group">
+              <label>Reply Delay (sec)</label>
+              <input type="number" value={form.msgDelaySec} onChange={e => updateField('msgDelaySec', Math.max(0, Math.min(30, parseInt(e.target.value) || 0)))}
+                min={0} max={30} />
+              <span className="wa-help-text">Pause between split messages</span>
             </div>
           </div>
         </div>
