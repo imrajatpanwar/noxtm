@@ -106,7 +106,7 @@ router.get('/google/callback', async (req, res) => {
             }
             console.log('[GOOGLE AUTH] Existing user logged in:', user.email);
         } else {
-            // Create new user first (Company requires owner)
+            // Create new user without company - they'll complete onboarding at /company-setup
             user = new User({
                 fullName: googleUser.name,
                 email: googleUser.email,
@@ -136,20 +136,7 @@ router.get('/google/callback', async (req, res) => {
             });
             await user.save();
 
-            // Now create company with owner set
-            const company = new Company({
-                companyName: `${googleUser.name}'s Workspace`,
-                companyEmail: googleUser.email,
-                owner: user._id,
-                members: [{ user: user._id, roleInCompany: 'Owner', joinedAt: new Date() }]
-            });
-            await company.save();
-
-            // Update user with companyId
-            user.companyId = company._id;
-            await user.save();
-
-            console.log('[GOOGLE AUTH] New user created:', user.email);
+            console.log('[GOOGLE AUTH] New user created (no company yet):', user.email);
         }
 
         // Generate JWT token
@@ -221,7 +208,7 @@ router.post('/google/one-tap', async (req, res) => {
             }
             console.log('[GOOGLE ONE TAP] Existing user logged in:', user.email);
         } else {
-            // Create new user first (Company requires owner)
+            // Create new user without company - they'll complete onboarding at /company-setup
             user = new User({
                 fullName: googleData.name,
                 email: googleData.email,
@@ -251,20 +238,7 @@ router.post('/google/one-tap', async (req, res) => {
             });
             await user.save();
 
-            // Now create company with owner set
-            const company = new Company({
-                companyName: `${googleData.name}'s Workspace`,
-                companyEmail: googleData.email,
-                owner: user._id,
-                members: [{ user: user._id, roleInCompany: 'Owner', joinedAt: new Date() }]
-            });
-            await company.save();
-
-            // Update user with companyId
-            user.companyId = company._id;
-            await user.save();
-
-            console.log('[GOOGLE ONE TAP] New user created:', user.email);
+            console.log('[GOOGLE ONE TAP] New user created (no company yet):', user.email);
         }
 
         // Generate JWT token
