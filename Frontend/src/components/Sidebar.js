@@ -300,6 +300,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
+    { name: 'Visitor Analytics', section: 'visitor-analytics', category: 'Settings & Configuration' },
 
     // Profile
     // Workspace Settings (Separate Section) - Profile Settings integrated here
@@ -866,6 +867,12 @@ function Sidebar({ activeSection, onSectionChange }) {
                       onClick={() => onSectionChange('credentials')}
                     >
                       <span>Credentials</span>
+                    </div>
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'visitor-analytics' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('visitor-analytics')}
+                    >
+                      <span>Visitor Analytics</span>
                     </div>
                   </div>
                 )}

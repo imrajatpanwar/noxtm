@@ -190,6 +190,10 @@ app.use('/api/salaries', salaryRoutes);
 const expenseRoutes = require('./routes/expenses');
 app.use('/api/expenses', expenseRoutes);
 
+// Visitor Analytics routes
+const visitorRoutes = require('./routes/visitors');
+app.use('/api/visitors', visitorRoutes);
+
 // LinkedIn AI Commenter routes
 const linkedinAiRoutes = require('./routes/linkedin-ai');
 app.use('/api/linkedin-ai', linkedinAiRoutes);
