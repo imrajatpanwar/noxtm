@@ -33,7 +33,7 @@ async function getUserSettings(userId) {
 // ============================================
 router.post('/generate-comment', auth, async (req, res) => {
     try {
-        const { postText, postAuthor } = req.body;
+        const { postText, postAuthor, platform } = req.body;
 
         if (!postText || postText.trim().length === 0) {
             return res.status(400).json({ success: false, message: 'Post text is required' });
@@ -80,26 +80,32 @@ router.post('/generate-comment', auth, async (req, res) => {
 
         const toneDesc = toneDescriptions[settings.commentTone] || toneDescriptions.professional;
 
-        let systemPrompt = `You are a LinkedIn engagement assistant. Generate a single comment for a LinkedIn post.
+        const isX = platform === 'x';
+        const platformLabel = isX ? 'Twitter/X' : 'LinkedIn';
+        const maxLengthRule = isX
+            ? '- Maximum length: 280 characters (hard Twitter/X limit)'
+            : `- Maximum length: ${settings.commentMaxLength} characters`;
+
+        let systemPrompt = `You are a ${platformLabel} engagement assistant. Generate a single ${isX ? 'reply' : 'comment'} for a ${platformLabel} post.
 
 Rules:
 - Tone: ${toneDesc}
-- Maximum length: ${settings.commentMaxLength} characters
+${maxLengthRule}
 - Language: ${settings.commentLanguage}
-- The comment should be relevant to the post content
+- The ${isX ? 'reply' : 'comment'} should be relevant to the post content
 - Do NOT use hashtags
 - Do NOT start with "Great post!" or similar generic openers
 - Sound natural and human — not like a bot
 - Add genuine value or perspective to the conversation
-- Do NOT use quotation marks around the comment`;
+- Do NOT use quotation marks around the ${isX ? 'reply' : 'comment'}`;
 
         if (settings.customInstructions) {
             systemPrompt += `\n- Additional user instructions: ${settings.customInstructions}`;
         }
 
         const userPrompt = postAuthor
-            ? `LinkedIn post by ${postAuthor}:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a comment:`
-            : `LinkedIn post:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a comment:`;
+            ? `${platformLabel} post by ${postAuthor}:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'}:`
+            : `${platformLabel} post:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'}:`;
 
         let generatedComment;
 
@@ -173,6 +179,142 @@ Rules:
         res.status(500).json({
             success: false,
             message: error.message || 'Failed to generate comment'
+        });
+    }
+});
+
+// ============================================
+// POST /generate-tweet — Generate AI tweet on a given topic
+// ============================================
+router.post('/generate-tweet', auth, async (req, res) => {
+    try {
+        const { topic, context } = req.body;
+
+        if (!topic || topic.trim().length === 0) {
+            return res.status(400).json({ success: false, message: 'Topic is required' });
+        }
+
+        const settings = await getUserSettings(req.user.userId);
+
+        if (!settings.enabled) {
+            return res.status(403).json({ success: false, message: 'AI commenting is disabled in your settings' });
+        }
+
+        if (settings.commentsToday >= settings.dailyLimit) {
+            return res.status(429).json({
+                success: false,
+                message: `Daily limit reached (${settings.dailyLimit}). Resets tomorrow.`
+            });
+        }
+
+        const companyId = req.user.companyId;
+        const company = companyId ? await Company.findById(companyId).select('aiSettings').lean() : null;
+        const ai = company?.aiSettings || {};
+        const aiProvider = ai.provider || 'anthropic';
+        const aiKey = ai.apiKey || process.env.ANTHROPIC_API_KEY;
+        const aiModel = ai.model || 'claude-sonnet-4-20250514';
+
+        if (!aiKey) {
+            return res.status(500).json({
+                success: false,
+                message: 'AI API key not configured. Go to Workspace Settings → General to set up your AI provider.'
+            });
+        }
+
+        const toneDescriptions = {
+            professional: 'professional and insightful',
+            casual: 'friendly and conversational',
+            thoughtful: 'reflective and nuanced',
+            witty: 'clever and engaging with a touch of humor',
+            supportive: 'encouraging and positive'
+        };
+        const toneDesc = toneDescriptions[settings.commentTone] || toneDescriptions.professional;
+
+        const systemPrompt = `You are a Twitter/X engagement assistant. Generate a single tweet on the given topic.
+
+Rules:
+- Tone: ${toneDesc}
+- Maximum 280 characters (hard limit — this is Twitter/X)
+- Language: ${settings.commentLanguage || 'English'}
+- The tweet must be relevant, engaging, and shareable
+- Do NOT put quotes around the tweet
+- Sound natural and human — not like a bot
+- You may use 1-2 relevant hashtags if appropriate
+- Keep it concise and impactful${settings.customInstructions ? `\n- Additional instructions: ${settings.customInstructions}` : ''}`;
+
+        const userPrompt = context
+            ? `Topic: ${topic}\n\nAdditional context: ${context}\n\nGenerate a tweet:`
+            : `Topic: ${topic}\n\nGenerate a tweet:`;
+
+        let generatedTweet;
+
+        if (aiProvider === 'anthropic') {
+            const client = new Anthropic({ apiKey: aiKey });
+            const message = await client.messages.create({
+                model: aiModel,
+                max_tokens: 200,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }]
+            });
+            generatedTweet = message.content[0].text.trim();
+        } else {
+            const providerUrls = {
+                openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+                openai: 'https://api.openai.com/v1/chat/completions',
+                groq: 'https://api.groq.com/openai/v1/chat/completions',
+                together: 'https://api.together.xyz/v1/chat/completions',
+                custom: ai.customEndpoint
+            };
+            const url = providerUrls[aiProvider];
+            if (!url) throw new Error('Invalid AI provider: ' + aiProvider);
+
+            const headers = { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' };
+            if (aiProvider === 'openrouter') {
+                headers['HTTP-Referer'] = 'https://noxtm.com';
+                headers['X-Title'] = 'NOXTM AI Social Commenter';
+            }
+
+            const response = await axios.post(url, {
+                model: aiModel,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 200,
+                temperature: 0.7
+            }, { headers, timeout: 15000 });
+
+            generatedTweet = (response.data?.choices?.[0]?.message?.content || '').trim();
+        }
+
+        if (!generatedTweet) {
+            return res.status(500).json({ success: false, message: 'No response from AI' });
+        }
+
+        // Save to history
+        await LinkedInAIComment.create({
+            userId: req.user.userId,
+            postAuthor: 'Self (Tweet)',
+            postTextSnippet: `Topic: ${topic}`.substring(0, 500),
+            generatedComment: generatedTweet,
+            tone: settings.commentTone,
+            wasPosted: false
+        });
+
+        settings.commentsToday += 1;
+        await settings.save();
+
+        res.json({
+            success: true,
+            tweet: generatedTweet,
+            remaining: settings.dailyLimit - settings.commentsToday
+        });
+
+    } catch (error) {
+        console.error('Error generating AI tweet:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to generate tweet'
         });
     }
 });

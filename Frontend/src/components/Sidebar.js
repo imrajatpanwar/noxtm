@@ -431,7 +431,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
               )}
 
-              {/* Trending Services Section - Only show if AgencyOS module is installed */}
+              {/* Companies Data Section - Only show if AgencyOS module is installed */}
               {isModuleInstalled('AgencyOS') && (
                 <div className="sidebar-item-container">
                   <div
@@ -439,7 +439,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                     onClick={() => onSectionChange('trending-services')}
                   >
                     <FiGlobe className="sidebar-icon" />
-                    <span>Trending Services</span>
+                    <span>Companies Data</span>
                   </div>
                 </div>
               )}
