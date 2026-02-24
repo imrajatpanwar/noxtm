@@ -27,12 +27,17 @@ import CampaignWizard from './components/CampaignWizard';
 import CampaignDetails from './components/CampaignDetails';
 import ContactListManager from './components/ContactListManager';
 import AuthCallback from './components/AuthCallback';
+import ProductsPage from './components/ProductsPage';
+import DocumentationPage from './components/DocumentationPage';
+import CareersPage from './components/CareersPage';
+import ApiReferencePage from './components/ApiReferencePage';
+import SecurityPage from './components/SecurityPage';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback'];
+  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback', '/api-reference'];
 
   // Also hide footer on invite pages
   if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
@@ -328,6 +333,11 @@ function App() {
                   element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
                 />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/documentation" element={<DocumentationPage />} />
+                <Route path="/careers" element={<CareersPage />} />
+                <Route path="/api-reference" element={<ApiReferencePage />} />
+                <Route path="/security" element={<SecurityPage />} />
                 <Route
                   path="/company-setup"
                   element={

@@ -180,12 +180,12 @@ function Header({ user, onLogout }) {
               <a href="mailto:mail@noxtm.com" className="nav-item">
                 mail@noxtm.com
               </a>
-              <a href="#products" className="nav-item btn-style">
+              <Link to="/products" className="nav-item btn-style">
                 Products
-              </a>
-              <a href="#security" className="nav-item btn-style">
+              </Link>
+              <Link to="/security" className="nav-item btn-style">
                 Security
-              </a>
+              </Link>
               <Link to="/documentation" className="nav-item btn-style">
                 Documentation
               </Link>
