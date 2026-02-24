@@ -109,9 +109,7 @@ function Login({ onLogin }) {
           } else if (!u.companyId) {
             window.location.href = '/company-setup';
           } else {
-            const sub = u.subscription;
-            const hasActive = sub && (sub.status === 'active' || (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date()));
-            window.location.href = hasActive ? '/dashboard' : '/pricing';
+            window.location.href = '/dashboard';
           }
         }
       } else {
@@ -163,16 +161,11 @@ function Login({ onLogin }) {
         return;
       }
 
-      // Smart redirect: no company → setup, no subscription → pricing, else dashboard
+      // Smart redirect: no company → setup, else dashboard (subscription check happens in dashboard route)
       if (!result.user.companyId) {
         navigate('/company-setup');
       } else {
-        const subscription = result.user.subscription;
-        const hasValidSubscription = subscription && (
-          subscription.status === 'active' ||
-          (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
-        );
-        navigate(hasValidSubscription ? '/dashboard' : '/pricing');
+        navigate('/dashboard');
       }
     } else {
       setError(result.message || 'Login failed. Please try again.');

@@ -327,11 +327,7 @@ function App() {
                     user ? (
                       user.role === 'Admin' ? <Navigate to="/dashboard" /> :
                       !user.companyId ? <Navigate to="/company-setup" /> :
-                      (() => {
-                        const sub = user.subscription;
-                        const hasActive = sub && (sub.status === 'active' || (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date()));
-                        return hasActive ? <Navigate to="/dashboard" /> : <Navigate to="/pricing" />;
-                      })()
+                      <Navigate to="/dashboard" />
                     ) : <Login onLogin={login} />
                   }
                 />

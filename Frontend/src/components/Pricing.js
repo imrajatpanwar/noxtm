@@ -12,6 +12,20 @@ const Pricing = () => {
   const [loading, setLoading] = useState(false);
   const { currentUser } = useRole();
 
+  // Redirect users who already have an active subscription or trial
+  React.useEffect(() => {
+    if (currentUser) {
+      const sub = currentUser.subscription;
+      const hasActive = sub && (
+        sub.status === 'active' ||
+        (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date())
+      );
+      if (hasActive) {
+        navigate('/dashboard');
+      }
+    }
+  }, [currentUser, navigate]);
+
   const plans = [
     {
       name: 'Starter',
