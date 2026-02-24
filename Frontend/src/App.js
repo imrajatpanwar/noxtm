@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import { ModuleProvider } from './contexts/ModuleContext';
+import { trackVisitor, stopTracking } from './utils/fingerprint';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -114,6 +115,14 @@ function App() {
       window.removeEventListener('userUpdated', handleUserUpdate);
     };
   }, []);
+
+  // FingerprintJS visitor tracking
+  useEffect(() => {
+    if (user && user.companyId) {
+      trackVisitor();
+    }
+    return () => stopTracking();
+  }, [user]);
 
   const checkAuthStatus = async () => {
     try {

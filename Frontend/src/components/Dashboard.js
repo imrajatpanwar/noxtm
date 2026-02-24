@@ -46,6 +46,7 @@ import NoxtmChatAdmin from './NoxtmChatAdmin';
 import MailPoller from './MailPoller';
 import LinkedInManager from './LinkedInManager';
 import SocialMediaCalendar from './SocialMediaCalendar';
+import VisitorAnalytics from './VisitorAnalytics';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -297,6 +298,8 @@ function Dashboard({ user, onLogout }) {
         return <NoxtmChatAdmin />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
+      case 'visitor-analytics':
+        return <VisitorAnalytics />;
       default:
         return (
           <div className="dashboard-card">
