@@ -12,6 +12,10 @@ const visitorSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  currentPage: {
+    type: String,
+    default: 'Home'
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
