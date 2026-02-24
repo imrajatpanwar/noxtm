@@ -350,7 +350,7 @@ const RevenueGraph = () => {
   );
 };
 
-function Overview({ error, onNavigate }) {
+function Overview({ error }) {
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -374,177 +374,42 @@ function Overview({ error, onNavigate }) {
     return String(n || 0);
   };
 
-  // Section card definitions
-  const sectionCards = stats ? [
+  // Grouped stats rows
+  const groups = stats ? [
     {
-      key: 'tasks',
-      title: 'Task Manager',
-      icon: SectionIcons.tasks,
-      color: '#3b82f6',
-      nav: 'task-manager',
-      value: fmt(stats.tasks.total),
-      label: 'Total Tasks',
-      pills: [
-        { label: 'To Do', value: stats.tasks.todo, color: '#9ca3af' },
-        { label: 'In Progress', value: stats.tasks.inProgress, color: '#3b82f6' },
-        { label: 'Done', value: stats.tasks.done, color: '#22c55e' }
+      label: 'DATA CENTER',
+      items: [
+        { icon: SectionIcons.companies, name: 'Companies', value: fmt(stats.companiesData.total), color: '#8b5cf6' },
+        { icon: SectionIcons.leads, name: 'Leads', value: fmt(stats.leads.total), color: '#ef4444', sub: `${stats.leads.active} active · ${stats.leads.warm} warm` },
+        { icon: SectionIcons.contacts, name: 'Contacts', value: fmt(stats.contacts.total), color: '#06b6d4' },
+        { icon: SectionIcons.clients, name: 'Clients', value: fmt(stats.clients.total), color: '#10b981' },
       ]
     },
     {
-      key: 'notes',
-      title: 'Notes',
-      icon: SectionIcons.notes,
-      color: '#f59e0b',
-      nav: 'notes',
-      value: fmt(stats.notes.total),
-      label: 'Notes',
-      pills: []
-    },
-    {
-      key: 'companies',
-      title: 'Companies Data',
-      icon: SectionIcons.companies,
-      color: '#8b5cf6',
-      nav: 'trending-services',
-      value: fmt(stats.companiesData.total),
-      label: 'Companies',
-      pills: []
-    },
-    {
-      key: 'leads',
-      title: 'Lead Management',
-      icon: SectionIcons.leads,
-      color: '#ef4444',
-      nav: 'leads-flow',
-      value: fmt(stats.leads.total),
-      label: 'Total Leads',
-      pills: [
-        { label: 'Active', value: stats.leads.active, color: '#22c55e' },
-        { label: 'Warm', value: stats.leads.warm, color: '#f59e0b' },
-        { label: 'Cold', value: stats.leads.cold, color: '#6b7280' }
+      label: 'PROJECTS',
+      items: [
+        { icon: SectionIcons.projects, name: 'Projects', value: fmt(stats.projects.total), color: '#6366f1', sub: `${stats.projects.inProgress} active · ${stats.projects.completed} done` },
       ]
     },
     {
-      key: 'contacts',
-      title: 'Contacts',
-      icon: SectionIcons.contacts,
-      color: '#06b6d4',
-      nav: 'email-marketing',
-      value: fmt(stats.contacts.total),
-      label: 'Contacts',
-      pills: []
-    },
-    {
-      key: 'clients',
-      title: 'Client Management',
-      icon: SectionIcons.clients,
-      color: '#10b981',
-      nav: 'client-management',
-      value: fmt(stats.clients.total),
-      label: 'Clients',
-      pills: []
-    },
-    {
-      key: 'projects',
-      title: 'Client / Projects',
-      icon: SectionIcons.projects,
-      color: '#6366f1',
-      nav: 'our-projects',
-      value: fmt(stats.projects.total),
-      label: 'Total Projects',
-      pills: [
-        { label: 'Active', value: stats.projects.inProgress, color: '#3b82f6' },
-        { label: 'Completed', value: stats.projects.completed, color: '#22c55e' },
-        { label: 'On Hold', value: stats.projects.onHold, color: '#f59e0b' }
+      label: 'DIGITAL MEDIA',
+      items: [
+        { icon: SectionIcons.social, name: 'Social Posts', value: fmt(stats.socialMedia.total), color: '#ec4899', sub: `${stats.socialMedia.published} published · ${stats.socialMedia.scheduled} scheduled` },
+        { icon: SectionIcons.campaigns, name: 'Campaigns', value: fmt(stats.campaigns.total), color: '#f97316', sub: `${stats.campaigns.sent} sent · ${stats.campaigns.draft} drafts` },
+        { icon: SectionIcons.calendar, name: 'Scheduled', value: fmt(stats.contentCalendar.scheduled), color: '#14b8a6' },
+        { icon: SectionIcons.linkedin, name: 'LinkedIn AI', value: fmt(stats.linkedin.totalComments), color: '#0a66c2' },
       ]
     },
     {
-      key: 'social',
-      title: 'Social Media',
-      icon: SectionIcons.social,
-      color: '#ec4899',
-      nav: 'content-calendar',
-      value: fmt(stats.socialMedia.total),
-      label: 'Total Posts',
-      pills: [
-        { label: 'Published', value: stats.socialMedia.published, color: '#22c55e' },
-        { label: 'Scheduled', value: stats.socialMedia.scheduled, color: '#3b82f6' },
-        { label: 'Drafts', value: stats.socialMedia.draft, color: '#9ca3af' }
+      label: 'MARKETING',
+      items: [
+        { icon: SectionIcons.whatsapp, name: 'WhatsApp', value: fmt(stats.whatsapp.campaigns), color: '#25d366', sub: `${fmt(stats.whatsapp.contacts)} contacts` },
       ]
     },
     {
-      key: 'campaigns',
-      title: 'Meta Ads',
-      icon: SectionIcons.campaigns,
-      color: '#f97316',
-      nav: 'campaign-setup',
-      value: fmt(stats.campaigns.total),
-      label: 'Campaigns',
-      pills: [
-        { label: 'Sent', value: stats.campaigns.sent, color: '#22c55e' },
-        { label: 'Scheduled', value: stats.campaigns.scheduled, color: '#3b82f6' },
-        { label: 'Drafts', value: stats.campaigns.draft, color: '#9ca3af' }
-      ]
-    },
-    {
-      key: 'calendar',
-      title: 'Content Calendar',
-      icon: SectionIcons.calendar,
-      color: '#14b8a6',
-      nav: 'content-calendar',
-      value: fmt(stats.contentCalendar.scheduled),
-      label: 'Scheduled',
-      pills: [
-        { label: 'Published', value: stats.contentCalendar.published, color: '#22c55e' }
-      ]
-    },
-    {
-      key: 'linkedin',
-      title: 'LinkedIn',
-      icon: SectionIcons.linkedin,
-      color: '#0a66c2',
-      nav: 'linkedin',
-      value: fmt(stats.linkedin.totalComments),
-      label: 'AI Comments',
-      pills: []
-    },
-    {
-      key: 'whatsapp',
-      title: 'WhatsApp',
-      icon: SectionIcons.whatsapp,
-      color: '#25d366',
-      nav: 'whatsapp-marketing',
-      value: fmt(stats.whatsapp.campaigns),
-      label: 'Campaigns',
-      pills: [
-        { label: 'Contacts', value: stats.whatsapp.contacts, color: '#25d366' }
-      ]
-    },
-    {
-      key: 'hr',
-      title: 'HR Management',
-      icon: SectionIcons.hr,
-      color: '#8b5cf6',
-      nav: 'hr-overview',
-      value: fmt(stats.hr.teamSize),
-      label: 'Team Members',
-      pills: [
-        { label: 'Present Today', value: stats.hr.presentToday, color: '#22c55e' },
-        { label: 'Pending Leaves', value: stats.hr.pendingLeaves, color: '#f59e0b' }
-      ]
-    },
-    {
-      key: 'finance',
-      title: 'Finance Management',
-      icon: SectionIcons.finance,
-      color: '#059669',
-      nav: 'invoice-management',
-      value: '$' + fmt(stats.finance.totalRevenue),
-      label: 'Revenue',
-      pills: [
-        { label: 'Pending', value: '$' + fmt(stats.finance.pendingRevenue), color: '#f59e0b' },
-        { label: 'Invoices', value: stats.finance.invoicesTotal, color: '#3b82f6' },
-        { label: 'Overdue', value: stats.finance.invoicesOverdue, color: '#ef4444' }
+      label: 'HR',
+      items: [
+        { icon: SectionIcons.hr, name: 'Team', value: fmt(stats.hr.teamSize), color: '#8b5cf6', sub: `${stats.hr.presentToday} present · ${stats.hr.pendingLeaves} leaves pending` },
       ]
     }
   ] : [];
@@ -558,67 +423,33 @@ function Overview({ error, onNavigate }) {
       )}
 
       <div className="overview-grid">
-        {/* Left side - Revenue Graph */}
         <div className="overview-left">
           <RevenueGraph />
         </div>
-
-        {/* Right side - Task Manager */}
         <div className="overview-right">
           <TaskManager isWidget={true} />
         </div>
       </div>
 
-      {/* Section Overview Cards */}
-      <div className="ov-section-heading">
-        <h2 className="ov-section-title">Overview</h2>
-        <span className="ov-section-sub">Quick glance at all sections</span>
-      </div>
-
+      {/* Merged Stats Panel */}
       {statsLoading ? (
-        <div className="ov-cards-loading">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="ov-card ov-card-skeleton">
-              <div className="ov-skel-icon" />
-              <div className="ov-skel-line ov-skel-w60" />
-              <div className="ov-skel-line ov-skel-w40" />
-            </div>
-          ))}
+        <div className="ov-panel">
+          <div className="ov-panel-shimmer" />
         </div>
-      ) : (
-        <div className="ov-cards-grid">
-          {sectionCards.map(card => (
-            <div
-              key={card.key}
-              className="ov-card"
-              onClick={() => onNavigate && onNavigate(card.nav)}
-              style={{ '--ov-accent': card.color }}
-            >
-              <div className="ov-card-header">
-                <div className="ov-card-icon" style={{ color: card.color }}>
-                  {card.icon}
-                </div>
-                <span className="ov-card-title">{card.title}</span>
-              </div>
-              <div className="ov-card-body">
-                <span className="ov-card-value">{card.value}</span>
-                <span className="ov-card-label">{card.label}</span>
-              </div>
-              {card.pills.length > 0 && (
-                <div className="ov-card-pills">
-                  {card.pills.map((p, i) => (
-                    <span key={i} className="ov-pill">
-                      <span className="ov-pill-dot" style={{ background: p.color }} />
-                      <span className="ov-pill-val">{p.value}</span>
-                      <span className="ov-pill-lbl">{p.label}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="ov-card-arrow">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
+      ) : stats && (
+        <div className="ov-panel">
+          {groups.map(group => (
+            <div key={group.label} className="ov-group">
+              <span className="ov-group-label">{group.label}</span>
+              <div className="ov-group-items">
+                {group.items.map(item => (
+                  <div key={item.name} className="ov-item">
+                    <span className="ov-item-icon" style={{ color: item.color }}>{item.icon}</span>
+                    <span className="ov-item-name">{item.name}</span>
+                    <span className="ov-item-value">{item.value}</span>
+                    {item.sub && <span className="ov-item-sub">{item.sub}</span>}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
