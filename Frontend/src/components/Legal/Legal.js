@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
-import { Container, Row, Col } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { FiFileText, FiShield, FiXCircle, FiTruck, FiChevronRight } from 'react-icons/fi';
 import './Legal.css';
 
 const Legal = () => {
     const [activeComponent, setActiveComponent] = useState('terms');
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [activeComponent]);
+
+    const tabs = [
+        { id: 'terms', label: 'Terms & Conditions', icon: <FiFileText /> },
+        { id: 'privacy', label: 'Privacy Policy', icon: <FiShield /> },
+        { id: 'cancellation', label: 'Cancellation & Refunds', icon: <FiXCircle /> },
+        { id: 'shipping', label: 'Shipping', icon: <FiTruck /> },
+    ];
 
     const renderComponent = () => {
         switch (activeComponent) {
             case 'terms':
                 return (
                     <div className="legal-policy-wrapper">
-                        <h1>NOXTM TERMS AND CONDITIONS</h1>
-                        <hr />
-                        <p className="legal-intro" style={{margin: '0'}}>Last Updated: October 25, 2025</p>
-                        <hr />
+                        <div className="legal-policy-header">
+                            <h1>Noxtm Terms and Conditions</h1>
+                            <span className="legal-updated-badge">Last Updated: October 25, 2025</span>
+                        </div>
                         <section>
                             <h2>1. INTRODUCTION AND ACCEPTANCE</h2>
                             <p>Welcome to Noxtm ("we," "us," "our," or "Noxtm"). These Terms and Conditions ("Terms," "Agreement") govern your access to and use of the Noxtm platform, including our website at noxtm.com, web applications, services, APIs, and any related software, mobile applications, or services (collectively, the "Service" or "Platform").</p>
@@ -1170,22 +1181,19 @@ const Legal = () => {
                             <p style={{fontWeight: 'bold'}}>IF YOU DO NOT AGREE TO THESE TERMS, DO NOT USE THE SERVICE.</p>
                         </section>
 
-                        <section style={{textAlign: 'center', marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #ddd'}}>
-                            <hr />
-                            <p style={{margin: '0'}}>Last Updated: October 25, 2025</p>
-                            <hr />
-                            <p style={{fontWeight: 'bold'}}>Noxtm - All-in-One Business Management Platform</p>
-                            <p>© 2025 Noxtm. All rights reserved.</p>
-                        </section>
+                        <div className="legal-policy-footer">
+                            <p>Noxtm - All-in-One Business Management Platform</p>
+                            <p>\u00A9 2025 Noxtm. All rights reserved.</p>
+                        </div>
                     </div>
                 );
 case 'privacy':
                 return (
                     <div className="legal-policy-wrapper">
-                        <h1>NOXTM PRIVACY POLICY</h1>
-                        <hr />
-                        <p style={{margin: '0'}}>Last Updated: October 25, 2025</p>
-                        <hr />
+                        <div className="legal-policy-header">
+                            <h1>Noxtm Privacy Policy</h1>
+                            <span className="legal-updated-badge">Last Updated: October 25, 2025</span>
+                        </div>
 
                         <section>
                             <h2>INTRODUCTION AND OUR COMMITMENT TO YOUR PRIVACY</h2>
@@ -1493,16 +1501,96 @@ case 'privacy':
                             <p>Thank you for trusting Noxtm with your personal information and your business data. We are committed to earning and maintaining that trust through transparent, responsible, and security-conscious data practices, and we look forward to providing you with excellent service while respecting and protecting your privacy.</p>
                         </section>
 
-                        <section style={{textAlign: 'center', marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #ddd'}}>
-                            <p style={{fontWeight: 'bold'}}>Last Updated: October 25, 2025</p>
-                            <p style={{fontWeight: 'bold'}}>Noxtm - All-in-One Business Management Platform</p>
-                            <p>© 2025 Noxtm. All rights reserved.</p>
-                        </section>
+                        <div className="legal-policy-footer">
+                            <p>Noxtm - All-in-One Business Management Platform</p>
+                            <p>{'\u00A9'} 2025 Noxtm. All rights reserved.</p>
+                        </div>
                     </div>
-                );            case 'shipping':
+                );
+            case 'cancellation':
                 return (
                     <div className="legal-policy-wrapper">
-                        <h1>Shipping Policy</h1>
+                        <div className="legal-policy-header">
+                            <h1>Cancellation & Refund Policy</h1>
+                            <span className="legal-updated-badge">Last Updated: October 25, 2025</span>
+                        </div>
+
+                        <section>
+                            <h2>1. Cancellation Process</h2>
+                            <p>You may cancel your subscription at any time by navigating to your Account Settings, selecting "Cancel Subscription," following the cancellation workflow, and confirming via email verification. Cancellation takes effect at the end of your current billing cycle.</p>
+                        </section>
+
+                        <section>
+                            <h2>2. Effect of Cancellation</h2>
+                            <p>Upon cancellation:</p>
+                            <ul>
+                                <li>Your account will remain active until the end of the current billing period</li>
+                                <li>After the billing period ends, your account will be downgraded to the free SoloHQ plan</li>
+                                <li>You will retain access to your data, but paid features will be locked</li>
+                                <li>Data associated with premium modules may become read-only</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2>3. Refund Policy</h2>
+                            <p>Subscription fees are generally non-refundable. However, refunds may be issued in the following circumstances:</p>
+                            <ul>
+                                <li>Duplicate or erroneous charges caused by system errors</li>
+                                <li>Service unavailability exceeding SLA commitments for your plan</li>
+                                <li>As required by applicable consumer protection laws in your jurisdiction</li>
+                            </ul>
+                            <p>Refund requests must be submitted within 14 days of the charge date by contacting support@noxtm.com with your account details and reason for the request.</p>
+                        </section>
+
+                        <section>
+                            <h2>4. Annual Plans</h2>
+                            <p>Annual subscriptions may be cancelled at any time. However, no partial refund will be issued for the remaining months of the annual term unless required by law. We recommend trying a monthly plan first before committing to annual billing.</p>
+                        </section>
+
+                        <section>
+                            <h2>5. Enterprise Plans</h2>
+                            <p>Enterprise plan cancellations are governed by the terms of your individual Enterprise Agreement. Please contact your dedicated account manager or email enterprise@noxtm.com for cancellation procedures.</p>
+                        </section>
+
+                        <section>
+                            <h2>6. Free Plan (SoloHQ)</h2>
+                            <p>Since the SoloHQ plan is free, there is no cancellation or refund applicable. You may delete your account entirely through Account Settings, which will permanently remove all your data after the retention period described in our Privacy Policy.</p>
+                        </section>
+
+                        <section>
+                            <h2>7. Data After Cancellation</h2>
+                            <p>After cancellation and plan downgrade:</p>
+                            <ul>
+                                <li>Your data remains in our systems and is accessible via the free plan</li>
+                                <li>If you choose to delete your account, data will be retained for 30 days before permanent deletion begins</li>
+                                <li>Backup copies may persist for up to 90 days after deletion from production systems</li>
+                                <li>Financial and transaction records may be retained as required by law</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2>8. Reactivation</h2>
+                            <p>You may reactivate your subscription at any time by selecting a paid plan and completing payment. Previous data and settings will be restored. Feature access will resume immediately upon successful payment.</p>
+                        </section>
+
+                        <section>
+                            <h2>9. Contact</h2>
+                            <p>For cancellation or refund inquiries, please contact us at support@noxtm.com or through the in-app support channel.</p>
+                        </section>
+
+                        <div className="legal-policy-footer">
+                            <p>Noxtm - All-in-One Business Management Platform</p>
+                            <p>{'\u00A9'} 2025 Noxtm. All rights reserved.</p>
+                        </div>
+                    </div>
+                );
+            case 'shipping':
+                return (
+                    <div className="legal-policy-wrapper">
+                        <div className="legal-policy-header">
+                            <h1>Shipping Policy</h1>
+                            <span className="legal-updated-badge">Last Updated: October 25, 2025</span>
+                        </div>
                         <p className="legal-intro">While our platform is primarily digital, certain plans or services may include physical onboarding kits, documents, or hardware tokens. This policy explains how those are handled.</p>
                         <section>
                             <h2>1. Digital Delivery</h2>
@@ -1548,12 +1636,20 @@ case 'privacy':
                             <h2>9. Contact</h2>
                             <p>For shipping questions reach out through our Contact page with your order or workspace reference.</p>
                         </section>
+
+                        <div className="legal-policy-footer">
+                            <p>Noxtm - All-in-One Business Management Platform</p>
+                            <p>{'\u00A9'} 2025 Noxtm. All rights reserved.</p>
+                        </div>
                     </div>
                 );
             default:
                 return (
                     <div className="legal-policy-wrapper">
-                        <h1>Terms & Conditions</h1>
+                        <div className="legal-policy-header">
+                            <h1>Terms & Conditions</h1>
+                            <span className="legal-updated-badge">Last Updated: October 25, 2025</span>
+                        </div>
                         <p className="legal-intro">These Terms govern your access to and use of our platform, services, APIs, and related applications. By creating an account or using the platform you agree to be bound by them.</p>
                     </div>
                 );
@@ -1561,31 +1657,30 @@ case 'privacy':
     };
 
     return (
-        <Container fluid className="legal-container">
-            <Row>
-                <Col md={2} className="legal-sidebar">
-                    <div className={`legal-sidebar-item ${activeComponent === 'terms' ? 'legal-active' : ''}`}
-                         onClick={() => setActiveComponent('terms')}>
-                        Terms & Conditions
+        <div className="legal-page">
+            <div className="legal-container">
+                <nav className="legal-sidebar">
+                    <div className="legal-sidebar-header">
+                        <h3>Legal</h3>
+                        <p>Policies & agreements</p>
                     </div>
-                    <div className={`legal-sidebar-item ${activeComponent === 'privacy' ? 'legal-active' : ''}`}
-                         onClick={() => setActiveComponent('privacy')}>
-                        Privacy Policy
-                    </div>
-                    <div className={`legal-sidebar-item ${activeComponent === 'cancellation' ? 'legal-active' : ''}`}
-                         onClick={() => setActiveComponent('cancellation')}>
-                        Cancellation & Refunds
-                    </div>
-                    <div className={`legal-sidebar-item ${activeComponent === 'shipping' ? 'legal-active' : ''}`}
-                         onClick={() => setActiveComponent('shipping')}>
-                        Shipping
-                    </div>
-                </Col>
-                <Col md={9} className="legal-content">
+                    {tabs.map(tab => (
+                        <div
+                            key={tab.id}
+                            className={`legal-sidebar-item ${activeComponent === tab.id ? 'legal-active' : ''}`}
+                            onClick={() => setActiveComponent(tab.id)}
+                        >
+                            <span className="legal-sidebar-icon">{tab.icon}</span>
+                            <span className="legal-sidebar-label">{tab.label}</span>
+                            <FiChevronRight className="legal-sidebar-arrow" />
+                        </div>
+                    ))}
+                </nav>
+                <main className="legal-content">
                     {renderComponent()}
-                </Col>
-            </Row>
-        </Container>
+                </main>
+            </div>
+        </div>
     );
 };
 
