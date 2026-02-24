@@ -32,12 +32,13 @@ import DocumentationPage from './components/DocumentationPage';
 import CareersPage from './components/CareersPage';
 import ApiReferencePage from './components/ApiReferencePage';
 import SecurityPage from './components/SecurityPage';
+import PaymentCheckout from './components/PaymentCheckout';
 
 // API configuration is now handled in config/api.js
 
 function ConditionalFooter() {
   const location = useLocation();
-  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback', '/api-reference'];
+  const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback', '/api-reference', '/checkout'];
 
   // Also hide footer on invite pages
   if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
@@ -322,7 +323,17 @@ function App() {
                 <Route path="/" element={<Home user={user} />} />
                 <Route
                   path="/login"
-                  element={user ? <Navigate to="/dashboard" /> : <Login onLogin={login} />}
+                  element={
+                    user ? (
+                      user.role === 'Admin' ? <Navigate to="/dashboard" /> :
+                      !user.companyId ? <Navigate to="/company-setup" /> :
+                      (() => {
+                        const sub = user.subscription;
+                        const hasActive = sub && (sub.status === 'active' || (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date()));
+                        return hasActive ? <Navigate to="/dashboard" /> : <Navigate to="/pricing" />;
+                      })()
+                    ) : <Login onLogin={login} />
+                  }
                 />
                 <Route
                   path="/signup"
@@ -338,6 +349,16 @@ function App() {
                 <Route path="/careers" element={<CareersPage />} />
                 <Route path="/api-reference" element={<ApiReferencePage />} />
                 <Route path="/security" element={<SecurityPage />} />
+                <Route
+                  path="/checkout"
+                  element={
+                    user ? (
+                      <PaymentCheckout />
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
                 <Route
                   path="/company-setup"
                   element={

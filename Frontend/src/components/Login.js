@@ -102,7 +102,17 @@ function Login({ onLogin }) {
           const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
           window.location.href = `${mailBaseUrl}?auth_token=${encodeURIComponent(data.token)}`;
         } else {
-          window.location.href = '/dashboard';
+          // Smart redirect based on user state
+          const u = data.user;
+          if (u.role === 'Admin') {
+            window.location.href = '/dashboard';
+          } else if (!u.companyId) {
+            window.location.href = '/company-setup';
+          } else {
+            const sub = u.subscription;
+            const hasActive = sub && (sub.status === 'active' || (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date()));
+            window.location.href = hasActive ? '/dashboard' : '/pricing';
+          }
         }
       } else {
         setError(data.message || 'Google sign-in failed');
@@ -153,16 +163,16 @@ function Login({ onLogin }) {
         return;
       }
 
-      const subscription = result.user.subscription;
-      const hasValidSubscription = subscription && (
-        subscription.status === 'active' ||
-        (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
-      );
-
-      if (hasValidSubscription) {
-        navigate('/dashboard');
+      // Smart redirect: no company → setup, no subscription → pricing, else dashboard
+      if (!result.user.companyId) {
+        navigate('/company-setup');
       } else {
-        navigate('/pricing');
+        const subscription = result.user.subscription;
+        const hasValidSubscription = subscription && (
+          subscription.status === 'active' ||
+          (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
+        );
+        navigate(hasValidSubscription ? '/dashboard' : '/pricing');
       }
     } else {
       setError(result.message || 'Login failed. Please try again.');

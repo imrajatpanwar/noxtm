@@ -2,9 +2,19 @@ const mongoose = require("mongoose");
 
 const companySchema = new mongoose.Schema({
   companyName: { type: String, required: true },
+  companyEmail: { type: String },
+  companyPhone: { type: String },
+  companyWebsite: { type: String },
+  type: { type: String, enum: ["Business", "Personal", "Enterprise", "Educational"], default: "Business" },
   industry: { type: String },
   size: { type: String, enum: ["1-10", "11-50", "51-200", "201-500", "500+"] },
+  description: { type: String },
   address: { type: String },
+  companyCity: { type: String },
+  companyState: { type: String },
+  companyCountry: { type: String },
+  companyZipCode: { type: String },
+  gstin: { type: String },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -67,7 +77,7 @@ const companySchema = new mongoose.Schema({
     }
   },
   subscription: {
-    plan: { type: String, enum: ["Trial", "Noxtm", "Enterprise"], default: "Trial" },
+    plan: { type: String, enum: ["Trial", "Starter", "Pro+", "Advance", "Noxtm", "Enterprise"], default: "Trial" },
     status: { type: String, enum: ["trial", "active", "inactive", "cancelled", "expired"], default: "trial" },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date }

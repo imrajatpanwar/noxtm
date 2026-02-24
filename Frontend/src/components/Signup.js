@@ -106,17 +106,11 @@ function Signup({ onSignup }) {
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
         const user = response.data.user;
-        const hasActiveSubscription = user.subscription &&
-          user.subscription.status === 'active' &&
-          user.subscription.plan !== 'None';
 
         setMessage('Account created successfully! Redirecting...');
         setTimeout(() => {
-          if (hasActiveSubscription) {
-            window.location.href = '/dashboard';
-          } else {
-            window.location.href = '/pricing';
-          }
+          // Always go to company setup first for new signups
+          window.location.href = '/company-setup';
         }, 1500);
       }
     } catch (error) {
