@@ -3,7 +3,7 @@ import {
   FiActivity, FiUsers, FiMonitor, FiSmartphone, FiGlobe,
   FiSearch, FiRefreshCw, FiFilter, FiChevronDown, FiX,
   FiCpu, FiShield, FiMapPin, FiClock, FiWifi, FiWifiOff,
-  FiTrash2, FiAlertCircle, FiTablet
+  FiTrash2, FiAlertCircle, FiTablet, FiEye
 } from 'react-icons/fi';
 import api from '../config/api';
 import { toast } from 'sonner';
@@ -238,6 +238,7 @@ function VisitorAnalytics() {
           <div className="va-table-header">
             <div className="va-th-status">Status</div>
             <div className="va-th-user">User / Fingerprint</div>
+            <div className="va-th-page">Current Page</div>
             <div className="va-th-ip">IP Address</div>
             <div className="va-th-location">Location</div>
             <div className="va-th-device">Device</div>
@@ -276,6 +277,11 @@ function VisitorAnalytics() {
                         <span className="va-fingerprint" title={v.fingerprint}>{v.fingerprint?.substring(0, 12)}...</span>
                       </div>
                     )}
+                  </div>
+
+                  <div className="va-cell-page">
+                    <FiEye size={12} />
+                    <span>{v.currentPage || 'Unknown'}</span>
                   </div>
 
                   <div className="va-cell-ip">

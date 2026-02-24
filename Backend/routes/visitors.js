@@ -1,9 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const Visitor = require('../models/Visitor');
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Cache admin companyId to avoid repeated DB lookups
+let cachedAdminCompanyId = null;
+async function getAdminCompanyId() {
+  if (cachedAdminCompanyId) return cachedAdminCompanyId;
+  const admin = await User.findOne({ role: 'Admin' }).select('companyId').lean();
+  if (admin?.companyId) {
+    cachedAdminCompanyId = admin.companyId;
+    return cachedAdminCompanyId;
+  }
+  return null;
+}
 
 // Bot detection patterns
 const BOT_PATTERNS = [
@@ -111,15 +124,18 @@ router.post('/track', optionalAuth, async (req, res) => {
   try {
     const {
       fingerprint, screenResolution, language, platform,
-      referrer, pageUrl, timezone
+      referrer, pageUrl, currentPage, timezone
     } = req.body;
 
     if (!fingerprint) {
       return res.status(400).json({ success: false, message: 'Fingerprint is required' });
     }
 
-    // Get company ID from authenticated user, or use a default tracking company
-    const companyId = req.user?.companyId;
+    // Get company ID from authenticated user, or fall back to admin company for anonymous visitors
+    let companyId = req.user?.companyId;
+    if (!companyId) {
+      companyId = await getAdminCompanyId();
+    }
     if (!companyId) {
       return res.status(400).json({ success: false, message: 'Company context required' });
     }
@@ -171,6 +187,7 @@ router.post('/track', optionalAuth, async (req, res) => {
       existingVisitor.sessionCount += 1;
       existingVisitor.ip = ip;
       existingVisitor.pageUrl = pageUrl || existingVisitor.pageUrl;
+      existingVisitor.currentPage = currentPage || existingVisitor.currentPage;
       existingVisitor.referrer = referrer || existingVisitor.referrer;
       existingVisitor.location = location;
       if (req.user?.userId) existingVisitor.userId = req.user.userId;
@@ -197,6 +214,7 @@ router.post('/track', optionalAuth, async (req, res) => {
       platform: platform || '',
       referrer: referrer || '',
       pageUrl: pageUrl || '',
+      currentPage: currentPage || 'Home',
       isOnline: true,
       lastSeenAt: new Date()
     });
@@ -214,15 +232,19 @@ router.post('/track', optionalAuth, async (req, res) => {
 // ==========================================
 router.post('/heartbeat', optionalAuth, async (req, res) => {
   try {
-    const { fingerprint } = req.body;
-    const companyId = req.user?.companyId;
+    const { fingerprint, currentPage } = req.body;
+    let companyId = req.user?.companyId;
+    if (!companyId) companyId = await getAdminCompanyId();
     if (!fingerprint || !companyId) {
       return res.status(400).json({ success: false });
     }
 
+    const updateFields = { lastSeenAt: new Date(), isOnline: true };
+    if (currentPage) updateFields.currentPage = currentPage;
+
     await Visitor.findOneAndUpdate(
       { fingerprint, companyId },
-      { lastSeenAt: new Date(), isOnline: true },
+      updateFields,
       { new: true }
     );
 
@@ -238,7 +260,8 @@ router.post('/heartbeat', optionalAuth, async (req, res) => {
 router.post('/offline', optionalAuth, async (req, res) => {
   try {
     const { fingerprint } = req.body;
-    const companyId = req.user?.companyId;
+    let companyId = req.user?.companyId;
+    if (!companyId) companyId = await getAdminCompanyId();
     if (!fingerprint || !companyId) {
       return res.status(400).json({ success: false });
     }
@@ -282,7 +305,9 @@ router.get('/', requireAuth, async (req, res) => {
         { 'location.country': { $regex: search, $options: 'i' } },
         { 'location.city': { $regex: search, $options: 'i' } },
         { 'device.type': { $regex: search, $options: 'i' } },
-        { fingerprint: { $regex: search, $options: 'i' } }
+        { fingerprint: { $regex: search, $options: 'i' } },
+        { currentPage: { $regex: search, $options: 'i' } },
+        { pageUrl: { $regex: search, $options: 'i' } }
       ];
     }
 

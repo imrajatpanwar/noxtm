@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import { ModuleProvider } from './contexts/ModuleContext';
-import { trackVisitor, stopTracking } from './utils/fingerprint';
+import { trackVisitor, stopTracking, updateCurrentPage } from './utils/fingerprint';
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
@@ -47,6 +47,15 @@ function ConditionalFooter() {
   }
 
   return <Footer />;
+}
+
+// Track page changes for visitor analytics
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    updateCurrentPage();
+  }, [location.pathname]);
+  return null;
 }
 
 function App() {
@@ -116,13 +125,11 @@ function App() {
     };
   }, []);
 
-  // FingerprintJS visitor tracking
+  // FingerprintJS visitor tracking - track ALL visitors on every page
   useEffect(() => {
-    if (user && user.companyId) {
-      trackVisitor();
-    }
+    trackVisitor();
     return () => stopTracking();
-  }, [user]);
+  }, []);
 
   const checkAuthStatus = async () => {
     try {
@@ -317,6 +324,7 @@ function App() {
       <ModuleProvider>
         <MessagingProvider>
           <Router>
+            <RouteTracker />
             <div className="App">
               <Toaster
                 position="top-right"

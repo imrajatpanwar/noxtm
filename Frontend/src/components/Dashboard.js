@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
+import { updateCurrentPage } from '../utils/fingerprint';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import TaskManager from './TaskManager';
@@ -198,6 +199,10 @@ function Dashboard({ user, onLogout }) {
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
+    // Update visitor tracking with dashboard sub-section
+    const pageName = 'Dashboard / ' + section.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    window.__currentDashboardPage = pageName;
+    updateCurrentPage(pageName);
   };
 
   const handleNavigate = (section, data) => {

@@ -231,7 +231,7 @@
 /* Table Header */
 .va-table-header {
   display: grid;
-  grid-template-columns: 80px 1.5fr 120px 1.2fr 100px 1fr 70px 90px 40px;
+  grid-template-columns: 80px 1.5fr 110px 120px 1.2fr 100px 1fr 70px 90px 40px;
   gap: 8px;
   padding: 10px 16px;
   background: #fafafa;
@@ -253,7 +253,7 @@
 }
 .va-row {
   display: grid;
-  grid-template-columns: 80px 1.5fr 120px 1.2fr 100px 1fr 70px 90px 40px;
+  grid-template-columns: 80px 1.5fr 110px 120px 1.2fr 100px 1fr 70px 90px 40px;
   gap: 8px;
   padding: 12px 16px;
   align-items: center;
@@ -296,6 +296,21 @@
 .va-user-email, .va-fingerprint {
   font-size: 0.7rem;
   color: #737373;
+}
+
+/* Current Page */
+.va-cell-page {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #171717;
+}
+.va-cell-page svg { color: #a3a3a3; flex-shrink: 0; }
+.va-cell-page span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* IP */
@@ -529,10 +544,11 @@
 @media (max-width: 768px) {
   .va-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .va-table-header, .va-row {
-    grid-template-columns: 60px 1fr 100px 1fr 50px;
+    grid-template-columns: 60px 1fr 90px 1fr 50px;
   }
   .va-th-browser, .va-th-sessions, .va-th-seen, .va-th-actions,
-  .va-cell-browser, .va-cell-sessions, .va-cell-seen, .va-cell-actions {
+  .va-cell-browser, .va-cell-sessions, .va-cell-seen, .va-cell-actions,
+  .va-th-page, .va-cell-page {
     display: none;
   }
   .va-toolbar { flex-direction: column; }
