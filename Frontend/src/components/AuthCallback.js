@@ -57,21 +57,14 @@ function AuthCallback({ onAuthCallback }) {
 
                     // Check subscription status for redirect
                     const user = userData.user || userData;
-                    const subscription = user.subscription;
-                    const hasValidSubscription = subscription && (
-                        subscription.status === 'active' ||
-                        (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
-                    );
 
                     // Smart redirect based on user state
                     if (user.role === 'Admin') {
                         navigate('/dashboard');
                     } else if (!user.companyId) {
                         navigate('/company-setup');
-                    } else if (hasValidSubscription) {
-                        navigate('/dashboard');
                     } else {
-                        navigate('/pricing');
+                        navigate('/dashboard');
                     }
                 } else {
                     // Even if we can't fetch user data, we have the token
