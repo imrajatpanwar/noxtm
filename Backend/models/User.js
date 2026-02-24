@@ -17,7 +17,11 @@ const userSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   username: { type: String },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: {
+    type: String,
+    required: function() { return !this.googleId; }
+  },
+  googleId: { type: String },
   role: {
     type: String,
     required: true,
