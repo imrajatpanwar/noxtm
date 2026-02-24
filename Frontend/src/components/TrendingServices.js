@@ -199,7 +199,7 @@ function TrendingServices({ onNavigate }) {
         <div className="gts-head-l">
           <div className="gts-head-icon"><FiLayers size={20} /></div>
           <div>
-            <h1>Trending Services</h1>
+            <h1>Companies Data</h1>
             <p className="gts-head-sub">{services.length} service{services.length !== 1 ? 's' : ''} total{filtered.length !== services.length ? ` · ${filtered.length} shown` : ''}</p>
           </div>
         </div>
@@ -214,7 +214,7 @@ function TrendingServices({ onNavigate }) {
             <span>Filters</span>
             {activeFilterCount > 0 && <span className="gts-filter-count">{activeFilterCount}</span>}
           </button>
-          <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Add Trending Service</button>
+          <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Add Company Data</button>
         </div>
       </div>
 
@@ -309,7 +309,7 @@ function TrendingServices({ onNavigate }) {
 
       {/* Services List */}
       {loading ? (
-        <div className="gts-load"><div className="gts-spin" /><p>Loading trending services...</p></div>
+        <div className="gts-load"><div className="gts-spin" /><p>Loading companies data...</p></div>
       ) : filtered.length > 0 ? (
         <div className="gts-list">
           {filtered.map(s => (
@@ -370,12 +370,12 @@ function TrendingServices({ onNavigate }) {
       ) : !showModal && (
         <div className="gts-empty">
           <img src={noTradeShowImage} alt="" />
-          <h3>{activeFilterCount > 0 || searchQuery ? 'No matching trending services' : 'No Trending Services Yet'}</h3>
-          <p>{activeFilterCount > 0 || searchQuery ? 'Try adjusting your filters or search query.' : 'Create your first trending service to start managing targeted companies.'}</p>
+          <h3>{activeFilterCount > 0 || searchQuery ? 'No matching companies data' : 'No Companies Data Yet'}</h3>
+          <p>{activeFilterCount > 0 || searchQuery ? 'Try adjusting your filters or search query.' : 'Create your first company data entry to start managing targeted companies.'}</p>
           {activeFilterCount > 0 || searchQuery ? (
             <button className="gts-add" onClick={() => { clearFilters(); setSearchQuery(''); }}><FiX size={16} /> Clear Filters</button>
           ) : (
-            <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Create Trending Service</button>
+            <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Create Company Data</button>
           )}
         </div>
       )}
@@ -385,7 +385,7 @@ function TrendingServices({ onNavigate }) {
         <div className="noxtm-overlay" onClick={closeModal}>
           <div className="gts-modal" onClick={e => e.stopPropagation()}>
             <div className="gts-mh">
-              <h2>Create Trending Service</h2>
+              <h2>Create Company Data</h2>
               <button onClick={closeModal}><FiX size={18} /></button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -490,8 +490,8 @@ function TrendingServices({ onNavigate }) {
                   <div><h2>{svc.serviceName}</h2><p>{svc.fullName}</p></div>
                 </div>
                 <div className="gts-ph-actions">
-                  <button className="gts-ph-edit" onClick={() => { /* TODO: Open edit modal */ }} title="Edit Trending Service"><FiEdit size={16} /></button>
-                  <button className="gts-ph-delete" onClick={(e) => { setAboutPanel({ open: false, data: null }); deleteService(svc._id, e); }} title="Delete Trending Service"><FiTrash2 size={16} /></button>
+                  <button className="gts-ph-edit" onClick={() => { /* TODO: Open edit modal */ }} title="Edit Company Data"><FiEdit size={16} /></button>
+                  <button className="gts-ph-delete" onClick={(e) => { setAboutPanel({ open: false, data: null }); deleteService(svc._id, e); }} title="Delete Company Data"><FiTrash2 size={16} /></button>
                   <button className="gts-ph-close" onClick={() => setAboutPanel({ open: false, data: null })} title="Close"><FiX size={18} /></button>
                 </div>
               </div>
