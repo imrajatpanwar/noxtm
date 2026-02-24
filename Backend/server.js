@@ -254,6 +254,10 @@ app.use('/api/admin', adminRoutes);
 const socialMediaCalendarRoutes = require('./routes/social-media-calendar');
 app.use('/api/social-media-calendar', socialMediaCalendarRoutes);
 
+// Overview Stats routes (dashboard overview cards)
+const overviewStatsRoutes = require('./routes/overview-stats');
+app.use('/api/overview-stats', overviewStatsRoutes);
+
 // Backend API only - frontend served separately
 // Comment out static file serving since frontend runs on different port
 // app.use(express.static(path.join(__dirname, '../Frontend/build')));
