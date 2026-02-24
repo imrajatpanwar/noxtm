@@ -12,29 +12,14 @@ const Pricing = () => {
   const [loading, setLoading] = useState(false);
   const { currentUser } = useRole();
 
-  // Check if user is a company member and redirect to dashboard automatically
-  React.useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try {
-        const userData = JSON.parse(user);
-        if (userData.companyId) {
-          navigate('/dashboard');
-          return;
-        }
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
-    }
-  }, [navigate]);
-
   const plans = [
     {
       name: 'Starter',
-      subtitle: 'For solo enterpreneurs',
+      subtitle: 'For solo entrepreneurs',
       monthlyPrice: 1699,
       yearlyPrice: 1359,
       planKey: 'Starter',
+      hasTrial: true,
       features: [
         'Access to Dashboard management',
         'Add 5 Team Access Max',
@@ -51,6 +36,8 @@ const Pricing = () => {
       monthlyPrice: 2699,
       yearlyPrice: 2159,
       planKey: 'Pro+',
+      hasTrial: true,
+      popular: true,
       features: [
         'Everything from Starter',
         'Add 60 Team Access Max',
@@ -69,6 +56,7 @@ const Pricing = () => {
       monthlyPrice: 4699,
       yearlyPrice: 3759,
       planKey: 'Advance',
+      hasTrial: false,
       features: [
         'Everything from Pro+',
         'Unlimited Team Access',
@@ -93,22 +81,28 @@ const Pricing = () => {
 
     setLoading(true);
     try {
-      const response = await api.post('/subscription/subscribe', {
-        plan: plan.planKey,
-        billingCycle: billingType === 'yearly' ? 'Annual' : 'Monthly'
-      });
+      if (plan.hasTrial) {
+        // Start 14-day free trial for Starter & Pro+
+        const response = await api.post('/subscription/start-trial', {
+          plan: plan.planKey
+        });
 
-      if (response.data.success) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        window.dispatchEvent(new Event('userUpdated'));
-        toast.success(`Successfully subscribed to ${plan.name} plan!`);
-        navigate('/company-setup');
+        if (response.data.success) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          window.dispatchEvent(new Event('userUpdated'));
+          toast.success(response.data.message || `14-day free trial of ${plan.name} started!`);
+          navigate('/dashboard');
+        } else {
+          toast.error(response.data.message || 'Failed to start trial');
+        }
       } else {
-        toast.error(response.data.message || `Failed to subscribe to ${plan.name} plan`);
+        // Advance plan — go to payment checkout
+        navigate(`/checkout?plan=${encodeURIComponent(plan.planKey)}&billing=${billingType === 'yearly' ? 'Annual' : 'Monthly'}`);
       }
     } catch (error) {
-      console.error('Subscription error:', error);
-      toast.error(error.response?.data?.message || 'Failed to process subscription. Please try again.');
+      console.error('Plan selection error:', error);
+      const msg = error.response?.data?.message || 'Failed to process. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -120,6 +114,26 @@ const Pricing = () => {
 
   return (
     <div className="pricing-container">
+      {/* Stepper */}
+      <div className="pricing-stepper">
+        <div className="pricing-step completed">
+          <div className="pricing-step-circle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span>Company Details</span>
+        </div>
+        <div className="pricing-step-line"></div>
+        <div className="pricing-step active">
+          <div className="pricing-step-circle">2</div>
+          <span>Choose Plan</span>
+        </div>
+        <div className="pricing-step-line"></div>
+        <div className="pricing-step">
+          <div className="pricing-step-circle">3</div>
+          <span>Get Started</span>
+        </div>
+      </div>
+
       <div className="pricing-header">
         <h1>Choose your plan</h1>
 
@@ -143,7 +157,10 @@ const Pricing = () => {
 
       <div className="pricing-cards-grid">
         {plans.map((plan, index) => (
-          <div key={index} className="pricing-card">
+          <div key={index} className={`pricing-card ${plan.popular ? 'pricing-card-popular' : ''}`}>
+            {plan.popular && <div className="popular-badge">Most Popular</div>}
+            {plan.hasTrial && <div className="trial-badge">14-Day Free Trial</div>}
+
             <div className="card-top">
               <h3 className="plan-title">{plan.name}</h3>
               <p className="plan-subtitle">{plan.subtitle}</p>
@@ -156,11 +173,11 @@ const Pricing = () => {
             </div>
 
             <button
-              className="get-started-btn"
+              className={`get-started-btn ${plan.hasTrial ? 'trial-btn' : ''}`}
               onClick={() => handlePlanSelect(plan)}
               disabled={loading}
             >
-              {loading ? 'Processing...' : 'Get Started'}
+              {loading ? 'Processing...' : plan.hasTrial ? 'Start 14-Day Free Trial' : 'Get Started'}
             </button>
 
             <ul className="features-list">

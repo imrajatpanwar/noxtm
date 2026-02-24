@@ -2345,6 +2345,85 @@ app.post('/api/subscription/subscribe', authenticateToken, async (req, res) => {
   }
 });
 
+// Payment checkout (UI-only simulated payment)
+app.post('/api/subscription/checkout', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { plan, billingCycle, paymentMethod, cardDetails, upiId } = req.body;
+    const validPlans = ['Starter', 'Pro+', 'Advance'];
+
+    if (!validPlans.includes(plan)) {
+      return res.status(400).json({ message: 'Invalid subscription plan' });
+    }
+
+    if (!paymentMethod || !['card', 'upi'].includes(paymentMethod)) {
+      return res.status(400).json({ message: 'Invalid payment method. Use "card" or "upi".' });
+    }
+
+    // Validate payment details
+    if (paymentMethod === 'card') {
+      if (!cardDetails || !cardDetails.cardNumber || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.cardholderName) {
+        return res.status(400).json({ message: 'Complete card details are required' });
+      }
+    } else if (paymentMethod === 'upi') {
+      if (!upiId) {
+        return res.status(400).json({ message: 'UPI ID is required' });
+      }
+    }
+
+    // Simulated payment processing — activate subscription immediately
+    const startDate = new Date();
+    const endDate = new Date();
+
+    if (billingCycle === 'Annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    user.subscription = {
+      plan: plan,
+      status: 'active',
+      startDate,
+      endDate,
+      billingCycle: billingCycle || 'Monthly',
+      trialUsed: user.subscription?.trialUsed || false
+    };
+
+    user.permissions = getDefaultPermissions(plan);
+    user.access = syncAccessFromPermissions(user.permissions);
+    await user.save();
+
+    // Update company subscription if user has a company
+    if (user.companyId) {
+      await Company.findByIdAndUpdate(user.companyId, {
+        'subscription.plan': plan,
+        'subscription.status': 'active',
+        'subscription.startDate': startDate,
+        'subscription.endDate': endDate
+      });
+    }
+
+    const userObject = user.toObject();
+    delete userObject.password;
+
+    res.json({
+      success: true,
+      message: `Payment successful! You are now subscribed to ${plan} plan.`,
+      user: userObject
+    });
+  } catch (error) {
+    console.error('Checkout error:', error);
+    res.status(500).json({ message: 'Server error during checkout' });
+  }
+});
+
 // Check subscription status
 app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   try {
@@ -2372,7 +2451,7 @@ app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   }
 });
 
-// Setup company details (for Noxtm subscribers)
+// Setup company details
 app.post('/api/company/setup', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -2394,6 +2473,8 @@ app.post('/api/company/setup', authenticateToken, async (req, res) => {
       companyWebsite,
       industryType,
       companySize,
+      companyType,
+      description,
       gstin
     } = req.body;
 
@@ -2415,37 +2496,32 @@ app.post('/api/company/setup', authenticateToken, async (req, res) => {
       }
     }
 
-    // Build company address object
-    const address = [
-      companyAddress,
-      companyCity,
-      companyState,
-      companyZipCode,
-      companyCountry
-    ].filter(Boolean).join(', ');
-
-    // Create new company
+    // Create new company with all fields
     const company = new Company({
       companyName,
+      companyEmail,
+      companyPhone,
+      companyWebsite,
+      type: companyType || 'Business',
       industry: industryType,
       size: companySize,
-      address,
+      description,
+      address: companyAddress,
+      companyCity,
+      companyState,
+      companyCountry,
+      companyZipCode,
+      gstin,
       owner: userId,
       members: [{
         user: userId,
         roleInCompany: 'Owner',
         joinedAt: new Date()
       }],
-      subscription: user.subscription ? {
-        plan: user.subscription.plan,
-        status: user.subscription.status,
-        startDate: user.subscription.startDate,
-        endDate: user.subscription.endDate
-      } : {
+      subscription: {
         plan: 'Trial',
-        status: 'trial',
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+        status: 'inactive',
+        startDate: new Date()
       }
     });
 
@@ -3985,13 +4061,18 @@ app.post('/api/subscription/start-trial', authenticateToken, async (req, res) =>
       });
     }
 
-    // Set 7-day trial
+    // Accept optional plan parameter (Starter or Pro+ trial)
+    const { plan: trialPlan } = req.body;
+    const validTrialPlans = ['Starter', 'Pro+'];
+    const selectedPlan = validTrialPlans.includes(trialPlan) ? trialPlan : 'Trial';
+
+    // Set 14-day trial
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7); // 7 days from now
+    endDate.setDate(endDate.getDate() + 14); // 14 days from now
 
     user.subscription = {
-      plan: 'Trial',
+      plan: selectedPlan,
       status: 'trial',
       billingCycle: 'Monthly',
       startDate: startDate,
@@ -3999,11 +4080,21 @@ app.post('/api/subscription/start-trial', authenticateToken, async (req, res) =>
       trialUsed: true
     };
 
-    // Update permissions to grant full dashboard access during trial
-    user.permissions = getDefaultPermissions('Trial');
+    // Update permissions to grant dashboard access during trial based on plan
+    user.permissions = getDefaultPermissions(selectedPlan === 'Trial' ? 'Trial' : selectedPlan);
     user.access = syncAccessFromPermissions(user.permissions);
 
     await user.save();
+
+    // Also update company subscription if user has a company
+    if (user.companyId) {
+      await Company.findByIdAndUpdate(user.companyId, {
+        'subscription.plan': selectedPlan,
+        'subscription.status': 'trial',
+        'subscription.startDate': startDate,
+        'subscription.endDate': endDate
+      });
+    }
 
     // Return full user object (excluding password) for complete state update
     const userObject = user.toObject();
@@ -4011,7 +4102,7 @@ app.post('/api/subscription/start-trial', authenticateToken, async (req, res) =>
 
     res.json({
       success: true,
-      message: 'Your 7-day free trial has started!',
+      message: `Your 14-day free trial of ${selectedPlan} has started!`,
       subscription: user.subscription,
       user: userObject
     });

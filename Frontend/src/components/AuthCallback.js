@@ -63,8 +63,12 @@ function AuthCallback({ onAuthCallback }) {
                         (subscription.status === 'trial' && subscription.endDate && new Date(subscription.endDate) > new Date())
                     );
 
-                    // Redirect based on subscription
-                    if (hasValidSubscription || user.role === 'Admin') {
+                    // Smart redirect based on user state
+                    if (user.role === 'Admin') {
+                        navigate('/dashboard');
+                    } else if (!user.companyId) {
+                        navigate('/company-setup');
+                    } else if (hasValidSubscription) {
                         navigate('/dashboard');
                     } else {
                         navigate('/pricing');
@@ -82,7 +86,7 @@ function AuthCallback({ onAuthCallback }) {
                         onAuthCallback(token, { userId: payload.userId, email: payload.email, role: payload.role });
                     }
 
-                    navigate('/dashboard');
+                    navigate('/company-setup');
                 }
             } catch (err) {
                 console.error('Auth callback error:', err);
