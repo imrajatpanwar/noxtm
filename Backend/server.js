@@ -264,34 +264,49 @@ app.use('/api/overview-stats', overviewStatsRoutes);
 
 console.log('✓ All routes loaded successfully');
 
-// MongoDB Connection with timeout and fallback
+// MongoDB Connection with retry and auto-reconnect
 let mongoConnected = false;
 
-const connectWithTimeout = async () => {
+// Use mongoose readyState as the source of truth
+const isMongoReady = () => mongoose.connection.readyState === 1;
+
+const connectWithRetry = async (attempt = 1, maxAttempts = 5) => {
   try {
-    console.log('Step 1: Getting MongoDB URI...');
+    console.log(`[MongoDB] Connection attempt ${attempt}/${maxAttempts}...`);
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/noxtm';
-    console.log('Step 2: Attempting to connect to MongoDB...');
 
     await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000, // 10 second timeout
-      connectTimeoutMS: 10000,
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 30000,   // 30s for Atlas cloud
+      connectTimeoutMS: 30000,
+      maxPoolSize: 10,
+      socketTimeoutMS: 45000,
+      heartbeatFrequencyMS: 10000,       // Check connection every 10s
+      retryWrites: true,
+      retryReads: true,
     });
     console.log('✅ Connected to MongoDB successfully');
     mongoConnected = true;
   } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
-    console.error('Full error:', err);
-    console.warn('⚠️  Running without database - some features will be limited');
+    console.error(`❌ MongoDB connection attempt ${attempt} failed:`, err.message);
     mongoConnected = false;
+
+    if (attempt < maxAttempts) {
+      const delay = Math.min(5000 * attempt, 30000); // 5s, 10s, 15s, 20s, 25s
+      console.log(`⏳ Retrying in ${delay / 1000}s...`);
+      await new Promise(r => setTimeout(r, delay));
+      return connectWithRetry(attempt + 1, maxAttempts);
+    } else {
+      console.error('❌ All MongoDB connection attempts exhausted');
+      console.warn('⚠️  Running without database - will keep retrying in background');
+      // Background retry every 30s
+      setTimeout(() => connectWithRetry(1, 3), 30000);
+    }
   }
 };
 
 // Try to connect to MongoDB
 console.log('Starting MongoDB connection...');
-connectWithTimeout().then(() => {
+connectWithRetry().then(() => {
   console.log('MongoDB connection attempt completed');
 
   // Restore WhatsApp sessions after MongoDB connects
@@ -302,7 +317,7 @@ connectWithTimeout().then(() => {
       }).catch(err => {
         console.warn('⚠️  WhatsApp session restore error:', err.message);
       });
-    }, 3000); // Wait 3 seconds for MongoDB to stabilize
+    }, 3000);
   }
 }).catch((err) => {
   console.error('Unexpected error in MongoDB connection:', err);
@@ -346,11 +361,19 @@ const getTemplateHelper = () => {
 
 const db = mongoose.connection;
 db.on('error', (err) => {
-  console.warn('MongoDB connection error:', err.message);
+  console.warn('[MongoDB] Connection error:', err.message);
   mongoConnected = false;
 });
+db.on('disconnected', () => {
+  console.warn('[MongoDB] Disconnected — will auto-reconnect');
+  mongoConnected = false;
+});
+db.on('reconnected', () => {
+  console.log('[MongoDB] ✅ Reconnected successfully');
+  mongoConnected = true;
+});
 db.once('open', () => {
-  console.log('Connected to MongoDB');
+  console.log('[MongoDB] Connection open');
   mongoConnected = true;
 });
 
@@ -3414,7 +3437,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // If MongoDB is not connected, return error
-    if (!mongoConnected) {
+    if (!mongoConnected && !isMongoReady()) {
       console.log('MongoDB not connected, cannot authenticate');
       return res.status(503).json({
         message: 'Database connection unavailable. Please try again later.'
