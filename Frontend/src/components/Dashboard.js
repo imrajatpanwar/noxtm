@@ -218,7 +218,7 @@ function Dashboard({ user, onLogout }) {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <Overview user={user} dashboardData={dashboardData} error={error} onNavigate={handleSectionChange} />;
+        return <Overview user={user} dashboardData={dashboardData} error={error} />;
       case 'task-manager':
         return <TaskManager />;
       case 'leads-flow':
