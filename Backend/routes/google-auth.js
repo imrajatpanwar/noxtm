@@ -106,22 +106,13 @@ router.get('/google/callback', async (req, res) => {
             }
             console.log('[GOOGLE AUTH] Existing user logged in:', user.email);
         } else {
-            // Create new user
-            // First, create a company for the user
-            const company = new Company({
-                name: `${googleUser.name}'s Workspace`,
-                email: googleUser.email,
-                createdAt: new Date()
-            });
-            await company.save();
-
+            // Create new user first (Company requires owner)
             user = new User({
                 fullName: googleUser.name,
                 email: googleUser.email,
                 googleId: googleUser.id,
                 profileImage: googleUser.picture,
                 role: 'User',
-                companyId: company._id,
                 isEmailVerified: true, // Google emails are verified
                 permissions: {
                     dashboard: true,
@@ -145,10 +136,18 @@ router.get('/google/callback', async (req, res) => {
             });
             await user.save();
 
-            // Update company with owner
-            company.owner = user._id;
-            company.members = [{ user: user._id, role: 'Owner', joinedAt: new Date() }];
+            // Now create company with owner set
+            const company = new Company({
+                companyName: `${googleUser.name}'s Workspace`,
+                companyEmail: googleUser.email,
+                owner: user._id,
+                members: [{ user: user._id, roleInCompany: 'Owner', joinedAt: new Date() }]
+            });
             await company.save();
+
+            // Update user with companyId
+            user.companyId = company._id;
+            await user.save();
 
             console.log('[GOOGLE AUTH] New user created:', user.email);
         }
@@ -222,21 +221,13 @@ router.post('/google/one-tap', async (req, res) => {
             }
             console.log('[GOOGLE ONE TAP] Existing user logged in:', user.email);
         } else {
-            // Create new user
-            const company = new Company({
-                name: `${googleData.name}'s Workspace`,
-                email: googleData.email,
-                createdAt: new Date()
-            });
-            await company.save();
-
+            // Create new user first (Company requires owner)
             user = new User({
                 fullName: googleData.name,
                 email: googleData.email,
                 googleId: googleData.sub,
                 profileImage: googleData.picture,
                 role: 'User',
-                companyId: company._id,
                 isEmailVerified: true,
                 permissions: {
                     dashboard: true,
@@ -260,9 +251,18 @@ router.post('/google/one-tap', async (req, res) => {
             });
             await user.save();
 
-            company.owner = user._id;
-            company.members = [{ user: user._id, role: 'Owner', joinedAt: new Date() }];
+            // Now create company with owner set
+            const company = new Company({
+                companyName: `${googleData.name}'s Workspace`,
+                companyEmail: googleData.email,
+                owner: user._id,
+                members: [{ user: user._id, roleInCompany: 'Owner', joinedAt: new Date() }]
+            });
             await company.save();
+
+            // Update user with companyId
+            user.companyId = company._id;
+            await user.save();
 
             console.log('[GOOGLE ONE TAP] New user created:', user.email);
         }
