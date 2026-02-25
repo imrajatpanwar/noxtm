@@ -220,6 +220,7 @@ function LinkedInManager() {
                                 type="range"
                                 min="50"
                                 max="500"
+                                step="10"
                                 value={settings.commentMaxLength}
                                 onChange={(e) => handleChange('commentMaxLength', parseInt(e.target.value))}
                                 className="lim-range"
