@@ -82,9 +82,13 @@ router.post('/generate-comment', auth, async (req, res) => {
 
         const isX = platform === 'x';
         const platformLabel = isX ? 'Twitter/X' : 'LinkedIn';
+        const maxLen = isX ? 280 : settings.commentMaxLength;
         const maxLengthRule = isX
-            ? '- Maximum length: 280 characters (hard Twitter/X limit)'
-            : `- Maximum length: ${settings.commentMaxLength} characters`;
+            ? '- HARD LIMIT: Your reply MUST be 280 characters or fewer. This is a strict Twitter/X character limit. Count carefully.'
+            : `- HARD LIMIT: Your comment MUST be ${maxLen} characters or fewer. Count every character including spaces and punctuation. This is a strict limit — do NOT exceed it under any circumstances.`;
+
+        // Scale max_tokens to match the character limit (~1 token ≈ 4 chars, with some buffer)
+        const scaledMaxTokens = isX ? 100 : Math.min(300, Math.max(30, Math.ceil(maxLen / 2.5)));
 
         let systemPrompt = `You are a ${platformLabel} engagement assistant. Generate a single ${isX ? 'reply' : 'comment'} for a ${platformLabel} post.
 
@@ -97,15 +101,16 @@ ${maxLengthRule}
 - Do NOT start with "Great post!" or similar generic openers
 - Sound natural and human — not like a bot
 - Add genuine value or perspective to the conversation
-- Do NOT use quotation marks around the ${isX ? 'reply' : 'comment'}`;
+- Do NOT use quotation marks around the ${isX ? 'reply' : 'comment'}
+- Keep it concise. Shorter is better. Stay well within the ${maxLen}-character limit.`;
 
         if (settings.customInstructions) {
             systemPrompt += `\n- Additional user instructions: ${settings.customInstructions}`;
         }
 
         const userPrompt = postAuthor
-            ? `${platformLabel} post by ${postAuthor}:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'}:`
-            : `${platformLabel} post:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'}:`;
+            ? `${platformLabel} post by ${postAuthor}:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'} in ${maxLen} characters or fewer:`
+            : `${platformLabel} post:\n\n"${postText.substring(0, 1500)}"\n\nGenerate a ${isX ? 'reply' : 'comment'} in ${maxLen} characters or fewer:`;
 
         let generatedComment;
 
@@ -114,7 +119,7 @@ ${maxLengthRule}
             const client = new Anthropic({ apiKey: aiKey });
             const message = await client.messages.create({
                 model: aiModel,
-                max_tokens: 300,
+                max_tokens: scaledMaxTokens,
                 system: systemPrompt,
                 messages: [{ role: 'user', content: userPrompt }]
             });
@@ -143,7 +148,7 @@ ${maxLengthRule}
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                max_tokens: 300,
+                max_tokens: scaledMaxTokens,
                 temperature: 0.7
             }, { headers, timeout: 15000 });
 
@@ -152,6 +157,19 @@ ${maxLengthRule}
 
         if (!generatedComment) {
             return res.status(500).json({ success: false, message: 'No response from AI' });
+        }
+
+        // Hard truncate if AI still exceeded the limit
+        if (generatedComment.length > maxLen) {
+            // Try to cut at last sentence boundary within limit
+            const truncated = generatedComment.substring(0, maxLen);
+            const lastPeriod = truncated.lastIndexOf('.');
+            const lastExcl = truncated.lastIndexOf('!');
+            const lastQ = truncated.lastIndexOf('?');
+            const lastSentence = Math.max(lastPeriod, lastExcl, lastQ);
+            generatedComment = lastSentence > maxLen * 0.4
+                ? truncated.substring(0, lastSentence + 1)
+                : truncated;
         }
 
         // Save to history
@@ -234,7 +252,7 @@ router.post('/generate-tweet', auth, async (req, res) => {
 
 Rules:
 - Tone: ${toneDesc}
-- Maximum 280 characters (hard limit — this is Twitter/X)
+- HARD LIMIT: Your tweet MUST be 280 characters or fewer. Count every character including spaces and punctuation. Do NOT exceed this.
 - Language: ${settings.commentLanguage || 'English'}
 - The tweet must be relevant, engaging, and shareable
 - Do NOT put quotes around the tweet
@@ -243,8 +261,8 @@ Rules:
 - Keep it concise and impactful${settings.customInstructions ? `\n- Additional instructions: ${settings.customInstructions}` : ''}`;
 
         const userPrompt = context
-            ? `Topic: ${topic}\n\nAdditional context: ${context}\n\nGenerate a tweet:`
-            : `Topic: ${topic}\n\nGenerate a tweet:`;
+            ? `Topic: ${topic}\n\nAdditional context: ${context}\n\nGenerate a tweet in 280 characters or fewer:`
+            : `Topic: ${topic}\n\nGenerate a tweet in 280 characters or fewer:`;
 
         let generatedTweet;
 
@@ -289,6 +307,13 @@ Rules:
 
         if (!generatedTweet) {
             return res.status(500).json({ success: false, message: 'No response from AI' });
+        }
+
+        // Hard truncate if AI exceeded 280 chars
+        if (generatedTweet.length > 280) {
+            const truncated = generatedTweet.substring(0, 280);
+            const lastSpace = truncated.lastIndexOf(' ');
+            generatedTweet = lastSpace > 200 ? truncated.substring(0, lastSpace) : truncated;
         }
 
         // Save to history
@@ -364,6 +389,11 @@ router.put('/settings', auth, async (req, res) => {
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
             }
+        }
+
+        // Enforce min/max for commentMaxLength
+        if (updates.commentMaxLength !== undefined) {
+            updates.commentMaxLength = Math.max(50, Math.min(500, parseInt(updates.commentMaxLength) || 200));
         }
 
         const settings = await LinkedInAISettings.findOneAndUpdate(
