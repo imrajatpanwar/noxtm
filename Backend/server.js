@@ -110,6 +110,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const extensionAuthRoutes = require('./routes/extension-auth');
 app.use('/api/extension-auth', extensionAuthRoutes);
 
+// Razorpay payment routes
+const razorpayRoutes = require('./routes/razorpay');
+app.use('/api/razorpay', razorpayRoutes);
+
 // Users routes
 const usersRoutes = require('./routes/users.js');
 app.use('/api/users', usersRoutes);

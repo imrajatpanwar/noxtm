@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../config/api';
@@ -10,6 +10,18 @@ const PLAN_DETAILS = {
   'Advance': { name: 'Advance', monthlyPrice: 4699, yearlyPrice: 3759 }
 };
 
+// Load Razorpay SDK dynamically
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 const PaymentCheckout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -17,15 +29,7 @@ const PaymentCheckout = () => {
   const billingCycle = searchParams.get('billing') || 'Monthly';
   const plan = PLAN_DETAILS[planKey] || PLAN_DETAILS['Advance'];
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
   const [loading, setLoading] = useState(false);
-  const [cardData, setCardData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    cardholderName: ''
-  });
-  const [upiId, setUpiId] = useState('');
 
   // Redirect if not logged in
   useEffect(() => {
@@ -35,86 +39,106 @@ const PaymentCheckout = () => {
     }
   }, [navigate]);
 
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\D/g, '').slice(0, 16);
-    const parts = [];
-    for (let i = 0; i < v.length; i += 4) {
-      parts.push(v.slice(i, i + 4));
-    }
-    return parts.join(' ');
-  };
+  // Preload Razorpay SDK
+  useEffect(() => {
+    loadRazorpayScript();
+  }, []);
 
-  const formatExpiry = (value) => {
-    const v = value.replace(/\D/g, '').slice(0, 4);
-    if (v.length >= 3) return v.slice(0, 2) + '/' + v.slice(2);
-    return v;
-  };
-
-  const handleCardChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'cardNumber') {
-      setCardData(prev => ({ ...prev, cardNumber: formatCardNumber(value) }));
-    } else if (name === 'expiry') {
-      setCardData(prev => ({ ...prev, expiry: formatExpiry(value) }));
-    } else if (name === 'cvv') {
-      setCardData(prev => ({ ...prev, cvv: value.replace(/\D/g, '').slice(0, 4) }));
-    } else {
-      setCardData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Validate
-    if (paymentMethod === 'card') {
-      const num = cardData.cardNumber.replace(/\s/g, '');
-      if (num.length < 13) { toast.error('Enter a valid card number'); return; }
-      if (cardData.expiry.length < 5) { toast.error('Enter a valid expiry date'); return; }
-      if (cardData.cvv.length < 3) { toast.error('Enter a valid CVV'); return; }
-      if (!cardData.cardholderName.trim()) { toast.error('Enter the cardholder name'); return; }
-    } else {
-      if (!upiId.includes('@')) { toast.error('Enter a valid UPI ID (e.g. name@bank)'); return; }
-    }
-
+  const handlePayment = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = {
+      // 1. Load Razorpay SDK
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        toast.error('Failed to load payment gateway. Please check your internet connection.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Create order on backend
+      const orderRes = await api.post('/razorpay/create-order', {
         plan: planKey,
-        billingCycle,
-        paymentMethod
+        billingCycle
+      });
+
+      if (!orderRes.data.success) {
+        toast.error(orderRes.data.message || 'Failed to create payment order');
+        setLoading(false);
+        return;
+      }
+
+      const { order, key } = orderRes.data;
+
+      // 3. Get user info for prefill
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+
+      // 4. Open Razorpay checkout
+      const options = {
+        key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Noxtm',
+        description: `${plan.name} Plan — ${billingCycle} Billing`,
+        order_id: order.id,
+        handler: async function (response) {
+          // Payment successful — verify on backend
+          try {
+            const verifyRes = await api.post('/razorpay/verify-payment', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              plan: planKey,
+              billingCycle
+            });
+
+            if (verifyRes.data.success) {
+              localStorage.setItem('user', JSON.stringify(verifyRes.data.user));
+              window.dispatchEvent(new Event('userUpdated'));
+              toast.success(verifyRes.data.message || 'Payment successful!');
+              navigate('/dashboard');
+            } else {
+              toast.error(verifyRes.data.message || 'Payment verification failed.');
+            }
+          } catch (err) {
+            console.error('Payment verification error:', err);
+            toast.error('Payment verification failed. If amount was debited, please contact support.');
+          }
+          setLoading(false);
+        },
+        prefill: {
+          name: user.name || user.firstName || '',
+          email: user.email || '',
+          contact: user.phone || ''
+        },
+        theme: {
+          color: '#6C5CE7'
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+          }
+        }
       };
 
-      if (paymentMethod === 'card') {
-        payload.cardDetails = {
-          cardNumber: cardData.cardNumber.replace(/\s/g, ''),
-          expiry: cardData.expiry,
-          cvv: cardData.cvv,
-          cardholderName: cardData.cardholderName
-        };
-      } else {
-        payload.upiId = upiId;
-      }
+      const rzp = new window.Razorpay(options);
 
-      const response = await api.post('/subscription/checkout', payload);
+      rzp.on('payment.failed', function (response) {
+        console.error('Razorpay payment failed:', response.error);
+        toast.error(response.error?.description || 'Payment failed. Please try again.');
+        setLoading(false);
+      });
 
-      if (response.data.success) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        window.dispatchEvent(new Event('userUpdated'));
-        toast.success(response.data.message || 'Payment successful!');
-        navigate('/dashboard');
-      } else {
-        toast.error(response.data.message || 'Payment failed. Please try again.');
-      }
+      rzp.open();
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error(error.response?.data?.message || 'Payment failed. Please try again.');
-    } finally {
+      toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
-  };
+  }, [planKey, billingCycle, plan.name, navigate]);
 
   const price = billingCycle === 'Annual' ? plan.yearlyPrice : plan.monthlyPrice;
+  const totalAmount = billingCycle === 'Annual' ? price * 12 : price;
 
   return (
     <div className="pc-page">
@@ -153,10 +177,16 @@ const PaymentCheckout = () => {
               <span>Plan price</span>
               <span className="pc-price">₹{price}/mo</span>
             </div>
+            {billingCycle === 'Annual' && (
+              <div className="pc-price-row">
+                <span>Annual total (12 months)</span>
+                <span className="pc-price">₹{(price * 12).toLocaleString()}</span>
+              </div>
+            )}
             <div className="pc-divider"></div>
             <div className="pc-price-row pc-total">
               <span>Due today</span>
-              <span className="pc-price-total">₹{billingCycle === 'Annual' ? price * 12 : price}</span>
+              <span className="pc-price-total">₹{totalAmount.toLocaleString()}</span>
             </div>
             <button className="pc-back-link" onClick={() => navigate('/pricing')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -164,121 +194,42 @@ const PaymentCheckout = () => {
             </button>
           </div>
 
-          {/* Payment Form */}
+          {/* Payment Card */}
           <div className="pc-form-card">
-            <h3>Payment Details</h3>
+            <h3>Payment</h3>
 
-            {/* Payment Method Tabs */}
-            <div className="pc-method-tabs">
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ color: '#666', marginBottom: '8px', fontSize: '14px' }}>
+                You'll be redirected to Razorpay's secure payment page to complete your payment.
+              </p>
+              <p style={{ color: '#888', fontSize: '13px', marginBottom: '24px' }}>
+                Supports UPI, Credit/Debit Cards, Net Banking, Wallets & more.
+              </p>
+
               <button
                 type="button"
-                className={`pc-method-tab ${paymentMethod === 'card' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('card')}
+                className="pc-pay-btn"
+                disabled={loading}
+                onClick={handlePayment}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Credit / Debit Card
-              </button>
-              <button
-                type="button"
-                className={`pc-method-tab ${paymentMethod === 'upi' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('upi')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                UPI
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="pc-form">
-              {paymentMethod === 'card' ? (
-                <>
-                  <div className="pc-field">
-                    <label>Cardholder Name</label>
-                    <input
-                      type="text"
-                      name="cardholderName"
-                      value={cardData.cardholderName}
-                      onChange={handleCardChange}
-                      placeholder="Name on card"
-                      autoComplete="cc-name"
-                    />
-                  </div>
-                  <div className="pc-field">
-                    <label>Card Number</label>
-                    <div className="pc-card-input-wrap">
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        value={cardData.cardNumber}
-                        onChange={handleCardChange}
-                        placeholder="1234 5678 9012 3456"
-                        autoComplete="cc-number"
-                        inputMode="numeric"
-                      />
-                      <div className="pc-card-icons">
-                        <svg width="24" height="16" viewBox="0 0 48 32" fill="none"><rect width="48" height="32" rx="4" fill="#1A1F71"/><circle cx="18" cy="16" r="8" fill="#EB001B"/><circle cx="30" cy="16" r="8" fill="#F79E1B"/><path d="M24 9.8a8 8 0 0 1 0 12.4 8 8 0 0 1 0-12.4z" fill="#FF5F00"/></svg>
-                        <svg width="24" height="16" viewBox="0 0 48 32" fill="none"><rect width="48" height="32" rx="4" fill="#0066B2"/><text x="8" y="20" fontSize="12" fontWeight="700" fill="#FFF">VISA</text></svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pc-row">
-                    <div className="pc-field">
-                      <label>Expiry Date</label>
-                      <input
-                        type="text"
-                        name="expiry"
-                        value={cardData.expiry}
-                        onChange={handleCardChange}
-                        placeholder="MM/YY"
-                        autoComplete="cc-exp"
-                        inputMode="numeric"
-                      />
-                    </div>
-                    <div className="pc-field">
-                      <label>CVV</label>
-                      <input
-                        type="password"
-                        name="cvv"
-                        value={cardData.cvv}
-                        onChange={handleCardChange}
-                        placeholder="•••"
-                        autoComplete="cc-csc"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="pc-field">
-                  <label>UPI ID</label>
-                  <input
-                    type="text"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="yourname@upi"
-                  />
-                  <span className="pc-hint">e.g. name@okicici, name@paytm, name@ybl</span>
-                </div>
-              )}
-
-              <button type="submit" className="pc-pay-btn" disabled={loading}>
                 {loading ? (
                   <>
                     <svg className="pc-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    Processing payment...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    Pay ₹{billingCycle === 'Annual' ? (price * 12).toLocaleString() : price.toLocaleString()}
+                    Pay ₹{totalAmount.toLocaleString()}
                   </>
                 )}
               </button>
 
               <p className="pc-secure-text">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Your payment information is encrypted and secure
+                Secured by Razorpay — 256-bit encrypted
               </p>
-            </form>
+            </div>
           </div>
         </div>
       </div>
