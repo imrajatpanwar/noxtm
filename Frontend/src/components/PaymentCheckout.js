@@ -7,7 +7,8 @@ import './PaymentCheckout.css';
 const PLAN_DETAILS = {
   'Starter': { name: 'Starter', monthlyPrice: 1699, yearlyPrice: 1359 },
   'Pro+': { name: 'Pro +', monthlyPrice: 2699, yearlyPrice: 2159 },
-  'Advance': { name: 'Advance', monthlyPrice: 4699, yearlyPrice: 3759 }
+  'Advance': { name: 'Advance', monthlyPrice: 4699, yearlyPrice: 3759 },
+  'Noxtm': { name: 'Noxtm', monthlyPrice: 12999, yearlyPrice: 12999 }
 };
 
 // Load Razorpay SDK dynamically
