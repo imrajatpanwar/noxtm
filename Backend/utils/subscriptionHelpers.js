@@ -294,6 +294,48 @@ function getSubscriptionSummary(user) {
   };
 }
 
+// ============================================
+// PERMISSIONS HELPERS
+// ============================================
+
+function syncAccessFromPermissions(permissions) {
+  const accessArray = [];
+  if (permissions.dashboard) accessArray.push('Dashboard');
+  if (permissions.dataCenter) accessArray.push('Data Center');
+  if (permissions.projects) accessArray.push('Projects');
+  if (permissions.teamCommunication) accessArray.push('Team Communication');
+  if (permissions.digitalMediaManagement) accessArray.push('Digital Media Management');
+  if (permissions.marketing) accessArray.push('Marketing');
+  if (permissions.hrManagement) accessArray.push('HR Management');
+  if (permissions.financeManagement) accessArray.push('Finance Management');
+  if (permissions.seoManagement) accessArray.push('SEO Management');
+  if (permissions.internalPolicies) accessArray.push('Internal Policies');
+  if (permissions.settingsConfiguration) accessArray.push('Settings & Configuration');
+  return accessArray;
+}
+
+function getDefaultPermissions(planOrRole) {
+  if (planOrRole === 'Admin') {
+    return { dashboard: true, dataCenter: true, projects: true, teamCommunication: true, digitalMediaManagement: true, marketing: true, hrManagement: true, financeManagement: true, seoManagement: true, internalPolicies: true, settingsConfiguration: true };
+  }
+  if (planOrRole === 'SoloHQ') {
+    return { dashboard: false, dataCenter: false, projects: true, teamCommunication: false, digitalMediaManagement: false, marketing: false, hrManagement: false, financeManagement: false, seoManagement: false, internalPolicies: false, settingsConfiguration: false };
+  }
+  if (planOrRole === 'Noxtm' || planOrRole === 'Trial') {
+    return { dashboard: true, dataCenter: true, projects: true, teamCommunication: true, digitalMediaManagement: true, marketing: true, hrManagement: true, financeManagement: true, seoManagement: true, internalPolicies: true, settingsConfiguration: false };
+  }
+  if (planOrRole === 'Starter') {
+    return { dashboard: true, dataCenter: true, projects: true, teamCommunication: true, digitalMediaManagement: true, marketing: true, hrManagement: true, financeManagement: true, seoManagement: false, internalPolicies: true, settingsConfiguration: false };
+  }
+  if (planOrRole === 'Pro+') {
+    return { dashboard: true, dataCenter: true, projects: true, teamCommunication: true, digitalMediaManagement: true, marketing: true, hrManagement: true, financeManagement: true, seoManagement: true, internalPolicies: true, settingsConfiguration: false };
+  }
+  if (planOrRole === 'Advance') {
+    return { dashboard: true, dataCenter: true, projects: true, teamCommunication: true, digitalMediaManagement: true, marketing: true, hrManagement: true, financeManagement: true, seoManagement: true, internalPolicies: true, settingsConfiguration: true };
+  }
+  return { dashboard: true, dataCenter: false, projects: false, teamCommunication: false, digitalMediaManagement: false, marketing: false, hrManagement: false, financeManagement: false, seoManagement: false, internalPolicies: false, settingsConfiguration: false };
+}
+
 module.exports = {
   hasActiveSubscription,
   isSubscriptionExpired,
@@ -310,5 +352,7 @@ module.exports = {
   needsRenewal,
   createSubscription,
   getCalculatedStatus,
-  getSubscriptionSummary
+  getSubscriptionSummary,
+  getDefaultPermissions,
+  syncAccessFromPermissions
 };
