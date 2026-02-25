@@ -12,19 +12,11 @@ const Pricing = () => {
   const [loading, setLoading] = useState(false);
   const { currentUser } = useRole();
 
-  // Redirect users who already have an active subscription or trial
-  React.useEffect(() => {
-    if (currentUser) {
-      const sub = currentUser.subscription;
-      const hasActive = sub && (
-        sub.status === 'active' ||
-        (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date())
-      );
-      if (hasActive) {
-        navigate('/dashboard');
-      }
-    }
-  }, [currentUser, navigate]);
+  // Check if user already has an active subscription
+  const userSub = currentUser?.subscription;
+  const isOnTrial = userSub?.status === 'trial' && userSub?.endDate && new Date(userSub.endDate) > new Date();
+  const isActive = userSub?.status === 'active';
+  const currentPlanKey = userSub?.plan; // e.g. 'Starter', 'Pro+', 'Advance'
 
   const plans = [
     {
@@ -187,11 +179,21 @@ const Pricing = () => {
             </div>
 
             <button
-              className={`get-started-btn ${plan.hasTrial ? 'trial-btn' : ''}`}
-              onClick={() => handlePlanSelect(plan)}
+              className={`get-started-btn ${plan.hasTrial ? 'trial-btn' : ''} ${(isOnTrial || isActive) && currentPlanKey === plan.planKey ? 'current-plan-btn' : ''}`}
+              onClick={() => {
+                if ((isOnTrial || isActive) && currentPlanKey === plan.planKey) {
+                  navigate('/dashboard');
+                } else {
+                  handlePlanSelect(plan);
+                }
+              }}
               disabled={loading}
             >
-              {loading ? 'Processing...' : plan.hasTrial ? 'Start 14-Day Free Trial' : 'Get Started'}
+              {loading ? 'Processing...'
+                : (isOnTrial || isActive) && currentPlanKey === plan.planKey
+                  ? (isOnTrial ? 'Current Trial — Go to Dashboard' : 'Current Plan — Go to Dashboard')
+                  : plan.hasTrial ? 'Start 14-Day Free Trial'
+                  : 'Get Started'}
             </button>
 
             <ul className="features-list">

@@ -4082,17 +4082,53 @@ app.post('/api/subscription/start-trial', authenticateToken, async (req, res) =>
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user already has an active subscription or used trial
-    if (user.subscription?.status === 'active' || user.subscription?.status === 'trial') {
+    // Check if user already has an active paid subscription
+    if (user.subscription?.status === 'active' && user.subscription?.plan !== 'Trial') {
       return res.status(400).json({
-        message: 'You already have an active subscription or trial'
+        message: 'You already have an active subscription. Manage it from your dashboard settings.'
+      });
+    }
+
+    // Check if user already has an active trial — allow switching trial plan
+    if (user.subscription?.status === 'trial') {
+      // Allow switching trial plan (e.g., Starter trial → Pro+ trial)
+      const { plan: trialPlan } = req.body;
+      const validTrialPlans = ['Starter', 'Pro+'];
+      const selectedPlan = validTrialPlans.includes(trialPlan) ? trialPlan : user.subscription.plan;
+
+      if (selectedPlan === user.subscription.plan) {
+        return res.status(400).json({
+          message: `You already have an active ${user.subscription.plan} trial. Go to your dashboard to start using it!`
+        });
+      }
+
+      // Switch trial plan — keep original end date
+      user.subscription.plan = selectedPlan;
+      user.permissions = getDefaultPermissions(selectedPlan);
+      user.access = syncAccessFromPermissions(user.permissions);
+      await user.save();
+
+      if (user.companyId) {
+        await Company.findByIdAndUpdate(user.companyId, {
+          'subscription.plan': selectedPlan
+        });
+      }
+
+      const userObject = user.toObject();
+      delete userObject.password;
+
+      return res.json({
+        success: true,
+        message: `Your trial has been switched to ${selectedPlan} plan!`,
+        subscription: user.subscription,
+        user: userObject
       });
     }
 
     // Check if user has already used their trial
     if (user.subscription?.trialUsed) {
       return res.status(400).json({
-        message: 'You have already used your free trial'
+        message: 'You have already used your free trial. Please choose a paid plan to continue.'
       });
     }
 

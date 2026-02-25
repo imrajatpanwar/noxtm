@@ -22,7 +22,8 @@ function getRazorpay() {
 const PLAN_PRICES = {
   Starter:  { monthly: 169900, yearly: 1359 * 12 * 100 },
   'Pro+':   { monthly: 269900, yearly: 2159 * 12 * 100 },
-  Advance:  { monthly: 469900, yearly: 3759 * 12 * 100 }
+  Advance:  { monthly: 469900, yearly: 3759 * 12 * 100 },
+  Noxtm:    { monthly: 1299900, yearly: 1299900 * 12 }
 };
 
 // Email credit pricing (INR paise per credit)
@@ -43,10 +44,11 @@ router.post('/create-order', authenticateToken, async (req, res) => {
     const amount = PLAN_PRICES[plan][cycle];
 
     const rzp = getRazorpay();
+    const shortId = req.user.userId.toString().slice(-8);
     const order = await rzp.orders.create({
       amount,
       currency: 'INR',
-      receipt: `sub_${req.user.userId}_${Date.now()}`,
+      receipt: `sub_${shortId}_${Date.now()}`,
       notes: {
         userId: req.user.userId,
         plan,
@@ -162,10 +164,11 @@ router.post('/create-credits-order', authenticateToken, async (req, res) => {
     const amount = emailCredits * CREDIT_RATE_PAISE; // in paise
 
     const rzp = getRazorpay();
+    const shortId = req.user.userId.toString().slice(-8);
     const order = await rzp.orders.create({
       amount,
       currency: 'INR',
-      receipt: `cred_${req.user.userId}_${Date.now()}`,
+      receipt: `cr_${shortId}_${Date.now()}`,
       notes: {
         userId: req.user.userId,
         companyId: req.user.companyId || req.user.company,
