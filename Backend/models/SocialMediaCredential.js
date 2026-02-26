@@ -34,7 +34,7 @@ const socialMediaCredentialSchema = new mongoose.Schema({
     platform: {
         type: String,
         required: true,
-        enum: ['Instagram', 'LinkedIn', 'YouTube', 'X', 'Facebook', 'Reddit', 'Other']
+        trim: true
     },
     email: {
         type: String,
