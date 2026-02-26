@@ -111,8 +111,8 @@ function Inbox() {
 
           let needsDomain = false;
 
-          // STEP 3: Check domain setup (skip for admins)
-          if (!isAdmin) {
+          // STEP 3: Check domain setup (skip for admins and company employees)
+          if (!isAdmin && !hasCompany) {
             console.log('[INBOX] Step 3/4: Checking domain setup...');
             try {
               const domainResponse = await api.get('/user-domains/count');
@@ -129,14 +129,16 @@ function Inbox() {
               // On error, assume domain setup needed
               needsDomain = true;
             }
+          } else if (hasCompany) {
+            console.log('[INBOX] Step 3/4: Employee user - owner handles domain setup, skipping');
           } else {
             console.log('[INBOX] Step 3/4: Admin user - bypassing domain verification');
           }
 
           // STEP 4: Decide what to show (don't render yet)
           console.log('[INBOX] Step 4/4: Determining which screen to show...');
-          // Never show domain modal for Admins, even if needsDomain is true
-          if (needsDomain && !isAdmin) {
+          // Never show domain modal for Admins or company employees
+          if (needsDomain && !isAdmin && !hasCompany) {
             console.log('[INBOX] → Will show domain onboarding modal');
             setShowOnboardingModal(true);
           } else {
