@@ -265,7 +265,10 @@ router.post('/connect', isAuthenticated, async (req, res) => {
         });
       }
 
-      if (!emailAccount.companyId.equals(req.user.companyId)) {
+      const userCompanyId = req.user.companyId?._id || req.user.companyId;
+      const accountCompanyId = emailAccount.companyId?._id || emailAccount.companyId;
+
+      if (String(accountCompanyId) !== String(userCompanyId)) {
         return res.status(403).json({
           success: false,
           message: 'This email account belongs to a different workspace'
@@ -281,8 +284,11 @@ router.post('/connect', isAuthenticated, async (req, res) => {
         });
       }
     } else {
-      // Personal account - only creator can connect
-      if (!emailAccount.createdBy.equals(userId)) {
+      // No companyId on account — allow if creator matches OR if user belongs to same company
+      const isCreator = emailAccount.createdBy && String(emailAccount.createdBy) === String(userId);
+      const isSameCompanyEmployee = req.user.companyId && emailAccount.domain;
+
+      if (!isCreator && !isSameCompanyEmployee) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to access this email account'
