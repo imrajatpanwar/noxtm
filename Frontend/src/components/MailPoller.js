@@ -56,11 +56,19 @@ function MailPoller() {
           const existingNotifs = JSON.parse(localStorage.getItem(notifKey) || '[]');
 
           const newNotifs = newEmails.map((email) => {
-            const sender =
-              email.from?.text ||
-              email.from?.value?.[0]?.address ||
-              email.from ||
-              'Unknown sender';
+            const rawFrom = email.from;
+            let sender = 'Unknown sender';
+            if (typeof rawFrom === 'string') {
+              sender = rawFrom;
+            } else if (rawFrom?.text) {
+              sender = rawFrom.text;
+            } else if (rawFrom?.name || rawFrom?.address) {
+              sender = rawFrom.name || rawFrom.address;
+            } else if (Array.isArray(rawFrom) && rawFrom[0]) {
+              sender = rawFrom[0].name || rawFrom[0].address || 'Unknown sender';
+            } else if (rawFrom?.value?.[0]) {
+              sender = rawFrom.value[0].name || rawFrom.value[0].address || 'Unknown sender';
+            }
             const subject = email.subject || '(no subject)';
             const account_label = account.emailAddress || account.email || 'your inbox';
 

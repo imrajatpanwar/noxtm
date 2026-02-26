@@ -79,6 +79,24 @@
   gap: 8px;
 }
 
+.clear-all-notifications {
+  background: none;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 4px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.clear-all-notifications:hover {
+  background-color: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
 .mark-all-read,
 .close-notifications {
   background: none;
@@ -261,11 +279,11 @@
     width: 320px;
     right: -20px;
   }
-  
+
   .notification-item {
     padding: 12px 16px;
   }
-  
+
   .notification-header {
     padding: 12px 16px;
   }
