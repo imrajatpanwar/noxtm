@@ -16,7 +16,7 @@ function SocialMediaCredentials() {
     const [formShowPassword, setFormShowPassword] = useState(false);
 
     // Form state
-    const [form, setForm] = useState({ platform: 'Instagram', email: '', password: '', description: '' });
+    const [form, setForm] = useState({ platform: '', email: '', password: '', description: '' });
 
     // Share modal state
     const [teamMembers, setTeamMembers] = useState([]);
@@ -67,7 +67,7 @@ function SocialMediaCredentials() {
 
     const openAddModal = () => {
         setEditingCred(null);
-        setForm({ platform: 'Instagram', email: '', password: '', description: '' });
+        setForm({ platform: '', email: '', password: '', description: '' });
         setFormShowPassword(false);
         setShowModal(true);
     };
@@ -329,9 +329,12 @@ function SocialMediaCredentials() {
                         <div className="sm-cred-modal-body">
                             <div className="sm-cred-form-group">
                                 <label>Platform</label>
-                                <select value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}>
-                                    {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                                </select>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Instagram, LinkedIn, YouTube"
+                                    value={form.platform}
+                                    onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+                                />
                             </div>
                             <div className="sm-cred-form-group">
                                 <label>Email / Username</label>
@@ -369,7 +372,7 @@ function SocialMediaCredentials() {
                             <button className="sm-cred-btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
                             <button
                                 className="sm-cred-btn-save"
-                                disabled={!form.email.trim() || (!editingCred && !form.password)}
+                                disabled={!form.platform.trim() || !form.email.trim() || (!editingCred && !form.password)}
                                 onClick={handleSave}
                             >
                                 {editingCred ? 'Update' : 'Add Credential'}
