@@ -198,7 +198,12 @@ export const DEPARTMENTS = [
   'Operations Team',
   'Content Team',
   'Legal Team',
-  'Quality Assurance'
+  'Quality Assurance',
+  'Co-Founder',
+  'Founder',
+  'Team Lead',
+  'Social Media Manager',
+  'Project Manager'
 ];
 
 export const PERMISSION_LABELS = {
@@ -211,8 +216,7 @@ export const PERMISSION_LABELS = {
   hrManagement: 'HR Management',
   financeManagement: 'Finance Management',
   seoManagement: 'SEO Management',
-  internalPolicies: 'Internal Policies',
-  settingsConfiguration: 'Settings & Configuration'
+  internalPolicies: 'Internal Policies'
 };
 
 // Role-based permission defaults
