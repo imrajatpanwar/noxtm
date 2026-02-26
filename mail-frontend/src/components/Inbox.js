@@ -87,18 +87,24 @@ function Inbox() {
           console.log('[INBOX] Step 2/4: Checking subscription status...');
           const subscription = userResponse.data.subscription;
           const isAdmin = userResponse.data.role === 'Admin';
+          const hasCompany = !!userResponse.data.companyId;
 
           if (!isAdmin) {
-            const hasValid = checkSubscriptionStatus(subscription);
-            console.log('[INBOX] Subscription check result:', hasValid, subscription);
+            // Employees with a company use the owner's subscription - allow them in
+            if (hasCompany) {
+              console.log('[INBOX] ✅ User belongs to a company - skipping subscription check');
+            } else {
+              const hasValid = checkSubscriptionStatus(subscription);
+              console.log('[INBOX] Subscription check result:', hasValid, subscription);
 
-            if (!hasValid) {
-              console.log('[INBOX] ❌ Invalid subscription - redirecting to pricing');
-              window.__NOXTM_AUTH_LOADING__ = false;
-              window.location.href = getMainAppUrl('/pricing');
-              return;
+              if (!hasValid) {
+                console.log('[INBOX] ❌ Invalid subscription and no company - redirecting to pricing');
+                window.__NOXTM_AUTH_LOADING__ = false;
+                window.location.href = getMainAppUrl('/pricing');
+                return;
+              }
+              console.log('[INBOX] ✅ Subscription is valid');
             }
-            console.log('[INBOX] ✅ Subscription is valid');
           } else {
             console.log('[INBOX] ✅ Admin user - skipping subscription check');
           }
