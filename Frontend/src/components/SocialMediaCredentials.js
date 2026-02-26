@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield } from 'react-icons/fi';
+import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield, FiUsers, FiGlobe } from 'react-icons/fi';
 import api from '../config/api';
 import './SocialMediaCredentials.css';
 
@@ -159,10 +159,18 @@ function SocialMediaCredentials() {
 
     const alreadySharedIds = sharingCred ? (sharingCred.sharedWith || []).map(s => s.user?._id || s.user) : [];
 
+    // Stats
+    const totalCreds = credentials.length;
+    const sharedCount = credentials.filter(c => c.sharedWith && c.sharedWith.length > 0).length;
+    const uniquePlatforms = [...new Set(credentials.map(c => c.platform))].length;
+
     if (loading) {
         return (
             <div className="sm-credentials">
-                <div className="sm-cred-loading">Loading credentials...</div>
+                <div className="sm-cred-loading">
+                    <div className="sm-cred-loading-spinner" />
+                    Loading credentials...
+                </div>
             </div>
         );
     }
@@ -170,20 +178,49 @@ function SocialMediaCredentials() {
     return (
         <div className="sm-credentials">
             {/* Header */}
-            <div className="sm-credentials-header">
-                <div>
-                    <h2><FiShield className="header-icon" /> Social Media Credentials</h2>
-                    <p className="sm-credentials-subtitle">Securely manage and share your social media login credentials with your team</p>
+            <div className="sm-cred-header">
+                <div className="sm-cred-header-left">
+                    <h2><FiShield /> Social Media Credentials</h2>
+                    <p className="sm-cred-header-subtitle">Securely manage and share your social media login credentials</p>
                 </div>
                 <button className="sm-cred-add-btn" onClick={openAddModal}>
                     <FiPlus /> Add Credential
                 </button>
             </div>
 
+            {/* Stats */}
+            {credentials.length > 0 && (
+                <div className="sm-cred-stats">
+                    <div className="sm-cred-stat-card">
+                        <div className="sm-cred-stat-icon total"><FiKey /></div>
+                        <div>
+                            <span className="sm-cred-stat-value">{totalCreds}</span>
+                            <span className="sm-cred-stat-label">Total Credentials</span>
+                        </div>
+                    </div>
+                    <div className="sm-cred-stat-card">
+                        <div className="sm-cred-stat-icon shared"><FiUsers /></div>
+                        <div>
+                            <span className="sm-cred-stat-value">{sharedCount}</span>
+                            <span className="sm-cred-stat-label">Shared Access</span>
+                        </div>
+                    </div>
+                    <div className="sm-cred-stat-card">
+                        <div className="sm-cred-stat-icon platforms"><FiGlobe /></div>
+                        <div>
+                            <span className="sm-cred-stat-value">{uniquePlatforms}</span>
+                            <span className="sm-cred-stat-label">Platforms</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Credentials Grid or Empty State */}
             {credentials.length === 0 ? (
                 <div className="sm-cred-empty">
-                    <FiKey className="sm-cred-empty-icon" />
+                    <div className="sm-cred-empty-icon-wrap">
+                        <FiKey />
+                    </div>
                     <h3>No Credentials Yet</h3>
                     <p>Add your social media credentials here and securely share access with your team members.</p>
                     <button className="sm-cred-add-btn" onClick={openAddModal}>
@@ -191,82 +228,89 @@ function SocialMediaCredentials() {
                     </button>
                 </div>
             ) : (
-                <div className="sm-credentials-grid">
+                <div className="sm-cred-grid">
                     {credentials.map(cred => (
-                        <div className="sm-cred-card" key={cred._id} data-platform={cred.platform}>
-                            <div className="sm-cred-card-header">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className={`sm-cred-platform-badge ${cred.platform}`}>
-                                        {cred.platform}
-                                    </span>
-                                    {cred.isOwner ? (
-                                        <span className="sm-cred-owner-badge">Owner</span>
-                                    ) : (
-                                        <span className="sm-cred-shared-badge">Shared</span>
+                        <div className="sm-cred-card" key={cred._id}>
+                            <div className={`sm-cred-card-accent ${cred.platform}`} />
+                            <div className="sm-cred-card-inner">
+                                {/* Card Header */}
+                                <div className="sm-cred-card-header">
+                                    <div className="sm-cred-card-header-left">
+                                        <div className={`sm-cred-platform-icon ${cred.platform}`}>
+                                            <FiGlobe />
+                                        </div>
+                                        <div className="sm-cred-platform-info">
+                                            <span className="sm-cred-platform-name">{cred.platform}</span>
+                                            <span className={`sm-cred-ownership-tag ${cred.isOwner ? 'owner' : 'shared'}`}>
+                                                {cred.isOwner ? '● Owner' : '● Shared with you'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {cred.isOwner && (
+                                        <div className="sm-cred-card-actions">
+                                            <button className="sm-cred-action-btn share-btn" onClick={() => openShareModal(cred)} title="Share Access">
+                                                <FiUserPlus />
+                                            </button>
+                                            <button className="sm-cred-action-btn" onClick={() => openEditModal(cred)} title="Edit">
+                                                <FiEdit2 />
+                                            </button>
+                                            <button className="sm-cred-action-btn danger" onClick={() => handleDelete(cred._id)} title="Delete">
+                                                <FiTrash2 />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-                                {cred.isOwner && (
-                                    <div className="sm-cred-card-actions">
-                                        <button className="sm-cred-action-btn share" onClick={() => openShareModal(cred)} title="Share Access">
-                                            <FiUserPlus />
+
+                                {/* Fields */}
+                                <div className="sm-cred-fields">
+                                    <div className="sm-cred-field">
+                                        <FiMail className="sm-cred-field-icon" />
+                                        <span className="sm-cred-field-label">Email</span>
+                                        <span className="sm-cred-field-value">{cred.email}</span>
+                                    </div>
+                                    <div className="sm-cred-field">
+                                        <FiLock className="sm-cred-field-icon" />
+                                        <span className="sm-cred-field-label">Password</span>
+                                        <span className="sm-cred-field-value password">
+                                            {revealedPasswords[cred._id] || '••••••••'}
+                                        </span>
+                                        <button className="sm-cred-field-toggle" onClick={() => toggleRevealPassword(cred._id)}>
+                                            {revealedPasswords[cred._id] ? <FiEyeOff /> : <FiEye />}
                                         </button>
-                                        <button className="sm-cred-action-btn" onClick={() => openEditModal(cred)} title="Edit">
-                                            <FiEdit2 />
-                                        </button>
-                                        <button className="sm-cred-action-btn danger" onClick={() => handleDelete(cred._id)} title="Delete">
-                                            <FiTrash2 />
-                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                {cred.description && (
+                                    <p className="sm-cred-description">{cred.description}</p>
+                                )}
+
+                                {/* Shared With */}
+                                {cred.isOwner && cred.sharedWith && cred.sharedWith.length > 0 && (
+                                    <div className="sm-cred-shared">
+                                        <div className="sm-cred-shared-label">
+                                            <FiUsers /> Shared with {cred.sharedWith.length} member{cred.sharedWith.length !== 1 ? 's' : ''}
+                                        </div>
+                                        <div className="sm-cred-shared-list">
+                                            {cred.sharedWith.map((s, i) => (
+                                                <div className="sm-cred-shared-user" key={i}>
+                                                    <div className="sm-cred-shared-avatar">
+                                                        {s.user?.profileImage ? (
+                                                            <img src={s.user.profileImage} alt="" />
+                                                        ) : (
+                                                            getInitials(s.user?.fullName)
+                                                        )}
+                                                    </div>
+                                                    <span>{s.user?.fullName || 'User'}</span>
+                                                    <button className="sm-cred-shared-revoke" onClick={() => handleRevoke(cred._id, s.user?._id)} title="Revoke Access">
+                                                        <FiX />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Email Field */}
-                            <div className="sm-cred-field">
-                                <FiMail className="sm-cred-field-icon" />
-                                <span className="sm-cred-field-label">Email</span>
-                                <span className="sm-cred-field-value">{cred.email}</span>
-                            </div>
-
-                            {/* Password Field */}
-                            <div className="sm-cred-field">
-                                <FiLock className="sm-cred-field-icon" />
-                                <span className="sm-cred-field-label">Password</span>
-                                <span className="sm-cred-field-value password">
-                                    {revealedPasswords[cred._id] || '••••••••'}
-                                </span>
-                                <button className="sm-cred-field-toggle" onClick={() => toggleRevealPassword(cred._id)}>
-                                    {revealedPasswords[cred._id] ? <FiEyeOff /> : <FiEye />}
-                                </button>
-                            </div>
-
-                            {/* Description */}
-                            {cred.description && (
-                                <p className="sm-cred-description">{cred.description}</p>
-                            )}
-
-                            {/* Shared With */}
-                            {cred.isOwner && cred.sharedWith && cred.sharedWith.length > 0 && (
-                                <div className="sm-cred-shared">
-                                    <div className="sm-cred-shared-label">Shared with</div>
-                                    <div className="sm-cred-shared-list">
-                                        {cred.sharedWith.map((s, i) => (
-                                            <div className="sm-cred-shared-user" key={i}>
-                                                <div className="sm-cred-shared-avatar">
-                                                    {s.user?.profileImage ? (
-                                                        <img src={s.user.profileImage} alt="" />
-                                                    ) : (
-                                                        getInitials(s.user?.fullName)
-                                                    )}
-                                                </div>
-                                                <span>{s.user?.fullName || 'User'}</span>
-                                                <button className="sm-cred-shared-revoke" onClick={() => handleRevoke(cred._id, s.user?._id)} title="Revoke Access">
-                                                    <FiX />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     ))}
                 </div>
@@ -387,7 +431,7 @@ function SocialMediaCredentials() {
                                     );
                                 })}
                                 {filteredMembers.length === 0 && (
-                                    <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No team members found</p>
+                                    <p className="sm-cred-no-results">No team members found</p>
                                 )}
                             </div>
                         </div>
