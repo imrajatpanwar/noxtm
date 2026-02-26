@@ -15,7 +15,7 @@ const EMPTY_PERMISSIONS = Object.keys(PERMISSION_LABELS).reduce((acc, key) => {
 
 function WorkspaceSettings({ user, onLogout }) {
   const { isModuleInstalled, isModuleInstalling, installModule, uninstallModule } = useModules();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('profile');
   const [moduleTab, setModuleTab] = useState('all'); // 'all' or 'installed'
   const [isEditing, setIsEditing] = useState(false);
   const [workspaceData, setWorkspaceData] = useState({
@@ -2071,12 +2071,14 @@ function WorkspaceSettings({ user, onLogout }) {
       </div>
 
       <div className="workspace-tabs">
-        <button
-          className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
-          onClick={() => setActiveTab('general')}
-        >
-          <FiSettings /> General
-        </button>
+        {(companyDetails?.owner?._id === user?._id || user?.role === 'admin' || user?.permissions?.settingsConfiguration) && (
+          <button
+            className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveTab('general')}
+          >
+            <FiSettings /> General
+          </button>
+        )}
         <button
           className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => setActiveTab('profile')}
@@ -2095,12 +2097,14 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiShield /> Security
         </button>
-        <button
-          className={`tab-button ${activeTab === 'modules' ? 'active' : ''}`}
-          onClick={() => setActiveTab('modules')}
-        >
-          <FiPackage /> Modules
-        </button>
+        {(companyDetails?.owner?._id === user?._id || user?.role === 'admin' || user?.permissions?.settingsConfiguration) && (
+          <button
+            className={`tab-button ${activeTab === 'modules' ? 'active' : ''}`}
+            onClick={() => setActiveTab('modules')}
+          >
+            <FiPackage /> Modules
+          </button>
+        )}
       </div>
 
       <div className="workspace-content">
