@@ -114,7 +114,7 @@ const DomainManagement = () => {
       ) : (
         <div className="dm-domains-list">
           {domains.map((domainInfo, index) => (
-            <DomainCard key={index} domainInfo={domainInfo} />
+            <DomainCard key={index} domainInfo={domainInfo} onRefresh={fetchDomainData} />
           ))}
         </div>
       )}
@@ -122,8 +122,25 @@ const DomainManagement = () => {
   );
 };
 
-const DomainCard = ({ domainInfo }) => {
+const DomainCard = ({ domainInfo, onRefresh }) => {
   const [expanded, setExpanded] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDeleteAccount = async (accountId, email) => {
+    if (!window.confirm(`Are you sure you want to delete the email account "${email}"? This action cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(accountId);
+    try {
+      await api.delete(`/email-accounts/${accountId}`);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error deleting email account:', err);
+      alert(err.response?.data?.message || 'Failed to delete email account');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className={`dm-domain-card ${expanded ? 'expanded' : ''}`}>
@@ -193,6 +210,23 @@ const DomainCard = ({ domainInfo }) => {
                     <span className={`dm-account-status ${account.enabled ? 'active' : 'inactive'}`}>
                       {account.enabled ? 'Active' : 'Inactive'}
                     </span>
+                    <button
+                      className="dm-account-delete-btn"
+                      title="Delete account"
+                      disabled={deletingId === account._id}
+                      onClick={() => handleDeleteAccount(account._id, account.email)}
+                    >
+                      {deletingId === account._id ? (
+                        <span className="dm-delete-spinner"></span>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          <line x1="10" y1="11" x2="10" y2="17"/>
+                          <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 ))}
               </div>
