@@ -47,6 +47,7 @@ import NoxtmChatAdmin from './NoxtmChatAdmin';
 import MailPoller from './MailPoller';
 import LinkedInManager from './LinkedInManager';
 import SocialMediaCalendar from './SocialMediaCalendar';
+import SocialMediaCredentials from './SocialMediaCredentials';
 import VisitorAnalytics from './VisitorAnalytics';
 import './Dashboard.css';
 
@@ -297,6 +298,8 @@ function Dashboard({ user, onLogout }) {
         return <UsersRoles />;
       case 'content-calendar':
         return <SocialMediaCalendar />;
+      case 'sm-credentials':
+        return <SocialMediaCredentials />;
       case 'linkedin':
         return <LinkedInManager />;
       case 'noxtm-chat':

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useContext } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiExternalLink } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiExternalLink, FiKey } from 'react-icons/fi';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { useModules } from '../contexts/ModuleContext';
@@ -260,6 +260,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
     { name: 'Content Calendar', section: 'content-calendar', category: 'Digital Media Management' },
     { name: 'LinkedIn', section: 'linkedin', category: 'Digital Media Management' },
+    { name: 'Credentials', section: 'sm-credentials', category: 'Digital Media Management' },
 
     // Projects
     { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
@@ -625,6 +626,13 @@ function Sidebar({ activeSection, onSectionChange }) {
                     >
                       <FiLinkedin className="sidebar-icon" />
                       <span>LinkedIn</span>
+                    </div>
+                    <div
+                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'sm-credentials' ? 'active' : ''}`}
+                      onClick={() => onSectionChange('sm-credentials')}
+                    >
+                      <FiKey className="sidebar-icon" />
+                      <span>Credentials</span>
                     </div>
                   </div>
                 )}

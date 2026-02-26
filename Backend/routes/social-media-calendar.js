@@ -7,6 +7,7 @@ const fs = require('fs');
 const SocialMediaPost = require('../models/SocialMediaPost');
 const SocialMediaAccount = require('../models/SocialMediaAccount');
 const ContentTemplate = require('../models/ContentTemplate');
+const SocialMediaCredential = require('../models/SocialMediaCredential');
 const User = require('../models/User');
 
 // JWT authentication middleware
@@ -910,6 +911,222 @@ router.get('/team', async (req, res) => {
     } catch (error) {
         console.error('Error fetching team members:', error);
         res.status(500).json({ message: 'Failed to fetch team members' });
+    }
+});
+
+// ==========================================
+// CREDENTIAL ENDPOINTS
+// ==========================================
+
+// GET /api/social-media-calendar/credentials - List credentials (own + shared with me)
+router.get('/credentials', async (req, res) => {
+    try {
+        const reveal = req.query.reveal === 'true';
+
+        const credentials = await SocialMediaCredential.find({
+            companyId: req.companyId,
+            $or: [
+                { createdBy: req.userId },
+                { 'sharedWith.user': req.userId }
+            ]
+        })
+            .populate('createdBy', 'fullName email profileImage')
+            .populate('sharedWith.user', 'fullName email profileImage')
+            .sort({ createdAt: -1 });
+
+        // Map credentials — mask passwords unless reveal requested
+        const result = credentials.map(cred => {
+            const obj = cred.toObject();
+            if (reveal) {
+                obj.decryptedPassword = SocialMediaCredential.decryptPassword(cred.password);
+            }
+            obj.password = '••••••••';
+            obj.isOwner = cred.createdBy._id.toString() === req.userId.toString();
+            return obj;
+        });
+
+        res.json({ credentials: result });
+    } catch (error) {
+        console.error('Error fetching credentials:', error);
+        res.status(500).json({ message: 'Failed to fetch credentials' });
+    }
+});
+
+// POST /api/social-media-calendar/credentials - Create credential
+router.post('/credentials', async (req, res) => {
+    try {
+        const { platform, email, password, description } = req.body;
+
+        if (!platform) {
+            return res.status(400).json({ message: 'Platform is required' });
+        }
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        if (!password) {
+            return res.status(400).json({ message: 'Password is required' });
+        }
+
+        const encryptedPassword = SocialMediaCredential.encryptPassword(password);
+
+        const credential = new SocialMediaCredential({
+            platform,
+            email: email.trim(),
+            password: encryptedPassword,
+            description: description || '',
+            companyId: req.companyId,
+            createdBy: req.userId
+        });
+
+        await credential.save();
+
+        const populated = await SocialMediaCredential.findById(credential._id)
+            .populate('createdBy', 'fullName email profileImage')
+            .populate('sharedWith.user', 'fullName email profileImage');
+
+        const obj = populated.toObject();
+        obj.password = '••••••••';
+        obj.isOwner = true;
+
+        res.status(201).json(obj);
+    } catch (error) {
+        console.error('Error creating credential:', error);
+        res.status(500).json({ message: 'Failed to create credential' });
+    }
+});
+
+// PUT /api/social-media-calendar/credentials/:id - Update credential
+router.put('/credentials/:id', async (req, res) => {
+    try {
+        const { platform, email, password, description } = req.body;
+
+        const credential = await SocialMediaCredential.findOne({
+            _id: req.params.id,
+            companyId: req.companyId,
+            createdBy: req.userId // Only owner can edit
+        });
+
+        if (!credential) {
+            return res.status(404).json({ message: 'Credential not found or access denied' });
+        }
+
+        if (platform) credential.platform = platform;
+        if (email) credential.email = email.trim();
+        if (password) credential.password = SocialMediaCredential.encryptPassword(password);
+        if (description !== undefined) credential.description = description;
+
+        await credential.save();
+
+        const populated = await SocialMediaCredential.findById(credential._id)
+            .populate('createdBy', 'fullName email profileImage')
+            .populate('sharedWith.user', 'fullName email profileImage');
+
+        const obj = populated.toObject();
+        obj.password = '••••••••';
+        obj.isOwner = true;
+
+        res.json(obj);
+    } catch (error) {
+        console.error('Error updating credential:', error);
+        res.status(500).json({ message: 'Failed to update credential' });
+    }
+});
+
+// DELETE /api/social-media-calendar/credentials/:id - Delete credential
+router.delete('/credentials/:id', async (req, res) => {
+    try {
+        const credential = await SocialMediaCredential.findOneAndDelete({
+            _id: req.params.id,
+            companyId: req.companyId,
+            createdBy: req.userId // Only owner can delete
+        });
+
+        if (!credential) {
+            return res.status(404).json({ message: 'Credential not found or access denied' });
+        }
+
+        res.json({ message: 'Credential deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting credential:', error);
+        res.status(500).json({ message: 'Failed to delete credential' });
+    }
+});
+
+// POST /api/social-media-calendar/credentials/:id/share - Share access with users
+router.post('/credentials/:id/share', async (req, res) => {
+    try {
+        const { userIds } = req.body;
+
+        if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({ message: 'User IDs are required' });
+        }
+
+        const credential = await SocialMediaCredential.findOne({
+            _id: req.params.id,
+            companyId: req.companyId,
+            createdBy: req.userId // Only owner can share
+        });
+
+        if (!credential) {
+            return res.status(404).json({ message: 'Credential not found or access denied' });
+        }
+
+        // Add users who aren't already shared with
+        const existingUserIds = credential.sharedWith.map(s => s.user.toString());
+        const newUsers = userIds.filter(id => !existingUserIds.includes(id) && id !== req.userId.toString());
+
+        newUsers.forEach(userId => {
+            credential.sharedWith.push({ user: userId, sharedAt: new Date() });
+        });
+
+        await credential.save();
+
+        const populated = await SocialMediaCredential.findById(credential._id)
+            .populate('createdBy', 'fullName email profileImage')
+            .populate('sharedWith.user', 'fullName email profileImage');
+
+        const obj = populated.toObject();
+        obj.password = '••••••••';
+        obj.isOwner = true;
+
+        res.json(obj);
+    } catch (error) {
+        console.error('Error sharing credential:', error);
+        res.status(500).json({ message: 'Failed to share credential' });
+    }
+});
+
+// DELETE /api/social-media-calendar/credentials/:id/share/:userId - Revoke access
+router.delete('/credentials/:id/share/:userId', async (req, res) => {
+    try {
+        const credential = await SocialMediaCredential.findOne({
+            _id: req.params.id,
+            companyId: req.companyId,
+            createdBy: req.userId // Only owner can revoke
+        });
+
+        if (!credential) {
+            return res.status(404).json({ message: 'Credential not found or access denied' });
+        }
+
+        credential.sharedWith = credential.sharedWith.filter(
+            s => s.user.toString() !== req.params.userId
+        );
+
+        await credential.save();
+
+        const populated = await SocialMediaCredential.findById(credential._id)
+            .populate('createdBy', 'fullName email profileImage')
+            .populate('sharedWith.user', 'fullName email profileImage');
+
+        const obj = populated.toObject();
+        obj.password = '••••••••';
+        obj.isOwner = true;
+
+        res.json(obj);
+    } catch (error) {
+        console.error('Error revoking access:', error);
+        res.status(500).json({ message: 'Failed to revoke access' });
     }
 });
 
