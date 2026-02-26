@@ -21,7 +21,7 @@ function NotificationCenter() {
         read: false,
         icon: 'shield'
       };
-      
+
       setNotifications(prev => [newNotification, ...prev.slice(0, 9)]); // Keep only 10 notifications
       setUnreadCount(prev => prev + 1);
     }
@@ -54,8 +54,8 @@ function NotificationCenter() {
   }, [notifications, currentUser]);
 
   const markAsRead = (notificationId) => {
-    setNotifications(prev => prev.map(notification => 
-      notification.id === notificationId 
+    setNotifications(prev => prev.map(notification =>
+      notification.id === notificationId
         ? { ...notification, read: true }
         : notification
     ));
@@ -75,6 +75,14 @@ function NotificationCenter() {
       }
       return prev.filter(n => n.id !== notificationId);
     });
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    if (currentUser?.id) {
+      localStorage.removeItem(`notifications_${currentUser.id}`);
+    }
   };
 
   const getNotificationIcon = (type, iconType) => {
@@ -106,7 +114,7 @@ function NotificationCenter() {
     const now = new Date();
     const notificationTime = new Date(timestamp);
     const diffInMinutes = Math.floor((now - notificationTime) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -115,7 +123,7 @@ function NotificationCenter() {
 
   return (
     <div className="notification-center">
-      <button 
+      <button
         className={`notification-bell ${unreadCount > 0 ? 'has-unread' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="Notifications"
@@ -131,8 +139,17 @@ function NotificationCenter() {
           <div className="notification-header">
             <h3>Notifications</h3>
             <div className="notification-actions">
+              {notifications.length > 0 && (
+                <button
+                  className="clear-all-notifications"
+                  onClick={clearAllNotifications}
+                  title="Clear all notifications"
+                >
+                  Clear All
+                </button>
+              )}
               {unreadCount > 0 && (
-                <button 
+                <button
                   className="mark-all-read"
                   onClick={markAllAsRead}
                   title="Mark all as read"
@@ -140,7 +157,7 @@ function NotificationCenter() {
                   <FiCheck />
                 </button>
               )}
-              <button 
+              <button
                 className="close-notifications"
                 onClick={() => setIsOpen(false)}
                 title="Close"
@@ -158,7 +175,7 @@ function NotificationCenter() {
               </div>
             ) : (
               notifications.map(notification => (
-                <div 
+                <div
                   key={notification.id}
                   className={`notification-item ${notification.read ? 'read' : 'unread'}`}
                   onClick={() => handleNotificationClick(notification)}
@@ -175,7 +192,7 @@ function NotificationCenter() {
                       </span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     className="remove-notification"
                     onClick={(e) => {
                       e.stopPropagation();
