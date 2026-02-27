@@ -1794,6 +1794,19 @@ app.post('/api/verify-code', async (req, res) => {
     const { fullName, password, role } = verification.userData;
     console.log('Creating user with data:', { fullName, email, role });
 
+    // Re-check if email was registered between sending code and verifying
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+    if (existingUser) {
+      // Clean up the verification record
+      await EmailVerification.findByIdAndDelete(verification._id);
+      return res.status(400).json({
+        success: false,
+        message: 'This email is already registered with another organization. Please log in or use a different email.',
+        userExists: true,
+        redirectToLogin: true
+      });
+    }
+
     // Get default permissions for the role
     const userRole = role || 'User';
     const defaultPermissions = getDefaultPermissions(userRole);

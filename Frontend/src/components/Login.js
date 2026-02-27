@@ -16,10 +16,15 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Handle Google OAuth error from URL
+  // Handle Google OAuth error and email pre-fill from URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
+    const emailParam = urlParams.get('email');
+
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+    }
 
     if (errorParam) {
       const errorMessages = {
@@ -93,11 +98,11 @@ function Login({ onLogin }) {
       if (data.success && data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
+
         // Check for mail redirect
         const urlParams = new URLSearchParams(window.location.search);
         const redirectParam = urlParams.get('redirect');
-        
+
         if (redirectParam === 'mail') {
           const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
           window.location.href = `${mailBaseUrl}?auth_token=${encodeURIComponent(data.token)}`;
