@@ -186,10 +186,21 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
     console.log(`[by-verified-domain] User ${userId} owns domains:`, allDomainNames);
 
     // 4. Fetch only email accounts on domains owned by this user
+    // Also filter by company to prevent cross-company leakage
+    const userCompanyId = req.user.companyId;
     const query = {
       domain: { $in: allDomainNames },
       enabled: true
     };
+
+    // If user belongs to a company, only show accounts for that company (or personal ones)
+    if (userCompanyId) {
+      query.$or = [
+        { companyId: userCompanyId },
+        { companyId: { $exists: false } },
+        { companyId: null }
+      ];
+    }
 
     // 5. Fetch email accounts
     const accounts = await EmailAccount.find(query)
@@ -358,8 +369,19 @@ router.get('/connected', isAuthenticated, async (req, res) => {
       .sort({ lastConnectedAt: -1 });
 
     // Filter out deleted accounts and get valid ones
+    // Also filter by user's current company to prevent cross-company leakage
+    const userCompanyId = req.user.companyId ? String(req.user.companyId._id || req.user.companyId) : null;
+
     const validConnections = connections
-      .filter(conn => conn.emailAccountId && conn.emailAccountId.enabled)
+      .filter(conn => {
+        if (!conn.emailAccountId || !conn.emailAccountId.enabled) return false;
+        // If user has a company, only show accounts for that company (or personal ones)
+        if (userCompanyId) {
+          const accountCompanyId = conn.emailAccountId.companyId ? String(conn.emailAccountId.companyId._id || conn.emailAccountId.companyId) : null;
+          return !accountCompanyId || accountCompanyId === userCompanyId;
+        }
+        return true;
+      })
       .map(conn => {
         const account = conn.emailAccountId.toObject();
         delete account.password;
