@@ -60,6 +60,23 @@ router.get('/', async (req, res) => {
 
         const query = { companyId: req.companyId };
 
+        // Non-admin/non-owner users should only see tasks assigned to them or created by them
+        const userRole = req.currentUser.role;
+        if (userRole !== 'Admin') {
+            // Check if user is an Owner in their company
+            const Company = require('../models/Company');
+            const company = await Company.findById(req.companyId);
+            const member = company?.members?.find(m => m.user.toString() === req.userId.toString());
+            const isOwner = member && member.roleInCompany === 'Owner';
+
+            if (!isOwner) {
+                query.$or = [
+                    { assignees: req.userId },
+                    { createdBy: req.userId }
+                ];
+            }
+        }
+
         if (status) query.status = status;
         if (priority) query.priority = priority;
         if (assignee) query.assignees = assignee;
