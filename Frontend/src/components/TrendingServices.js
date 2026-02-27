@@ -59,6 +59,15 @@ function TrendingServices({ onNavigate }) {
   // About panel
   const [aboutPanel, setAboutPanel] = useState({ open: false, data: null });
 
+  // Quick Add Company modal
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickForm, setQuickForm] = useState({
+    categoryId: '', companyName: '', location: '', companyEmail: '', website: '', options: '',
+    contacts: [{ fullName: '', designation: '', phone: '', email: '', location: '' }]
+  });
+  const [quickErrors, setQuickErrors] = useState({});
+
   useEffect(() => { fetchServices(); fetchUsers(); }, []);
 
   useEffect(() => {
@@ -76,7 +85,7 @@ function TrendingServices({ onNavigate }) {
       const r = await api.get('/trending-services');
       const trendingServices = r.data.trendingServices || [];
       setServices(trendingServices);
-      
+
       // Fetch targeted company count for each trending service
       trendingServices.forEach(async (svc) => {
         try {
@@ -192,6 +201,37 @@ function TrendingServices({ onNavigate }) {
   const filteredInd = INDUSTRY_OPTIONS.filter(o => o.toLowerCase().includes(indSearch.toLowerCase()));
   const filteredAcc = companyUsers.filter(u => !selAccess.find(s => s._id === u._id) && (u.name?.toLowerCase().includes(accSearch.toLowerCase()) || u.email?.toLowerCase().includes(accSearch.toLowerCase())));
 
+  // Quick Add Company handlers
+  const openQuickAdd = () => {
+    setQuickForm({ categoryId: services[0]?._id || '', companyName: '', location: '', companyEmail: '', website: '', options: '', contacts: [{ fullName: '', designation: '', phone: '', email: '', location: '' }] });
+    setQuickErrors({});
+    setShowQuickAdd(true);
+  };
+
+  const handleQuickContact = (idx, field, value) => {
+    setQuickForm(p => {
+      const c = [...p.contacts]; c[idx] = { ...c[idx], [field]: value }; return { ...p, contacts: c };
+    });
+  };
+
+  const handleQuickSubmit = async (e) => {
+    e.preventDefault();
+    const er = {};
+    if (!quickForm.categoryId) er.categoryId = 'Select a category';
+    if (!quickForm.companyName.trim()) er.companyName = 'Required';
+    if (Object.keys(er).length) { setQuickErrors(er); return; }
+    setQuickSaving(true);
+    try {
+      const t = localStorage.getItem('token');
+      const body = { ...quickForm, contacts: quickForm.contacts.filter(c => c.fullName.trim() || c.email.trim()) };
+      delete body.categoryId;
+      const r = await fetch(`/api/trending-services/${quickForm.categoryId}/targeted-companies`, {
+        method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      if (r.ok) { setShowQuickAdd(false); fetchServices(); } else { const d = await r.json(); setQuickErrors({ general: d.message || 'Error' }); }
+    } catch (_) { setQuickErrors({ general: 'Error saving company' }); } finally { setQuickSaving(false); }
+  };
+
   return (
     <div className="gts">
       {/* Header */}
@@ -200,7 +240,7 @@ function TrendingServices({ onNavigate }) {
           <div className="gts-head-icon"><FiLayers size={20} /></div>
           <div>
             <h1>Companies Data</h1>
-            <p className="gts-head-sub">{services.length} service{services.length !== 1 ? 's' : ''} total{filtered.length !== services.length ? ` · ${filtered.length} shown` : ''}</p>
+            <p className="gts-head-sub">{services.length} categor{services.length !== 1 ? 'ies' : 'y'} total{filtered.length !== services.length ? ` · ${filtered.length} shown` : ''}</p>
           </div>
         </div>
         <div className="gts-head-r">
@@ -214,7 +254,8 @@ function TrendingServices({ onNavigate }) {
             <span>Filters</span>
             {activeFilterCount > 0 && <span className="gts-filter-count">{activeFilterCount}</span>}
           </button>
-          <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Add Company Data</button>
+          <button className="gts-add" style={{ background: '#15803d' }} onClick={openQuickAdd}><FiPlus size={16} /> Quick Add Company</button>
+          <button className="gts-add" onClick={openModal}><FiPlus size={16} /> Add Category</button>
         </div>
       </div>
 
@@ -298,7 +339,7 @@ function TrendingServices({ onNavigate }) {
       {/* Table Header */}
       {!loading && filtered.length > 0 && (
         <div className="gts-table-head">
-          <div className="gts-th-name">Trending Service</div>
+          <div className="gts-th-name">Company Data Category</div>
           <div className="gts-th-industry">Industry</div>
           <div className="gts-th-date">Location</div>
           <div className="gts-th-stats">Companies</div>
@@ -385,7 +426,7 @@ function TrendingServices({ onNavigate }) {
         <div className="noxtm-overlay" onClick={closeModal}>
           <div className="gts-modal" onClick={e => e.stopPropagation()}>
             <div className="gts-mh">
-              <h2>Create Company Data</h2>
+              <h2>Create Company Data Category</h2>
               <button onClick={closeModal}><FiX size={18} /></button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -412,13 +453,13 @@ function TrendingServices({ onNavigate }) {
 
                   <div className="gts-form-basic">
                     <div className="gts-f">
-                      <label>Service Name <span className="req">*</span></label>
-                      <input name="serviceName" value={formData.serviceName} onChange={handleInput} placeholder="e.g. SEO Pro" className={errors.serviceName ? 'err' : ''} />
+                      <label>Category Name <span className="req">*</span></label>
+                      <input name="serviceName" value={formData.serviceName} onChange={handleInput} placeholder="e.g. SEO Clients, Web Dev Leads" className={errors.serviceName ? 'err' : ''} />
                       {errors.serviceName && <span className="gts-ferr">{errors.serviceName}</span>}
                     </div>
                     <div className="gts-f">
-                      <label>Full Name <span className="req">*</span></label>
-                      <input name="fullName" value={formData.fullName} onChange={handleInput} placeholder="e.g. Search Engine Optimization Services" className={errors.fullName ? 'err' : ''} />
+                      <label>Description <span className="req">*</span></label>
+                      <input name="fullName" value={formData.fullName} onChange={handleInput} placeholder="e.g. SEO service clients in US market" className={errors.fullName ? 'err' : ''} />
                       {errors.fullName && <span className="gts-ferr">{errors.fullName}</span>}
                     </div>
                     <div className="gts-f">
@@ -468,7 +509,7 @@ function TrendingServices({ onNavigate }) {
 
               <div className="gts-mf">
                 <button type="button" className="gts-btn-c" onClick={closeModal} disabled={saving}>Cancel</button>
-                <button type="submit" className="gts-btn-s" disabled={saving}>{saving ? 'Creating...' : 'Create Trending Service'}</button>
+                <button type="submit" className="gts-btn-s" disabled={saving}>{saving ? 'Creating...' : 'Create Category'}</button>
               </div>
             </form>
           </div>
@@ -497,7 +538,7 @@ function TrendingServices({ onNavigate }) {
               </div>
               <div className="gts-pb">
                 <div className="gts-ps">
-                  <h4>Service Details</h4>
+                  <h4>Category Details</h4>
                   <div className="gts-pg">
                     <div className="gts-pi"><label><FiMapPin size={12} /> Location</label><p>{svc.location || 'N/A'}</p></div>
                     <div className="gts-pi"><label>Industry</label><p>{svc.industry || 'N/A'}</p></div>
@@ -524,6 +565,75 @@ function TrendingServices({ onNavigate }) {
           </>
         );
       })()}
+
+      {/* Quick Add Company Modal */}
+      {showQuickAdd && (
+        <div className="noxtm-overlay" onClick={() => setShowQuickAdd(false)}>
+          <div className="exl-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+            <div className="exl-mh">
+              <h2>Quick Add Company + Contacts</h2>
+              <button onClick={() => setShowQuickAdd(false)}><FiX size={18} /></button>
+            </div>
+            <form onSubmit={handleQuickSubmit}>
+              <div className="exl-mb" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+                {quickErrors.general && <div className="exl-err">{quickErrors.general}</div>}
+
+                <div className="exl-sec">
+                  <h4>Category</h4>
+                  <div className="exl-f">
+                    <label>Select Category <span className="req">*</span></label>
+                    <select value={quickForm.categoryId} onChange={e => { setQuickForm(p => ({ ...p, categoryId: e.target.value })); if (quickErrors.categoryId) setQuickErrors(p => ({ ...p, categoryId: '' })); }} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: quickErrors.categoryId ? '1px solid #ef4444' : '1px solid #e5e5e5', fontSize: 13 }}>
+                      {services.length === 0 && <option value="">No categories — create one first</option>}
+                      {services.map(s => <option key={s._id} value={s._id}>{s.serviceName} — {s.fullName}</option>)}
+                    </select>
+                    {quickErrors.categoryId && <span className="exl-ferr">{quickErrors.categoryId}</span>}
+                  </div>
+                </div>
+
+                <div className="exl-sec">
+                  <h4>Company Info</h4>
+                  <div className="exl-r2">
+                    <div className="exl-f"><label>Company Name <span className="req">*</span></label><input value={quickForm.companyName} onChange={e => { setQuickForm(p => ({ ...p, companyName: e.target.value })); if (quickErrors.companyName) setQuickErrors(p => ({ ...p, companyName: '' })); }} placeholder="Company name" className={quickErrors.companyName ? 'err' : ''} />{quickErrors.companyName && <span className="exl-ferr">{quickErrors.companyName}</span>}</div>
+                    <div className="exl-f"><label>Location</label><input value={quickForm.location} onChange={e => setQuickForm(p => ({ ...p, location: e.target.value }))} placeholder="City, Country" /></div>
+                  </div>
+                  <div className="exl-r2">
+                    <div className="exl-f"><label>Email</label><input value={quickForm.companyEmail} onChange={e => setQuickForm(p => ({ ...p, companyEmail: e.target.value }))} placeholder="company@email.com" /></div>
+                    <div className="exl-f"><label>Website</label><input value={quickForm.website} onChange={e => setQuickForm(p => ({ ...p, website: e.target.value }))} placeholder="www.company.com" /></div>
+                  </div>
+                </div>
+
+                <div className="exl-sec">
+                  <div className="exl-sec-head">
+                    <h4>Contacts</h4>
+                    <button type="button" className="exl-add-ct" onClick={() => setQuickForm(p => ({ ...p, contacts: [...p.contacts, { fullName: '', designation: '', phone: '', email: '', location: '' }] }))}><FiPlus size={13} /> Add Contact</button>
+                  </div>
+                  {quickForm.contacts.map((c, i) => (
+                    <div key={i} className="exl-ct-block">
+                      <div className="exl-ct-top">
+                        <span>Contact {i + 1}</span>
+                        {quickForm.contacts.length > 1 && <button type="button" onClick={() => setQuickForm(p => ({ ...p, contacts: p.contacts.filter((_, idx) => idx !== i) }))}><FiX size={13} /></button>}
+                      </div>
+                      <div className="exl-r2">
+                        <div className="exl-f"><label>Full Name</label><input value={c.fullName} onChange={e => handleQuickContact(i, 'fullName', e.target.value)} placeholder="Full name" /></div>
+                        <div className="exl-f"><label>Designation</label><input value={c.designation} onChange={e => handleQuickContact(i, 'designation', e.target.value)} placeholder="CEO, CTO..." /></div>
+                      </div>
+                      <div className="exl-r3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                        <div className="exl-f"><label>Phone</label><input value={c.phone} onChange={e => handleQuickContact(i, 'phone', e.target.value)} placeholder="+1..." /></div>
+                        <div className="exl-f"><label>Email</label><input value={c.email} onChange={e => handleQuickContact(i, 'email', e.target.value)} placeholder="email@co.com" /></div>
+                        <div className="exl-f"><label>Location</label><input value={c.location} onChange={e => handleQuickContact(i, 'location', e.target.value)} placeholder="City" /></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="exl-mf">
+                <button type="button" className="exl-btn-c" onClick={() => setShowQuickAdd(false)} disabled={quickSaving}>Cancel</button>
+                <button type="submit" className="exl-btn-s" disabled={quickSaving || !services.length}>{quickSaving ? 'Saving...' : 'Add Company'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

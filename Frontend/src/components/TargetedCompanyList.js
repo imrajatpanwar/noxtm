@@ -21,7 +21,7 @@ function TargetedCompanyList({ trendingService, onNavigate }) {
   const [errors, setErrors] = useState({});
 
   const breadcrumbs = [
-    { label: 'Trending Services', section: 'trending-services' },
+    { label: 'Companies Data', section: 'trending-services' },
     { label: trendingService?.serviceName || 'Targeted Companies' }
   ];
 
@@ -121,81 +121,81 @@ function TargetedCompanyList({ trendingService, onNavigate }) {
 
       {/* Companies Content */}
       {loading ? (
-            <div className="exl-load"><div className="exl-spin" /><p>Loading targeted companies...</p></div>
-          ) : filtered.length > 0 ? (
-            <div className="exl-table-wrap">
-              <table className="exl-table">
-                <thead>
-                  <tr>
-                    <th>Company</th>
-                    <th>Location</th>
-                    <th>Email</th>
-                    <th>Website</th>
-                    <th>Contacts</th>
-                    <th style={{ width: 80 }}></th>
+        <div className="exl-load"><div className="exl-spin" /><p>Loading targeted companies...</p></div>
+      ) : filtered.length > 0 ? (
+        <div className="exl-table-wrap">
+          <table className="exl-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Location</th>
+                <th>Email</th>
+                <th>Website</th>
+                <th>Contacts</th>
+                <th style={{ width: 80 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(tc => (
+                <React.Fragment key={tc._id}>
+                  <tr className={expandedId === tc._id ? 'expanded' : ''} onClick={() => setExpandedId(expandedId === tc._id ? null : tc._id)}>
+                    <td className="exl-co">
+                      <strong>{tc.companyName}</strong>
+                      {tc.options && <span className="exl-opt">{tc.options}</span>}
+                    </td>
+                    <td>{tc.location || '—'}</td>
+                    <td>{tc.companyEmail ? <a href={`mailto:${tc.companyEmail}`} onClick={e => e.stopPropagation()} className="exl-link">{tc.companyEmail}</a> : '—'}</td>
+                    <td>{tc.website ? <a href={tc.website.startsWith('http') ? tc.website : `https://${tc.website}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="exl-link">{tc.website}</a> : '—'}</td>
+                    <td><span className="exl-ct-count">{tc.contacts?.length || 0}</span></td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <div className="exl-acts">
+                        <button onClick={() => openEdit(tc)} title="Edit"><FiEdit2 size={13} /></button>
+                        <button className="del" onClick={() => deleteCompany(tc._id)} title="Delete"><FiTrash2 size={13} /></button>
+                        <button onClick={() => setExpandedId(expandedId === tc._id ? null : tc._id)}>
+                          {expandedId === tc._id ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(tc => (
-                    <React.Fragment key={tc._id}>
-                      <tr className={expandedId === tc._id ? 'expanded' : ''} onClick={() => setExpandedId(expandedId === tc._id ? null : tc._id)}>
-                        <td className="exl-co">
-                          <strong>{tc.companyName}</strong>
-                          {tc.options && <span className="exl-opt">{tc.options}</span>}
-                        </td>
-                        <td>{tc.location || '—'}</td>
-                        <td>{tc.companyEmail ? <a href={`mailto:${tc.companyEmail}`} onClick={e => e.stopPropagation()} className="exl-link">{tc.companyEmail}</a> : '—'}</td>
-                        <td>{tc.website ? <a href={tc.website.startsWith('http') ? tc.website : `https://${tc.website}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="exl-link">{tc.website}</a> : '—'}</td>
-                        <td><span className="exl-ct-count">{tc.contacts?.length || 0}</span></td>
-                        <td onClick={e => e.stopPropagation()}>
-                          <div className="exl-acts">
-                            <button onClick={() => openEdit(tc)} title="Edit"><FiEdit2 size={13} /></button>
-                            <button className="del" onClick={() => deleteCompany(tc._id)} title="Delete"><FiTrash2 size={13} /></button>
-                            <button onClick={() => setExpandedId(expandedId === tc._id ? null : tc._id)}>
-                              {expandedId === tc._id ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {expandedId === tc._id && tc.contacts?.length > 0 && (
-                        <tr className="exl-expand-row">
-                          <td colSpan="6">
-                            <div className="exl-contacts">
-                              <h4>Contacts ({tc.contacts.length})</h4>
-                              <div className="exl-contacts-grid">
-                                {tc.contacts.map((c, i) => (
-                                  <div key={i} className="exl-contact-card">
-                                    <div className="exl-cc-head">
-                                      <img src={defaultAvatar} alt="" />
-                                      <div>
-                                        <strong>{c.fullName || 'N/A'}</strong>
-                                        {c.designation && <span>{c.designation}</span>}
-                                      </div>
-                                    </div>
-                                    <div className="exl-cc-info">
-                                      {c.email && <div><FiMail size={11} /><a href={`mailto:${c.email}`}>{c.email}</a></div>}
-                                      {c.phone && <div><FiPhone size={11} /><span>{c.phone}</span></div>}
-                                      {c.location && <div><FiMapPin size={11} /><span>{c.location}</span></div>}
-                                    </div>
+                  {expandedId === tc._id && tc.contacts?.length > 0 && (
+                    <tr className="exl-expand-row">
+                      <td colSpan="6">
+                        <div className="exl-contacts">
+                          <h4>Contacts ({tc.contacts.length})</h4>
+                          <div className="exl-contacts-grid">
+                            {tc.contacts.map((c, i) => (
+                              <div key={i} className="exl-contact-card">
+                                <div className="exl-cc-head">
+                                  <img src={defaultAvatar} alt="" />
+                                  <div>
+                                    <strong>{c.fullName || 'N/A'}</strong>
+                                    {c.designation && <span>{c.designation}</span>}
                                   </div>
-                                ))}
+                                </div>
+                                <div className="exl-cc-info">
+                                  {c.email && <div><FiMail size={11} /><a href={`mailto:${c.email}`}>{c.email}</a></div>}
+                                  {c.phone && <div><FiPhone size={11} /><span>{c.phone}</span></div>}
+                                  {c.location && <div><FiMapPin size={11} /><span>{c.location}</span></div>}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="exl-empty">
-              <h3>No Targeted Companies Yet</h3>
-              <p>Add targeted companies for {trendingService?.serviceName || 'this trending service'}.</p>
-              <button className="exl-add" onClick={openAdd}><FiPlus size={16} /> Add Company</button>
-            </div>
-          )}
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="exl-empty">
+          <h3>No Targeted Companies Yet</h3>
+          <p>Add targeted companies for {trendingService?.serviceName || 'this category'}.</p>
+          <button className="exl-add" onClick={openAdd}><FiPlus size={16} /> Add Company</button>
+        </div>
+      )}
 
       {/* Add / Edit Modal */}
       {showModal && (
