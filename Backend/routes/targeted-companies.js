@@ -7,6 +7,25 @@ const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
 // Simpler POST endpoint for Chrome extension
+
+// Get ALL targeted companies for the user's company (used by Leads Flow dropdown)
+router.get('/targeted-companies/all', auth, async (req, res) => {
+  try {
+    const User = mongoose.model('User');
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const companies = await TargetedCompany.find({ companyId: user.companyId })
+      .select('companyName location companyEmail website contacts')
+      .sort({ companyName: 1 })
+      .lean();
+
+    res.json({ success: true, companies });
+  } catch (error) {
+    console.error('Error fetching all targeted companies:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 router.post('/targeted-companies', auth, async (req, res) => {
   try {
     const { trendingServiceId, trendingServiceName, companyName, location, website, extractedAt, contacts } = req.body;
@@ -21,9 +40,9 @@ router.post('/targeted-companies', auth, async (req, res) => {
     const companyId = user.companyId;
 
     if (!trendingServiceId || !companyName) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Trending service ID and company name are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Trending service ID and company name are required'
       });
     }
 
