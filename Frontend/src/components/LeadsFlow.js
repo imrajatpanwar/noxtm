@@ -41,6 +41,7 @@ const STATUS_COLORS = {
 function LeadsFlow() {
   const { isModuleInstalled } = useModules();
   const exhibitOSActive = isModuleInstalled('ExhibitOS');
+  const agencyOSActive = isModuleInstalled('AgencyOS');
 
   // Main state
   const [campaigns, setCampaigns] = useState([]);
@@ -52,6 +53,9 @@ function LeadsFlow() {
 
   // Trade shows state
   const [tradeShows, setTradeShows] = useState([]);
+
+  // Agency OS: Trending Services (categories) for Companies Data
+  const [trendingServices, setTrendingServices] = useState([]);
 
   // Wizard state
   const [showWizard, setShowWizard] = useState(false);
@@ -159,6 +163,19 @@ function LeadsFlow() {
   }, [exhibitOSActive]);
 
   useEffect(() => { if (exhibitOSActive) fetchTradeShows(); }, [exhibitOSActive, fetchTradeShows]);
+
+  // Fetch trending services for AgencyOS
+  const fetchTrendingServices = useCallback(async () => {
+    if (!agencyOSActive) return;
+    try {
+      const res = await api.get('/trending-services');
+      setTrendingServices(res.data?.trendingServices || []);
+    } catch (err) {
+      console.error('Error fetching trending services:', err);
+    }
+  }, [agencyOSActive]);
+
+  useEffect(() => { if (agencyOSActive) fetchTrendingServices(); }, [agencyOSActive, fetchTrendingServices]);
 
   // Open wizard
   const openWizard = () => {
@@ -667,6 +684,25 @@ function LeadsFlow() {
             </select>
             <span className="lf-form-hint" style={{ fontSize: '12px', color: '#737373', marginTop: 4, display: 'block' }}>
               Leads added to this campaign will be linked to the selected trade show
+            </span>
+          </div>
+        )}
+        {agencyOSActive && trendingServices.length > 0 && (
+          <div className="lf-form-group">
+            <label><FiBriefcase size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Link to Companies Data</label>
+            <select
+              value={wizardData.companiesDataCategory || ''}
+              onChange={e => setWizardData(prev => ({ ...prev, companiesDataCategory: e.target.value }))}
+            >
+              <option value="">No category (general campaign)</option>
+              {trendingServices.map(ts => (
+                <option key={ts._id} value={ts._id}>
+                  {ts.serviceName} — {ts.fullName}
+                </option>
+              ))}
+            </select>
+            <span className="lf-form-hint" style={{ fontSize: '12px', color: '#737373', marginTop: 4, display: 'block' }}>
+              Connect this campaign to your Companies Data category for easy lead import
             </span>
           </div>
         )}
