@@ -84,7 +84,15 @@ function Signup({ onSignup }) {
         setStep(2);
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Failed to send verification code');
+      const errData = error.response?.data;
+      if (errData?.userExists || errData?.redirectToLogin) {
+        setMessage('This email is already registered. Please log in instead.');
+        setTimeout(() => {
+          window.location.href = `/login?email=${encodeURIComponent(formData.email)}`;
+        }, 2000);
+      } else {
+        setMessage(errData?.message || 'Failed to send verification code');
+      }
     }
 
     setLoading(false);
@@ -114,10 +122,18 @@ function Signup({ onSignup }) {
         }, 1500);
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-        error.response?.data?.error ||
-        'Verification failed. Please try again.';
-      setMessage(errorMessage);
+      const errData = error.response?.data;
+      if (errData?.userExists || errData?.redirectToLogin) {
+        setMessage('This email is already registered with another organization. Redirecting to login...');
+        setTimeout(() => {
+          window.location.href = `/login?email=${encodeURIComponent(formData.email)}`;
+        }, 2000);
+      } else {
+        const errorMessage = errData?.message ||
+          errData?.error ||
+          'Verification failed. Please try again.';
+        setMessage(errorMessage);
+      }
     }
 
     setLoading(false);

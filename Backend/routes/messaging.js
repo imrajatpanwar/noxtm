@@ -72,7 +72,7 @@ function initializeRoutes(dependencies) {
       // Join conversation room
       socket.on('join-conversation', (conversationId) => {
         const roomName = `conversation:${conversationId}`;
-        
+
         // Leave all previous conversation rooms first to prevent duplicates
         const rooms = Array.from(socket.rooms);
         rooms.forEach(room => {
@@ -81,7 +81,7 @@ function initializeRoutes(dependencies) {
             console.log(`👋 User ${socket.id} left previous conversation: ${room}`);
           }
         });
-        
+
         // Now join the new conversation room
         socket.join(roomName);
         console.log(`✅ User ${socket.id} joined conversation: ${conversationId}`);
@@ -133,7 +133,7 @@ function initializeRoutes(dependencies) {
       // Clean up before disconnect to prevent memory leaks
       socket.on('disconnecting', () => {
         console.log('🔌 User disconnecting, cleaning up rooms:', Array.from(socket.rooms));
-        
+
         // Find user and mark as offline before removing listeners
         for (const [userId, socketId] of onlineUsers.entries()) {
           if (socketId === socket.id) {
@@ -157,7 +157,7 @@ function initializeRoutes(dependencies) {
       socket.on('disconnect', (reason) => {
         console.log('❌ User disconnected from messaging:', socket.id);
         console.log('📝 Disconnect reason:', reason);
-        
+
         // Remove all listeners to prevent memory leaks
         socket.removeAllListeners();
       });
@@ -203,10 +203,17 @@ function initializeRoutes(dependencies) {
 
       // Check if user already exists and is already a member
       const existingUser = await User.findOne({ email: email.toLowerCase() });
-      if (existingUser && existingUser.companyId && existingUser.companyId.toString() === companyId.toString()) {
-        return res.status(400).json({
-          message: 'User is already a member of this company'
-        });
+      if (existingUser) {
+        if (existingUser.companyId && existingUser.companyId.toString() === companyId.toString()) {
+          return res.status(400).json({
+            message: 'User is already a member of this company'
+          });
+        }
+        if (existingUser.companyId) {
+          return res.status(400).json({
+            message: 'This email is already registered with another organization. The user must leave their current organization first.'
+          });
+        }
       }
 
       // Check if invitation already exists
@@ -1458,7 +1465,7 @@ function initializeRoutes(dependencies) {
         for (const participant of conversation.participants) {
           const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
           const participantSocketId = onlineUsers.get(participantId.toString());
-          
+
           // Only update unread count for participants who are NOT the sender
           if (participantId.toString() !== userId.toString() && participantSocketId) {
             console.log(`� Updating unread count for user ${participantId}`);
