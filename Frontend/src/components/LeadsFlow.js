@@ -88,6 +88,12 @@ function LeadsFlow() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingCampaignId, setEditingCampaignId] = useState(null);
 
+  // Companies Data dropdown
+  const [companiesData, setCompaniesData] = useState([]);
+  const [selectedCompanyData, setSelectedCompanyData] = useState('');
+  const [selectedContactIndex, setSelectedContactIndex] = useState('');
+  const [companiesDataLoading, setCompaniesDataLoading] = useState(false);
+
   const fileInputRef = useRef(null);
 
   // Fetch campaigns
@@ -123,6 +129,19 @@ function LeadsFlow() {
       setTeamMembers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching team:', err);
+    }
+  }, []);
+
+  // Fetch Companies Data (Targeted Companies) for dropdown
+  const fetchCompaniesData = useCallback(async () => {
+    try {
+      setCompaniesDataLoading(true);
+      const res = await api.get('/targeted-companies/all');
+      setCompaniesData(res.data?.companies || []);
+    } catch (err) {
+      console.error('Error fetching companies data:', err);
+    } finally {
+      setCompaniesDataLoading(false);
     }
   }, []);
 
@@ -253,6 +272,11 @@ function LeadsFlow() {
   const openCampaignDetail = async (campaign) => {
     setActiveCampaign(campaign);
     setShowCampaignDetail(true);
+    // Reset companies data selections
+    setSelectedCompanyData('');
+    setSelectedContactIndex('');
+    // Fetch companies data for the dropdown
+    fetchCompaniesData();
     try {
       // Use findr API to get permission-filtered leads
       const res = await api.get(`/findr/campaigns/${campaign._id}/leads`);
@@ -983,6 +1007,87 @@ function LeadsFlow() {
         {activeCampaign.method === 'manual' && (
           <div className="lf-method-content">
             <h3><FiUser size={18} /> Add Lead Manually</h3>
+
+            {/* Companies Data Dropdown */}
+            <div className="lf-manual-form" style={{ marginBottom: 16, padding: '12px 16px', background: '#f9fafb', borderRadius: 10, border: '1px solid #e5e5e5' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiBriefcase size={14} /> Import from Companies Data
+              </div>
+              <div className="lf-form-row">
+                <div className="lf-form-group">
+                  <label>Select Company</label>
+                  <select
+                    value={selectedCompanyData}
+                    onChange={e => {
+                      setSelectedCompanyData(e.target.value);
+                      setSelectedContactIndex('');
+                      if (e.target.value) {
+                        const company = companiesData.find(c => c._id === e.target.value);
+                        if (company) {
+                          setManualLeadForm(p => ({
+                            ...p,
+                            companyName: company.companyName || '',
+                            location: company.location || ''
+                          }));
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">— Select from Companies Data —</option>
+                    {companiesDataLoading ? (
+                      <option disabled>Loading...</option>
+                    ) : (
+                      companiesData.map(c => (
+                        <option key={c._id} value={c._id}>
+                          {c.companyName} {c.contacts?.length ? `(${c.contacts.length} contacts)` : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                {selectedCompanyData && (() => {
+                  const company = companiesData.find(c => c._id === selectedCompanyData);
+                  const contacts = company?.contacts || [];
+                  return contacts.length > 0 ? (
+                    <div className="lf-form-group">
+                      <label>Select Contact</label>
+                      <select
+                        value={selectedContactIndex}
+                        onChange={e => {
+                          setSelectedContactIndex(e.target.value);
+                          if (e.target.value !== '') {
+                            const contact = contacts[parseInt(e.target.value)];
+                            if (contact) {
+                              setManualLeadForm(p => ({
+                                ...p,
+                                clientName: contact.fullName || '',
+                                email: contact.email || company.companyEmail || '',
+                                phone: contact.phone || '',
+                                designation: contact.designation || '',
+                                location: contact.location || company.location || '',
+                                companyName: company.companyName || ''
+                              }));
+                            }
+                          }
+                        }}
+                      >
+                        <option value="">— Select contact —</option>
+                        {contacts.map((ct, idx) => (
+                          <option key={idx} value={idx}>
+                            {ct.fullName || 'Unnamed'} {ct.designation ? `— ${ct.designation}` : ''} {ct.email ? `(${ct.email})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="lf-form-group">
+                      <label style={{ color: '#a3a3a3' }}>No contacts in this company</label>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
             <div className="lf-manual-form">
               <div className="lf-form-row">
                 <div className="lf-form-group">
