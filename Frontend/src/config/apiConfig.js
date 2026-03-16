@@ -1,7 +1,9 @@
 const getApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
   if (process.env.NODE_ENV === 'development') {
-    // Use the production server URL when running frontend locally
-    return 'https://noxtm.com';
+    return 'http://localhost:5000';
   }
   // In production, use relative path
   return '';

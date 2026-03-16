@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
   FiPlus, FiSearch, FiEdit3, FiTrash2, FiX, FiBookmark, FiArchive,
   FiTag, FiClock, FiMoreVertical, FiCheck, FiChevronDown,
-  FiUserPlus, FiUser, FiSend, FiXCircle, FiCheckCircle, FiInbox
+  FiUserPlus, FiUser, FiSend, FiXCircle, FiCheckCircle, FiInbox, FiEye, FiUsers
 } from 'react-icons/fi';
 import api from '../config/api';
 import './Notes.css';
@@ -20,6 +20,7 @@ function Notes() {
   const [editorData, setEditorData] = useState({ title: '', content: '', tags: [], color: 'default', assignedTo: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [viewNote, setViewNote] = useState(null);
   const [tagInput, setTagInput] = useState('');
   const [companyUsers, setCompanyUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -191,7 +192,18 @@ function Notes() {
     setShowEditor(true);
   };
 
+  // Open assigned note in view-only mode
+  const openViewNote = (note) => {
+    setViewNote(note);
+    setActiveMenu(null);
+  };
+
   const openEditNote = (note) => {
+    // If this note is assigned to me (not mine), open in view-only mode
+    if (note.isAssignedToMe) {
+      openViewNote(note);
+      return;
+    }
     // Extract user IDs from assignedTo (handle both array and single value)
     let assignedUserIds = [];
     if (note.assignedTo) {
@@ -636,6 +648,35 @@ function Notes() {
           </div>
         </div>
       )}
+      {/* View-Only Modal for assigned notes */}
+      {viewNote && (
+        <div className="notes-modal-overlay" onClick={() => setViewNote(null)}>
+          <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="notes-modal-header">
+              <div>
+                <h3 className="notes-view-title">{viewNote.title}</h3>
+                <div className="notes-view-meta">
+                  <span className="notes-view-from"><FiUser /> Assigned by {viewNote.assignedBy?.fullName || viewNote.userId?.fullName || 'Unknown'}</span>
+                  <span className="notes-view-time"><FiClock /> {formatDate(viewNote.updatedAt)}</span>
+                </div>
+              </div>
+              <button className="notes-modal-close" onClick={() => setViewNote(null)}>
+                <FiX />
+              </button>
+            </div>
+            <div className="notes-modal-body">
+              <div className="notes-view-content">{viewNote.content || 'No content.'}</div>
+              {viewNote.tags && viewNote.tags.length > 0 && (
+                <div className="notes-view-tags">
+                  {viewNote.tags.map(tag => (
+                    <span key={tag} className="note-card-tag">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -647,6 +688,7 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
   const assignedUsers = note.assignedTo && Array.isArray(note.assignedTo) ? note.assignedTo : (note.assignedTo ? [note.assignedTo] : []);
   const hasAssignments = assignedUsers.length > 0 && note.assignments && note.assignments.length > 0;
   const hasBotgit = note.botgitAccess;
+  const isAssigned = note.isAssignedToMe;
 
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : '?';
@@ -659,9 +701,16 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
   };
 
   return (
-    <div className={`note-card ${note.pinned ? 'pinned' : ''}`} onClick={() => onEdit(note)}>
+    <div className={`note-card ${note.pinned ? 'pinned' : ''} ${isAssigned ? 'assigned-in-my' : ''}`} onClick={() => onEdit(note)}>
       <div className="note-card-top">
-        <h3 className="note-card-title">{note.title}</h3>
+        <h3 className="note-card-title">
+          {isAssigned && (
+            <span className="note-assigned-icon" title={`Assigned by ${note.assignedBy?.fullName || note.userId?.fullName || 'someone'}`}>
+              <FiUsers />
+            </span>
+          )}
+          {note.title}
+        </h3>
         {(hasAssignments || hasBotgit) && (
           <div className="note-card-avatars">
             {hasBotgit && (
@@ -694,6 +743,7 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
             )}
           </div>
         )}
+        {!isAssigned && (
         <div className="note-card-menu-wrapper" ref={activeMenu === note._id ? menuRef : null}>
           <button
             className="note-card-menu-btn"
@@ -718,6 +768,10 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
             </div>
           )}
         </div>
+        )}
+        {isAssigned && (
+          <span className="note-view-only-badge" title="View only"><FiEye /></span>
+        )}
       </div>
 
       {note.content && (

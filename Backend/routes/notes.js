@@ -79,46 +79,61 @@ router.get('/assigned', async (req, res) => {
 });
 
 // ============================================
-// GET /api/notes - List notes for current user
+// GET /api/notes - List notes for current user (own + accepted assigned)
 // ============================================
 router.get('/', async (req, res) => {
   try {
     const { archived, tag, search, page = 1, limit = 50 } = req.query;
     const userId = req.user.userId || req.user._id;
 
-    const filter = { userId };
+    // Base filter: own notes OR accepted-assigned notes
+    const ownerFilter = { userId };
+    const acceptedFilter = { 'assignments.userId': userId, 'assignments.status': 'accepted' };
+
+    const baseFilter = { $or: [ownerFilter, acceptedFilter] };
 
     // Default: show non-archived only
-    filter.archived = archived === 'true';
+    baseFilter.archived = archived === 'true';
 
     if (tag) {
-      filter.tags = tag;
+      baseFilter.tags = tag;
     }
 
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } },
-        { tags: { $regex: search, $options: 'i' } }
+      baseFilter.$and = [
+        { $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { content: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } }
+        ]}
       ];
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const [notes, total] = await Promise.all([
-      Note.find(filter)
+      Note.find(baseFilter)
+        .populate('userId', 'fullName email profileImage')
         .populate('assignedTo', 'fullName email profileImage')
         .populate('assignedBy', 'fullName email profileImage')
         .sort({ pinned: -1, updatedAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
         .lean(),
-      Note.countDocuments(filter)
+      Note.countDocuments(baseFilter)
     ]);
+
+    // Mark each note whether current user is the owner or an assignee
+    const notesWithMeta = notes.map(note => {
+      const isOwner = note.userId && note.userId._id
+        ? note.userId._id.toString() === userId.toString()
+        : note.userId?.toString() === userId.toString();
+      return { ...note, isOwner, isAssignedToMe: !isOwner };
+    });
 
     res.json({
       success: true,
-      notes,
+      notes: notesWithMeta,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

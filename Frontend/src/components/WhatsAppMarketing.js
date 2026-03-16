@@ -161,13 +161,17 @@ function AccountsTab() {
   const {
     accounts, fetchAccounts, linkAccount, reconnectAccount,
     disconnectAccount, removeAccount, updateAccountSettings,
-    setDefaultAccount, qrCode, setQrCode, loading
+    setDefaultAccount, qrCode, setQrCode, loading,
+    fetchTeamMembers, assignAccountUsers
   } = useWhatsApp();
 
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkName, setLinkName] = useState('');
   const [editingSettings, setEditingSettings] = useState(null);
   const [settingsForm, setSettingsForm] = useState({});
+  const [assigningAccount, setAssigningAccount] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
@@ -201,6 +205,30 @@ function AccountsTab() {
       await updateAccountSettings(editingSettings, settingsForm);
       setEditingSettings(null);
       toast.success('Settings saved');
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const handleOpenAssign = async (acc) => {
+    setAssigningAccount(acc._id);
+    setSelectedAssignees((acc.assignedUsers || []).map(u => typeof u === 'object' ? u._id : u));
+    try {
+      const res = await fetchTeamMembers();
+      if (res.success) setTeamMembers(res.data);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleToggleAssignee = (userId) => {
+    setSelectedAssignees(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSaveAssign = async () => {
+    if (!assigningAccount) return;
+    try {
+      await assignAccountUsers(assigningAccount, selectedAssignees);
+      setAssigningAccount(null);
+      toast.success('Users assigned');
     } catch (e) { toast.error(e.message); }
   };
 
@@ -297,6 +325,46 @@ function AccountsTab() {
         </div>
       )}
 
+      {/* Assign Users Modal */}
+      {assigningAccount && (
+        <div className="wa-modal-overlay" onClick={() => setAssigningAccount(null)}>
+          <div className="wa-modal" onClick={e => e.stopPropagation()}>
+            <div className="wa-modal-header">
+              <h3><FiUsers size={16} /> Assign Users</h3>
+              <button className="wa-modal-close" onClick={() => setAssigningAccount(null)}><FiX size={16} /></button>
+            </div>
+            <div className="wa-modal-body">
+              <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                Only assigned users will see this account. Leave empty to allow all users.
+              </p>
+              <div className="wa-assign-list">
+                {teamMembers.map(member => (
+                  <label key={member._id} className="wa-assign-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedAssignees.includes(member._id)}
+                      onChange={() => handleToggleAssignee(member._id)}
+                    />
+                    <div className="wa-assign-info">
+                      <span className="wa-assign-name">{member.fullName || member.email}</span>
+                      <span className="wa-assign-email">{member.email}</span>
+                    </div>
+                    <span className="wa-assign-role">{member.role}</span>
+                  </label>
+                ))}
+                {teamMembers.length === 0 && (
+                  <div className="wa-empty-sm"><p>No team members found</p></div>
+                )}
+              </div>
+              <div className="wa-form-actions">
+                <button className="wa-btn" onClick={() => setAssigningAccount(null)}>Cancel</button>
+                <button className="wa-btn wa-btn-primary" onClick={handleSaveAssign}>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Account Cards */}
       <div className="wa-account-cards">
         {accounts.length === 0 ? (
@@ -366,10 +434,23 @@ function AccountsTab() {
                 }}>
                   <FiSettings size={12} />
                 </button>
+                <button className="wa-btn wa-btn-sm" onClick={() => handleOpenAssign(acc)}>
+                  <FiUsers size={12} /> Assign
+                </button>
                 <button className="wa-btn wa-btn-sm wa-btn-danger" onClick={() => handleRemove(acc._id)}>
                   <FiTrash2 size={12} />
                 </button>
               </div>
+              {acc.assignedUsers && acc.assignedUsers.length > 0 && (
+                <div className="wa-assigned-users">
+                  <span className="wa-assigned-label">Assigned:</span>
+                  {acc.assignedUsers.map(u => (
+                    <span key={typeof u === 'object' ? u._id : u} className="wa-assigned-tag">
+                      {typeof u === 'object' ? (u.fullName || u.email) : u}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         )}
@@ -382,7 +463,7 @@ function AccountsTab() {
 // CHATS TAB
 // =====================================================
 function ChatsTab() {
-  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage, fetchKeypoints, addKeypoint, deleteKeypoint, fetchScheduledMessages, cancelScheduledMessage, botTyping } = useWhatsApp();
+  const { accounts, contacts, messages, fetchContacts, fetchMessages, sendMessage, fetchKeypoints, addKeypoint, deleteKeypoint, fetchScheduledMessages, cancelScheduledMessage, addScheduledMessage, botTyping } = useWhatsApp();
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [messageInput, setMessageInput] = useState('');
@@ -394,6 +475,9 @@ function ChatsTab() {
   const [keypointInput, setKeypointInput] = useState('');
   const [keypointCategory, setKeypointCategory] = useState('general');
   const [keypointTab, setKeypointTab] = useState('keypoints'); // 'keypoints' | 'scheduled'
+  const [schedInput, setSchedInput] = useState('');
+  const [schedDate, setSchedDate] = useState('');
+  const [schedReason, setSchedReason] = useState('');
   const messagesEndRef = useRef(null);
 
   const connectedAccounts = accounts.filter(a => a.status === 'connected');
@@ -465,6 +549,29 @@ function ChatsTab() {
       toast.success('Scheduled message cancelled');
     } catch (e) {
       toast.error('Failed to cancel');
+    }
+  };
+
+  const handleAddScheduled = async () => {
+    if (!schedInput.trim() || !schedDate || !selectedContact || !selectedAccount) return;
+    try {
+      const res = await addScheduledMessage({
+        contactId: selectedContact._id,
+        accountId: selectedAccount,
+        jid: selectedContact.whatsappId,
+        content: schedInput.trim(),
+        scheduledAt: schedDate,
+        reason: schedReason.trim() || undefined
+      });
+      if (res.success) {
+        setScheduledMsgs(prev => [res.data, ...prev]);
+        setSchedInput('');
+        setSchedDate('');
+        setSchedReason('');
+        toast.success('Message scheduled');
+      }
+    } catch (e) {
+      toast.error('Failed to schedule message');
     }
   };
 
@@ -700,6 +807,19 @@ function ChatsTab() {
 
                 {keypointTab === 'scheduled' && (
                   <div className="wa-keypoints-content">
+                    <div className="wa-sched-add">
+                      <input placeholder="Message content..."
+                        value={schedInput} onChange={e => setSchedInput(e.target.value)} />
+                      <input type="datetime-local" value={schedDate}
+                        onChange={e => setSchedDate(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)} />
+                      <input placeholder="Reason (optional)"
+                        value={schedReason} onChange={e => setSchedReason(e.target.value)} />
+                      <button onClick={handleAddScheduled}
+                        disabled={!schedInput.trim() || !schedDate}>
+                        <FiPlus size={12} /> Schedule
+                      </button>
+                    </div>
                     <div className="wa-keypoints-list">
                       {scheduledMsgs.length === 0 ? (
                         <div className="wa-empty-sm"><p>No scheduled messages</p></div>

@@ -45,6 +45,11 @@ const whatsAppAccountSchema = new mongoose.Schema({
     default: false
   },
 
+  assignedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
   lastConnected: {
     type: Date
   },

@@ -12,6 +12,7 @@ const WhatsAppTemplate = require('../models/WhatsAppTemplate');
 const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
 const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
 const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
+const User = require('../models/User');
 
 const sessionManager = require('../services/whatsappSessionManager');
 const campaignService = require('../services/whatsappCampaignService');
@@ -38,9 +39,21 @@ function initializeRoutes({ io }) {
    */
   router.get('/accounts', async (req, res) => {
     try {
-      const accounts = await WhatsAppAccount.find({
-        companyId: req.user.companyId
-      }).select('-sessionFolder').sort({ createdAt: -1 });
+      const query = { companyId: req.user.companyId };
+
+      // Non-admin users only see accounts they created or are assigned to
+      if (req.user.role !== 'Admin') {
+        query.$or = [
+          { userId: req.user._id },
+          { assignedUsers: req.user._id },
+          { assignedUsers: { $size: 0 } }
+        ];
+      }
+
+      const accounts = await WhatsAppAccount.find(query)
+        .select('-sessionFolder')
+        .populate('assignedUsers', 'fullName email avatar')
+        .sort({ createdAt: -1 });
 
       res.json({ success: true, data: accounts });
     } catch (error) {
@@ -149,7 +162,7 @@ function initializeRoutes({ io }) {
         WhatsAppContact.deleteMany({ accountId: account._id }),
         WhatsAppMessage.deleteMany({ accountId: account._id }),
         WhatsAppCampaign.deleteMany({ accountId: account._id }),
-        WhatsAppChatbot.updateMany({ companyId }, { $pull: { accountIds: account._id.toString() } }),
+        WhatsAppChatbot.updateMany({ companyId: req.user.companyId }, { $pull: { accountIds: account._id.toString() } }),
         account.deleteOne()
       ]);
 
@@ -213,6 +226,51 @@ function initializeRoutes({ io }) {
       res.json({ success: true, data: account });
     } catch (error) {
       console.error('[WA Routes] Set default error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * GET /api/whatsapp/team-members
+   * Get team members in the company for assignment
+   */
+  router.get('/team-members', async (req, res) => {
+    try {
+      const currentUser = await User.findById(req.user._id || req.user.userId);
+      if (!currentUser || !currentUser.companyId) {
+        return res.json({ success: true, data: [] });
+      }
+      const members = await User.find({ companyId: currentUser.companyId })
+        .select('fullName email role avatar')
+        .sort({ fullName: 1 })
+        .lean();
+      res.json({ success: true, data: members });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/whatsapp/accounts/:id/assign
+   * Assign users to a WhatsApp account
+   */
+  router.put('/accounts/:id/assign', async (req, res) => {
+    try {
+      const { userIds } = req.body;
+      if (!Array.isArray(userIds)) {
+        return res.status(400).json({ success: false, message: 'userIds must be an array' });
+      }
+
+      const account = await WhatsAppAccount.findOneAndUpdate(
+        { _id: req.params.id, companyId: req.user.companyId },
+        { $set: { assignedUsers: userIds } },
+        { new: true }
+      ).populate('assignedUsers', 'fullName email avatar');
+
+      if (!account) return res.status(404).json({ success: false, message: 'Account not found' });
+
+      res.json({ success: true, data: account });
+    } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   });
@@ -1094,9 +1152,12 @@ function initializeRoutes({ io }) {
       if (!contactId || !text) {
         return res.status(400).json({ success: false, message: 'contactId and text are required' });
       }
+      if (!accountId) {
+        return res.status(400).json({ success: false, message: 'accountId is required' });
+      }
       const keypoint = await WhatsAppKeypoint.create({
         companyId: req.user.companyId,
-        accountId: accountId || null,
+        accountId,
         contactId,
         text: text.substring(0, 500),
         category: category || 'general',
@@ -1162,6 +1223,36 @@ function initializeRoutes({ io }) {
         { new: true }
       );
       if (!msg) return res.status(404).json({ success: false, message: 'Scheduled message not found or not pending' });
+      res.json({ success: true, data: msg });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * POST /api/whatsapp/scheduled-messages
+   * Create a new scheduled message
+   */
+  router.post('/scheduled-messages', async (req, res) => {
+    try {
+      const { contactId, accountId, jid, content, scheduledAt, reason } = req.body;
+      if (!contactId || !accountId || !jid || !content || !scheduledAt) {
+        return res.status(400).json({ success: false, message: 'contactId, accountId, jid, content, and scheduledAt are required' });
+      }
+      const schedDate = new Date(scheduledAt);
+      if (isNaN(schedDate.getTime()) || schedDate <= new Date()) {
+        return res.status(400).json({ success: false, message: 'scheduledAt must be a valid future date' });
+      }
+      const msg = await WhatsAppScheduledMsg.create({
+        companyId: req.user.companyId,
+        accountId,
+        contactId,
+        jid,
+        content: content.substring(0, 2000),
+        scheduledAt: schedDate,
+        reason: reason ? reason.substring(0, 500) : undefined,
+        status: 'pending'
+      });
       res.json({ success: true, data: msg });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

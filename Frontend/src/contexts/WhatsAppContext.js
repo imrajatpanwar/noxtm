@@ -557,6 +557,40 @@ export function WhatsAppProvider({ children, socket }) {
     }
   }, []);
 
+  const addScheduledMessage = useCallback(async (data) => {
+    try {
+      const res = await api.post('/whatsapp/scheduled-messages', data);
+      return res.data;
+    } catch (e) {
+      console.error('Add scheduled message error:', e);
+      throw e;
+    }
+  }, []);
+
+  // ===== TEAM / ASSIGN METHODS =====
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      const res = await api.get('/whatsapp/team-members');
+      return res.data;
+    } catch (e) {
+      console.error('Fetch team members error:', e);
+      return { success: false, data: [] };
+    }
+  }, []);
+
+  const assignAccountUsers = useCallback(async (accountId, userIds) => {
+    try {
+      const res = await api.put(`/whatsapp/accounts/${accountId}/assign`, { userIds });
+      if (res.data.success) {
+        setAccounts(prev => prev.map(a => a._id === accountId ? { ...a, assignedUsers: res.data.data.assignedUsers } : a));
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Assign account users error:', e);
+      throw e;
+    }
+  }, []);
+
   const value = {
     // State
     accounts,
@@ -624,6 +658,11 @@ export function WhatsAppProvider({ children, socket }) {
     // Scheduled message methods
     fetchScheduledMessages,
     cancelScheduledMessage,
+    addScheduledMessage,
+
+    // Team / assign methods
+    fetchTeamMembers,
+    assignAccountUsers,
 
     // Dashboard
     fetchDashboard,

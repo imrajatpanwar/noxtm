@@ -5,9 +5,9 @@ import { MAIL_LOGIN_URL, getMainAppUrl } from './authConfig';
 // Set by Inbox component during initial auth flow
 window.__NOXTM_AUTH_LOADING__ = false;
 
-// Create axios instance with proper configuration for mail.noxtm.com
-// ALWAYS use absolute URL since mail.noxtm.com calls noxtm.com backend
-const BACKEND_URL = 'https://noxtm.com/api';
+// Create axios instance with proper configuration
+// Uses REACT_APP_API_URL env var so local dev can point to localhost backend
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://noxtm.com/api';
 
 const api = axios.create({
   baseURL: BACKEND_URL,

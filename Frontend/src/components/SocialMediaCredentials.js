@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield, FiUsers, FiGlobe } from 'react-icons/fi';
+import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield, FiUsers, FiGlobe, FiCopy } from 'react-icons/fi';
 import api from '../config/api';
 import './SocialMediaCredentials.css';
+import CredentialsImage from '../assets/Credentials_image.png';
 
 const PLATFORMS = ['Instagram', 'LinkedIn', 'YouTube', 'X', 'Facebook', 'Reddit', 'Other'];
 
@@ -14,9 +15,14 @@ function SocialMediaCredentials() {
     const [sharingCred, setSharingCred] = useState(null);
     const [revealedPasswords, setRevealedPasswords] = useState({});
     const [formShowPassword, setFormShowPassword] = useState(false);
+    const [copiedField, setCopiedField] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Form state
     const [form, setForm] = useState({ platform: '', email: '', password: '', description: '' });
+    const [formAccessUsers, setFormAccessUsers] = useState([]);
+    const [formTeamMembers, setFormTeamMembers] = useState([]);
+    const [formTeamSearch, setFormTeamSearch] = useState('');
 
     // Share modal state
     const [teamMembers, setTeamMembers] = useState([]);
@@ -65,14 +71,43 @@ function SocialMediaCredentials() {
         }
     };
 
-    const openAddModal = () => {
+    const handleCopy = (text, fieldId) => {
+        navigator.clipboard.writeText(text);
+        setCopiedField(fieldId);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const handleCopyPassword = async (credId) => {
+        if (revealedPasswords[credId]) {
+            handleCopy(revealedPasswords[credId], 'password-' + credId);
+            return;
+        }
+        try {
+            const res = await api.get('/social-media-calendar/credentials?reveal=true');
+            const cred = (res.data.credentials || []).find(c => c._id === credId);
+            if (cred) {
+                setRevealedPasswords(prev => ({ ...prev, [credId]: cred.decryptedPassword }));
+                handleCopy(cred.decryptedPassword, 'password-' + credId);
+            }
+        } catch (err) {
+            console.error('Error copying password:', err);
+        }
+    };
+
+    const openAddModal = async () => {
         setEditingCred(null);
         setForm({ platform: '', email: '', password: '', description: '' });
         setFormShowPassword(false);
+        setFormAccessUsers([]);
+        setFormTeamSearch('');
         setShowModal(true);
+        try {
+            const res = await api.get('/social-media-calendar/team');
+            setFormTeamMembers(res.data.members || []);
+        } catch (err) { console.error(err); }
     };
 
-    const openEditModal = (cred) => {
+    const openEditModal = async (cred) => {
         setEditingCred(cred);
         setForm({
             platform: cred.platform,
@@ -81,18 +116,37 @@ function SocialMediaCredentials() {
             description: cred.description || ''
         });
         setFormShowPassword(false);
+        setFormAccessUsers((cred.sharedWith || []).map(s => s.user?._id || s.user));
+        setFormTeamSearch('');
         setShowModal(true);
+        try {
+            const res = await api.get('/social-media-calendar/team');
+            setFormTeamMembers(res.data.members || []);
+        } catch (err) { console.error(err); }
     };
 
     const handleSave = async () => {
         try {
+            let credId;
             if (editingCred) {
                 const payload = { platform: form.platform, email: form.email, description: form.description };
                 if (form.password) payload.password = form.password;
                 await api.put(`/social-media-calendar/credentials/${editingCred._id}`, payload);
+                credId = editingCred._id;
             } else {
-                await api.post('/social-media-calendar/credentials', form);
+                const res = await api.post('/social-media-calendar/credentials', form);
+                credId = res.data?._id;
             }
+
+            // Share with selected access users
+            if (credId && formAccessUsers.length > 0) {
+                const existingIds = editingCred ? (editingCred.sharedWith || []).map(s => s.user?._id || s.user) : [];
+                const newUserIds = formAccessUsers.filter(id => !existingIds.includes(id));
+                if (newUserIds.length > 0) {
+                    await api.post(`/social-media-calendar/credentials/${credId}/share`, { userIds: newUserIds });
+                }
+            }
+
             setShowModal(false);
             fetchCredentials();
         } catch (err) {
@@ -162,7 +216,13 @@ function SocialMediaCredentials() {
     // Stats
     const totalCreds = credentials.length;
     const sharedCount = credentials.filter(c => c.sharedWith && c.sharedWith.length > 0).length;
-    const uniquePlatforms = [...new Set(credentials.map(c => c.platform))].length;
+
+    // Search filter
+    const filteredCredentials = credentials.filter(c => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (c.platform || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
+    });
 
     if (loading) {
         return (
@@ -177,43 +237,36 @@ function SocialMediaCredentials() {
 
     return (
         <div className="sm-credentials">
-            {/* Header */}
-            <div className="sm-cred-header">
-                <div className="sm-cred-header-left">
-                    <h2><FiShield /> Social Media Credentials</h2>
-                    <p className="sm-cred-header-subtitle">Securely manage and share your social media login credentials</p>
+            {/* Hero Banner */}
+            <div className="sm-cred-hero">
+                <div className="sm-cred-hero-left">
+                    <h1 className="sm-cred-hero-title">Social media credentials management area</h1>
+                    <p className="sm-cred-hero-subtitle">
+                        Keep all your social media logins organised in one secure space. Share access with your team instantly<br />
+                        No more sending passwords over chat or email.
+                    </p>
+                    <div className="sm-cred-hero-stats">
+                        <div className="sm-cred-hero-stat"><FiKey /> {totalCreds} Credentials</div>
+                        <div className="sm-cred-hero-stat"><FiUsers /> {sharedCount} Shared</div>
+                        <div className="sm-cred-hero-search">
+                            <FiSearch className="sm-cred-hero-search-icon" />
+                            <input
+                                type="text"
+                                placeholder="Search credentials..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="sm-cred-hero-search-input"
+                            />
+                        </div>
+                    </div>
                 </div>
-                <button className="sm-cred-add-btn" onClick={openAddModal}>
-                    <FiPlus /> Add Credential
-                </button>
+                <div className="sm-cred-hero-right">
+                    <img src={CredentialsImage} alt="Credentials" className="sm-cred-hero-img" />
+                    <button className="sm-cred-hero-add-btn" onClick={openAddModal}>
+                        <FiPlus /> Add Credential
+                    </button>
+                </div>
             </div>
-
-            {/* Stats */}
-            {credentials.length > 0 && (
-                <div className="sm-cred-stats">
-                    <div className="sm-cred-stat-card">
-                        <div className="sm-cred-stat-icon total"><FiKey /></div>
-                        <div>
-                            <span className="sm-cred-stat-value">{totalCreds}</span>
-                            <span className="sm-cred-stat-label">Total Credentials</span>
-                        </div>
-                    </div>
-                    <div className="sm-cred-stat-card">
-                        <div className="sm-cred-stat-icon shared"><FiUsers /></div>
-                        <div>
-                            <span className="sm-cred-stat-value">{sharedCount}</span>
-                            <span className="sm-cred-stat-label">Shared Access</span>
-                        </div>
-                    </div>
-                    <div className="sm-cred-stat-card">
-                        <div className="sm-cred-stat-icon platforms"><FiGlobe /></div>
-                        <div>
-                            <span className="sm-cred-stat-value">{uniquePlatforms}</span>
-                            <span className="sm-cred-stat-label">Platforms</span>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Credentials Grid or Empty State */}
             {credentials.length === 0 ? (
@@ -229,87 +282,62 @@ function SocialMediaCredentials() {
                 </div>
             ) : (
                 <div className="sm-cred-grid">
-                    {credentials.map(cred => (
+                    {filteredCredentials.map(cred => (
                         <div className="sm-cred-card" key={cred._id}>
-                            <div className={`sm-cred-card-accent ${cred.platform}`} />
-                            <div className="sm-cred-card-inner">
-                                {/* Card Header */}
-                                <div className="sm-cred-card-header">
-                                    <div className="sm-cred-card-header-left">
-                                        <div className={`sm-cred-platform-icon ${cred.platform}`}>
-                                            <FiGlobe />
-                                        </div>
-                                        <div className="sm-cred-platform-info">
-                                            <span className="sm-cred-platform-name">{cred.platform}</span>
-                                            <span className={`sm-cred-ownership-tag ${cred.isOwner ? 'owner' : 'shared'}`}>
-                                                {cred.isOwner ? '● Owner' : '● Shared with you'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {cred.isOwner && (
-                                        <div className="sm-cred-card-actions">
-                                            <button className="sm-cred-action-btn share-btn" onClick={() => openShareModal(cred)} title="Share Access">
-                                                <FiUserPlus />
-                                            </button>
-                                            <button className="sm-cred-action-btn" onClick={() => openEditModal(cred)} title="Edit">
-                                                <FiEdit2 />
-                                            </button>
-                                            <button className="sm-cred-action-btn danger" onClick={() => handleDelete(cred._id)} title="Delete">
-                                                <FiTrash2 />
-                                            </button>
-                                        </div>
+                            {/* Card Top */}
+                            <div className="sm-cred-card-top">
+                                <span className="sm-cred-card-name">{cred.description || cred.platform}</span>
+                                <span className="sm-cred-card-shared-info">
+                                    {!cred.isOwner && cred.createdBy?.fullName && (
+                                        <>{cred.createdBy.fullName} Shared with you</>
                                     )}
-                                </div>
-
-                                {/* Fields */}
-                                <div className="sm-cred-fields">
-                                    <div className="sm-cred-field">
-                                        <FiMail className="sm-cred-field-icon" />
-                                        <span className="sm-cred-field-label">Email</span>
-                                        <span className="sm-cred-field-value">{cred.email}</span>
-                                    </div>
-                                    <div className="sm-cred-field">
-                                        <FiLock className="sm-cred-field-icon" />
-                                        <span className="sm-cred-field-label">Password</span>
-                                        <span className="sm-cred-field-value password">
-                                            {revealedPasswords[cred._id] || '••••••••'}
+                                    {cred.isOwner && (
+                                        <span className="sm-cred-card-owner-actions">
+                                            <button className="sm-cred-card-action-btn" onClick={() => openShareModal(cred)} title="Share"><FiUserPlus /></button>
+                                            <button className="sm-cred-card-action-btn" onClick={() => openEditModal(cred)} title="Edit"><FiEdit2 /></button>
+                                            <button className="sm-cred-card-action-btn danger" onClick={() => handleDelete(cred._id)} title="Delete"><FiTrash2 /></button>
                                         </span>
-                                        <button className="sm-cred-field-toggle" onClick={() => toggleRevealPassword(cred._id)}>
-                                            {revealedPasswords[cred._id] ? <FiEyeOff /> : <FiEye />}
-                                        </button>
-                                    </div>
+                                    )}
+                                </span>
+                            </div>
+
+                            {/* Email Field */}
+                            <div className="sm-cred-card-field">
+                                <span className="sm-cred-card-field-label">E-MAIL/USERNAME :</span>
+                                <span className="sm-cred-card-field-value">{cred.email}</span>
+                                <div className="sm-cred-card-field-actions">
+                                    <button
+                                        className={`sm-cred-card-field-btn${copiedField === 'email-' + cred._id ? ' copied' : ''}`}
+                                        onClick={() => handleCopy(cred.email, 'email-' + cred._id)}
+                                        title="Copy email"
+                                    >
+                                        {copiedField === 'email-' + cred._id ? <FiCheck /> : <FiCopy />}
+                                    </button>
                                 </div>
+                            </div>
 
-                                {/* Description */}
-                                {cred.description && (
-                                    <p className="sm-cred-description">{cred.description}</p>
-                                )}
-
-                                {/* Shared With */}
-                                {cred.isOwner && cred.sharedWith && cred.sharedWith.length > 0 && (
-                                    <div className="sm-cred-shared">
-                                        <div className="sm-cred-shared-label">
-                                            <FiUsers /> Shared with {cred.sharedWith.length} member{cred.sharedWith.length !== 1 ? 's' : ''}
-                                        </div>
-                                        <div className="sm-cred-shared-list">
-                                            {cred.sharedWith.map((s, i) => (
-                                                <div className="sm-cred-shared-user" key={i}>
-                                                    <div className="sm-cred-shared-avatar">
-                                                        {s.user?.profileImage ? (
-                                                            <img src={s.user.profileImage} alt="" />
-                                                        ) : (
-                                                            getInitials(s.user?.fullName)
-                                                        )}
-                                                    </div>
-                                                    <span>{s.user?.fullName || 'User'}</span>
-                                                    <button className="sm-cred-shared-revoke" onClick={() => handleRevoke(cred._id, s.user?._id)} title="Revoke Access">
-                                                        <FiX />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                            {/* Password Field */}
+                            <div className="sm-cred-card-field">
+                                <span className="sm-cred-card-field-label">PASSWORD :</span>
+                                <span className={`sm-cred-card-field-value password${revealedPasswords[cred._id] ? ' revealed' : ''}`}>
+                                    {revealedPasswords[cred._id] || '••••••••'}
+                                </span>
+                                <div className="sm-cred-card-field-actions">
+                                    <button
+                                        className="sm-cred-card-field-btn"
+                                        onClick={() => toggleRevealPassword(cred._id)}
+                                        title={revealedPasswords[cred._id] ? 'Hide password' : 'Show password'}
+                                    >
+                                        {revealedPasswords[cred._id] ? <FiEyeOff /> : <FiEye />}
+                                    </button>
+                                    <button
+                                        className={`sm-cred-card-field-btn${copiedField === 'password-' + cred._id ? ' copied' : ''}`}
+                                        onClick={() => handleCopyPassword(cred._id)}
+                                        title="Copy password"
+                                    >
+                                        {copiedField === 'password-' + cred._id ? <FiCheck /> : <FiCopy />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -328,7 +356,7 @@ function SocialMediaCredentials() {
                         </div>
                         <div className="sm-cred-modal-body">
                             <div className="sm-cred-form-group">
-                                <label>Platform</label>
+                                <label>Title</label>
                                 <input
                                     type="text"
                                     placeholder="e.g. Instagram, LinkedIn, YouTube"
@@ -360,12 +388,43 @@ function SocialMediaCredentials() {
                                 </div>
                             </div>
                             <div className="sm-cred-form-group">
-                                <label>Description</label>
-                                <textarea
-                                    placeholder="Add a description (e.g., purpose, notes)"
-                                    value={form.description}
-                                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                />
+                                <label>Grant Access To</label>
+                                <p className="sm-cred-access-hint">Only selected users will be able to see this credential</p>
+                                <div className="sm-cred-access-search">
+                                    <FiSearch className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search team members..."
+                                        value={formTeamSearch}
+                                        onChange={e => setFormTeamSearch(e.target.value)}
+                                    />
+                                </div>
+                                <div className="sm-cred-access-list">
+                                    {formTeamMembers
+                                        .filter(m => {
+                                            if (!formTeamSearch.trim()) return true;
+                                            const q = formTeamSearch.toLowerCase();
+                                            return (m.fullName || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+                                        })
+                                        .map(member => (
+                                            <label key={member._id} className={`sm-cred-access-member ${formAccessUsers.includes(member._id) ? 'selected' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formAccessUsers.includes(member._id)}
+                                                    onChange={() => setFormAccessUsers(prev =>
+                                                        prev.includes(member._id) ? prev.filter(id => id !== member._id) : [...prev, member._id]
+                                                    )}
+                                                />
+                                                <div className="sm-cred-access-info">
+                                                    <span className="sm-cred-access-name">{member.fullName || member.email}</span>
+                                                    <span className="sm-cred-access-email">{member.email}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    {formTeamMembers.length === 0 && (
+                                        <p className="sm-cred-no-results">No team members found</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="sm-cred-modal-footer">
