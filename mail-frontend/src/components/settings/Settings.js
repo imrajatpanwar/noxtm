@@ -335,7 +335,7 @@ function Settings() {
 
             <div className="ws-grid">
               <div className="ws-field">
-                <label>Name</label>
+                <label>My Workspace Name</label>
                 {editingWorkspace ? (
                   <input
                     type="text"
@@ -533,34 +533,38 @@ function Settings() {
       {activeTab === 'account' && (
         <div className="mail-settings-content">
           <div className="mail-account-section">
-            <h3>Account Information</h3>
+            <h3>Your Profile</h3>
+            <p className="mail-section-subtitle">Your personal information used across the mail platform</p>
             <div className="mail-account-form">
               <div className="mail-form-group">
                 <label>Full Name</label>
                 <input
                   type="text"
-                  placeholder="Your Name"
+                  placeholder="Your full name"
                   value={accountData.name}
                   onChange={(e) => handleAccountChange('name', e.target.value)}
                 />
+                <span className="mail-form-hint">This name is used as the sender name when sending emails</span>
               </div>
               <div className="mail-form-group">
-                <label>Email Address</label>
+                <label>Login Email</label>
                 <input
                   type="email"
                   placeholder="your@email.com"
                   value={accountData.email}
                   disabled
                 />
+                <span className="mail-form-hint">Your login email address (cannot be changed)</span>
               </div>
               <div className="mail-form-group">
-                <label>Company Name</label>
+                <label>My Workspace</label>
                 <input
                   type="text"
-                  placeholder="Your Company"
+                  placeholder="Workspace name"
                   value={accountData.company}
-                  onChange={(e) => handleAccountChange('company', e.target.value)}
+                  disabled
                 />
+                <span className="mail-form-hint">Workspace name is managed in the Workspace tab</span>
               </div>
               <div className="mail-form-group">
                 <label>Timezone</label>

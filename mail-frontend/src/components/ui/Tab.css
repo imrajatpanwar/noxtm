@@ -1,42 +1,43 @@
+/* Tab — shadcn/ui-inspired */
 .gmail-tab {
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 24px;
+  height: 46px;
+  padding: 0 20px;
   background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 14px;
-  color: #5f6368;
+  font-size: 13px;
+  color: #64748b;
   font-weight: 500;
 }
 
 .gmail-tab:hover {
-  background-color: #e8f0fe;
-  border-bottom-color: #dadce0;
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 .gmail-tab.active {
-  color: #1a73e8;
-  border-bottom-color: #1a73e8;
+  color: #0f172a;
+  border-bottom-color: #0f172a;
 }
 
 .gmail-tab.active .tab-icon {
-  color: #1a73e8;
+  color: #0f172a;
 }
 
 .tab-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
 .tab-icon {
-  font-size: 18px;
-  color: #5f6368;
+  font-size: 16px;
+  color: #64748b;
 }
 
 .tab-label {
@@ -45,11 +46,12 @@
 
 .tab-count {
   font-weight: 400;
-  color: #80868b;
+  color: #94a3b8;
   margin-left: 4px;
+  font-size: 12px;
 }
 
 .gmail-tab:focus {
   outline: none;
-  background-color: #e8f0fe;
+  background-color: #f1f5f9;
 }

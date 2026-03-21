@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MdInbox, MdRefresh, MdMoreVert, MdStar, MdStarBorder,
   MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
@@ -34,6 +34,9 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
+  const [composeAttachments, setComposeAttachments] = useState([]);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const fileInputRef = useRef(null);
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
   const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
@@ -329,6 +332,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeTo('');
     setComposeSubject('');
     setComposeBody('');
+    setComposeAttachments([]);
   };
 
   const handleSendEmail = async () => {
@@ -337,12 +341,22 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       return;
     }
 
+    setSendingEmail(true);
     try {
-      await api.post('/email-accounts/send-email', {
-        accountId: selectedAccount._id,
-        to: composeTo,
-        subject: composeSubject,
-        body: composeBody
+      const formData = new FormData();
+      formData.append('accountId', selectedAccount._id);
+      formData.append('to', composeTo);
+      formData.append('subject', composeSubject);
+      formData.append('body', composeBody);
+
+      // Append attachments
+      composeAttachments.forEach(file => {
+        formData.append('attachments', file);
+      });
+
+      await api.post('/email-accounts/send-email', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000 // 2 min for large attachments
       });
 
       alert('Email sent successfully!');
@@ -350,10 +364,36 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       setComposeTo('');
       setComposeSubject('');
       setComposeBody('');
+      setComposeAttachments([]);
     } catch (error) {
       console.error('Error sending email:', error);
       alert('Failed to send email: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setSendingEmail(false);
     }
+  };
+
+  const handleAttachFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setComposeAttachments(prev => [...prev, ...files]);
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const removeAttachment = (index) => {
+    setComposeAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   // Reply to email
@@ -373,6 +413,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeTo(replyTo);
     setComposeSubject(replySubject);
     setComposeBody(quotedBody);
+    setComposeAttachments([]);
     setComposeOpen(true);
   };
 
@@ -393,6 +434,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeTo('');
     setComposeSubject(fwdSubject);
     setComposeBody(forwardBody);
+    setComposeAttachments([]);
     setComposeOpen(true);
   };
 
@@ -1198,13 +1240,45 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                   rows="10"
                 />
               </div>
+
+              {/* Attachments List */}
+              {composeAttachments.length > 0 && (
+                <div className="compose-attachments">
+                  {composeAttachments.map((file, index) => (
+                    <div key={index} className="compose-attachment-item">
+                      <MdAttachFile className="compose-attachment-icon" />
+                      <span className="compose-attachment-name">{file.name}</span>
+                      <span className="compose-attachment-size">{formatFileSize(file.size)}</span>
+                      <button
+                        className="compose-attachment-remove"
+                        onClick={() => removeAttachment(index)}
+                        title="Remove attachment"
+                      >
+                        <MdClose size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="compose-footer">
-                <button className="send-btn-gmail" onClick={handleSendEmail}>
-                  <MdSend /> Send
+                <button
+                  className="send-btn-gmail"
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail}
+                >
+                  <MdSend /> {sendingEmail ? 'Sending...' : 'Send'}
                 </button>
-                <button className="attach-btn-gmail">
+                <button className="attach-btn-gmail" onClick={handleAttachFiles}>
                   <MdAttachFile /> Attach
                 </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  style={{ display: 'none' }}
+                />
                 <span className="from-info">From: {selectedAccount?.email}</span>
               </div>
             </div>

@@ -1,36 +1,37 @@
+/* Checkbox — shadcn/ui-inspired */
 .gmail-checkbox {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  border-radius: 50%;
+  border-radius: 0.25rem;
   cursor: pointer;
   padding: 0;
-  transition: background-color 0.2s;
+  transition: all 0.15s ease;
 }
 
 .gmail-checkbox:hover:not(.disabled) {
-  background-color: rgba(26, 115, 232, 0.08);
+  background-color: #f1f5f9;
 }
 
 .gmail-checkbox.disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .gmail-checkbox .checkbox-icon {
-  font-size: 20px;
-  color: #5f6368;
+  font-size: 18px;
+  color: #94a3b8;
 }
 
 .gmail-checkbox.checked .checkbox-icon {
-  color: #1a73e8;
+  color: #0f172a;
 }
 
 .gmail-checkbox:focus {
   outline: none;
-  background-color: rgba(26, 115, 232, 0.08);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1);
 }

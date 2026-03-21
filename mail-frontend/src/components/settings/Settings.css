@@ -427,6 +427,18 @@
   color: #94a3b8;
 }
 
+.mail-form-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.mail-section-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: -8px 0 12px 0;
+}
+
 .mail-save-btn {
   width: fit-content;
   padding: 10px 20px;

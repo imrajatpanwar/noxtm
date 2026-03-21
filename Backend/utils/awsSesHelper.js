@@ -6,6 +6,7 @@ const {
   DeleteEmailIdentityCommand,
   PutEmailIdentityDkimAttributesCommand
 } = require('@aws-sdk/client-sesv2');
+const nodemailer = require('nodemailer');
 
 const sesClient = new SESv2Client({
   region: process.env.AWS_SDK_REGION || 'eu-north-1',
@@ -15,7 +16,12 @@ const sesClient = new SESv2Client({
   }
 });
 
-async function sendEmailViaSES({ from, to, subject, html, text, replyTo, metadata }) {
+async function sendEmailViaSES({ from, to, subject, html, text, replyTo, metadata, attachments }) {
+  // If attachments are present, use raw email format
+  if (attachments && attachments.length > 0) {
+    return sendRawEmailViaSES({ from, to, subject, html, text, replyTo, attachments });
+  }
+
   const params = {
     FromEmailAddress: from,
     Destination: {
@@ -37,13 +43,68 @@ async function sendEmailViaSES({ from, to, subject, html, text, replyTo, metadat
   }
 
   const command = new SendEmailCommand(params);
-  
+
   try {
     const result = await sesClient.send(command);
     console.log(`✓ Email sent via AWS SES: ${result.MessageId}`);
     return result;
   } catch (error) {
     console.error(`✗ AWS SES send failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Send raw email via AWS SES v2 (supports attachments)
+ * Uses nodemailer to build the MIME message, then sends via SES v2 SendEmailCommand with Raw content
+ */
+async function sendRawEmailViaSES({ from, to, subject, html, text, replyTo, attachments }) {
+  // Build the raw MIME message using nodemailer's stream transport
+  const transporter = nodemailer.createTransport({ streamTransport: true });
+
+  const toList = Array.isArray(to) ? to : [to];
+  const mailOptions = {
+    from,
+    to: toList.join(', '),
+    subject,
+    html: html || undefined,
+    text: text || undefined,
+    attachments: attachments.map(att => ({
+      filename: att.originalname || att.filename,
+      content: att.buffer,
+      contentType: att.mimetype
+    }))
+  };
+
+  if (replyTo) {
+    mailOptions.replyTo = Array.isArray(replyTo) ? replyTo.join(', ') : replyTo;
+  }
+
+  const info = await transporter.sendMail(mailOptions);
+  const rawMessage = await new Promise((resolve, reject) => {
+    const chunks = [];
+    info.message.on('data', chunk => chunks.push(chunk));
+    info.message.on('end', () => resolve(Buffer.concat(chunks)));
+    info.message.on('error', reject);
+  });
+
+  // SES v2 SendEmailCommand with Raw content
+  const params = {
+    Content: {
+      Raw: {
+        Data: rawMessage
+      }
+    }
+  };
+
+  const command = new SendEmailCommand(params);
+
+  try {
+    const result = await sesClient.send(command);
+    console.log(`✓ Email with ${attachments.length} attachment(s) sent via AWS SES: ${result.MessageId}`);
+    return result;
+  } catch (error) {
+    console.error(`✗ AWS SES raw send failed: ${error.message}`);
     throw error;
   }
 }

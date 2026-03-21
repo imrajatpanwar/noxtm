@@ -7,6 +7,7 @@ const EmailLog = require('../models/EmailLog');
 const EmailAuditLog = require('../models/EmailAuditLog');
 const EmailTemplate = require('../models/EmailTemplate');
 const UserVerifiedDomain = require('../models/UserVerifiedDomain');
+const Company = require('../models/Company');
 const nodemailer = require('nodemailer');
 const { encrypt, decrypt, generateSecurePassword } = require('../utils/encryption');
 const { testEmailAccount, getEmailProviderPreset, getInboxStats, appendEmailToFolder } = require('../utils/imapHelper');
@@ -160,43 +161,51 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
     const EmailDomain = require('../models/EmailDomain');
     const UserVerifiedDomain = require('../models/UserVerifiedDomain');
 
-    // 1. Get domains from EmailDomain (legacy model)
-    const emailDomains = await EmailDomain.find({
+    // Get user's current company ID for strict filtering
+    const userCompanyId = req.user.companyId;
+
+    // 1. Get domains from EmailDomain (legacy model) — filter by user AND company
+    const emailDomainQuery = {
       createdBy: userId,
       $or: [
         { verified: true },
         { dnsVerified: true }
       ]
-    }).select('domain');
-
+    };
+    const emailDomains = await EmailDomain.find(emailDomainQuery).select('domain');
     const emailDomainNames = emailDomains.map(d => d.domain.toLowerCase());
 
     // 2. Get domains from UserVerifiedDomain (new model with AWS SES)
-    const userVerifiedDomains = await UserVerifiedDomain.find({
+    // CRITICAL: Filter by BOTH userId AND companyId to prevent cross-company domain leakage
+    const uvdQuery = {
       userId: userId,
       verificationStatus: 'SUCCESS',
       enabled: true
-    }).select('domain');
-
+    };
+    if (userCompanyId) {
+      uvdQuery.companyId = userCompanyId;
+    }
+    const userVerifiedDomains = await UserVerifiedDomain.find(uvdQuery).select('domain');
     const userVerifiedDomainNames = userVerifiedDomains.map(d => d.domain.toLowerCase());
 
     // 3. Combine both domain lists (remove duplicates)
     const allDomainNames = [...new Set([...emailDomainNames, ...userVerifiedDomainNames])];
 
-    console.log(`[by-verified-domain] User ${userId} owns domains:`, allDomainNames);
+    console.log(`[by-verified-domain] User ${userId} (company: ${userCompanyId || 'none'}) owns domains:`, allDomainNames);
 
     // 4. Fetch only email accounts on domains owned by this user
-    // Also filter by company to prevent cross-company leakage
-    const userCompanyId = req.user.companyId;
+    // STRICT company isolation: only show accounts belonging to user's company
     const query = {
       domain: { $in: allDomainNames },
       enabled: true
     };
 
-    // If user belongs to a company, only show accounts for that company (or personal ones)
+    // Strict company filtering — only show accounts for the user's company
     if (userCompanyId) {
+      query.companyId = userCompanyId;
+    } else {
+      // No company — only show personal accounts (no companyId)
       query.$or = [
-        { companyId: userCompanyId },
         { companyId: { $exists: false } },
         { companyId: null }
       ];
@@ -369,18 +378,19 @@ router.get('/connected', isAuthenticated, async (req, res) => {
       .sort({ lastConnectedAt: -1 });
 
     // Filter out deleted accounts and get valid ones
-    // Also filter by user's current company to prevent cross-company leakage
+    // STRICT company isolation: only show accounts for user's current company
     const userCompanyId = req.user.companyId ? String(req.user.companyId._id || req.user.companyId) : null;
 
     const validConnections = connections
       .filter(conn => {
         if (!conn.emailAccountId || !conn.emailAccountId.enabled) return false;
-        // If user has a company, only show accounts for that company (or personal ones)
+        const accountCompanyId = conn.emailAccountId.companyId ? String(conn.emailAccountId.companyId._id || conn.emailAccountId.companyId) : null;
+        // Strict: if user has company, account MUST belong to that company
         if (userCompanyId) {
-          const accountCompanyId = conn.emailAccountId.companyId ? String(conn.emailAccountId.companyId._id || conn.emailAccountId.companyId) : null;
-          return !accountCompanyId || accountCompanyId === userCompanyId;
+          return accountCompanyId === userCompanyId;
         }
-        return true;
+        // No company: only show personal accounts
+        return !accountCompanyId;
       })
       .map(conn => {
         const account = conn.emailAccountId.toObject();
@@ -832,10 +842,22 @@ router.get('/download-attachment', isAuthenticated, async (req, res) => {
   }
 });
 
-// Send email from hosted account
-router.post('/send-email', isAuthenticated, async (req, res) => {
-  try {
+// Send email from hosted account (supports attachments via multipart/form-data)
+const multer = require('multer');
+const uploadAttachments = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 } // 25MB per file
+}).array('attachments', 10); // max 10 files
+
+router.post('/send-email', isAuthenticated, (req, res) => {
+  uploadAttachments(req, res, async (multerErr) => {
+    if (multerErr) {
+      return res.status(400).json({ message: 'File upload error: ' + multerErr.message });
+    }
+
+    try {
     const { accountId, to, subject, body, cc, bcc } = req.body;
+    const attachments = req.files || [];
 
     if (!to || !subject) {
       return res.status(400).json({ message: 'Recipient and subject are required' });
@@ -875,13 +897,14 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
 
     console.log(`📧 Sending email via AWS SES: from=${fromEmail}, to=${to}, subject=${subject}`);
 
-    // Send via AWS SES
+    // Send via AWS SES (with attachments if present)
     const info = await sendEmailViaSES({
       from: `${senderName} <${fromEmail}>`,
       to: Array.isArray(to) ? to : [to],
       subject: subject,
       html: bodyHtml,
-      text: plainTextVariant
+      text: plainTextVariant,
+      attachments: attachments.length > 0 ? attachments : undefined
     });
 
     console.log(`✅ Email sent via AWS SES! Message ID: ${info.MessageId || 'N/A'}`);
@@ -931,11 +954,32 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       console.error('⚠️ Failed to append to Sent folder (email was sent via SES):', appendError.message);
     }
 
+    // Deduct 1 email credit from company billing
+    let creditsDeducted = false;
+    const userCompanyId = req.user.company || req.user.companyId;
+    if (userCompanyId) {
+      try {
+        const company = await Company.findById(userCompanyId);
+        if (company && company.billing && company.billing.emailCredits > 0) {
+          company.billing.emailCredits -= 1;
+          company.billing.totalUsed = (company.billing.totalUsed || 0) + 1;
+          await company.save();
+          creditsDeducted = true;
+          console.log(`💳 Email credit deducted. Remaining: ${company.billing.emailCredits}`);
+        } else if (company) {
+          console.warn(`⚠️ No email credits remaining for company ${userCompanyId}`);
+        }
+      } catch (creditError) {
+        console.error('⚠️ Failed to deduct email credit:', creditError.message);
+      }
+    }
+
     res.json({
       success: true,
       message: 'Email sent successfully',
       messageId: info.MessageId,
-      savedToSent: savedToSent
+      savedToSent: savedToSent,
+      creditsDeducted: creditsDeducted
     });
 
   } catch (error) {
@@ -947,6 +991,7 @@ router.post('/send-email', isAuthenticated, async (req, res) => {
       error: error.message
     });
   }
+  }); // end multer callback
 });
 
 // Get single email account
