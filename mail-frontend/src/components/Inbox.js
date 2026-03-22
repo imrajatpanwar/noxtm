@@ -245,35 +245,39 @@ function Inbox() {
             </button>
           )}
 
-          <div className="nav-section-label">Email Marketing</div>
+          {(user?.permissions?.marketing || user?.role === 'Admin' || user?.roleInCompany === 'Owner') && (
+            <>
+              <div className="nav-section-label">Email Marketing</div>
 
-          <button
-            className={`nav-item ${activeView === 'create-campaign' ? 'active' : ''}`}
-            onClick={() => setActiveView('create-campaign')}
-          >
-            <FiSend /> Email Campaign
-          </button>
+              <button
+                className={`nav-item ${activeView === 'create-campaign' ? 'active' : ''}`}
+                onClick={() => setActiveView('create-campaign')}
+              >
+                <FiSend /> Email Campaign
+              </button>
 
-          <button
-            className={`nav-item ${activeView === 'campaign-analytics' ? 'active' : ''}`}
-            onClick={() => setActiveView('campaign-analytics')}
-          >
-            <FiBarChart2 /> Analytics
-          </button>
+              <button
+                className={`nav-item ${activeView === 'campaign-analytics' ? 'active' : ''}`}
+                onClick={() => setActiveView('campaign-analytics')}
+              >
+                <FiBarChart2 /> Analytics
+              </button>
 
-          <button
-            className={`nav-item ${activeView === 'mail-lists' ? 'active' : ''}`}
-            onClick={() => setActiveView('mail-lists')}
-          >
-            <FiList /> Mail Lists
-          </button>
+              <button
+                className={`nav-item ${activeView === 'mail-lists' ? 'active' : ''}`}
+                onClick={() => setActiveView('mail-lists')}
+              >
+                <FiList /> Mail Lists
+              </button>
 
-          <button
-            className={`nav-item ${activeView === 'templates' ? 'active' : ''}`}
-            onClick={() => setActiveView('templates')}
-          >
-            <FiFileText /> Templates
-          </button>
+              <button
+                className={`nav-item ${activeView === 'templates' ? 'active' : ''}`}
+                onClick={() => setActiveView('templates')}
+              >
+                <FiFileText /> Templates
+              </button>
+            </>
+          )}
 
 
 
