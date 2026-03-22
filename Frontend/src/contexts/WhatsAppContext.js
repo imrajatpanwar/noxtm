@@ -428,12 +428,17 @@ export function WhatsAppProvider({ children, socket }) {
     }
   }, []);
 
-  // Phone Lists
+  // Phone Lists (includes labeled company data phone lists)
   const fetchPhoneLists = useCallback(async () => {
     try {
-      const res = await api.get('/whatsapp/phone-lists');
-      if (res.data.success) setPhoneLists(res.data.data);
-      return res.data;
+      const [plRes, labelRes] = await Promise.all([
+        api.get('/whatsapp/phone-lists'),
+        api.get('/company-data-phone-lists').catch(() => ({ data: [] }))
+      ]);
+      const manualLists = plRes.data.success ? plRes.data.data : [];
+      const labelLists = Array.isArray(labelRes.data) ? labelRes.data : [];
+      setPhoneLists([...manualLists, ...labelLists]);
+      return { success: true, data: [...manualLists, ...labelLists] };
     } catch (e) {
       console.error('Fetch phone lists error:', e);
     }

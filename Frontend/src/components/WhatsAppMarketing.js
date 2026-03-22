@@ -1347,12 +1347,23 @@ function CampaignsTab() {
               </div>
               {/* Phone List selector */}
               <div className="wa-form-group">
-                <label><FiList size={12} /> Phone List <span className="wa-hint">Select a saved list of phone numbers</span></label>
+                <label><FiList size={12} /> Phone List <span className="wa-hint">Select a saved list or labeled company contacts</span></label>
                 <select value={form.phoneListId} onChange={e => setForm({ ...form, phoneListId: e.target.value })}>
                   <option value="">No phone list</option>
-                  {phoneLists.filter(l => l.isActive !== false).map(l => (
-                    <option key={l._id} value={l._id}>{l.name} ({l.phones?.length || 0} numbers)</option>
-                  ))}
+                  {phoneLists.filter(l => !l.isLabelList && l.isActive !== false).length > 0 && (
+                    <optgroup label="Manual Phone Lists">
+                      {phoneLists.filter(l => !l.isLabelList && l.isActive !== false).map(l => (
+                        <option key={l._id} value={l._id}>{l.name} ({l.phones?.length || 0} numbers)</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {phoneLists.filter(l => l.isLabelList).length > 0 && (
+                    <optgroup label="Company Data Labels">
+                      {phoneLists.filter(l => l.isLabelList).map(l => (
+                        <option key={l._id} value={l._id}>{l.name} ({l.phoneCount || l.phones?.length || 0} contacts)</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -1362,12 +1373,15 @@ function CampaignsTab() {
                 return selectedList ? (
                   <div className="wa-campaign-tpl-preview">
                     <div className="wa-campaign-tpl-preview-label">
-                      <FiList size={12} /> {selectedList.name} — {selectedList.phones.length} numbers
+                      {selectedList.isLabelList ? <FiTag size={12} /> : <FiList size={12} />}
+                      {' '}{selectedList.name} — {selectedList.phones.length} {selectedList.isLabelList ? 'contacts' : 'numbers'}
+                      {selectedList.isLabelList && <span className="wa-hint" style={{ marginLeft: 6 }}>from labeled company data</span>}
                     </div>
                     <div className="wa-pl-preview-phones">
                       {selectedList.phones.slice(0, 5).map((p, i) => (
                         <span key={i} className="wa-template-btn-pill">
                           <FiPhone size={10} /> {p.name ? `${p.name} (${p.phone})` : p.phone}
+                          {p.companyName && <span style={{ fontSize: 10, opacity: 0.7 }}> • {p.companyName}</span>}
                         </span>
                       ))}
                       {selectedList.phones.length > 5 && (
@@ -1622,15 +1636,52 @@ function CampaignsTab() {
             </div>
           )}
 
-          {phoneLists.length === 0 ? (
+          {/* Label-based Phone Lists from Company Data */}
+          {phoneLists.filter(pl => pl.isLabelList).length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <h3 style={{ fontSize: 13, color: '#6b7280', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiTag size={13} /> Company Data Labels
+              </h3>
+              <div className="wa-pl-list">
+                {phoneLists.filter(pl => pl.isLabelList).map(pl => (
+                  <div key={pl._id} className="wa-pl-card" style={{ borderLeft: `3px solid ${pl.color || '#6b7280'}` }}>
+                    <div className="wa-pl-card-header">
+                      <div>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: pl.color || '#6b7280' }} />
+                          {pl.name}
+                        </h4>
+                        <p className="wa-pl-desc">{pl.description}</p>
+                      </div>
+                      <span className="wa-pl-count">
+                        <FiPhone size={11} /> {pl.phoneCount || pl.phones?.length || 0} contacts
+                      </span>
+                    </div>
+                    <div className="wa-pl-card-phones">
+                      {(pl.phones || []).slice(0, 6).map((p, i) => (
+                        <span key={i} className="wa-pl-phone-chip">
+                          {p.name ? `${p.name} (${p.phone})` : p.phone}
+                          {p.companyName && <span style={{ fontSize: 10, opacity: 0.6 }}> • {p.companyName}</span>}
+                        </span>
+                      ))}
+                      {pl.phones?.length > 6 && <span className="wa-pl-phone-chip wa-pl-more">+{pl.phones.length - 6} more</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual Phone Lists */}
+          {phoneLists.filter(pl => !pl.isLabelList).length === 0 && phoneLists.filter(pl => pl.isLabelList).length === 0 ? (
             <div className="wa-empty">
               <FiList size={40} />
               <h3>No phone lists yet</h3>
-              <p>Create reusable phone number lists for your campaigns</p>
+              <p>Create reusable phone number lists or label company contacts to generate lists automatically</p>
             </div>
           ) : (
             <div className="wa-pl-list">
-              {phoneLists.map(pl => (
+              {phoneLists.filter(pl => !pl.isLabelList).map(pl => (
                 <div key={pl._id} className="wa-pl-card">
                   <div className="wa-pl-card-header">
                     <div>
