@@ -404,19 +404,24 @@ router.get('/connected', isAuthenticated, async (req, res) => {
       .sort({ lastConnectedAt: -1 });
 
     // Filter out deleted accounts and get valid ones
-    // STRICT company isolation: only show accounts for user's current company
+    // Company isolation: show accounts that belong to user's company or have no companyId (legacy)
     const userCompanyId = req.user.companyId ? String(req.user.companyId._id || req.user.companyId) : null;
 
     const validConnections = connections
       .filter(conn => {
         if (!conn.emailAccountId || !conn.emailAccountId.enabled) return false;
         const accountCompanyId = conn.emailAccountId.companyId ? String(conn.emailAccountId.companyId._id || conn.emailAccountId.companyId) : null;
-        // Strict: if user has company, account MUST belong to that company
-        if (userCompanyId) {
+        // If account has a companyId, it must match user's company
+        if (accountCompanyId && userCompanyId) {
           return accountCompanyId === userCompanyId;
         }
-        // No company: only show personal accounts
-        return !accountCompanyId;
+        // Allow accounts with no companyId (legacy/pre-company accounts)
+        // The user has an explicit UserEmailConnection, so they were authorized to connect
+        if (!accountCompanyId) {
+          return true;
+        }
+        // Account has companyId but user doesn't — deny
+        return false;
       })
       .map(conn => {
         const account = conn.emailAccountId.toObject();
