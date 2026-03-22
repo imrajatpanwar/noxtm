@@ -9,6 +9,8 @@ const TradeShow = require('../models/TradeShow');
 const Exhibitor = require('../models/Exhibitor');
 const TrendingService = require('../models/TrendingService');
 const TargetedCompany = require('../models/TargetedCompany');
+const CompanyData = require('../models/CompanyData');
+const Company = require('../models/Company');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
@@ -150,6 +152,19 @@ router.get('/settings', auth, async (req, res) => {
             });
         }
 
+        // Check extension access for company data
+        let extensionAccess = false;
+        if (user.companyId) {
+            const company = await Company.findById(user.companyId);
+            if (company) {
+                const memberRecord = company.members.find(m => m.user && m.user.toString() === userId.toString());
+                const ownerCheck = (memberRecord && memberRecord.roleInCompany === 'Owner') ||
+                    (company.owner && company.owner.toString() === userId.toString());
+                extensionAccess = isAdmin || ownerCheck ||
+                    (company.extensionAccessPeople || []).some(id => id.toString() === userId.toString());
+            }
+        }
+
         res.json({
             success: true,
             user: {
@@ -162,7 +177,6 @@ router.get('/settings', auth, async (req, res) => {
             },
             campaigns: campaigns.map(c => {
                 const isOwner = c.userId && c.userId._id && c.userId._id.toString() === userId.toString();
-                // Filter dataTypeAssignments: owner sees all, assignees see only their assigned types
                 const filteredDTA = (c.dataTypeAssignments || []).filter(dta => {
                     if (isOwner) return true;
                     return dta.assignees && dta.assignees.some(a => {
@@ -189,7 +203,8 @@ router.get('/settings', auth, async (req, res) => {
             exhibitOSActive,
             tradeShows,
             agencyOSActive,
-            trendingServices
+            trendingServices,
+            extensionAccess
         });
     } catch (error) {
         console.error('Error fetching findr settings:', error);
@@ -599,6 +614,164 @@ router.post('/trending-services/:trendingServiceId/targeted-companies', auth, as
     } catch (error) {
         console.error('Error adding targeted company from findr:', error);
         res.status(500).json({ success: false, message: 'Failed to add targeted company', error: error.message });
+    }
+});
+
+// ============ COMPANY DATA ENDPOINTS (for Chrome Extension) ============
+
+// Helper: Check if user has extension access
+async function checkExtensionAccess(user) {
+    if (user.role === 'Admin') return true;
+    if (!user.companyId) return false;
+
+    const company = await Company.findById(user.companyId);
+    if (!company) return false;
+
+    // Owner always has access
+    const member = company.members.find(m => m.user && m.user.toString() === user._id.toString());
+    if (member && member.roleInCompany === 'Owner') return true;
+    if (company.owner && company.owner.toString() === user._id.toString()) return true;
+
+    // Check extensionAccessPeople
+    return (company.extensionAccessPeople || []).some(id => id.toString() === user._id.toString());
+}
+
+// GET /findr/company-data - List companies for extension
+router.get('/company-data', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('role companyId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const hasAccess = await checkExtensionAccess(user);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'You do not have extension access' });
+        }
+
+        const { search } = req.query;
+        let companies = await CompanyData.find({ companyId: user.companyId })
+            .sort({ createdAt: -1 });
+
+        if (search) {
+            const q = search.toLowerCase();
+            companies = companies.filter(c =>
+                c.companyName.toLowerCase().includes(q) ||
+                (c.industry && c.industry.toLowerCase().includes(q))
+            );
+        }
+
+        res.json({ success: true, companies });
+    } catch (error) {
+        console.error('Error fetching company data from findr:', error);
+        res.status(500).json({ message: 'Failed to fetch company data' });
+    }
+});
+
+// POST /findr/company-data - Add company from extension
+router.post('/company-data', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('role companyId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const hasAccess = await checkExtensionAccess(user);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'You do not have extension access' });
+        }
+
+        const {
+            companyName, companyEmail, companyPhone, address,
+            website, linkedin, industry, notes, contacts
+        } = req.body;
+
+        if (!companyName || !companyName.trim()) {
+            return res.status(400).json({ message: 'Company name is required' });
+        }
+
+        const companyData = new CompanyData({
+            companyName: companyName.trim(),
+            companyEmail,
+            companyPhone,
+            address,
+            website,
+            linkedin,
+            industry,
+            notes,
+            contacts: contacts || [],
+            source: 'extension',
+            createdBy: user._id,
+            companyId: user.companyId
+        });
+
+        await companyData.save();
+        res.status(201).json({ success: true, company: companyData });
+    } catch (error) {
+        console.error('Error creating company data from findr:', error);
+        res.status(500).json({ message: 'Failed to create company data' });
+    }
+});
+
+// PUT /findr/company-data/:id - Update company from extension
+router.put('/company-data/:id', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('role companyId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const hasAccess = await checkExtensionAccess(user);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'You do not have extension access' });
+        }
+
+        const company = await CompanyData.findOne({
+            _id: req.params.id,
+            companyId: user.companyId
+        });
+
+        if (!company) return res.status(404).json({ message: 'Company not found' });
+
+        const {
+            companyName, companyEmail, companyPhone, address,
+            website, linkedin, industry, notes, contacts
+        } = req.body;
+
+        if (companyName !== undefined) company.companyName = companyName;
+        if (companyEmail !== undefined) company.companyEmail = companyEmail;
+        if (companyPhone !== undefined) company.companyPhone = companyPhone;
+        if (address !== undefined) company.address = address;
+        if (website !== undefined) company.website = website;
+        if (linkedin !== undefined) company.linkedin = linkedin;
+        if (industry !== undefined) company.industry = industry;
+        if (notes !== undefined) company.notes = notes;
+        if (contacts !== undefined) company.contacts = contacts;
+
+        await company.save();
+        res.json({ success: true, company });
+    } catch (error) {
+        console.error('Error updating company data from findr:', error);
+        res.status(500).json({ message: 'Failed to update company data' });
+    }
+});
+
+// DELETE /findr/company-data/:id - Delete company from extension
+router.delete('/company-data/:id', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('role companyId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const hasAccess = await checkExtensionAccess(user);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'You do not have extension access' });
+        }
+
+        const company = await CompanyData.findOneAndDelete({
+            _id: req.params.id,
+            companyId: user.companyId
+        });
+
+        if (!company) return res.status(404).json({ message: 'Company not found' });
+
+        res.json({ success: true, message: 'Company deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting company data from findr:', error);
+        res.status(500).json({ message: 'Failed to delete company data' });
     }
 });
 
