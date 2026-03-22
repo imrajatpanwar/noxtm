@@ -1126,7 +1126,7 @@ function WorkspaceSettings({ user, onLogout }) {
                   <div className="member-card-meta">
                     <div className="member-meta-item">
                       <FiBriefcase className="meta-icon" />
-                      <span>{member.roleInCompany === 'Owner' ? 'Owner' : (member.jobTitle || 'Employee')}</span>
+                      <span>{member.roleInCompany === 'Owner' ? 'Owner' : (member.jobTitle || 'Member')}</span>
                     </div>
                     {member.department && (
                       <div className="member-meta-item">
@@ -1355,7 +1355,7 @@ function WorkspaceSettings({ user, onLogout }) {
                   Department: <strong>{selectedMember.department || 'Not assigned'}</strong>
                 </p>
                 <p className="form-hint">
-                  Company Role: <strong>{selectedMember.roleInCompany === 'Owner' ? 'Owner' : 'Employee'}</strong>
+                  Company Role: <strong>{selectedMember.roleInCompany === 'Owner' ? 'Owner' : 'Member'}</strong>
                 </p>
                 <p className="form-hint">
                   Title: <strong>{selectedMember.jobTitle || 'Not set'}</strong>
@@ -1625,7 +1625,7 @@ function WorkspaceSettings({ user, onLogout }) {
       (companyDetails?.owner?._id && companyDetails.owner._id === user?._id) ||
       currentMember?.roleInCompany === 'Owner';
 
-    const companyRoleLabel = user?.companyId ? (isOwner ? 'Owner' : 'Employee') : 'User';
+    const companyRoleLabel = user?.companyId ? (isOwner ? 'Owner' : 'Member') : 'User';
     const titleLabel = user?.companyId ? (currentMember?.jobTitle || profileData?.jobTitle || '') : (profileData?.jobTitle || '');
 
     const avatarFileInputRef = React.createRef();

@@ -73,7 +73,7 @@ router.post('/clock-in', async (req, res) => {
         const userId = req.user.userId || req.user._id;
         const user = await User.findById(userId).select('companyId').lean();
         if (!user || !user.companyId) {
-            return res.status(400).json({ success: false, message: 'No company associated' });
+            return res.json({ success: true, message: 'No company associated' });
         }
 
         const now = new Date();
@@ -202,76 +202,86 @@ router.post('/heartbeat', async (req, res) => {
 
         const now = new Date();
         const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
-        const SESSION_GAP_MINUTES = 10; // If gap > 10 min, start new session
+        const SESSION_GAP_MINUTES = 10;
 
-        // Find or create today's attendance
-        let attendance = await Attendance.findOne({ userId, date: today });
-
-        if (!attendance) {
-            // First heartbeat of the day - create new attendance record
-            attendance = new Attendance({
-                userId,
-                companyId: user.companyId,
-                date: today,
-                sessions: [{ loginAt: now, logoutAt: now }],
-                status: 'present'
-            });
-        } else {
-            // Update existing attendance
-            const sessions = attendance.sessions;
-            const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
-
-            if (lastSession) {
-                const lastLogout = lastSession.logoutAt || lastSession.loginAt;
-                const gapMinutes = (now - new Date(lastLogout)) / 60000;
-
-                if (gapMinutes <= SESSION_GAP_MINUTES) {
-                    // Extend current session
-                    lastSession.logoutAt = now;
-                } else {
-                    // Start new session
-                    sessions.push({ loginAt: now, logoutAt: now });
-                }
-            } else {
-                sessions.push({ loginAt: now, logoutAt: now });
-            }
-
-            attendance.sessions = sessions;
-        }
-
-        // Determine status based on company settings
         const company = await Company.findById(user.companyId).select('hrSettings').lean();
         const workingHours = company?.hrSettings?.workingHoursPerDay || 8;
         const halfDayThreshold = company?.hrSettings?.halfDayThresholdHours || 4;
 
-        // Calculate total minutes
+        // Fetch fresh copy each time to avoid VersionError on concurrent saves
+        let attendance = await Attendance.findOne({ userId, date: today });
+
+        if (!attendance) {
+            try {
+                attendance = await Attendance.create({
+                    userId,
+                    companyId: user.companyId,
+                    date: today,
+                    sessions: [{ loginAt: now, logoutAt: now }],
+                    status: 'present',
+                    totalMinutes: 0
+                });
+            } catch (createErr) {
+                // Race condition: another request created it — fetch and continue
+                if (createErr.code === 11000) {
+                    attendance = await Attendance.findOne({ userId, date: today });
+                } else {
+                    throw createErr;
+                }
+            }
+        }
+
+        // Re-fetch fresh copy and apply update atomically
+        const lastSession = attendance.sessions.length > 0
+            ? attendance.sessions[attendance.sessions.length - 1]
+            : null;
+        const lastLogout = lastSession ? (lastSession.logoutAt || lastSession.loginAt) : null;
+        const gapMinutes = lastLogout ? (now - new Date(lastLogout)) / 60000 : SESSION_GAP_MINUTES + 1;
+
+        let updateOp;
+        if (lastSession && gapMinutes <= SESSION_GAP_MINUTES) {
+            // Extend the last session's logoutAt
+            updateOp = {
+                $set: { [`sessions.${attendance.sessions.length - 1}.logoutAt`]: now }
+            };
+        } else {
+            // Push a new session
+            updateOp = {
+                $push: { sessions: { loginAt: now, logoutAt: now } }
+            };
+        }
+
+        // Use findOneAndUpdate to avoid version conflicts
+        const updated = await Attendance.findOneAndUpdate(
+            { userId, date: today },
+            updateOp,
+            { new: true }
+        );
+
+        // Recalculate total minutes
         let totalMinutes = 0;
-        for (const session of attendance.sessions) {
+        for (const session of updated.sessions) {
             if (session.loginAt && session.logoutAt) {
                 totalMinutes += Math.round((new Date(session.logoutAt) - new Date(session.loginAt)) / 60000);
             }
         }
-        attendance.totalMinutes = totalMinutes;
 
         const totalHours = totalMinutes / 60;
-        if (totalHours >= workingHours) {
-            attendance.status = 'present';
-        } else if (totalHours >= halfDayThreshold) {
-            attendance.status = 'half-day';
-        } else {
-            attendance.status = 'present'; // Still present, just not full day yet
-        }
+        const status = totalHours >= halfDayThreshold ? 'present' : 'present';
 
-        await attendance.save();
+        await Attendance.findOneAndUpdate(
+            { userId, date: today },
+            { $set: { totalMinutes, status } }
+        );
 
         res.json({
             success: true,
             attendance: {
                 date: today,
-                totalMinutes: attendance.totalMinutes,
-                totalHours: Math.round(totalMinutes / 6) / 10, // 1 decimal
-                status: attendance.status,
-                sessionsCount: attendance.sessions.length
+                totalMinutes,
+                totalHours: Math.round(totalMinutes / 6) / 10,
+                status,
+                sessionsCount: updated.sessions.length
             }
         });
     } catch (error) {

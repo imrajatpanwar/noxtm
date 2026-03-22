@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { FiX, FiList, FiUsers, FiUpload, FiCheck, FiPlus } from 'react-icons/fi';
 import api from '../../config/api';
 import './CreateCampaignModal.css';
@@ -43,7 +44,6 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
       const response = await api.get('/email-templates');
       setTemplates(response.data.templates || []);
     } catch (err) {
-      console.error('Error fetching templates:', err);
     }
   };
 
@@ -71,7 +71,6 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
         }
       }
     } catch (err) {
-      console.error('Error fetching email accounts:', err);
     }
   };
 
@@ -82,7 +81,6 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
         setMailLists(response.data.data || []);
       }
     } catch (err) {
-      console.error('Error fetching mail lists:', err);
     }
   };
 
@@ -181,7 +179,6 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
         setError('No valid emails found in selected mail lists');
       }
     } catch (err) {
-      console.error('Error importing from mail lists:', err);
       setError('Failed to import from mail lists');
     }
   };
@@ -262,14 +259,12 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
           try {
             await api.post(`/campaigns/${campaignId}/send`);
           } catch (sendErr) {
-            console.error('Error sending campaign:', sendErr);
           }
         }
 
         onSuccess();
       }
     } catch (err) {
-      console.error('Error saving campaign:', err);
       setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} campaign. Please try again.`);
     } finally {
       setLoading(false);
@@ -278,7 +273,7 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
 
   const sendTestEmail = async () => {
     if (!campaignData.fromEmail || !emailContent.trim()) {
-      alert('Please fill in from email and content first');
+      toast.error('Please fill in from email and content first');
       return;
     }
 
@@ -292,9 +287,9 @@ function CreateCampaignModal({ onClose, onSuccess, editCampaign = null }) {
         subject: campaignData.subject || 'Test Email',
         content: emailContent
       });
-      alert('Test email sent successfully!');
+      toast.success('Test email sent successfully!');
     } catch (err) {
-      alert('Failed to send test email: ' + (err.response?.data?.message || err.message));
+      toast.error(err.response?.data?.message || 'Failed to send test email');
     }
   };
 

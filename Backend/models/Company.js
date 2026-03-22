@@ -18,7 +18,7 @@ const companySchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    roleInCompany: { type: String, enum: ["Owner", "Manager", "Employee"], default: "Employee" },
+    roleInCompany: { type: String, enum: ["Owner", "Member"], default: "Member" },
     jobTitle: { type: String, default: '' },
     department: {
       type: String,
@@ -35,7 +35,8 @@ const companySchema = new mongoose.Schema({
   invitations: [{
     email: { type: String, required: true },
     token: { type: String, required: true },
-    roleInCompany: { type: String, enum: ["Manager", "Employee"], default: "Employee" },
+    // roleInCompany removed - all invited users are Members
+    // Access is controlled via customPermissions set at invite time
     jobTitle: { type: String, default: '' },
     department: {
       type: String,

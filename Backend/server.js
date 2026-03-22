@@ -589,6 +589,8 @@ const authenticateToken = (req, res, next) => {
       return res.status(403).json({ message: 'Invalid token' });
     }
 
+    // Normalize: ensure _id is always available (JWT stores userId)
+    user._id = user._id || user.userId;
     req.user = user;
     next();
   });
@@ -2796,7 +2798,7 @@ app.get('/api/company/members', authenticateToken, async (req, res) => {
       fullName: member.user.fullName,
       email: member.user.email,
       role: member.user.role,
-      roleInCompany: member.roleInCompany === 'Owner' ? 'Owner' : 'Employee',
+      roleInCompany: member.roleInCompany === 'Owner' ? 'Owner' : 'Member',
       jobTitle: member.jobTitle || '',
       department: member.department,
       profileImage: member.user.profileImage,
@@ -3081,7 +3083,8 @@ app.post('/api/company/invite', authenticateToken, async (req, res) => {
     company.invitations.push({
       email: email.toLowerCase(),
       token: inviteToken,
-      roleInCompany: 'Employee',
+      // roleInCompany removed - all invited users are Members
+      // Access controlled via customPermissions
       jobTitle: typeof jobTitle === 'string' ? jobTitle.trim().slice(0, 100) : '',
       department,
       customPermissions: permissions,
@@ -3159,7 +3162,7 @@ app.get('/api/company/invite/:token', async (req, res) => {
       valid: true,
       invitation: {
         email: invitation.email,
-        roleInCompany: 'Employee',
+        roleInCompany: 'Member',
         jobTitle: invitation.jobTitle || '',
         department: invitation.department || '',
         expiresAt: invitation.expiresAt,
@@ -3227,7 +3230,7 @@ app.post('/api/company/invite/:token/accept', authenticateToken, async (req, res
     // Add user to company
     company.members.push({
       user: userId,
-      roleInCompany: 'Employee',
+      roleInCompany: 'Member',
       jobTitle: invitation.jobTitle || '',
       department: invitation.department,
       invitedAt: invitation.createdAt,
@@ -3554,12 +3557,24 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
     const normalizedAccess = syncAccessFromPermissions(normalizedPermissions);
 
     // Debug: Check other users with same companyId
+    let roleInCompany = null;
     if (user.companyId) {
+      const companyId = user.companyId._id || user.companyId;
+      const company = await Company.findById(companyId);
+      if (company) {
+        const member = company.members.find(m => m.user && m.user.toString() === user._id.toString());
+        roleInCompany = member ? member.roleInCompany : null;
+        // Fallback: if user is the company owner field, they're the Owner
+        if (!roleInCompany && company.owner && company.owner.toString() === user._id.toString()) {
+          roleInCompany = 'Owner';
+        }
+      }
+
       const companyUsers = await User.find({
-        companyId: user.companyId._id || user.companyId,
+        companyId: companyId,
         _id: { $ne: user._id }
       }).select('fullName email');
-      console.log(`👥 Users with same companyId (${user.companyId._id || user.companyId}):`, companyUsers.length);
+      console.log(`👥 Users with same companyId (${companyId}):`, companyUsers.length);
       companyUsers.forEach(u => console.log(`  - ${u.fullName} (${u.email})`));
     } else {
       console.log('⚠️ User has NO companyId:', user.email);
@@ -3576,6 +3591,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       status: user.status,
       subscription: user.subscription || { plan: 'None', status: 'inactive' },
       companyId: user.companyId,
+      roleInCompany: roleInCompany,
       createdAt: user.createdAt,
       phoneNumber: user.phoneNumber,
       bio: user.bio,

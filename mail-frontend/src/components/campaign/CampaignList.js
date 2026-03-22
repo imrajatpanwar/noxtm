@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import api from '../../config/api';
 import CreateCampaignModal from './CreateCampaignModal';
 import './CampaignList.css';
@@ -22,7 +23,6 @@ function CampaignList() {
         setCampaigns(response.data.data || []);
       }
     } catch (err) {
-      console.error('Error fetching campaigns:', err);
       setError('Failed to load campaigns');
     } finally {
       setLoading(false);
@@ -32,17 +32,14 @@ function CampaignList() {
   const fetchQuota = useCallback(async () => {
     try {
       const response = await api.get('/billing/info');
-      console.log('Billing response:', response.data);
       if (response.data.success) {
         const billing = response.data.billing;
-        console.log('Billing data:', billing);
         setQuota({
           used: billing?.totalUsed || 0,
           total: billing?.emailCredits || 0
         });
       }
     } catch (err) {
-      console.error('Error fetching billing info:', err);
     }
   }, []);
 
@@ -97,8 +94,7 @@ function CampaignList() {
       fetchCampaigns();
       setSelectedCampaigns(prev => prev.filter(id => id !== campaignId));
     } catch (err) {
-      console.error('Error deleting campaign:', err);
-      alert('Failed to delete campaign: ' + (err.response?.data?.message || err.message));
+      toast.error(err.response?.data?.message || 'Failed to delete campaign');
     }
   };
 
@@ -116,8 +112,7 @@ function CampaignList() {
       fetchCampaigns();
       setSelectedCampaigns([]);
     } catch (err) {
-      console.error('Error deleting campaigns:', err);
-      alert('Failed to delete some campaigns: ' + (err.response?.data?.message || err.message));
+      toast.error(err.response?.data?.message || 'Failed to delete campaigns');
     }
   };
 
@@ -402,7 +397,6 @@ function CampaignStatsModal({ campaign, onClose }) {
         setStats(response.data.stats);
       }
     } catch (err) {
-      console.error('Error fetching stats:', err);
     }
   };
 
@@ -414,7 +408,6 @@ function CampaignStatsModal({ campaign, onClose }) {
         setDetails(response.data.data);
       }
     } catch (err) {
-      console.error('Error fetching details:', err);
     } finally {
       setLoading(false);
     }

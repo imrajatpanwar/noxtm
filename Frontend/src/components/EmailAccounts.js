@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
-import { FiUsers, FiPlus, FiTrash2, FiKey, FiMail, FiRefreshCw, FiServer, FiCloud, FiX, FiCheck, FiAlertCircle, FiCopy, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUsers, FiPlus, FiTrash2, FiKey, FiMail, FiRefreshCw, FiServer, FiCloud, FiX, FiCheck, FiAlertCircle, FiCopy, FiEye, FiEyeOff, FiGlobe, FiUser } from 'react-icons/fi';
 import './EmailManagement.css';
 
 function EmailAccounts() {
@@ -12,6 +12,13 @@ function EmailAccounts() {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [quotaData, setQuotaData] = useState({});
+
+  // Company accounts state (for Owner view)
+  const [companyAccounts, setCompanyAccounts] = useState([]);
+  const [companyAccountsSummary, setCompanyAccountsSummary] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [loadingCompanyAccounts, setLoadingCompanyAccounts] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal'); // 'personal' or 'company'
 
   // Form states for Create Noxtm Account
   const [noxtmUsername, setNoxtmUsername] = useState('');
@@ -37,8 +44,29 @@ function EmailAccounts() {
 
   useEffect(() => {
     fetchAccounts();
+    checkOwnerAndFetchCompanyAccounts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const checkOwnerAndFetchCompanyAccounts = async () => {
+    try {
+      setLoadingCompanyAccounts(true);
+      const response = await api.get('/email-accounts/connected/company');
+      if (response.data.success) {
+        setIsOwner(true);
+        setCompanyAccounts(response.data.accounts || []);
+        setCompanyAccountsSummary(response.data.summary);
+      }
+    } catch (err) {
+      // User is not owner or doesn't have a company - this is expected for non-owners
+      if (err.response?.status !== 403) {
+        console.error('Error fetching company accounts:', err);
+      }
+      setIsOwner(false);
+    } finally {
+      setLoadingCompanyAccounts(false);
+    }
+  };
 
   const fetchAccounts = async () => {
     try {
@@ -217,6 +245,149 @@ function EmailAccounts() {
 
       {error && <div className="error-message">{error}</div>}
 
+      {/* Tabs for Owner - switch between personal and company accounts */}
+      {isOwner && (
+        <div className="account-tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <button
+            className={`tab-btn ${activeTab === 'personal' ? 'active' : ''}`}
+            onClick={() => setActiveTab('personal')}
+            style={{
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              background: activeTab === 'personal' ? '#6366f1' : '#f1f5f9',
+              color: activeTab === 'personal' ? '#fff' : '#475569',
+              fontWeight: 500
+            }}
+          >
+            <FiUser style={{ marginRight: '8px' }} />
+            My Accounts ({accounts.length})
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'company' ? 'active' : ''}`}
+            onClick={() => setActiveTab('company')}
+            style={{
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              background: activeTab === 'company' ? '#6366f1' : '#f1f5f9',
+              color: activeTab === 'company' ? '#fff' : '#475569',
+              fontWeight: 500
+            }}
+          >
+            <FiGlobe style={{ marginRight: '8px' }} />
+            Company Accounts ({companyAccounts.length})
+          </button>
+        </div>
+      )}
+
+      {/* Company Accounts View (Owner only) */}
+      {isOwner && activeTab === 'company' && (
+        <div className="content-card">
+          <div className="card-header">
+            <h3><FiGlobe /> Company Domain Email Accounts</h3>
+            <button className="btn-icon" onClick={checkOwnerAndFetchCompanyAccounts} title="Refresh">
+              <FiRefreshCw />
+            </button>
+          </div>
+
+          {companyAccountsSummary && (
+            <div style={{ display: 'flex', gap: '20px', padding: '15px', background: '#f8fafc', borderRadius: '8px', margin: '15px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#6366f1' }}>{companyAccountsSummary.totalAccounts}</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Total Accounts</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{companyAccountsSummary.connectedAccounts}</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Connected</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{companyAccountsSummary.disconnectedAccounts}</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>Not Connected</div>
+              </div>
+            </div>
+          )}
+
+          {loadingCompanyAccounts ? (
+            <div className="loading-message" style={{ padding: '40px' }}>Loading company accounts...</div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Email Address</th>
+                    <th>Domain</th>
+                    <th>Purpose</th>
+                    <th>Connected Users</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {companyAccounts.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="empty-state">
+                        <FiMail size={48} />
+                        <p>No company email accounts created yet</p>
+                        <p style={{ fontSize: '13px', color: '#64748b' }}>Create email accounts on your verified domains</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    companyAccounts.map((account) => (
+                      <tr key={account._id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FiMail color="#6366f1" />
+                            <strong>{account.email}</strong>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ padding: '4px 8px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontSize: '12px' }}>
+                            {account.domain}
+                          </span>
+                        </td>
+                        <td>{account.purpose || 'General'}</td>
+                        <td>
+                          {account.connectedUsers && account.connectedUsers.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {account.connectedUsers.map((user, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                                  {user.profileImage ? (
+                                    <img src={user.profileImage} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+                                  ) : (
+                                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#6366f1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
+                                      {user.fullName?.charAt(0) || '?'}
+                                    </div>
+                                  )}
+                                  <span>{user.fullName}</span>
+                                  <span style={{ color: '#94a3b8', fontSize: '11px' }}>({user.email})</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No one connected</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`status-badge ${account.isConnected ? 'active' : 'inactive'}`}>
+                            {account.isConnected ? 'In Use' : 'Unused'}
+                          </span>
+                        </td>
+                        <td>{new Date(account.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Personal Accounts View */}
+      {(!isOwner || activeTab === 'personal') && (
       <div className="content-card">
         <div className="card-header">
           <h3>All Email Accounts ({accounts.length})</h3>
@@ -343,6 +514,7 @@ function EmailAccounts() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Create @noxtm.com Account Modal */}
       {showCreateNoxtmModal && (

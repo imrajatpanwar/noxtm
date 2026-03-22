@@ -34,7 +34,6 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
           setStep('welcome');
         }
       } catch (err) {
-        console.error('Error checking existing domain:', err);
         setStep('welcome');
       }
     };
@@ -56,7 +55,6 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
         showToast('Domain not yet verified. Please add DNS records and wait for propagation.', 'info');
       }
     } catch (err) {
-      console.error('Error checking verification:', err);
       showToast('Failed to check verification status', 'error');
     } finally {
       setCheckingStatus(false);
@@ -82,10 +80,8 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
   };
 
   const handleBackToDashboard = () => {
-    // Redirect to main dashboard (production URL)
-    window.location.href = process.env.NODE_ENV === 'production'
-      ? 'https://noxtm.com'
-      : 'http://localhost:3000';
+    // Redirect to main dashboard
+    window.location.href = process.env.REACT_APP_MAIN_APP_URL || 'https://noxtm.com';
   };
 
   const handleNextToDNS = () => {
@@ -127,13 +123,11 @@ function DomainOnboardingModal({ onClose, onDomainAdded, userRole }) {
           hasSeenDomainOnboarding: true
         });
       } catch (onboardingErr) {
-        console.warn('Failed to update onboarding status:', onboardingErr.message);
       }
 
       // Show DKIM records step
       handleStepChange('dkimRecords', 'forward');
     } catch (err) {
-      console.error('Error adding domain:', err);
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to add domain');
       showToast(err.response?.data?.error || err.response?.data?.message || 'Failed to add domain', 'error');
     } finally {

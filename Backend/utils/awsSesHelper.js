@@ -16,17 +16,21 @@ const sesClient = new SESv2Client({
   }
 });
 
-async function sendEmailViaSES({ from, to, subject, html, text, replyTo, metadata, attachments }) {
+async function sendEmailViaSES({ from, to, subject, html, text, replyTo, cc, bcc, metadata, attachments }) {
   // If attachments are present, use raw email format
   if (attachments && attachments.length > 0) {
-    return sendRawEmailViaSES({ from, to, subject, html, text, replyTo, attachments });
+    return sendRawEmailViaSES({ from, to, cc, bcc, subject, html, text, replyTo, attachments });
   }
+
+  const destination = {
+    ToAddresses: Array.isArray(to) ? to : [to]
+  };
+  if (cc && cc.length > 0) destination.CcAddresses = Array.isArray(cc) ? cc : [cc];
+  if (bcc && bcc.length > 0) destination.BccAddresses = Array.isArray(bcc) ? bcc : [bcc];
 
   const params = {
     FromEmailAddress: from,
-    Destination: {
-      ToAddresses: Array.isArray(to) ? to : [to]
-    },
+    Destination: destination,
     Content: {
       Simple: {
         Subject: { Data: subject, Charset: 'UTF-8' },
@@ -58,7 +62,7 @@ async function sendEmailViaSES({ from, to, subject, html, text, replyTo, metadat
  * Send raw email via AWS SES v2 (supports attachments)
  * Uses nodemailer to build the MIME message, then sends via SES v2 SendEmailCommand with Raw content
  */
-async function sendRawEmailViaSES({ from, to, subject, html, text, replyTo, attachments }) {
+async function sendRawEmailViaSES({ from, to, cc, bcc, subject, html, text, replyTo, attachments }) {
   // Build the raw MIME message using nodemailer's stream transport
   const transporter = nodemailer.createTransport({ streamTransport: true });
 
@@ -75,6 +79,8 @@ async function sendRawEmailViaSES({ from, to, subject, html, text, replyTo, atta
       contentType: att.mimetype
     }))
   };
+  if (cc && cc.length > 0) mailOptions.cc = (Array.isArray(cc) ? cc : [cc]).join(', ');
+  if (bcc && bcc.length > 0) mailOptions.bcc = (Array.isArray(bcc) ? bcc : [bcc]).join(', ');
 
   if (replyTo) {
     mailOptions.replyTo = Array.isArray(replyTo) ? replyTo.join(', ') : replyTo;

@@ -87,7 +87,7 @@ const contactListSchema = new mongoose.Schema({
     default: 0
   },
 
-  // Multi-tenancy & Role Access
+  // Multi-tenancy
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
@@ -95,12 +95,8 @@ const contactListSchema = new mongoose.Schema({
     index: true
   },
 
-  // Access Control - Only Manager and Owner can view
-  roleAccess: {
-    type: [String],
-    enum: ['Owner', 'Manager'],
-    default: ['Owner', 'Manager']
-  },
+  // Access Control: Permission-based (marketing permission required)
+  // Removed roleAccess field - access controlled via user.permissions.marketing
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -170,10 +166,14 @@ contactListSchema.methods.removeContact = function(email) {
   return this.contacts.length < initialLength;
 };
 
-// Static method: Get lists by company (with role check)
-contactListSchema.statics.getByCompany = async function(companyId, userRole, filters = {}) {
-  // Only Manager and Owner can access
-  if (!['Owner', 'Manager'].includes(userRole)) {
+// Static method: Get lists by company (with permission check)
+// Access requires marketing permission or Owner role
+contactListSchema.statics.getByCompany = async function(companyId, user, filters = {}) {
+  // Check if user has marketing permission or is Owner
+  const hasMarketingAccess = user.permissions?.marketing === true;
+  const isOwner = user.roleInCompany === 'Owner';
+
+  if (!hasMarketingAccess && !isOwner) {
     return [];
   }
 

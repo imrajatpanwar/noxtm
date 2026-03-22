@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import api from '../../config/api';
 import './TemplateEditor.css';
 
@@ -53,8 +54,7 @@ const TemplateEditor = ({ template, onClose, onSave }) => {
       onSave && onSave();
       onClose();
     } catch (error) {
-      console.error('Error saving template:', error);
-      alert('Failed to save template: ' + (error.response?.data?.error || error.message));
+      toast.error('Failed to save template: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }

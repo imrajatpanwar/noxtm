@@ -7,7 +7,7 @@ const TradeShow = require('../models/TradeShow');
 const Exhibitor = require('../models/Exhibitor');
 const Campaign = require('../models/Campaign');
 const { authenticateToken } = require('../middleware/auth');
-const { requireManagerOrOwner } = require('../middleware/campaignAuth');
+const { requireMarketingAccess } = require('../middleware/campaignAuth');
 const { parseCSV } = require('../utils/csvParser');
 
 // Configure multer for file uploads
@@ -26,9 +26,9 @@ const upload = multer({
   }
 });
 
-// Apply authentication and role check to all routes
+// Apply authentication and marketing permission check to all routes
 router.use(authenticateToken);
-router.use(requireManagerOrOwner);
+router.use(requireMarketingAccess);
 
 /**
  * GET /api/contact-lists
@@ -37,7 +37,6 @@ router.use(requireManagerOrOwner);
 router.get('/', async (req, res) => {
   try {
     const companyId = req.user.companyId;
-    const userRole = req.userRole;
     const { sourceType, page = 1, limit = 20 } = req.query;
 
     const filters = {};
@@ -45,7 +44,8 @@ router.get('/', async (req, res) => {
       filters.sourceType = sourceType;
     }
 
-    const contactLists = await ContactList.getByCompany(companyId, userRole, filters);
+    // Pass user object for permission-based access check
+    const contactLists = await ContactList.getByCompany(companyId, req.user, filters);
 
     // Enrich trade show lists with shortName
     const enriched = await Promise.all(contactLists.map(async (cl) => {

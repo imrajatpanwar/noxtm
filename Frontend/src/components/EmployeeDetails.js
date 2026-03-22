@@ -153,8 +153,7 @@ function EmployeeDetails() {
 
   const getRoleClass = (role) => {
     if (role === 'Owner') return 'role-owner';
-    if (role === 'Manager') return 'role-manager';
-    return 'role-employee';
+    return 'role-member';
   };
 
   const getAvatarColor = (name) => {
@@ -192,7 +191,7 @@ function EmployeeDetails() {
   });
 
   const filteredEmployees = employees.filter(e => {
-    if (roleFilter && (e.roleInCompany || 'Employee') !== roleFilter) return false;
+    if (roleFilter && (e.roleInCompany || 'Member') !== roleFilter) return false;
     return true;
   });
 
@@ -204,7 +203,7 @@ function EmployeeDetails() {
 
   const stats = {
     total: employees.length,
-    managers: employees.filter(e => e.roleInCompany === 'Manager').length,
+    members: employees.filter(e => e.roleInCompany === 'Member' || !e.roleInCompany || e.roleInCompany !== 'Owner').length,
     owners: employees.filter(e => e.roleInCompany === 'Owner').length,
     departments: departments.length,
   };
@@ -307,8 +306,7 @@ function EmployeeDetails() {
               <select className="emp-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                 <option value="">All Roles</option>
                 <option value="Owner">Owner</option>
-                <option value="Manager">Manager</option>
-                <option value="Employee">Employee</option>
+                <option value="Member">Member</option>
               </select>
             </div>
             {(search || departmentFilter || roleFilter) && (
@@ -355,7 +353,7 @@ function EmployeeDetails() {
                       <span className="emp-title-text">{emp.jobTitle || '—'}</span>
                     </div>
                     <div className="emp-col emp-col-role">
-                      <span className={`emp-role-badge ${getRoleClass(emp.roleInCompany)}`}>{emp.roleInCompany || 'Employee'}</span>
+                      <span className={`emp-role-badge ${getRoleClass(emp.roleInCompany)}`}>{emp.roleInCompany || 'Member'}</span>
                     </div>
                     <div className="emp-col emp-col-contact">
                       {emp.phoneNumber ? <span className="emp-contact-pill"><FiPhone size={11} /> {emp.phoneNumber}</span> : <span className="emp-na">—</span>}
@@ -389,7 +387,7 @@ function EmployeeDetails() {
                       <div className="emp-detail-name-block">
                         <h3>{employeeDetail.employee.fullName}</h3>
                         <p>{employeeDetail.employee.jobTitle || 'Team Member'}</p>
-                        <span className={`emp-role-badge ${getRoleClass(employeeDetail.employee.roleInCompany)}`}>{employeeDetail.employee.roleInCompany || 'Employee'}</span>
+                        <span className={`emp-role-badge ${getRoleClass(employeeDetail.employee.roleInCompany)}`}>{employeeDetail.employee.roleInCompany || 'Member'}</span>
                       </div>
                     </div>
                     <div className="emp-detail-tabs">

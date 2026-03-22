@@ -3,12 +3,12 @@ const router = express.Router();
 const Campaign = require('../models/Campaign');
 const ContactList = require('../models/ContactList');
 const { authenticateToken } = require('../middleware/auth');
-const { requireManagerOrOwner } = require('../middleware/campaignAuth');
+const { requireMarketingAccess } = require('../middleware/campaignAuth');
 const { sendCampaignEmails } = require('../services/campaignEmailService');
 
-// Apply authentication and role check to all routes
+// Apply authentication and marketing permission check to all routes
 router.use(authenticateToken);
-router.use(requireManagerOrOwner);
+router.use(requireMarketingAccess);
 
 /**
  * GET /api/campaigns

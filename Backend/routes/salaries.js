@@ -111,7 +111,7 @@ router.get('/employees', auth, async (req, res) => {
         email: m.user.email,
         department: m.department || m.user.department || '',
         designation: m.jobTitle || m.user.jobTitle || '',
-        roleInCompany: m.roleInCompany || 'Employee'
+        roleInCompany: m.roleInCompany || 'Member'
       }));
 
     res.json({ success: true, employees });

@@ -77,15 +77,16 @@ const ProjectManagement = () => {
 
     const currencies = ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'];
 
-    // Check if user has manager-level permissions
+    // Check if user has owner-level permissions
     const checkUserRole = useCallback(async () => {
         try {
             const response = await api.get('/users/profile');
             const user = response.data;
-            const managerRoles = ['Owner', 'Manager', 'Admin', 'Business Admin'];
-            const hasManagerRole = managerRoles.includes(user.role) ||
-                managerRoles.includes(user.roleInCompany);
-            setIsManager(hasManagerRole);
+            // Owner (workspace creator) or Admin (platform admin) can modify settings
+            const ownerRoles = ['Owner', 'Admin', 'Business Admin'];
+            const hasOwnerRole = ownerRoles.includes(user.role) ||
+                ownerRoles.includes(user.roleInCompany);
+            setIsManager(hasOwnerRole);
         } catch (error) {
             console.error('Error checking user role:', error);
         }

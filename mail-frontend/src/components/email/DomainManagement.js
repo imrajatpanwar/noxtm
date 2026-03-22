@@ -1,5 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Eye, EyeOff, Key, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../config/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import './DomainManagement.css';
 
 const DomainManagement = () => {
@@ -12,16 +25,14 @@ const DomainManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch from email accounts endpoint which returns verified domains
       const res = await api.get('/email-accounts/by-verified-domain');
-      
+
       if (res.data.success) {
         const verifiedDomains = res.data.verifiedDomains || [];
         const emailAccounts = res.data.accounts || [];
-        
-        // Build domain info from verified domains and accounts
+
         const domainInfoMap = {};
-        
+
         verifiedDomains.forEach(domain => {
           domainInfoMap[domain] = {
             domain,
@@ -30,19 +41,18 @@ const DomainManagement = () => {
             verified: true
           };
         });
-        
+
         emailAccounts.forEach(account => {
           const domain = account.domain?.toLowerCase();
           if (domain && domainInfoMap[domain]) {
             domainInfoMap[domain].accounts.push(account);
           }
         });
-        
+
         setDomains(Object.values(domainInfoMap));
         setAccounts(emailAccounts);
       }
     } catch (err) {
-      console.error('Error fetching domain data:', err);
       setError('Failed to load domain information');
     } finally {
       setLoading(false);
@@ -125,6 +135,12 @@ const DomainManagement = () => {
 const DomainCard = ({ domainInfo, onRefresh }) => {
   const [expanded, setExpanded] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [passwordModal, setPasswordModal] = useState({ open: false, accountId: null, email: '' });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const handleDeleteAccount = async (accountId, email) => {
     if (!window.confirm(`Are you sure you want to delete the email account "${email}"? This action cannot be undone.`)) {
@@ -133,14 +149,64 @@ const DomainCard = ({ domainInfo, onRefresh }) => {
     setDeletingId(accountId);
     try {
       await api.delete(`/email-accounts/${accountId}`);
+      toast.success(`Account ${email} deleted`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      console.error('Error deleting email account:', err);
-      alert(err.response?.data?.message || 'Failed to delete email account');
+      toast.error(err.response?.data?.message || 'Failed to delete email account');
     } finally {
       setDeletingId(null);
     }
   };
+
+  const openPasswordModal = (accountId, email) => {
+    setPasswordModal({ open: true, accountId, email });
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      await api.post(`/email-accounts/${passwordModal.accountId}/reset-password`, {
+        newPassword
+      });
+      toast.success(`Password updated for ${passwordModal.email}`);
+      setPasswordModal({ open: false, accountId: null, email: '' });
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  // Password strength indicator
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { label: '', color: '', width: '0%' };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    if (score <= 2) return { label: 'Weak', color: '#ef4444', width: '33%' };
+    if (score <= 3) return { label: 'Medium', color: '#f59e0b', width: '66%' };
+    return { label: 'Strong', color: '#22c55e', width: '100%' };
+  };
+
+  const strength = getPasswordStrength(newPassword);
 
   return (
     <div className={`dm-domain-card ${expanded ? 'expanded' : ''}`}>
@@ -156,12 +222,12 @@ const DomainCard = ({ domainInfo, onRefresh }) => {
           </div>
         </div>
         <button className="dm-expand-btn">
-          <svg 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
             strokeWidth="2"
             style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
           >
@@ -210,6 +276,22 @@ const DomainCard = ({ domainInfo, onRefresh }) => {
                     <span className={`dm-account-status ${account.enabled ? 'active' : 'inactive'}`}>
                       {account.enabled ? 'Active' : 'Inactive'}
                     </span>
+                    {/* Reset Password Button */}
+                    <button
+                      className="dm-account-action-btn"
+                      title="Reset password"
+                      onClick={() => openPasswordModal(account._id, account.email)}
+                      style={{
+                        width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: '#6b7280', transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#0b57d0'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}
+                    >
+                      <Key size={16} />
+                    </button>
+                    {/* Delete Button */}
                     <button
                       className="dm-account-delete-btn"
                       title="Delete account"
@@ -252,6 +334,112 @@ const DomainCard = ({ domainInfo, onRefresh }) => {
           </div>
         </div>
       )}
+
+      {/* Password Reset Modal */}
+      <Dialog open={passwordModal.open} onOpenChange={(open) => { if (!open) setPasswordModal({ open: false, accountId: null, email: '' }); }}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-blue-600" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Set a new password for <strong>{passwordModal.email}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* New Password */}
+            <div className="space-y-2">
+              <Label htmlFor="new-pwd" className="text-sm font-medium">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="new-pwd"
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {/* Strength Bar */}
+              {newPassword && (
+                <div className="space-y-1">
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: strength.width, backgroundColor: strength.color }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-medium" style={{ color: strength.color }}>
+                    {strength.label}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirm-pwd" className="text-sm font-medium">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-pwd"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <span className="text-[11px] text-red-500">Passwords do not match</span>
+              )}
+              {confirmPassword && newPassword === confirmPassword && confirmPassword.length >= 8 && (
+                <span className="text-[11px] text-green-500">Passwords match</span>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPasswordModal({ open: false, accountId: null, email: '' })}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resettingPassword || !newPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+              className="gap-2"
+            >
+              {resettingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

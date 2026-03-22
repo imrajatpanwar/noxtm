@@ -1,3 +1,5 @@
-# https://www.robotstxt.org/robotstxt.html
+# Allow all bots to crawl
 User-agent: *
-Disallow:
+Allow: /
+
+Sitemap: https://mail.noxtm.com/sitemap.xml

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { FiEdit2, FiTrash2, FiMail, FiUsers, FiFileText } from 'react-icons/fi';
 import api from '../../config/api';
 import TemplateEditor from './TemplateEditor';
@@ -21,7 +22,6 @@ const TemplateManager = () => {
       const res = await api.get('/email-templates', { params });
       setTemplates(res.data.templates || []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,6 @@ const TemplateManager = () => {
       const res = await api.get('/email-templates/stats');
       setStats(res.data.stats);
     } catch (error) {
-      console.error('Error fetching stats:', error);
     }
   };
 
@@ -51,8 +50,7 @@ const TemplateManager = () => {
       setTemplates(templates.filter(t => t._id !== templateId));
       fetchStats();
     } catch (error) {
-      console.error('Error deleting template:', error);
-      alert('Failed to delete template');
+      toast.error('Failed to delete template');
     }
   };
 

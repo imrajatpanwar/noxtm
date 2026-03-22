@@ -35,7 +35,6 @@ export const hasGravatar = async (email) => {
         const response = await fetch(url, { method: 'HEAD' });
         return response.ok; // 200 = has custom gravatar, 404 = using default
     } catch (error) {
-        console.error('Error checking Gravatar:', error);
         return false;
     }
 };

@@ -368,7 +368,7 @@ function initializeRoutes(dependencies) {
         },
         invitation: {
           email: invitation.email,
-          roleInCompany: 'Employee',
+          roleInCompany: 'Member',
           jobTitle: invitation.jobTitle || '',
           department: invitation.department || '',
           expiresAt: invitation.expiresAt
@@ -445,7 +445,7 @@ function initializeRoutes(dependencies) {
       // Add user to company members
       company.members.push({
         user: userId,
-        roleInCompany: 'Employee',
+        roleInCompany: 'Member',
         jobTitle: invitation.jobTitle || '',
         department: invitation.department || undefined,
         joinedAt: new Date()
@@ -509,7 +509,7 @@ function initializeRoutes(dependencies) {
         company: {
           id: company._id,
           companyName: company.companyName,
-          roleInCompany: 'Employee'
+          roleInCompany: 'Member'
         },
         user: {
           id: user._id,
@@ -588,7 +588,7 @@ function initializeRoutes(dependencies) {
       // Add user to company members
       company.members.push({
         user: userId,
-        roleInCompany: 'Employee',
+        roleInCompany: 'Member',
         jobTitle: invitation.jobTitle || '',
         department: invitation.department || undefined,
         joinedAt: new Date()
@@ -662,7 +662,7 @@ function initializeRoutes(dependencies) {
         company: {
           id: company._id,
           companyName: company.companyName,
-          roleInCompany: 'Employee'
+          roleInCompany: 'Member'
         },
         user: {
           id: user._id,

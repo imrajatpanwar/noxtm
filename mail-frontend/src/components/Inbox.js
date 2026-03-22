@@ -7,7 +7,7 @@ import DomainManagement from './email/DomainManagement';
 import CampaignList from './campaign/CampaignList';
 import MailLists from './campaign/MailLists';
 import CampaignAnalytics from './campaign/CampaignAnalytics';
-import Settings from './settings/Settings';
+// Settings is now unified inside MainstreamInbox's MailSettings component
 import DomainSetupWizard from './onboarding/DomainSetupWizard';
 import DomainOnboardingModal from './DomainOnboardingModal';
 import LoadingScreen from './LoadingScreen';
@@ -35,7 +35,6 @@ function checkSubscriptionStatus(subscription) {
     const gracePeriodEnd = new Date(subscriptionEnd.getTime() + gracePeriodMs);
 
     if (now > gracePeriodEnd) {
-      console.log('[INBOX] Subscription expired past grace period');
       return false;
     }
   }
@@ -55,7 +54,6 @@ function Inbox() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('[INBOX] Component mounted - Starting consolidated initialization...');
 
     // Set loading flag to prevent API interceptor from redirecting during auth
     // This flag will stay true until ALL initialization is complete
@@ -64,10 +62,8 @@ function Inbox() {
     const initializeApp = async () => {
       // Verify token exists (should be set by ProtectedRoute)
       const token = localStorage.getItem('token');
-      console.log('[INBOX] Token exists:', token ? 'YES (length: ' + token.length + ')' : 'NO');
 
       if (!token) {
-        console.error('[INBOX] ❌ No token found! ProtectedRoute should have set it.');
         window.__NOXTM_AUTH_LOADING__ = false;
         window.location.href = MAIL_LOGIN_URL;
         return;
@@ -77,14 +73,11 @@ function Inbox() {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           // STEP 1: Fetch user profile
-          console.log('[INBOX] Step 1/4: Fetching user profile from /api/profile...');
           const userResponse = await api.get('/profile');
-          console.log('[INBOX] ✅ Profile fetch SUCCESS:', userResponse.data);
           setUser(userResponse.data);
           localStorage.setItem('user', JSON.stringify(userResponse.data));
 
           // STEP 2: Check subscription status (NEW - prevents pricing flickering)
-          console.log('[INBOX] Step 2/4: Checking subscription status...');
           const subscription = userResponse.data.subscription;
           const isAdmin = userResponse.data.role === 'Admin';
           const hasCompany = !!userResponse.data.companyId;
@@ -92,79 +85,62 @@ function Inbox() {
           if (!isAdmin) {
             // Employees with a company use the owner's subscription - allow them in
             if (hasCompany) {
-              console.log('[INBOX] ✅ User belongs to a company - skipping subscription check');
             } else {
               const hasValid = checkSubscriptionStatus(subscription);
-              console.log('[INBOX] Subscription check result:', hasValid, subscription);
 
               if (!hasValid) {
-                console.log('[INBOX] ❌ Invalid subscription and no company - redirecting to pricing');
                 window.__NOXTM_AUTH_LOADING__ = false;
                 window.location.href = getMainAppUrl('/pricing');
                 return;
               }
-              console.log('[INBOX] ✅ Subscription is valid');
             }
           } else {
-            console.log('[INBOX] ✅ Admin user - skipping subscription check');
           }
 
           let needsDomain = false;
+          const isOwner = userResponse.data.roleInCompany === 'Owner';
+          const isMember = hasCompany && !isOwner;
 
-          // STEP 3: Check domain setup (skip for admins and company employees)
-          if (!isAdmin && !hasCompany) {
-            console.log('[INBOX] Step 3/4: Checking domain setup...');
+          // STEP 3: Check domain setup
+          // Domain check applies to: owners (with or without company) and standalone users
+          // Skip for: company members (owner handles domain) and system admins
+          if (!isAdmin && !isMember) {
             try {
               const domainResponse = await api.get('/user-domains/count');
-              console.log('[INBOX] ✅ User domains count response:', domainResponse.data);
               needsDomain = !domainResponse.data.hasVerifiedDomain;
 
               if (needsDomain) {
-                console.log('[INBOX] ⚠️  No verified domain found');
               } else {
-                console.log('[INBOX] ✅ User has verified domain');
               }
             } catch (domainErr) {
-              console.error('[INBOX] ❌ Error checking domain setup:', domainErr);
               // On error, assume domain setup needed
               needsDomain = true;
             }
-          } else if (hasCompany) {
-            console.log('[INBOX] Step 3/4: Employee user - owner handles domain setup, skipping');
+          } else if (isMember) {
           } else {
-            console.log('[INBOX] Step 3/4: Admin user - bypassing domain verification');
           }
 
           // STEP 4: Decide what to show (don't render yet)
-          console.log('[INBOX] Step 4/4: Determining which screen to show...');
-          // Never show domain modal for Admins or company employees
-          if (needsDomain && !isAdmin && !hasCompany) {
-            console.log('[INBOX] → Will show domain onboarding modal');
+          // Show domain modal for owners/standalone users who need domain setup
+          // Never show for admins or company members
+          if (needsDomain && !isAdmin && !isMember) {
             setShowOnboardingModal(true);
           } else {
-            console.log('[INBOX] → Will show inbox');
             setShowOnboardingModal(false);
           }
 
           // STEP 4: Mark initialization complete
-          console.log('[INBOX] ✅ All initialization complete - ready to render');
           setInitializationComplete(true);
 
           // CRITICAL: Only clear loading flag AFTER everything is complete
           window.__NOXTM_AUTH_LOADING__ = false;
-          console.log('[INBOX] ✅ Clearing loading flag');
 
           return; // Success - exit function
         } catch (err) {
-          console.error(`[INBOX] ❌ Initialization attempt ${attempt} FAILED:`, err);
-          console.error('[INBOX] Error status:', err.response?.status);
-          console.error('[INBOX] Error message:', err.response?.data);
 
           if (attempt < 3) {
-            console.log(`[INBOX] Retrying in 1 second (attempt ${attempt + 1}/3)...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
           } else {
-            console.log('[INBOX] All retry attempts failed, redirecting to login:', MAIL_LOGIN_URL);
             // Clear loading flag before redirect
             window.__NOXTM_AUTH_LOADING__ = false;
             // No SSO session after all retries, redirect to main app login
@@ -176,32 +152,25 @@ function Inbox() {
 
     // Start initialization
     initializeApp().catch((err) => {
-      console.error('[INBOX] Fatal error in initializeApp:', err);
       window.__NOXTM_AUTH_LOADING__ = false;
     });
   }, [navigate]);
 
   const recheckDomainSetup = async () => {
-    console.log('[INBOX] Rechecking domain setup after user added domain...');
     try {
       const response = await api.get('/user-domains/count');
-      console.log('[INBOX] ✅ User domains count response:', response.data);
 
       const hasVerified = response.data.hasVerifiedDomain;
 
       if (hasVerified) {
-        console.log('[INBOX] ✅ User now has verified domain - showing inbox');
         setShowOnboardingModal(false);
       } else {
-        console.log('[INBOX] ⚠️  Still no verified domain');
       }
     } catch (err) {
-      console.error('[INBOX] ❌ Error rechecking domain setup:', err);
     }
   };
 
   const handleWizardComplete = (domain) => {
-    console.log('Domain setup complete:', domain);
     setShowDomainWizard(false);
     setActiveView('domains'); // Show domain management after setup
   };
@@ -217,7 +186,6 @@ function Inbox() {
     try {
       await api.post('/logout');
     } catch (err) {
-      console.error('Logout error:', err);
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -298,7 +266,9 @@ function Inbox() {
 
           <button
             className={`nav-item ${activeView === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveView('settings')}
+            onClick={() => {
+              setActiveView('settings');
+            }}
           >
             <FiSettings /> Settings
           </button>
@@ -307,11 +277,12 @@ function Inbox() {
 
       {/* Main Content */}
       <div className="mail-inbox-content">
-        {activeView === 'personal' && (
+        {(activeView === 'personal' || activeView === 'settings') && (
           <MainstreamInbox
             user={user}
             onNavigateToDomains={() => setActiveView('domains')}
             onLogout={handleLogout}
+            initialTab={activeView === 'settings' ? 'settings' : undefined}
           />
         )}
         {activeView === 'templates' && <TemplateManager />}
@@ -319,7 +290,6 @@ function Inbox() {
         {activeView === 'create-campaign' && <CampaignList />}
         {activeView === 'campaign-analytics' && <CampaignAnalytics />}
         {activeView === 'mail-lists' && <MailLists />}
-        {activeView === 'settings' && <Settings />}
       </div>
 
       {/* Domain Onboarding Modal */}

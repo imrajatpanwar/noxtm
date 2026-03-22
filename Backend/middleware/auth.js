@@ -159,8 +159,9 @@ const requireActiveSubscription = (req, res, next) => {
 
 /**
  * Middleware to check if user is company owner or admin
+ * Properly verifies Owner role via Company model
  */
-const requireCompanyOwnerOrAdmin = (req, res, next) => {
+const requireCompanyOwnerOrAdmin = async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -173,17 +174,53 @@ const requireCompanyOwnerOrAdmin = (req, res, next) => {
     return next();
   }
 
-  // Check if user is company owner (has companyId and is the owner)
-  if (req.user.companyId) {
-    // Further validation should be done in the route handler
-    // by checking if the user is the owner of the company
-    return next();
+  // Check if user has company
+  const companyId = req.user.companyId || req.user.company;
+  if (!companyId) {
+    return res.status(403).json({
+      success: false,
+      message: 'Company membership required'
+    });
   }
 
-  return res.status(403).json({
-    success: false,
-    message: 'Company owner or admin access required'
-  });
+  try {
+    // Verify ownership via Company model
+    const Company = require('mongoose').model('Company');
+    const company = await Company.findById(companyId);
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: 'Company not found'
+      });
+    }
+
+    const userId = req.user._id || req.user.userId;
+    const member = company.members.find(m => m.user.toString() === userId.toString());
+
+    if (!member) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not a member of this company'
+      });
+    }
+
+    if (member.roleInCompany !== 'Owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Company owner or admin access required'
+      });
+    }
+
+    req.isCompanyOwner = true;
+    return next();
+  } catch (error) {
+    console.error('requireCompanyOwnerOrAdmin error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Authorization check failed'
+    });
+  }
 };
 
 module.exports = {

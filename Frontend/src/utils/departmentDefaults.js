@@ -212,11 +212,12 @@ export const PERMISSION_LABELS = {
   projects: 'Projects',
   teamCommunication: 'Team Communication',
   digitalMediaManagement: 'Digital Media Management',
-  marketing: 'Marketing',
+  marketing: 'Marketing (Email Campaigns, Contact Lists)',
   hrManagement: 'HR Management',
   financeManagement: 'Finance Management',
   seoManagement: 'SEO Management',
-  internalPolicies: 'Internal Policies'
+  internalPolicies: 'Internal Policies',
+  settingsConfiguration: 'Settings & Configuration'
 };
 
 // Role-based permission defaults

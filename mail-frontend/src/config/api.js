@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { MAIL_LOGIN_URL, getMainAppUrl } from './authConfig';
 
 // Global flag to prevent redirect during token extraction/authentication
@@ -27,20 +28,13 @@ api.interceptors.request.use(
 
     // If localStorage was cleared, check backup location
     if (!token && window.__NOXTM_AUTH_TOKEN__) {
-      console.warn('[API] ⚠️ localStorage cleared! Restoring from backup...');
       token = window.__NOXTM_AUTH_TOKEN__;
       localStorage.setItem('token', token); // Restore it
     }
 
-    console.log('[API] Request:', config.method?.toUpperCase(), config.url);
-    console.log('[API] Token check - localStorage:', token ? `YES (${token.substring(0,20)}...)` : 'NO');
-    console.log('[API] Token check - backup:', window.__NOXTM_AUTH_TOKEN__ ? 'YES' : 'NO');
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('[API] ✅ Authorization header SET');
     } else {
-      console.warn('[API] ⚠️ NO TOKEN - relying on cookie auth');
     }
     // Note: Cookies are sent automatically due to withCredentials: true
     // Backend will use cookie if Authorization header is missing
@@ -58,29 +52,22 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      console.error('[API] ❌ 401 Error on:', error.config?.url);
-      console.error('[API] Response:', error.response?.data);
 
       // Check if this is a true authentication failure
       // Only redirect if user has no valid token/cookie
       const hasToken = localStorage.getItem('token');
       const hasCookie = document.cookie.includes('token') || document.cookie.includes('auth');
 
-      console.log('[API] Has token:', hasToken ? 'YES' : 'NO');
-      console.log('[API] Has cookie:', hasCookie ? 'YES' : 'NO');
-
       // If no auth credentials exist at all, redirect to login
       if (!hasToken && !hasCookie && window.location.pathname !== '/login') {
         // NEW: Don't redirect if auth is still loading (prevents race condition)
         if (window.__NOXTM_AUTH_LOADING__) {
-          console.log('[API] Auth loading in progress, not redirecting yet');
           error.isAuthError = true;
           return Promise.reject(error);
         }
 
         // Add a delay to avoid race condition with token saving
         // This gives time for localStorage/cookie to sync across subdomains
-        console.log('[API] No auth detected, waiting 3500ms before redirecting...');
         setTimeout(() => {
           const recheckToken = localStorage.getItem('token');
           const recheckCookie = document.cookie.includes('token') || document.cookie.includes('auth');
@@ -90,9 +77,7 @@ api.interceptors.response.use(
           const now = Date.now();
 
           if (lastRedirect && (now - parseInt(lastRedirect)) < 5000) {
-            console.error('[API] ❌ REDIRECT LOOP DETECTED - Not redirecting again');
-            console.error('[API] Last redirect was', (now - parseInt(lastRedirect)), 'ms ago');
-            alert('Unable to authenticate with mail app. Please refresh the page and try again.');
+            toast.error('Unable to authenticate. Please refresh the page and try again.');
             error.isAuthError = true;
             return Promise.reject(error);
           }
@@ -102,10 +87,8 @@ api.interceptors.response.use(
             sessionStorage.setItem('last_mail_redirect', now.toString());
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            console.log('[API] No authentication found after delay, redirecting to login');
             window.location.href = MAIL_LOGIN_URL;
           } else {
-            console.log('[API] ✅ Token found after delay, NOT redirecting');
           }
         }, 3500); // 3500ms grace period - longer than Inbox's 3-second retry
 
@@ -114,15 +97,12 @@ api.interceptors.response.use(
         return Promise.reject(error);
       } else {
         // User has credentials but got 401 - likely endpoint issue or permission denied
-        // Log it but don't redirect - let component handle the error
-        console.error('[API] 401 error but user has credentials (not auto-redirecting)');
         error.isAuthError = true;
       }
     }
 
     // Handle 403 - Subscription required errors
     if (error.response?.status === 403) {
-      console.error('[API] ❌ 403 Error on:', error.config?.url);
       const data = error.response?.data;
 
       // Check if this is a subscription-related 403
@@ -132,12 +112,9 @@ api.interceptors.response.use(
 
         // Don't redirect if auth is still loading
         if (window.__NOXTM_AUTH_LOADING__) {
-          console.log('[API] Auth loading in progress, not redirecting for 403');
           error.isSubscriptionError = true;
           return Promise.reject(error);
         }
-
-        console.log('[API] Subscription error detected - redirecting to pricing');
         window.location.href = getMainAppUrl('/pricing');
         return Promise.reject(error);
       }

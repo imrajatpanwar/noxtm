@@ -70,7 +70,6 @@ function CampaignAnalytics() {
         setPreviousPeriodStats(prevRes.data.overallStats || {});
       }
     } catch (error) {
-      console.error('Error fetching campaign analytics:', error);
     } finally {
       setLoading(false);
     }
@@ -83,7 +82,6 @@ function CampaignAnalytics() {
         setCampaignDetails(res.data.recipients || []);
       }
     } catch (error) {
-      console.error('Error fetching campaign details:', error);
       setCampaignDetails([]);
     }
   };

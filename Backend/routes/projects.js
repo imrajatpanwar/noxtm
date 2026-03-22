@@ -158,15 +158,16 @@ router.get('/settings', auth, async (req, res) => {
     }
 });
 
-// Update project settings (Manager only)
+// Update project settings (Owner or Admin only)
 router.put('/settings', auth, async (req, res) => {
     try {
-        // Check if user has manager permissions
-        const managerRoles = ['Owner', 'Manager', 'Admin', 'Business Admin'];
+        // Check if user has owner/admin permissions
+        // Owner (workspace creator) or Admin (platform admin) can modify settings
+        const adminRoles = ['Owner', 'Admin', 'Business Admin'];
         const userRole = req.user.role || req.user.roleInCompany;
-        
-        if (!managerRoles.includes(userRole)) {
-            return res.status(403).json({ message: 'Only managers can modify project settings' });
+
+        if (!adminRoles.includes(userRole)) {
+            return res.status(403).json({ message: 'Only workspace owners can modify project settings' });
         }
 
         if (!req.user.companyId) {

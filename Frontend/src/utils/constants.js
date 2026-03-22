@@ -15,11 +15,12 @@ export const ROLE_VALUES = Object.values(ROLES);
 
 // ============================================
 // COMPANY ROLE CONSTANTS
+// Simplified: Owner (workspace creator) and Member (everyone invited)
+// Permission-based access replaces role-based access gates
 // ============================================
 export const COMPANY_ROLES = {
     OWNER: 'Owner',
-    MANAGER: 'Manager',
-    EMPLOYEE: 'Employee'
+    MEMBER: 'Member'
 };
 
 export const COMPANY_ROLE_VALUES = Object.values(COMPANY_ROLES);

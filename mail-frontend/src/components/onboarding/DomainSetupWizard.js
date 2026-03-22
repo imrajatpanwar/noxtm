@@ -23,7 +23,6 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
   // CRITICAL: Restore token when wizard mounts (in case it was cleared)
   useEffect(() => {
     if (window.__NOXTM_AUTH_TOKEN__ && !localStorage.getItem('token')) {
-      console.warn('[WIZARD] Token missing! Restoring from backup...');
       localStorage.setItem('token', window.__NOXTM_AUTH_TOKEN__);
     }
   }, []);
@@ -47,7 +46,7 @@ const DomainSetupWizard = ({ onComplete, onSkip }) => {
   //       }
   //     }
   //   } catch (err) {
-  //     console.error('Error checking existing domains:', err);
+  //
   //   }
   // };
 

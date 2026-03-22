@@ -9,7 +9,6 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      console.log('[PROTECTED_ROUTE] Checking for auth token...');
 
       // CRITICAL FIX: Extract token from URL FIRST (before any auth check)
       // This prevents redirect loop when opening mail app from dashboard
@@ -17,19 +16,13 @@ const ProtectedRoute = ({ children }) => {
       const urlToken = urlParams.get('auth_token');
 
       if (urlToken) {
-        console.log('[PROTECTED_ROUTE] ✅ Token found in URL');
-        console.log('[PROTECTED_ROUTE] Token preview:', urlToken.substring(0, 30) + '...');
 
         // Basic JWT validation (should have 3 parts separated by dots)
         const tokenParts = urlToken.split('.');
         if (tokenParts.length !== 3) {
-          console.error('[PROTECTED_ROUTE] ❌ Invalid token format - not a valid JWT');
-          console.error('[PROTECTED_ROUTE] Token parts:', tokenParts.length, 'expected: 3');
           window.location.href = MAIL_LOGIN_URL;
           return;
         }
-
-        console.log('[PROTECTED_ROUTE] Token format valid, saving to localStorage');
         localStorage.setItem('token', urlToken);
         // Set Authorization header immediately for subsequent API calls
         api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`;
@@ -37,7 +30,6 @@ const ProtectedRoute = ({ children }) => {
         window.history.replaceState({}, document.title, window.location.pathname);
 
         // Add small delay to ensure localStorage write completes
-        console.log('[PROTECTED_ROUTE] Waiting 100ms for token save to complete...');
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
@@ -46,12 +38,10 @@ const ProtectedRoute = ({ children }) => {
 
       if (token) {
         // Token exists, assume authenticated (parent Inbox will verify with /profile)
-        console.log('[PROTECTED_ROUTE] ✅ Token found, assuming authenticated');
         setAuthenticated(true);
         setLoading(false);
       } else {
         // No token anywhere - redirect to login
-        console.log('[PROTECTED_ROUTE] ❌ No token found, redirecting to login');
         window.location.href = MAIL_LOGIN_URL;
       }
     };

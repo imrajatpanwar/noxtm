@@ -84,7 +84,7 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
           setSignature(res.data.signature || '');
         }
       })
-      .catch(err => console.error('Failed to fetch signature:', err));
+      .catch(() => {});
   }, []);
 
   // Update password strength on password input change
@@ -102,7 +102,7 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
             setForwardTo(res.data.forwardTo || '');
           }
         })
-        .catch(err => console.error('Failed to fetch forwarding settings:', err));
+        .catch(() => {});
     }
   }, [account?._id, showForwardingSection]);
 
@@ -116,7 +116,7 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
             setBlockedSenders(res.data.blockedSenders || []);
           }
         })
-        .catch(err => console.error('Failed to fetch blocked senders:', err))
+        .catch(() => {})
         .finally(() => setBlockedSendersLoading(false));
     }
   }, [account?._id, showBlockedSendersSection]);
@@ -131,7 +131,7 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
             setStorageUsage(res.data.storage);
           }
         })
-        .catch(err => console.error('Failed to fetch storage usage:', err))
+        .catch(() => {})
         .finally(() => setStorageLoading(false));
     }
   }, [account?._id]);

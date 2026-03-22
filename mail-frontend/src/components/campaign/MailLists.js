@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiLoader, FiUpload, FiDownload, FiRefreshCw, FiGlobe, FiFileText, FiUsers, FiSend, FiSearch, FiChevronRight, FiMapPin, FiCalendar, FiMail } from 'react-icons/fi';
 import api from '../../config/api';
 import './MailLists.css';
@@ -35,7 +36,6 @@ function MailLists() {
         });
       }
     } catch (err) {
-      console.error('Error fetching mail lists:', err);
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,6 @@ function MailLists() {
         setInstalledModules(moduleIds);
       }
     } catch (err) {
-      console.error('Error fetching installed modules:', err);
     }
   }, []);
 
@@ -102,8 +101,7 @@ function MailLists() {
       await api.delete(`/contact-lists/${listId}`);
       fetchLists();
     } catch (err) {
-      console.error('Error deleting list:', err);
-      alert('Failed to delete list');
+      toast.error('Failed to delete list');
     }
   };
 
@@ -357,7 +355,6 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
         setTradeShows(response.data.data || []);
       }
     } catch (err) {
-      console.error('Error fetching trade shows:', err);
       setError('Failed to load trade shows');
     } finally {
       setTradeShowsLoading(false);
@@ -384,7 +381,6 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
         setSelectedExhibitors(withEmails);
       }
     } catch (err) {
-      console.error('Error fetching exhibitors:', err);
       setError('Failed to load exhibitors');
     } finally {
       setExhibitorsLoading(false);
@@ -475,7 +471,6 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
         onSuccess();
       }
     } catch (err) {
-      console.error('Error creating list:', err);
       setError(err.response?.data?.message || 'Failed to create mail list');
     } finally {
       setLoading(false);
@@ -504,7 +499,6 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
         onSuccess();
       }
     } catch (err) {
-      console.error('Error importing trade show contacts:', err);
       setError(err.response?.data?.message || 'Failed to import contacts');
     } finally {
       setLoading(false);
@@ -784,7 +778,6 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         setContacts(response.data.data.contacts || []);
       }
     } catch (err) {
-      console.error('Error fetching list details:', err);
     } finally {
       setLoading(false);
     }
@@ -815,7 +808,6 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         setCampaigns(drafts);
       }
     } catch (err) {
-      console.error('Error fetching campaigns:', err);
     }
   };
 
@@ -826,14 +818,13 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         contactListIds: [list._id]
       });
       if (response.data.success) {
-        alert(`Added contacts to campaign successfully!`);
+        toast.success("Added contacts to campaign successfully!");
         setShowCampaignPicker(false);
         fetchPipelineInfo();
         onUpdate();
       }
     } catch (err) {
-      console.error('Error adding to campaign:', err);
-      alert(err.response?.data?.message || 'Failed to add contacts to campaign');
+      toast.error(err.response?.data?.message || 'Failed to add contacts to campaign');
     } finally {
       setAddingToCampaign(false);
     }
@@ -866,8 +857,7 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         }, 2500);
       }
     } catch (err) {
-      console.error('Error validating emails:', err);
-      alert('Failed to validate emails: ' + (err.response?.data?.message || err.message));
+      toast.error(err.response?.data?.message || 'Failed to validate emails');
       setValidating(false);
     }
   };
@@ -883,8 +873,7 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         onUpdate();
       }
     } catch (err) {
-      console.error('Error removing invalid emails:', err);
-      alert('Failed to remove invalid emails');
+      toast.error('Failed to remove invalid emails');
     } finally {
       setRemovingInvalid(false);
     }
@@ -896,7 +885,6 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
       fetchListDetails();
       onUpdate();
     } catch (err) {
-      console.error('Error removing contact:', err);
     }
   };
 
