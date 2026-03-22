@@ -236,12 +236,14 @@ function Inbox() {
             <FiMail /> Personal Inbox
           </button>
 
-          <button
-            className={`nav-item ${activeView === 'domains' ? 'active' : ''}`}
-            onClick={() => setActiveView('domains')}
-          >
-            <FiGlobe /> Domain Management
-          </button>
+          {(user?.roleInCompany === 'Owner' || user?.role === 'Admin') && (
+            <button
+              className={`nav-item ${activeView === 'domains' ? 'active' : ''}`}
+              onClick={() => setActiveView('domains')}
+            >
+              <FiGlobe /> Domain Management
+            </button>
+          )}
 
           <div className="nav-section-label">Email Marketing</div>
 
