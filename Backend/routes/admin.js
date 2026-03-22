@@ -494,7 +494,7 @@ router.put('/companies/:id', async (req, res) => {
 router.post('/companies/:id/credits', async (req, res) => {
   try {
     const { action, amount, reason } = req.body;
-    const company = await Company.findById(req.params.id);
+    const company = await Company.findById(req.params.id).lean();
 
     if (!company) {
       return res.status(404).json({ success: false, message: 'Company not found' });
@@ -508,40 +508,35 @@ router.post('/companies/:id/credits', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Amount must be a positive number' });
     }
 
-    // Initialize billing if needed
-    if (!company.billing) {
-      company.billing = { emailCredits: 0, totalPurchased: 0, totalUsed: 0, purchaseHistory: [] };
+    const beforeCredits = company.billing?.emailCredits || 0;
+
+    if (action === 'remove' && beforeCredits < amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot remove ${amount} credits. Current balance: ${beforeCredits}`
+      });
     }
 
-    const beforeCredits = company.billing.emailCredits || 0;
+    const newCredits = action === 'add' ? beforeCredits + amount : beforeCredits - amount;
+    const newTotalPurchased = (company.billing?.totalPurchased || 0) + (action === 'add' ? amount : 0);
 
-    if (action === 'add') {
-      company.billing.emailCredits = beforeCredits + amount;
-      company.billing.totalPurchased = (company.billing.totalPurchased || 0) + amount;
-    } else {
-      // Prevent going below zero
-      if (beforeCredits < amount) {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot remove ${amount} credits. Current balance: ${beforeCredits}`
-        });
+    // Use atomic update to avoid full-document validation issues
+    await Company.findByIdAndUpdate(req.params.id, {
+      $set: {
+        'billing.emailCredits': newCredits,
+        'billing.totalPurchased': newTotalPurchased,
+        updatedAt: new Date()
+      },
+      $push: {
+        'billing.purchaseHistory': {
+          date: new Date(),
+          emailCredits: action === 'add' ? amount : -amount,
+          amount: 0,
+          status: 'completed',
+          paymentMethod: 'admin-grant'
+        }
       }
-      company.billing.emailCredits = beforeCredits - amount;
-    }
-
-    // Add to purchase history
-    if (!company.billing.purchaseHistory) {
-      company.billing.purchaseHistory = [];
-    }
-    company.billing.purchaseHistory.push({
-      date: new Date(),
-      emailCredits: action === 'add' ? amount : -amount,
-      amount: 0, // No cost — admin grant/removal
-      status: 'completed',
-      paymentMethod: 'admin-grant'
     });
-
-    await company.save();
 
     // Audit log
     await AdminAuditLog.logAction({
@@ -550,9 +545,9 @@ router.post('/companies/:id/credits', async (req, res) => {
       targetType: 'Company',
       targetId: company._id,
       targetName: company.companyName,
-      description: `${action === 'add' ? 'Added' : 'Removed'} ${amount} credits. Balance: ${beforeCredits} → ${company.billing.emailCredits}`,
+      description: `${action === 'add' ? 'Added' : 'Removed'} ${amount} credits. Balance: ${beforeCredits} → ${newCredits}`,
       before: { emailCredits: beforeCredits },
-      after: { emailCredits: company.billing.emailCredits },
+      after: { emailCredits: newCredits },
       reason: reason || '',
       ipAddress: getIp(req)
     });
@@ -561,9 +556,9 @@ router.post('/companies/:id/credits', async (req, res) => {
       success: true,
       message: `${amount} credits ${action === 'add' ? 'added' : 'removed'} successfully`,
       billing: {
-        emailCredits: company.billing.emailCredits,
-        totalPurchased: company.billing.totalPurchased,
-        totalUsed: company.billing.totalUsed
+        emailCredits: newCredits,
+        totalPurchased: newTotalPurchased,
+        totalUsed: company.billing?.totalUsed || 0
       }
     });
   } catch (error) {
