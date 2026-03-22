@@ -161,11 +161,13 @@ const emailAccountSchema = new mongoose.Schema({
     index: true
   },
 
-  // NEW: Role-based access control
+  // Role-based access control (simplified: Owner/Member)
+  // Personal Inbox: all company members have access
+  // Email Marketing: only those with marketing permission
   roleAccess: [{
     role: {
       type: String,
-      enum: ['Owner', 'Manager', 'Employee'],
+      enum: ['Owner', 'Member'],
       required: true
     },
     permissions: {
@@ -198,6 +200,12 @@ const emailAccountSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true,
+    default: ''
+  },
+
+  // Email signature (HTML supported)
+  signature: {
+    type: String,
     default: ''
   },
 
@@ -284,19 +292,20 @@ emailAccountSchema.virtual('isQuotaExceeded').get(function() {
   return this.usedStorage >= this.quota;
 });
 
-// NEW: Method to check if user has access to this account
+// Method to check if user has access to this account
+// Simplified: same company = personal inbox access for all members
 emailAccountSchema.methods.hasAccess = async function(user) {
   // If no company ID, it's a personal account (backward compatibility)
   if (!this.companyId) {
     return this.createdBy && this.createdBy.equals(user._id);
   }
 
-  // Check if user's company matches
+  // Check if user's company matches - all company members have inbox access
   if (!user.companyId || !user.companyId.equals(this.companyId)) {
     return false;
   }
 
-  // Get user's role in company
+  // Get user's membership in company
   const Company = mongoose.model('Company');
   const company = await Company.findById(this.companyId);
 
@@ -305,13 +314,8 @@ emailAccountSchema.methods.hasAccess = async function(user) {
   const member = company.members.find(m => m.user.equals(user._id));
   if (!member) return false;
 
-  const userRole = member.roleInCompany;
-
-  // Check if role has access
-  const roleAccess = this.roleAccess.find(r => r.role === userRole);
-  if (!roleAccess) return false;
-
-  // Check department access if specified
+  // All company members have access to personal inbox
+  // Department access check only if specified
   if (this.departmentAccess && this.departmentAccess.length > 0) {
     if (!this.departmentAccess.includes(member.department)) {
       return false;
@@ -321,7 +325,8 @@ emailAccountSchema.methods.hasAccess = async function(user) {
   return true;
 };
 
-// NEW: Method to get permissions for a user
+// Method to get permissions for a user
+// Owner gets full permissions, Member gets read/send
 emailAccountSchema.methods.getPermissions = async function(user) {
   // Default no permissions
   const noPermissions = {
@@ -357,12 +362,6 @@ emailAccountSchema.methods.getPermissions = async function(user) {
   const member = company.members.find(m => m.user.equals(user._id));
   if (!member) return noPermissions;
 
-  const userRole = member.roleInCompany;
-
-  // Get role permissions
-  const roleAccess = this.roleAccess.find(r => r.role === userRole);
-  if (!roleAccess) return noPermissions;
-
   // Check department access
   if (this.departmentAccess && this.departmentAccess.length > 0) {
     if (!this.departmentAccess.includes(member.department)) {
@@ -370,7 +369,23 @@ emailAccountSchema.methods.getPermissions = async function(user) {
     }
   }
 
-  return roleAccess.permissions;
+  // Owner gets full permissions
+  if (member.roleInCompany === 'Owner') {
+    return {
+      canRead: true,
+      canSend: true,
+      canDelete: true,
+      canManage: true
+    };
+  }
+
+  // Member gets read and send permissions for personal inbox
+  return {
+    canRead: true,
+    canSend: true,
+    canDelete: false,
+    canManage: false
+  };
 };
 
 module.exports = mongoose.model('EmailAccount', emailAccountSchema);

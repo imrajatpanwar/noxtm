@@ -1,26 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   MdInbox, MdRefresh, MdMoreVert, MdStar, MdStarBorder,
-  MdArchive, MdDelete, MdEdit, MdSearch, MdSettings,
-  MdChevronLeft, MdChevronRight, MdInfo,
+  MdArchive, MdDelete, MdEdit,
+  MdChevronLeft, MdChevronRight,
   MdSend, MdAttachFile, MdClose, MdMinimize,
-  MdMaximize, MdPersonAdd, MdDownload, MdArrowDropDown,
-  MdReply, MdForward
+  MdMaximize, MdDownload, MdArrowDropDown,
+  MdReply, MdForward,
+  MdFormatBold, MdFormatItalic, MdFormatUnderlined,
+  MdFormatListBulleted, MdFormatListNumbered,
+  MdFormatAlignLeft, MdFormatAlignCenter, MdFormatAlignRight,
+  MdFormatIndentIncrease, MdFormatIndentDecrease,
+  MdFormatQuote, MdStrikethroughS, MdFormatClear,
+  MdUndo, MdRedo, MdInsertLink, MdInsertPhoto,
+  MdInsertEmoticon, MdMoreHoriz, MdOpenInFull
 } from 'react-icons/md';
+import { Search, Settings, UserPlus, LogOut, ExternalLink } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../config/api';
 import { getMainAppUrl } from '../config/authConfig';
 import CreateEmailModal from './CreateEmailModal';
 import EmailConnectionForm from './EmailConnectionForm';
-import ProfileSettings from './mailbox/ProfileSettings';
+import MailSettings from './settings/MailSettings';
 import Checkbox from './ui/Checkbox';
 import IconButton from './ui/IconButton';
 import Tab from './ui/Tab';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from './ui/dropdown-menu';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
 import './MainstreamInbox.css';
 
-function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive user and navigation callback as props from parent (Inbox)
+function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) {  // Receive user and navigation callback as props from parent (Inbox)
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('primary'); // 'primary' | 'promotions' | 'social' | 'updates' | 'sent' | 'settings'
+  const [activeTab, setActiveTab] = useState(initialTab || 'primary'); // 'primary' | 'promotions' | 'social' | 'updates' | 'sent' | 'settings'
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -35,8 +54,123 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeAttachments, setComposeAttachments] = useState([]);
+  const [composeCc, setComposeCc] = useState('');
+  const [composeBcc, setComposeBcc] = useState('');
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [showFormattingBar, setShowFormattingBar] = useState(false);
+  const [composeExpanded, setComposeExpanded] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [savedSelection, setSavedSelection] = useState(null);
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const editorRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+  const moreOptionsRef = useRef(null);
+  const linkPopoverRef = useRef(null);
+
+  // Common emojis grid
+  const emojiList = [
+    '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
+    '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+    '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔',
+    '😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔',
+    '😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶',
+    '😱','😨','😰','😥','😢','😭','😤','😡','🤬','😈',
+    '👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾',
+    '🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
+    '👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞',
+    '🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍',
+    '👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝',
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔',
+    '💯','💢','💥','💫','💦','💨','🕳️','💣','💬','👁️',
+    '⭐','🌟','✨','⚡','🔥','💥','🎉','🎊','🎈','🎁',
+    '✅','❌','⚠️','🚀','💡','📌','📎','🔗','📝','✏️',
+  ];
+
+  // Close emoji picker, link popover & more options on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+      if (moreOptionsRef.current && !moreOptionsRef.current.contains(e.target)) {
+        setShowMoreOptions(false);
+      }
+      if (linkPopoverRef.current && !linkPopoverRef.current.contains(e.target)) {
+        setShowLinkPopover(false);
+        setLinkUrl('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Save current selection range (for link insertion)
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+      setSavedSelection(sel.getRangeAt(0).cloneRange());
+    }
+  };
+
+  // Restore saved selection
+  const restoreSelection = () => {
+    if (savedSelection) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedSelection);
+    }
+  };
+
+  // Apply link to selected text/image
+  const applyLink = () => {
+    if (!linkUrl.trim()) return;
+    let url = linkUrl.trim();
+    // Auto-add https:// if no protocol
+    if (!/^https?:\/\//i.test(url) && !url.startsWith('mailto:')) {
+      url = 'https://' + url;
+    }
+    // Restore the saved selection first
+    restoreSelection();
+    document.execCommand('createLink', false, url);
+    setShowLinkPopover(false);
+    setLinkUrl('');
+    setSavedSelection(null);
+    editorRef.current?.focus();
+  };
+
+  // Insert emoji into editor
+  const insertEmoji = (emoji) => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('insertText', false, emoji);
+    }
+    setShowEmojiPicker(false);
+  };
+
+  // Insert image into editor
+  const handleImageInsert = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+        document.execCommand('insertHTML', false, `<img src="${ev.target.result}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0;" />`);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // reset so same file can be re-selected
+  };
   const [createEmailModalOpen, setCreateEmailModalOpen] = useState(false);
   const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
@@ -48,13 +182,11 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   const [selectAll, setSelectAll] = useState(false);
   const [starredEmails, setStarredEmails] = useState(new Set());
   const [selectDropdownOpen, setSelectDropdownOpen] = useState(false);
-  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
 
   // Fetch hosted email accounts - only after user is ready
   useEffect(() => {
     if (user) {
       // Small delay to ensure token is stable and auth loading flag is cleared
-      console.log('[MAINSTREAM_INBOX] User ready, fetching accounts in 200ms...');
       const timer = setTimeout(() => {
         fetchHostedAccounts();
       }, 200);
@@ -73,27 +205,20 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   // Update currentUser when prop changes
   useEffect(() => {
     if (user) {
-      console.log('[MAINSTREAM_INBOX] Received user from parent:', user.email);
       setCurrentUser(user);
     }
   }, [user]);
 
-  // Close dropdown when clicking outside
+  // Sync activeTab when initialTab prop changes (sidebar Settings click)
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (accountDropdownOpen && !event.target.closest('.mail-account-dropdown-gmail')) {
-        setAccountDropdownOpen(false);
-      }
-    };
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [accountDropdownOpen]);
+  // Dropdown click-outside is handled by Radix DropdownMenu automatically
 
   const fetchHostedAccounts = async () => {
-    console.log('[MAINSTREAM_INBOX] Starting account fetch...');
     setAccountsLoading(true); // Set loading state
     try {
       // Fetch both owned accounts and connected accounts
@@ -105,10 +230,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       const ownedAccounts = ownedResponse.data?.accounts || [];
       const connectedAccounts = connectedResponse.data?.accounts || [];
       const verifiedDomains = ownedResponse.data?.verifiedDomains || [];
-
-      console.log('[MainstreamInbox] User verified domains:', verifiedDomains);
-      console.log('[MainstreamInbox] Owned accounts:', ownedAccounts.length);
-      console.log('[MainstreamInbox] Connected accounts:', connectedAccounts.length);
 
       // Merge both lists, avoiding duplicates
       const accountMap = new Map();
@@ -122,7 +243,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       });
 
       const allAccounts = Array.from(accountMap.values());
-      console.log('[MainstreamInbox] Total available accounts:', allAccounts.length);
 
       setAccounts(allAccounts);
 
@@ -136,7 +256,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         );
 
         if (newAccount) {
-          console.log('[MainstreamInbox] Auto-switching to newly created account:', newAccount.email);
           setSelectedAccount(newAccount);
           localStorage.removeItem('lastCreatedDomain'); // Clear flag
         } else {
@@ -148,21 +267,16 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         setSelectedAccount(allAccounts[0]);
       }
     } catch (error) {
-      console.error('Error fetching accounts:', error);
       setAccounts([]);
     } finally {
-      console.log('[MAINSTREAM_INBOX] Account fetch complete');
       setAccountsLoading(false); // Clear loading state
     }
   };
 
   const fetchEmails = async () => {
     if (!selectedAccount || activeTab === 'settings') {
-      console.log('No account selected');
       return;
     }
-
-    console.log('Fetching emails for:', selectedAccount.email, 'Page:', currentPage);
     setLoading(true);
     setError(null);
     try {
@@ -178,12 +292,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         }
       });
 
-      console.log('Response received:', response.data);
-
       let fetchedEmails = response.data.emails || [];
       const total = response.data.total || 0;
-
-      console.log(`Fetched ${fetchedEmails.length} emails out of ${total} total`);
 
       // Filter out emails sent by the current user (self-sent emails in Inbox)
       if (activeTab !== 'sent') {
@@ -192,16 +302,11 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
           const fromAddress = email.from?.address || '';
           return fromAddress.toLowerCase() !== selectedAccount.email.toLowerCase();
         });
-        console.log(`Filtered ${originalLength - fetchedEmails.length} self-sent emails`);
       }
 
       setEmails(fetchedEmails);
       setTotalEmails(total);
-
-      console.log('Set emails state with', fetchedEmails.length, 'emails');
     } catch (error) {
-      console.error('Error fetching emails:', error);
-      console.error('Error response:', error.response?.data);
 
       const status = error.response?.status;
       const serverMessage = error.response?.data?.message;
@@ -260,11 +365,9 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             folder: folder
           });
         } catch (markReadError) {
-          console.error('Failed to mark email as read on server:', markReadError);
           // Don't show error to user - email is already marked as read in UI
         }
       } catch (error) {
-        console.error('Error fetching email body:', error);
         setError('Failed to load email content');
       } finally {
         setLoading(false);
@@ -288,7 +391,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             folder: folder
           });
         } catch (markReadError) {
-          console.error('Failed to mark email as read on server:', markReadError);
         }
       }
     }
@@ -321,8 +423,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading attachment:', error);
-      alert('Failed to download attachment');
+      toast.error('Failed to download attachment');
     }
   };
 
@@ -330,14 +431,34 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeOpen(true);
     setComposeMinimized(false);
     setComposeTo('');
+    setComposeCc('');
+    setComposeBcc('');
+    setShowCc(false);
+    setShowBcc(false);
     setComposeSubject('');
     setComposeBody('');
     setComposeAttachments([]);
+    // Reset editor content
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+        editorRef.current.dataset.initialized = 'true';
+      }
+    }, 0);
+  };
+
+  // Rich text formatting command
+  const execFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
   };
 
   const handleSendEmail = async () => {
+    // Get body from contentEditable or fallback to state
+    const body = editorRef.current ? editorRef.current.innerHTML : composeBody;
+
     if (!selectedAccount || !composeTo || !composeSubject) {
-      alert('Please fill in recipient and subject');
+      toast.error('Please fill in recipient and subject');
       return;
     }
 
@@ -347,27 +468,33 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
       formData.append('accountId', selectedAccount._id);
       formData.append('to', composeTo);
       formData.append('subject', composeSubject);
-      formData.append('body', composeBody);
+      formData.append('body', body);
+      if (composeCc.trim()) formData.append('cc', composeCc.trim());
+      if (composeBcc.trim()) formData.append('bcc', composeBcc.trim());
 
       // Append attachments
       composeAttachments.forEach(file => {
         formData.append('attachments', file);
       });
 
-      await api.post('/email-accounts/send-email', formData, {
+      const sendRes = await api.post('/email-accounts/send-email', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000 // 2 min for large attachments
       });
 
-      alert('Email sent successfully!');
+      const remaining = sendRes.data?.remainingCredits;
+      toast.success(remaining != null ? `Email sent! (${remaining} credits left)` : 'Email sent successfully!');
       setComposeOpen(false);
       setComposeTo('');
+      setComposeCc('');
+      setComposeBcc('');
+      setShowCc(false);
+      setShowBcc(false);
       setComposeSubject('');
       setComposeBody('');
       setComposeAttachments([]);
     } catch (error) {
-      console.error('Error sending email:', error);
-      alert('Failed to send email: ' + (error.response?.data?.message || error.message));
+      toast.error('Failed to send email: ' + (error.response?.data?.message || error.message));
     } finally {
       setSendingEmail(false);
     }
@@ -415,6 +542,12 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeBody(quotedBody);
     setComposeAttachments([]);
     setComposeOpen(true);
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = quotedBody.replace(/\n/g, '<br>');
+        editorRef.current.dataset.initialized = 'true';
+      }
+    }, 0);
   };
 
   // Forward email
@@ -436,6 +569,12 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
     setComposeBody(forwardBody);
     setComposeAttachments([]);
     setComposeOpen(true);
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = forwardBody.replace(/\n/g, '<br>');
+        editorRef.current.dataset.initialized = 'true';
+      }
+    }, 0);
   };
 
   const handleAvatarUpload = async (file) => {
@@ -457,7 +596,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
 
       setAvatarUploadState({ uploading: false, error: null, success: 'Avatar updated successfully!' });
     } catch (uploadError) {
-      console.error('Avatar upload failed:', uploadError);
       const message = uploadError.response?.data?.message || 'Failed to upload avatar';
       setAvatarUploadState({ uploading: false, error: message, success: null });
     }
@@ -536,7 +674,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   // Bulk action handlers
   const handleBulkDelete = async () => {
     if (selectedEmails.size === 0) {
-      alert('No emails selected');
+      toast.error('No emails selected');
       return;
     }
 
@@ -552,22 +690,21 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
 
       await Promise.all(deletePromises);
 
-      alert(`${selectedEmails.size} email(s) deleted successfully`);
+      toast.success(`${selectedEmails.size} email(s) deleted successfully`);
       setSelectedEmails(new Set());
       setSelectAll(false);
       await fetchEmails();
     } catch (error) {
-      console.error('Error deleting emails:', error);
-      alert('Failed to delete emails: ' + (error.response?.data?.message || error.message));
+      toast.error('Failed to delete emails: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleBulkArchive = async () => {
     if (selectedEmails.size === 0) {
-      alert('No emails selected');
+      toast.error('No emails selected');
       return;
     }
-    alert(`Archive functionality for ${selectedEmails.size} email(s) - to be implemented`);
+    toast('Archive functionality coming soon', { icon: '📦' });
   };
 
   const getEmailPreview = (email) => {
@@ -639,144 +776,137 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
   };
 
   const handleCreateEmailSuccess = (data) => {
-    console.log('Email account created successfully:', data);
     // Refresh the accounts list
     fetchHostedAccounts();
     // Show success message
-    alert(`Email account ${data.email} created successfully!`);
+    toast.success(`Email account ${data.email} created successfully!`);
   };
 
   return (
     <div className="mail-mainstream-inbox mail-gmail-style">
-      {/* Gmail-style Header */}
+      {/* Header */}
       <div className="mail-gmail-header">
         <div className="mail-gmail-header-left">
-          <div className="mail-gmail-search-box">
-            <MdSearch className="search-icon" />
-            <input
+          {/* Search - shadcn/ui */}
+          <div className="relative flex items-center w-full max-w-[720px]">
+            <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
               type="text"
               placeholder="Search mail"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 bg-secondary border-transparent hover:bg-accent focus-visible:bg-background focus-visible:border-border focus-visible:ring-1 focus-visible:ring-ring rounded-lg transition-colors"
             />
           </div>
         </div>
 
         <div className="mail-gmail-header-right">
-          <button className="mail-create-account-btn-header" onClick={() => setCreateEmailModalOpen(true)}>
-            <MdPersonAdd /> Create Email
-          </button>
-          <div className="mail-account-dropdown-gmail">
-            <button
-              className="account-avatar-button"
-              onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
-            >
-              {selectedAccount?.email?.charAt(0).toUpperCase() || 'U'}
-            </button>
-            {accountDropdownOpen && (
-              <div className="account-dropdown-menu">
-                {/* User Header */}
-                <div className="account-dropdown-header">
-                  <div className="account-dropdown-user-info">
-                    <div className="account-dropdown-user-avatar">
-                      {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div className="account-dropdown-user-details">
-                      <div className="account-dropdown-user-greeting">Hello, {user?.fullName || 'User'}</div>
-                      <div className="account-dropdown-user-email">{user?.email || ''}</div>
-                    </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCreateEmailModalOpen(true)}
+            className="gap-1.5"
+          >
+            <UserPlus className="h-4 w-4" />
+            Create Email
+          </Button>
+
+          {/* Account Dropdown - shadcn/ui */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                {selectedAccount?.email?.charAt(0).toUpperCase() || 'U'}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[300px] p-0 rounded-xl shadow-xl border border-gray-200">
+              {/* User Header */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground text-base font-semibold shrink-0">
+                    {user?.fullName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <div
-                    className="account-dropdown-link"
-                    onClick={() => {
-                      setAccountDropdownOpen(false);
-                      window.open(getMainAppUrl(), '_blank');
-                    }}
-                  >
-                    Back to the Dashboard
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">Hello, {user?.fullName || 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
                   </div>
                 </div>
-
-                {/* Email Accounts List */}
-                {accounts.length > 0 && (
-                  <>
-                    <div className="account-dropdown-section">
-                      {accounts.map(account => (
-                        <div
-                          key={account._id}
-                          className={`account-dropdown-account-item ${selectedAccount?._id === account._id ? 'active' : ''}`}
-                          onClick={() => {
-                            setSelectedAccount(account);
-                            setSelectedEmail(null);
-                            setSelectedEmails(new Set());
-                            setAccountDropdownOpen(false);
-                          }}
-                        >
-                          <div className="account-dropdown-account-avatar">
-                            {account.email?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="account-dropdown-account-info">
-                            <div className="account-dropdown-account-name">{account.displayName || account.email?.split('@')[0]}</div>
-                            <div className="account-dropdown-account-email">{account.email}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="account-dropdown-divider"></div>
-                  </>
-                )}
-
-                {/* Footer Menu */}
-                <div className="account-dropdown-menu-section">
-                  <div
-                    className="account-dropdown-menu-item"
-                    onClick={() => {
-                      setActiveTab('settings');
-                      setAccountDropdownOpen(false);
-                    }}
-                  >
-                    <MdSettings className="account-dropdown-menu-icon" />
-                    Mail Settings & Privacy
-                  </div>
-                  <div
-                    className="account-dropdown-menu-item"
-                    onClick={() => {
-                      setAccountDropdownOpen(false);
-                      window.open('https://help.noxtm.com', '_blank');
-                    }}
-                  >
-                    <MdInfo className="account-dropdown-menu-icon" />
-                    Help
-                  </div>
-                  <div
-                    className="account-dropdown-menu-item"
-                    onClick={() => {
-                      setLoginMailModalOpen(true);
-                      setAccountDropdownOpen(false);
-                    }}
-                  >
-                    <MdPersonAdd className="account-dropdown-menu-icon" />
-                    Login Mail
-                  </div>
-                </div>
-
-                <div className="account-dropdown-divider"></div>
-
-                {/* Sign Out */}
-                <div className="account-dropdown-sign-out-section">
-                  <div
-                    className="account-dropdown-sign-out"
-                    onClick={() => {
-                      setAccountDropdownOpen(false);
-                      onLogout && onLogout();
-                    }}
-                  >
-                    Sign Out
-                  </div>
-                </div>
+                <button
+                  onClick={() => window.open(getMainAppUrl(), '_blank')}
+                  className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer bg-transparent border-none p-0"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Back to Dashboard
+                </button>
               </div>
-            )}
-          </div>
+
+              {/* Email Accounts */}
+              {accounts.length > 0 && (
+                <>
+                  <DropdownMenuSeparator className="my-0" />
+                  <div className="px-1.5 py-1.5">
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-2 py-1.5">Email Accounts</DropdownMenuLabel>
+                    {accounts.map(account => (
+                      <DropdownMenuItem
+                        key={account._id}
+                        className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer mb-0.5 ${selectedAccount?._id === account._id ? 'bg-accent' : ''}`}
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          setSelectedEmail(null);
+                          setSelectedEmails(new Set());
+                        }}
+                      >
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-foreground text-xs font-semibold shrink-0 border border-border">
+                          {account.email?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-medium text-foreground truncate">{account.displayName || account.email?.split('@')[0]}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{account.email}</p>
+                        </div>
+                        {selectedAccount?._id === account._id && (
+                          <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <DropdownMenuSeparator className="my-0" />
+
+              {/* Menu Items */}
+              <div className="px-1.5 py-1.5">
+                <DropdownMenuItem
+                  className="gap-2.5 cursor-pointer rounded-lg px-2.5 py-2.5"
+                  onClick={() => setActiveTab('settings')}
+                >
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-[13px]">Settings & Privacy</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2.5 cursor-pointer rounded-lg px-2.5 py-2.5"
+                  onClick={() => setLoginMailModalOpen(true)}
+                >
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-[13px]">Add Existing Mail</span>
+                </DropdownMenuItem>
+              </div>
+
+              <DropdownMenuSeparator className="my-0" />
+
+              {/* Sign Out */}
+              <div className="px-1.5 py-1.5">
+                <DropdownMenuItem
+                  className="gap-2.5 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 rounded-lg px-2.5 py-2.5"
+                  onClick={() => onLogout && onLogout()}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="text-[13px]">Sign Out</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1069,8 +1199,9 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
           /* Email List in Full Width */
           <div className="mail-email-list-fullwidth">
             {activeTab === 'settings' ? (
-              <ProfileSettings
+              <MailSettings
                 account={selectedAccount}
+                accounts={accounts}
                 user={currentUser}
                 onAvatarUpload={handleAvatarUpload}
                 uploading={avatarUploadState.uploading}
@@ -1096,8 +1227,8 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
                     <p>Loading accounts...</p>
                   </div>
                 ) : accounts.length === 0 ? (
-                  // Check if user is a workspace member
-                  currentUser?.companyId ? (
+                  // Check if user is a workspace member (not owner) who needs to connect
+                  currentUser?.companyId && currentUser?.roleInCompany !== 'Owner' ? (
                     <div className="empty-state-connect">
                       <EmailConnectionForm
                         onSuccess={(account) => {
@@ -1192,94 +1323,417 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
         )}
       </div>
 
-      {/* Gmail-style Compose Button */}
-      <button className="mail-compose-btn-gmail" onClick={handleCompose}>
-        <MdEdit size={24} />
-        Compose
-      </button>
+      {/* Gmail-style Compose Button - hide when compose/modals/settings open */}
+      {!composeOpen && !createEmailModalOpen && !loginMailModalOpen && activeTab !== 'settings' && (
+        <button className="mail-compose-btn-gmail" onClick={handleCompose}>
+          <MdEdit size={24} />
+          Compose
+        </button>
+      )}
 
-      {/* Compose Popup */}
-      {composeOpen && (
-        <div className={`compose-popup ${composeMinimized ? 'minimized' : ''}`}>
-          <div className="compose-header">
-            <span>New Message</span>
-            <div className="compose-controls">
-              <button onClick={() => setComposeMinimized(!composeMinimized)}>
-                {composeMinimized ? <MdMaximize size={18} /> : <MdMinimize size={18} />}
+      {/* Compose Popup - Gmail style - hide when modals/settings open */}
+      {composeOpen && !createEmailModalOpen && !loginMailModalOpen && activeTab !== 'settings' && (
+        <div
+          className="fixed z-50 flex flex-col bg-background rounded-t-xl overflow-hidden"
+          style={{
+            bottom: 0,
+            right: composeExpanded ? '10%' : '80px',
+            width: composeMinimized ? '280px' : composeExpanded ? '80%' : '580px',
+            height: composeMinimized ? '40px' : composeExpanded ? '85vh' : '560px',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.08)',
+            maxWidth: composeExpanded ? '1100px' : '580px'
+          }}
+        >
+          {/* Dark Header */}
+          <div
+            className="flex items-center justify-between px-3 shrink-0 select-none"
+            style={{ backgroundColor: '#404040', height: '40px', borderRadius: '12px 12px 0 0' }}
+            onClick={() => composeMinimized && setComposeMinimized(false)}
+          >
+            <span className="text-[13px] font-medium text-white truncate cursor-default pl-1">New Message</span>
+            <div className="flex items-center">
+              <button
+                onClick={(e) => { e.stopPropagation(); setComposeMinimized(!composeMinimized); }}
+                className="w-7 h-7 flex items-center justify-center rounded-sm hover:bg-white/15 transition-colors cursor-pointer text-gray-300 hover:text-white"
+              >
+                <MdMinimize size={18} />
               </button>
-              <button onClick={() => setComposeOpen(false)}>
-                <MdClose size={20} />
+              <button
+                onClick={(e) => { e.stopPropagation(); setComposeExpanded(!composeExpanded); }}
+                className="w-7 h-7 flex items-center justify-center rounded-sm hover:bg-white/15 transition-colors cursor-pointer text-gray-300 hover:text-white"
+              >
+                <MdOpenInFull size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setComposeOpen(false); setComposeExpanded(false); }}
+                className="w-7 h-7 flex items-center justify-center rounded-sm hover:bg-white/15 transition-colors cursor-pointer text-gray-300 hover:text-white"
+              >
+                <MdClose size={18} />
               </button>
             </div>
           </div>
+
           {!composeMinimized && (
-            <div className="compose-body">
-              <div className="compose-field">
-                <label>To:</label>
+            <div className="flex flex-col flex-1 overflow-hidden bg-white">
+              {/* To Field */}
+              <div className="flex items-center border-b border-gray-200 px-3 min-h-[38px]">
+                <span className="text-[13px] text-gray-500 w-[52px] shrink-0">To</span>
                 <input
-                  type="email"
+                  type="text"
                   value={composeTo}
                   onChange={(e) => setComposeTo(e.target.value)}
-                  placeholder="recipient@example.com"
+                  className="flex-1 py-2 text-[13px] bg-transparent border-none outline-none text-gray-800"
                 />
+                <div className="flex items-center gap-0.5 text-[13px] text-gray-500 shrink-0">
+                  {!showCc && (
+                    <button onClick={() => setShowCc(true)} className="px-1 py-0.5 rounded hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer">Cc</button>
+                  )}
+                  {!showBcc && (
+                    <button onClick={() => setShowBcc(true)} className="px-1 py-0.5 rounded hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer">Bcc</button>
+                  )}
+                </div>
               </div>
-              <div className="compose-field">
-                <label>Subject:</label>
+
+              {/* Cc Field */}
+              {showCc && (
+                <div className="flex items-center border-b border-gray-200 px-3 min-h-[38px]">
+                  <span className="text-[13px] text-gray-500 w-[52px] shrink-0">Cc</span>
+                  <input
+                    type="text"
+                    value={composeCc}
+                    onChange={(e) => setComposeCc(e.target.value)}
+                    className="flex-1 py-2 text-[13px] bg-transparent border-none outline-none text-gray-800"
+                    autoFocus
+                  />
+                  <button onClick={() => { setShowCc(false); setComposeCc(''); }} className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <MdClose size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Bcc Field */}
+              {showBcc && (
+                <div className="flex items-center border-b border-gray-200 px-3 min-h-[38px]">
+                  <span className="text-[13px] text-gray-500 w-[52px] shrink-0">Bcc</span>
+                  <input
+                    type="text"
+                    value={composeBcc}
+                    onChange={(e) => setComposeBcc(e.target.value)}
+                    className="flex-1 py-2 text-[13px] bg-transparent border-none outline-none text-gray-800"
+                    autoFocus
+                  />
+                  <button onClick={() => { setShowBcc(false); setComposeBcc(''); }} className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <MdClose size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Subject Field */}
+              <div className="flex items-center border-b border-gray-200 px-3 min-h-[38px]">
+                <span className="text-[13px] text-gray-500 w-[52px] shrink-0">Subject</span>
                 <input
                   type="text"
                   value={composeSubject}
                   onChange={(e) => setComposeSubject(e.target.value)}
-                  placeholder="Subject"
-                />
-              </div>
-              <div className="compose-field full">
-                <textarea
-                  value={composeBody}
-                  onChange={(e) => setComposeBody(e.target.value)}
-                  placeholder="Compose your message..."
-                  rows="10"
+                  className="flex-1 py-2 text-[13px] bg-transparent border-none outline-none text-gray-800"
                 />
               </div>
 
-              {/* Attachments List */}
+              {/* Rich Text Body */}
+              <div className="flex-1 overflow-y-auto">
+                <div
+                  ref={(el) => {
+                    editorRef.current = el;
+                    // Set initial content only once when ref is first attached
+                    if (el && !el.dataset.initialized) {
+                      el.innerHTML = composeBody || '';
+                      el.dataset.initialized = 'true';
+                    }
+                  }}
+                  contentEditable
+                  suppressContentEditableWarning
+                  className="w-full h-full px-4 py-3 text-[13px] text-gray-800 outline-none leading-relaxed"
+                  style={{ minHeight: '200px', fontFamily: 'Arial, sans-serif' }}
+                  data-placeholder="Compose your message..."
+                />
+              </div>
+
+              {/* Attachments */}
               {composeAttachments.length > 0 && (
-                <div className="compose-attachments">
+                <div className="px-3 py-2 border-t border-gray-200 flex flex-wrap gap-2 shrink-0 bg-gray-50">
                   {composeAttachments.map((file, index) => (
-                    <div key={index} className="compose-attachment-item">
-                      <MdAttachFile className="compose-attachment-icon" />
-                      <span className="compose-attachment-name">{file.name}</span>
-                      <span className="compose-attachment-size">{formatFileSize(file.size)}</span>
-                      <button
-                        className="compose-attachment-remove"
-                        onClick={() => removeAttachment(index)}
-                        title="Remove attachment"
-                      >
-                        <MdClose size={16} />
+                    <div key={index} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 text-[12px] shadow-sm">
+                      <MdAttachFile className="text-gray-400" size={14} />
+                      <span className="truncate max-w-[120px] text-gray-700">{file.name}</span>
+                      <span className="text-gray-400">{formatFileSize(file.size)}</span>
+                      <button onClick={() => removeAttachment(index)} className="text-gray-400 hover:text-gray-600 cursor-pointer ml-0.5">
+                        <MdClose size={14} />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="compose-footer">
+              {/* Formatting Toolbar (collapsible) */}
+              {showFormattingBar && (
+                <div className="flex items-center gap-0.5 px-3 py-1.5 border-t border-gray-200 bg-gray-50 shrink-0 flex-wrap">
+                  <button onClick={() => execFormat('undo')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Undo"><MdUndo size={18} /></button>
+                  <button onClick={() => execFormat('redo')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Redo"><MdRedo size={18} /></button>
+
+                  <div className="w-px h-5 bg-gray-300 mx-1" />
+
+                  <select
+                    onChange={(e) => { execFormat('fontName', e.target.value); }}
+                    defaultValue="Sans Serif"
+                    className="h-7 text-[12px] text-gray-600 bg-transparent border border-gray-300 rounded px-1.5 cursor-pointer outline-none hover:bg-gray-100"
+                  >
+                    <option value="Arial, sans-serif">Sans Serif</option>
+                    <option value="Georgia, serif">Serif</option>
+                    <option value="monospace">Fixed Width</option>
+                    <option value="Comic Sans MS, cursive">Comic Sans</option>
+                    <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                  </select>
+
+                  <select
+                    onChange={(e) => { execFormat('fontSize', e.target.value); }}
+                    defaultValue="3"
+                    className="h-7 text-[12px] text-gray-600 bg-transparent border border-gray-300 rounded px-1.5 cursor-pointer outline-none hover:bg-gray-100 w-12"
+                  >
+                    <option value="1">Small</option>
+                    <option value="2">Normal</option>
+                    <option value="3">Medium</option>
+                    <option value="4">Large</option>
+                    <option value="5">Huge</option>
+                  </select>
+
+                  <div className="w-px h-5 bg-gray-300 mx-1" />
+
+                  <button onClick={() => execFormat('bold')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer font-bold" title="Bold"><MdFormatBold size={18} /></button>
+                  <button onClick={() => execFormat('italic')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Italic"><MdFormatItalic size={18} /></button>
+                  <button onClick={() => execFormat('underline')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Underline"><MdFormatUnderlined size={18} /></button>
+                  <input
+                    type="color"
+                    defaultValue="#000000"
+                    onChange={(e) => execFormat('foreColor', e.target.value)}
+                    className="w-7 h-7 rounded cursor-pointer border-none p-0.5"
+                    title="Text color"
+                  />
+
+                  <div className="w-px h-5 bg-gray-300 mx-1" />
+
+                  <button onClick={() => execFormat('justifyLeft')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Align left"><MdFormatAlignLeft size={18} /></button>
+                  <button onClick={() => execFormat('justifyCenter')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Align center"><MdFormatAlignCenter size={18} /></button>
+                  <button onClick={() => execFormat('justifyRight')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Align right"><MdFormatAlignRight size={18} /></button>
+
+                  <div className="w-px h-5 bg-gray-300 mx-1" />
+
+                  <button onClick={() => execFormat('insertOrderedList')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Numbered list"><MdFormatListNumbered size={18} /></button>
+                  <button onClick={() => execFormat('insertUnorderedList')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Bulleted list"><MdFormatListBulleted size={18} /></button>
+                  <button onClick={() => execFormat('indent')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Indent more"><MdFormatIndentIncrease size={18} /></button>
+                  <button onClick={() => execFormat('outdent')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Indent less"><MdFormatIndentDecrease size={18} /></button>
+
+                  <div className="w-px h-5 bg-gray-300 mx-1" />
+
+                  <button onClick={() => { const blockquote = document.queryCommandValue('formatBlock'); execFormat('formatBlock', blockquote === 'blockquote' ? 'div' : 'blockquote'); }} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Quote"><MdFormatQuote size={18} /></button>
+                  <button onClick={() => execFormat('strikeThrough')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Strikethrough"><MdStrikethroughS size={18} /></button>
+                  <button onClick={() => execFormat('removeFormat')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 cursor-pointer" title="Clear formatting"><MdFormatClear size={18} /></button>
+                </div>
+              )}
+
+              {/* Bottom Toolbar */}
+              <div className="flex items-center px-3 py-2 shrink-0 border-t border-gray-100 bg-white">
+                {/* Send Button */}
                 <button
-                  className="send-btn-gmail"
                   onClick={handleSendEmail}
                   disabled={sendingEmail}
+                  className="flex items-center gap-2 h-9 px-6 rounded-full text-white text-[13px] font-medium transition-all cursor-pointer disabled:opacity-60 shadow-sm hover:shadow-md"
+                  style={{ backgroundColor: '#0b57d0' }}
+                  onMouseEnter={(e) => !sendingEmail && (e.currentTarget.style.backgroundColor = '#0842a0')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#0b57d0')}
                 >
-                  <MdSend /> {sendingEmail ? 'Sending...' : 'Send'}
+                  <MdSend size={16} />
+                  {sendingEmail ? 'Sending...' : 'Send'}
                 </button>
-                <button className="attach-btn-gmail" onClick={handleAttachFiles}>
-                  <MdAttachFile /> Attach
+
+                {/* Action Icons */}
+                <div className="flex items-center ml-2 gap-0.5">
+                  <button
+                    onClick={() => setShowFormattingBar(!showFormattingBar)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${showFormattingBar ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+                    title="Formatting options"
+                  >
+                    <span className="text-[15px] font-semibold" style={{ fontFamily: 'serif' }}>A</span>
+                  </button>
+                  <button onClick={handleAttachFiles} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer" title="Attach files">
+                    <MdAttachFile size={20} />
+                  </button>
+                  {/* Insert Link Popover */}
+                  <div className="relative" ref={linkPopoverRef}>
+                    <button
+                      onClick={() => {
+                        saveSelection();
+                        setShowLinkPopover(!showLinkPopover);
+                        setLinkUrl('');
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${showLinkPopover ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+                      title="Insert link"
+                    >
+                      <MdInsertLink size={20} />
+                    </button>
+                    {showLinkPopover && (
+                      <div
+                        className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border border-gray-200 p-3 z-50"
+                        style={{ width: '360px' }}
+                      >
+                        <div className="text-[11px] text-gray-400 font-medium mb-2">Insert Link</div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all bg-gray-50">
+                            <MdInsertLink size={18} className="text-gray-400 shrink-0 mr-2" />
+                            <input
+                              type="text"
+                              value={linkUrl}
+                              onChange={(e) => setLinkUrl(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') { setShowLinkPopover(false); setLinkUrl(''); } }}
+                              placeholder="Type or paste a link"
+                              className="flex-1 text-[13px] text-gray-800 bg-transparent border-none outline-none placeholder:text-gray-400"
+                              autoFocus
+                            />
+                          </div>
+                          <button
+                            onClick={applyLink}
+                            disabled={!linkUrl.trim()}
+                            className={`h-9 px-4 rounded-lg text-[13px] font-medium transition-all cursor-pointer ${linkUrl.trim() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                          >
+                            Apply
+                          </button>
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-2">Select text first, then insert a link to wrap it</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Emoji Picker */}
+                  <div className="relative" ref={emojiPickerRef}>
+                    <button
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${showEmojiPicker ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+                      title="Insert emoji"
+                    >
+                      <MdInsertEmoticon size={20} />
+                    </button>
+                    {showEmojiPicker && (
+                      <div
+                        className="absolute bottom-10 left-0 bg-white rounded-xl shadow-2xl border border-gray-200 p-3 z-50"
+                        style={{ width: '320px', maxHeight: '280px', overflowY: 'auto' }}
+                      >
+                        <div className="text-[11px] text-gray-400 font-medium mb-2 px-0.5">Emojis</div>
+                        <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
+                          {emojiList.map((emoji, i) => (
+                            <button
+                              key={i}
+                              onClick={() => insertEmoji(emoji)}
+                              className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 cursor-pointer text-[18px] transition-transform hover:scale-125"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Insert Image */}
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
+                    title="Insert photo"
+                  >
+                    <MdInsertPhoto size={20} />
+                  </button>
+                  <input type="file" ref={imageInputRef} onChange={handleImageInsert} accept="image/*" style={{ display: 'none' }} />
+
+                  {/* More Options */}
+                  <div className="relative" ref={moreOptionsRef}>
+                    <button
+                      onClick={() => setShowMoreOptions(!showMoreOptions)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${showMoreOptions ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+                      title="More options"
+                    >
+                      <MdMoreHoriz size={20} />
+                    </button>
+                    {showMoreOptions && (
+                      <div className="absolute bottom-10 right-0 bg-white rounded-lg shadow-2xl border border-gray-200 py-1 z-50 min-w-[200px]">
+                        <button
+                          onClick={() => { setComposeExpanded(!composeExpanded); setShowMoreOptions(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-100 cursor-pointer text-left"
+                        >
+                          <MdOpenInFull size={16} className="text-gray-500" />
+                          {composeExpanded ? 'Default size' : 'Full screen'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (editorRef.current) {
+                              const sel = window.getSelection();
+                              sel.selectAllChildren(editorRef.current);
+                            }
+                            setShowMoreOptions(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-100 cursor-pointer text-left"
+                        >
+                          <MdEdit size={16} className="text-gray-500" />
+                          Select all
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (editorRef.current) editorRef.current.innerHTML = '';
+                            setShowMoreOptions(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-100 cursor-pointer text-left"
+                        >
+                          <MdFormatClear size={16} className="text-gray-500" />
+                          Clear all formatting
+                        </button>
+                        <div className="border-t border-gray-200 my-1" />
+                        <button
+                          onClick={() => {
+                            if (editorRef.current) {
+                              const text = editorRef.current.innerText;
+                              editorRef.current.innerHTML = text;
+                            }
+                            setShowMoreOptions(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-100 cursor-pointer text-left"
+                        >
+                          <MdFormatClear size={16} className="text-gray-500" />
+                          Plain text mode
+                        </button>
+                        <button
+                          onClick={() => {
+                            window.print();
+                            setShowMoreOptions(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-100 cursor-pointer text-left"
+                        >
+                          <MdDownload size={16} className="text-gray-500" />
+                          Print
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple style={{ display: 'none' }} />
+
+                {/* Discard - right aligned */}
+                <button
+                  onClick={() => { setComposeOpen(false); setComposeExpanded(false); }}
+                  className="ml-auto w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
+                  title="Discard draft"
+                >
+                  <MdDelete size={20} />
                 </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  style={{ display: 'none' }}
-                />
-                <span className="from-info">From: {selectedAccount?.email}</span>
               </div>
             </div>
           )}
@@ -1302,7 +1756,6 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout }) {  // Receive 
             </button>
             <EmailConnectionForm
               onSuccess={(account) => {
-                console.log('[MainstreamInbox] External email connected:', account);
                 setLoginMailModalOpen(false);
                 // Refresh accounts list
                 fetchHostedAccounts();

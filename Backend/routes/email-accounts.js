@@ -97,19 +97,36 @@ const isAdmin = (req, res, next) => {
 // EMAIL ACCOUNTS
 // ==========================================
 
-// Get all email accounts
+// Get all email accounts (filtered by user's company for security)
 router.get('/', isAuthenticated, async (req, res) => {
   try {
     const { page = 1, limit = 20, search, domain, enabled, sort = '-createdAt' } = req.query;
+    const userId = req.user._id || req.user.userId;
+    const userCompanyId = req.user.companyId;
 
     const query = {};
 
+    // IMPORTANT: Filter by company for multi-tenancy security
+    // Users can only see accounts belonging to their company or that they created
+    if (userCompanyId) {
+      query.$or = [
+        { companyId: userCompanyId },
+        { createdBy: userId }
+      ];
+    } else {
+      // No company - only show user's own accounts
+      query.createdBy = userId;
+    }
+
     // Filter by search
     if (search) {
-      query.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { displayName: { $regex: search, $options: 'i' } }
-      ];
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { email: { $regex: search, $options: 'i' } },
+          { displayName: { $regex: search, $options: 'i' } }
+        ]
+      });
     }
 
     // Filter by domain
@@ -176,14 +193,19 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
     const emailDomainNames = emailDomains.map(d => d.domain.toLowerCase());
 
     // 2. Get domains from UserVerifiedDomain (new model with AWS SES)
-    // CRITICAL: Filter by BOTH userId AND companyId to prevent cross-company domain leakage
+    // Filter by userId — also include domains created before company was assigned (no companyId)
     const uvdQuery = {
       userId: userId,
       verificationStatus: 'SUCCESS',
       enabled: true
     };
     if (userCompanyId) {
-      uvdQuery.companyId = userCompanyId;
+      // Include domains belonging to user's company OR domains with no companyId (legacy/pre-company)
+      uvdQuery.$or = [
+        { companyId: userCompanyId },
+        { companyId: { $exists: false } },
+        { companyId: null }
+      ];
     }
     const userVerifiedDomains = await UserVerifiedDomain.find(uvdQuery).select('domain');
     const userVerifiedDomainNames = userVerifiedDomains.map(d => d.domain.toLowerCase());
@@ -200,9 +222,13 @@ router.get('/by-verified-domain', isAuthenticated, async (req, res) => {
       enabled: true
     };
 
-    // Strict company filtering — only show accounts for the user's company
+    // Company filtering — show accounts for user's company OR accounts with no companyId (legacy/pre-company)
     if (userCompanyId) {
-      query.companyId = userCompanyId;
+      query.$or = [
+        { companyId: userCompanyId },
+        { companyId: { $exists: false } },
+        { companyId: null }
+      ];
     } else {
       // No company — only show personal accounts (no companyId)
       query.$or = [
@@ -414,6 +440,99 @@ router.get('/connected', isAuthenticated, async (req, res) => {
   }
 });
 
+// Get ALL connected email accounts for company (Owner only)
+// Shows all company domain emails that members have connected to
+router.get('/connected/company', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Company membership required'
+      });
+    }
+
+    // Check if user is Owner
+    const Company = require('../models/Company');
+    const company = await Company.findById(companyId);
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: 'Company not found'
+      });
+    }
+
+    const member = company.members.find(m => m.user.toString() === userId.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only workspace owners can view all company email accounts'
+      });
+    }
+
+    const UserEmailConnection = require('../models/UserEmailConnection');
+    const User = require('../models/User');
+
+    // Get all email accounts for this company
+    const companyAccounts = await EmailAccount.find({
+      companyId,
+      enabled: true
+    }).select('-password -smtpSettings.encryptedPassword');
+
+    // Get all connections for these accounts
+    const accountIds = companyAccounts.map(a => a._id);
+    const allConnections = await UserEmailConnection.find({
+      emailAccountId: { $in: accountIds }
+    }).populate('userId', 'fullName email profileImage');
+
+    // Build a map of account connections
+    const connectionMap = {};
+    allConnections.forEach(conn => {
+      const accId = conn.emailAccountId.toString();
+      if (!connectionMap[accId]) {
+        connectionMap[accId] = [];
+      }
+      if (conn.userId) {
+        connectionMap[accId].push({
+          userId: conn.userId._id,
+          fullName: conn.userId.fullName,
+          email: conn.userId.email,
+          profileImage: conn.userId.profileImage,
+          lastConnectedAt: conn.lastConnectedAt
+        });
+      }
+    });
+
+    // Build response with account info and connected users
+    const accountsWithConnections = companyAccounts.map(account => {
+      const acc = account.toObject();
+      acc.connectedUsers = connectionMap[account._id.toString()] || [];
+      acc.isConnected = acc.connectedUsers.length > 0;
+      return acc;
+    });
+
+    res.json({
+      success: true,
+      accounts: accountsWithConnections,
+      summary: {
+        totalAccounts: accountsWithConnections.length,
+        connectedAccounts: accountsWithConnections.filter(a => a.isConnected).length,
+        disconnectedAccounts: accountsWithConnections.filter(a => !a.isConnected).length
+      }
+    });
+  } catch (error) {
+    console.error('[connected/company] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch company email accounts',
+      error: error.message
+    });
+  }
+});
+
 // Get email accounts by domain name (only if user owns the domain)
 router.get('/by-domain/:domainName', isAuthenticated, async (req, res) => {
   try {
@@ -508,7 +627,7 @@ router.get('/fetch-inbox', isAuthenticated, async (req, res) => {
 
     // Configure IMAP connection for hosted account
     // Use localhost since Dovecot is on the same server
-    const host = account.imapSettings.host || '127.0.0.1';
+    const host = process.env.USE_LOCALHOST_IMAP === 'true' ? '127.0.0.1' : (account.imapSettings.host || 'mail.noxtm.com');
     const imapConfig = {
       host: host,
       port: account.imapSettings.port || 993,
@@ -639,7 +758,7 @@ router.get('/fetch-email-body', isAuthenticated, async (req, res) => {
 
     const { fetchSingleEmail } = require('../utils/imapHelper');
     const password = decrypt(account.imapSettings.encryptedPassword);
-    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    const host = process.env.USE_LOCALHOST_IMAP === 'true' ? '127.0.0.1' : (account.imapSettings.host || 'mail.noxtm.com');
 
     const imapConfig = {
       host: host,
@@ -716,7 +835,7 @@ router.post('/mark-as-read', isAuthenticated, async (req, res) => {
 
     const Imap = require('imap');
     const password = decrypt(account.imapSettings.encryptedPassword);
-    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    const host = process.env.USE_LOCALHOST_IMAP === 'true' ? '127.0.0.1' : (account.imapSettings.host || 'mail.noxtm.com');
 
     const imapConfig = {
       user: account.imapSettings.username || account.email,
@@ -800,7 +919,7 @@ router.get('/download-attachment', isAuthenticated, async (req, res) => {
 
     const { fetchSingleEmail } = require('../utils/imapHelper');
     const password = decrypt(account.imapSettings.encryptedPassword);
-    const host = account.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (account.imapSettings.host || '127.0.0.1');
+    const host = process.env.USE_LOCALHOST_IMAP === 'true' ? '127.0.0.1' : (account.imapSettings.host || 'mail.noxtm.com');
 
     const imapConfig = {
       host: host,
@@ -889,18 +1008,49 @@ router.post('/send-email', isAuthenticated, (req, res) => {
     }
 
     const fromEmail = emailAccount.email;
-    const senderName = senderProfile?.fullName || emailAccount.displayName || 'NOXTM Mail';
+    // Sender name priority: per-account displayName > company name > user fullName > fallback
+    let senderName = emailAccount.displayName || 'NOXTM Mail';
+    if (!emailAccount.displayName && senderProfile?.fullName) {
+      senderName = senderProfile.fullName;
+    }
+    // Try company name as fallback if no displayName set
+    if (!emailAccount.displayName && req.user?.userId) {
+      try {
+        const senderUser = await mongoose.connection.collection('users').findOne(
+          { _id: new mongoose.Types.ObjectId(req.user.userId) },
+          { projection: { companyId: 1 } }
+        );
+        if (senderUser?.companyId) {
+          const company = await mongoose.connection.collection('companies').findOne(
+            { _id: senderUser.companyId },
+            { projection: { name: 1 } }
+          );
+          if (company?.name) senderName = company.name;
+        }
+      } catch (e) { /* fallback to existing senderName */ }
+    }
 
     const originalBody = body || '';
-    const bodyHtml = plainTextToHtml(originalBody);
-    const plainTextVariant = originalBody ? stripHtml(originalBody) : stripHtml(bodyHtml);
+    const accountSignature = emailAccount.signature || '';
 
-    console.log(`📧 Sending email via AWS SES: from=${fromEmail}, to=${to}, subject=${subject}`);
+    // Append signature to email body if one exists
+    const bodyWithSignature = accountSignature
+      ? `${originalBody}<br/><div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px;"><span style="color:#9ca3af;font-size:12px;">--</span><br/>${accountSignature}</div>`
+      : originalBody;
+
+    const bodyHtml = plainTextToHtml(bodyWithSignature);
+    const plainTextVariant = bodyWithSignature ? stripHtml(bodyWithSignature) : stripHtml(bodyHtml);
+
+    // Parse CC/BCC lists
+    const ccList = cc ? (Array.isArray(cc) ? cc : cc.split(',').map(e => e.trim()).filter(Boolean)) : [];
+    const bcList = bcc ? (Array.isArray(bcc) ? bcc : bcc.split(',').map(e => e.trim()).filter(Boolean)) : [];
 
     // Send via AWS SES (with attachments if present)
     const info = await sendEmailViaSES({
       from: `${senderName} <${fromEmail}>`,
       to: Array.isArray(to) ? to : [to],
+      cc: ccList.length > 0 ? ccList : undefined,
+      bcc: bcList.length > 0 ? bcList : undefined,
       subject: subject,
       html: bodyHtml,
       text: plainTextVariant,
@@ -916,7 +1066,7 @@ router.post('/send-email', isAuthenticated, (req, res) => {
         const password = decrypt(emailAccount.imapSettings.encryptedPassword);
 
         const imapConfig = {
-          host: emailAccount.imapSettings.host === 'mail.noxtm.com' ? '127.0.0.1' : (emailAccount.imapSettings.host || '127.0.0.1'),
+          host: process.env.USE_LOCALHOST_IMAP === 'true' ? '127.0.0.1' : (emailAccount.imapSettings.host || 'mail.noxtm.com'),
           port: emailAccount.imapSettings.port || 993,
           secure: emailAccount.imapSettings.secure !== false,
           username: emailAccount.imapSettings.username || emailAccount.email,
@@ -956,22 +1106,49 @@ router.post('/send-email', isAuthenticated, (req, res) => {
 
     // Deduct 1 email credit from company billing
     let creditsDeducted = false;
-    const userCompanyId = req.user.company || req.user.companyId;
+    let remainingCredits = null;
+    let userCompanyId = req.user.companyId || req.user.company || emailAccount.companyId;
+
+    // Fallback: look up companyId from user record if not in JWT or emailAccount
+    if (!userCompanyId && req.user.userId) {
+      try {
+        const userDoc = await mongoose.connection.collection('users').findOne(
+          { _id: new mongoose.Types.ObjectId(req.user.userId) },
+          { projection: { companyId: 1 } }
+        );
+        if (userDoc?.companyId) userCompanyId = userDoc.companyId;
+      } catch (e) { /* ignore lookup failure */ }
+    }
+
     if (userCompanyId) {
       try {
-        const company = await Company.findById(userCompanyId);
-        if (company && company.billing && company.billing.emailCredits > 0) {
-          company.billing.emailCredits -= 1;
-          company.billing.totalUsed = (company.billing.totalUsed || 0) + 1;
-          await company.save();
+        // Use atomic $inc to avoid full document validation (which can fail on legacy enum values)
+        const result = await Company.updateOne(
+          { _id: userCompanyId, 'billing.emailCredits': { $gt: 0 } },
+          {
+            $inc: { 'billing.emailCredits': -1, 'billing.totalUsed': 1 }
+          }
+        );
+
+        if (result.modifiedCount > 0) {
           creditsDeducted = true;
-          console.log(`💳 Email credit deducted. Remaining: ${company.billing.emailCredits}`);
-        } else if (company) {
-          console.warn(`⚠️ No email credits remaining for company ${userCompanyId}`);
+          // Fetch updated credit count for response
+          const updatedCompany = await Company.findById(userCompanyId).select('billing.emailCredits').lean();
+          remainingCredits = updatedCompany?.billing?.emailCredits ?? null;
+          console.log(`💳 Email credit deducted. Remaining: ${remainingCredits}`);
+        } else {
+          // Check if company exists but has 0 credits
+          const company = await Company.findById(userCompanyId).select('billing.emailCredits').lean();
+          if (company) {
+            remainingCredits = company?.billing?.emailCredits || 0;
+            console.warn(`⚠️ No email credits remaining for company ${userCompanyId}`);
+          }
         }
       } catch (creditError) {
         console.error('⚠️ Failed to deduct email credit:', creditError.message);
       }
+    } else {
+      console.warn('⚠️ No companyId found on user or email account — cannot deduct credits');
     }
 
     res.json({
@@ -979,7 +1156,8 @@ router.post('/send-email', isAuthenticated, (req, res) => {
       message: 'Email sent successfully',
       messageId: info.MessageId,
       savedToSent: savedToSent,
-      creditsDeducted: creditsDeducted
+      creditsDeducted: creditsDeducted,
+      remainingCredits: remainingCredits
     });
 
   } catch (error) {
@@ -2020,8 +2198,21 @@ router.put('/:id/display-name', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Email account not found' });
     }
 
-    // Check if user owns this account
-    if (account.userId.toString() !== req.user._id.toString()) {
+    // Check if user has permission: account creator, same company, or company owner
+    const accountOwnerId = account.createdBy || account.userId;
+    const isCreator = accountOwnerId && accountOwnerId.toString() === req.user._id.toString();
+    const isSameCompany = account.companyId && req.user.companyId && account.companyId.toString() === req.user.companyId.toString();
+
+    // Also check if user is the company owner (for accounts with null companyId - legacy data)
+    let isCompanyOwner = false;
+    if (req.user.companyId) {
+      const company = await Company.findById(req.user.companyId);
+      if (company && company.owner && company.owner.toString() === req.user._id.toString()) {
+        isCompanyOwner = true;
+      }
+    }
+
+    if (!isCreator && !isSameCompany && !isCompanyOwner) {
       return res.status(403).json({ message: 'You do not have permission to update this account' });
     }
 
@@ -2232,12 +2423,8 @@ router.post('/create-team', requireCompanyOwner, async (req, res) => {
           permissions: { canRead: true, canSend: true, canDelete: true, canManage: true }
         },
         {
-          role: 'Manager',
+          role: 'Member',
           permissions: { canRead: true, canSend: true, canDelete: false, canManage: false }
-        },
-        {
-          role: 'Employee',
-          permissions: { canRead: false, canSend: false, canDelete: false, canManage: false }
         }
       ],
 
@@ -2264,7 +2451,7 @@ router.post('/create-team', requireCompanyOwner, async (req, res) => {
       description: `Created team email account: ${email}`,
       metadata: {
         purpose,
-        roleAccess: roleAccess ? roleAccess.map(r => r.role) : ['Owner', 'Manager', 'Employee']
+        roleAccess: roleAccess ? roleAccess.map(r => r.role) : ['Owner', 'Member']
       },
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
@@ -2726,8 +2913,18 @@ router.get('/:id/storage-usage', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Email account not found' });
     }
 
-    // Verify user owns this account
-    if (!account.userId.equals(req.user._id)) {
+    // Verify user has access - account creator, same company, or company owner
+    const ownerId = account.createdBy || account.userId;
+    const isCreator = ownerId && ownerId.toString() === req.user._id.toString();
+    const isSameCompany = account.companyId && req.user.companyId && account.companyId.toString() === req.user.companyId.toString();
+    let isCompanyOwner = false;
+    if (req.user.companyId) {
+      const company = await Company.findById(req.user.companyId);
+      if (company && company.owner && company.owner.toString() === req.user._id.toString()) {
+        isCompanyOwner = true;
+      }
+    }
+    if (!isCreator && !isSameCompany && !isCompanyOwner) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
@@ -2751,29 +2948,52 @@ router.get('/:id/storage-usage', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update email signature
-router.put('/signature', isAuthenticated, async (req, res) => {
+// Get email signature
+router.get('/:id/signature', isAuthenticated, async (req, res) => {
+  try {
+    const account = await EmailAccount.findById(req.params.id);
+    if (!account) {
+      return res.json({ success: true, signature: '' });
+    }
+    res.json({ success: true, signature: account.signature || '' });
+  } catch (error) {
+    console.error('Error fetching signature:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch signature' });
+  }
+});
+
+// Update email signature (HTML supported)
+router.put('/:id/signature', isAuthenticated, async (req, res) => {
   try {
     const { signature } = req.body;
 
-    // Find the user's email account
-    const account = await EmailAccount.findOne({ userId: req.user._id });
+    // Find the email account by ID
+    const account = await EmailAccount.findById(req.params.id);
     if (!account) {
       return res.status(404).json({ success: false, message: 'Email account not found' });
     }
 
-    // Update signature
-    account.signature = signature || '';
-    await account.save();
+    // Update signature (use updateOne to avoid triggering password hash pre-save hook)
+    await EmailAccount.updateOne({ _id: account._id }, { $set: { signature: signature || '' } });
 
-    // Log the change
-    await AuditLog.create({
-      userId: req.user._id,
-      action: 'update_signature',
-      details: { email: account.email },
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent')
-    });
+    // Log the change (non-blocking)
+    try {
+      await EmailAuditLog.log({
+        action: 'update_signature',
+        resourceType: 'email_account',
+        resourceId: account._id,
+        resourceIdentifier: account.email,
+        performedBy: req.user._id,
+        performedByEmail: req.user.email || '',
+        performedByName: req.user.fullName || '',
+        description: `Updated signature for email account: ${account.email}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        companyId: req.user.companyId
+      });
+    } catch (logErr) {
+      // Don't fail the request if audit logging fails
+    }
 
     res.json({ success: true, message: 'Signature updated successfully' });
   } catch (error) {
