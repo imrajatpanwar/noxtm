@@ -111,10 +111,31 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Check if current user has SOLOHQ role
   const isSOLOHQUser = currentUser?.role === 'SOLOHQ';
 
+  // Check if current user is a company Owner
+  const isCompanyOwner = currentUser?.roleInCompany === 'Owner';
+
   // Memoized permission checking to prevent unnecessary re-renders and glitches
   const sectionPermissions = useMemo(() => {
     // For Admin users, grant access to all sections (super-admin)
     if (currentUser?.role === 'Admin') {
+      return {
+        'Dashboard': true,
+        'Data Center': true,
+        'Projects': true,
+        'Team Communication': true,
+        'Digital Media Management': true,
+        'Marketing': true,
+        'HR Management': true,
+        'Finance Management': true,
+        'Internal Policies': true,
+        'Settings & Configuration': true,
+        'Workspace Settings': true,
+        'Profile': true
+      };
+    }
+
+    // For Company Owners, grant access to all sections (workspace creator)
+    if (isCompanyOwner) {
       return {
         'Dashboard': true,
         'Data Center': true,
@@ -200,7 +221,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Workspace Settings': true, // Workspace settings should be accessible to specific roles
       'Profile': true // Profile is available to all users
     };
-  }, [hasPermission, MODULES, isSOLOHQUser, currentUser?.role]);
+  }, [hasPermission, MODULES, isSOLOHQUser, isCompanyOwner, currentUser?.role]);
 
   // Permission checking function using memoized values
   const hasPermissionForSection = (section) => {
@@ -249,7 +270,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Notes', section: 'notes', category: 'Dashboard' },
 
     // Data Center
-    { name: 'Global Trade Shows', section: 'global-trade-show', category: 'Data Center' },
+    { name: 'Company Data', section: 'company-data', category: 'Data Center' },
     { name: 'Contacts', section: 'client-leads', category: 'Data Center' },
 
     // Lead Management
@@ -419,31 +440,16 @@ function Sidebar({ activeSection, onSectionChange }) {
             <div className="sidebar-section">
               <h4 className="Dash-noxtm-sidebar-section-title">DATA CENTER</h4>
 
-              {/* Global Trade Show Section - Only show if ExhibitOS module is installed */}
-              {isModuleInstalled('ExhibitOS') && (
-                <div className="sidebar-item-container">
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'global-trade-show' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('global-trade-show')}
-                  >
-                    <FiGlobe className="sidebar-icon" />
-                    <span>Global Trade Shows</span>
-                  </div>
+              {/* Company Data */}
+              <div className="sidebar-item-container">
+                <div
+                  className={`Dash-noxtm-sidebar-item ${activeSection === 'company-data' ? 'active' : ''}`}
+                  onClick={() => onSectionChange('company-data')}
+                >
+                  <FiPackage className="sidebar-icon" />
+                  <span>Company Data</span>
                 </div>
-              )}
-
-              {/* Companies Data Section - Only show if AgencyOS module is installed */}
-              {isModuleInstalled('AgencyOS') && (
-                <div className="sidebar-item-container">
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'trending-services' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('trending-services')}
-                  >
-                    <FiGlobe className="sidebar-icon" />
-                    <span>Companies Data</span>
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Lead Management Section */}
               <div className="sidebar-item-container">

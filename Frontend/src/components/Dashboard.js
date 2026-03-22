@@ -39,6 +39,7 @@ import GlobalTradeShow from './GlobalTradeShow';
 import ExhibitorsList from './ExhibitorsList';
 import TrendingServices from './TrendingServices';
 import TargetedCompanyList from './TargetedCompanyList';
+import CompanyDataList from './CompanyDataList';
 import LeadsMetrics from './LeadsMetrics';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
@@ -230,6 +231,8 @@ function Dashboard({ user, onLogout }) {
         return <ClientLeads />;
       case 'leads-metrics':
         return <LeadsMetrics />;
+      case 'company-data':
+        return <CompanyDataList />;
       case 'global-trade-show':
         return <GlobalTradeShow onNavigate={handleNavigate} />;
       case 'exhibitor-list':
