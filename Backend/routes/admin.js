@@ -521,6 +521,7 @@ router.post('/companies/:id/credits', async (req, res) => {
     const newTotalPurchased = (company.billing?.totalPurchased || 0) + (action === 'add' ? amount : 0);
 
     // Use atomic update to avoid full-document validation issues
+    // runValidators: false prevents Mongoose from validating unrelated fields (e.g. department enum)
     await Company.findByIdAndUpdate(req.params.id, {
       $set: {
         'billing.emailCredits': newCredits,
@@ -536,7 +537,7 @@ router.post('/companies/:id/credits', async (req, res) => {
           paymentMethod: 'admin-grant'
         }
       }
-    });
+    }, { runValidators: false });
 
     // Audit log
     await AdminAuditLog.logAction({

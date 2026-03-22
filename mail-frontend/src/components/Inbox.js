@@ -143,8 +143,19 @@ function Inbox() {
           } else {
             // Clear loading flag before redirect
             window.__NOXTM_AUTH_LOADING__ = false;
-            // No SSO session after all retries, redirect to main app login
-            window.location.href = MAIL_LOGIN_URL;
+
+            // If token exists but expired (401), try SSO refresh via main app
+            const existingToken = localStorage.getItem('token');
+            if (existingToken && err.response?.status === 401) {
+              // Token expired — redirect to main app to get a fresh token via SSO
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              const mailUrl = encodeURIComponent(window.location.href);
+              window.location.href = getMainAppUrl(`/login?redirect=mail&return=${mailUrl}`);
+            } else {
+              // No token or non-401 error — redirect to login
+              window.location.href = MAIL_LOGIN_URL;
+            }
           }
         }
       }

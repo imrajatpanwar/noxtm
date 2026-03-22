@@ -44,6 +44,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(true); // NEW: Track initial account fetch
+  const [accountsError, setAccountsError] = useState(null); // Track account fetch errors
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -209,6 +210,13 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
     }
   }, [user]);
 
+  // Persist selected account ID to localStorage
+  useEffect(() => {
+    if (selectedAccount?._id) {
+      localStorage.setItem('selectedEmailAccountId', selectedAccount._id);
+    }
+  }, [selectedAccount]);
+
   // Sync activeTab when initialTab prop changes (sidebar Settings click)
   useEffect(() => {
     if (initialTab) {
@@ -220,6 +228,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
 
   const fetchHostedAccounts = async () => {
     setAccountsLoading(true); // Set loading state
+    setAccountsError(null); // Clear previous error
     try {
       // Fetch both owned accounts and connected accounts
       const [ownedResponse, connectedResponse] = await Promise.all([
@@ -263,11 +272,23 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
           setSelectedAccount(allAccounts[0]);
         }
       } else if (allAccounts.length > 0) {
-        // No auto-switch, select first account (already sorted by verified domain priority)
-        setSelectedAccount(allAccounts[0]);
+        // Try to restore previously selected account from localStorage
+        const savedAccountId = localStorage.getItem('selectedEmailAccountId');
+        if (savedAccountId) {
+          const savedAccount = allAccounts.find(acc => acc._id === savedAccountId);
+          if (savedAccount) {
+            setSelectedAccount(savedAccount);
+          } else {
+            setSelectedAccount(allAccounts[0]);
+          }
+        } else {
+          // No saved selection, select first account
+          setSelectedAccount(allAccounts[0]);
+        }
       }
     } catch (error) {
       setAccounts([]);
+      setAccountsError('Failed to load email accounts. Please try again.');
     } finally {
       setAccountsLoading(false); // Clear loading state
     }
@@ -1225,6 +1246,12 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
                   <div className="loading-state">
                     <div className="spinner"></div>
                     <p>Loading accounts...</p>
+                  </div>
+                ) : accountsError ? (
+                  // Show error with retry button when account fetch failed
+                  <div className="error-state">
+                    <p>{accountsError}</p>
+                    <button onClick={fetchHostedAccounts} className="retry-btn">Retry</button>
                   </div>
                 ) : accounts.length === 0 ? (
                   // Check if user is a workspace member (not owner) who needs to connect

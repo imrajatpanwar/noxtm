@@ -2198,23 +2198,25 @@ router.put('/:id/display-name', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Email account not found' });
     }
 
-    // Check if user has permission: account creator, same company member, or company owner
+    // Check if user has permission: account creator OR same company member/owner
     const accountOwnerId = account.createdBy || account.userId;
     const isCreator = accountOwnerId && accountOwnerId.toString() === req.user._id.toString();
-    const isSameCompany = account.companyId && req.user.companyId && account.companyId.toString() === req.user.companyId.toString();
 
-    // Also check if user is a member or owner of the company
-    let isCompanyMember = false;
-    if (req.user.companyId) {
-      const company = await Company.findById(req.user.companyId);
+    // Check company membership via database (not just JWT, which may be stale)
+    let isSameCompanyMember = false;
+    if (account.companyId) {
+      const company = await Company.findById(account.companyId);
       if (company) {
-        const isOwner = company.owner && company.owner.toString() === req.user._id.toString();
-        const isMember = company.members && company.members.some(m => m.user && m.user.toString() === req.user._id.toString());
-        isCompanyMember = isOwner || isMember;
+        const userId = req.user._id.toString();
+        const isOwner = company.owner && company.owner.toString() === userId;
+        const isMember = company.members && company.members.some(
+          m => m.user && m.user.toString() === userId
+        );
+        isSameCompanyMember = isOwner || isMember;
       }
     }
 
-    if (!isCreator && !isSameCompany && !isCompanyMember) {
+    if (!isCreator && !isSameCompanyMember) {
       return res.status(403).json({ message: 'You do not have permission to update this account' });
     }
 

@@ -52,34 +52,36 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-
-      // Check if this is a true authentication failure
-      // Only redirect if user has no valid token/cookie
       const hasToken = localStorage.getItem('token');
+
+      // Don't redirect if auth is still loading (prevents race condition during init)
+      if (window.__NOXTM_AUTH_LOADING__) {
+        error.isAuthError = true;
+        return Promise.reject(error);
+      }
+
+      // If token exists but got 401 = expired token, NOT a logout
+      // Let the component handle retry/refresh — don't redirect
+      if (hasToken) {
+        error.isAuthError = true;
+        return Promise.reject(error);
+      }
+
+      // No token at all — check cookies as fallback
       const hasCookie = document.cookie.includes('token') || document.cookie.includes('auth');
 
-      // If no auth credentials exist at all, redirect to login
-      if (!hasToken && !hasCookie && window.location.pathname !== '/login') {
-        // NEW: Don't redirect if auth is still loading (prevents race condition)
-        if (window.__NOXTM_AUTH_LOADING__) {
-          error.isAuthError = true;
-          return Promise.reject(error);
-        }
-
-        // Add a delay to avoid race condition with token saving
-        // This gives time for localStorage/cookie to sync across subdomains
+      if (!hasCookie && window.location.pathname !== '/login') {
+        // Delay to allow localStorage/cookie sync across subdomains
         setTimeout(() => {
           const recheckToken = localStorage.getItem('token');
           const recheckCookie = document.cookie.includes('token') || document.cookie.includes('auth');
 
-          // Check if we've already redirected recently (prevent loop)
+          // Prevent redirect loops
           const lastRedirect = sessionStorage.getItem('last_mail_redirect');
           const now = Date.now();
-
           if (lastRedirect && (now - parseInt(lastRedirect)) < 5000) {
             toast.error('Unable to authenticate. Please refresh the page and try again.');
-            error.isAuthError = true;
-            return Promise.reject(error);
+            return;
           }
 
           // Only redirect if STILL no token after delay
@@ -88,17 +90,12 @@ api.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = MAIL_LOGIN_URL;
-          } else {
           }
-        }, 3500); // 3500ms grace period - longer than Inbox's 3-second retry
-
-        // Still reject the error so component can handle it
-        error.isAuthError = true;
-        return Promise.reject(error);
-      } else {
-        // User has credentials but got 401 - likely endpoint issue or permission denied
-        error.isAuthError = true;
+        }, 3500);
       }
+
+      error.isAuthError = true;
+      return Promise.reject(error);
     }
 
     // Handle 403 - Subscription required errors
