@@ -32,6 +32,10 @@ const companySchema = new mongoose.Schema({
     invitedAt: { type: Date, default: Date.now },
     joinedAt: { type: Date }
   }],
+  extensionAccessPeople: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   invitations: [{
     email: { type: String, required: true },
     token: { type: String, required: true },
