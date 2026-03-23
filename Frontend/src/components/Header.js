@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiSettings, FiLogOut, FiClock } from 'react-icons/fi';
 import NotificationCenter from './NotificationCenter';
+import HeaderActiveTeam from './HeaderActiveTeam';
 import { MessagingContext } from '../contexts/MessagingContext';
 import api from '../config/api';
 import './header.css';
@@ -43,7 +44,7 @@ function Header({ user, onLogout }) {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [companyUsers, setCompanyUsers] = useState([]);
-  const [showTeamPopup, setShowTeamPopup] = useState(false);
+  // showTeamPopup removed - now handled by HeaderActiveTeam component
   const dropdownRef = useRef(null);
   const attTimerRef = useRef(null);
   const { onlineUsers } = useContext(MessagingContext);
@@ -195,40 +196,7 @@ function Header({ user, onLogout }) {
             </>
           ) : (
             <>
-              {activeUsers.length > 0 && (
-                <div className="header-active-team">
-                  <div className="header-active-team-avatars">
-                    {activeUsers.slice(0, 5).map((u, index) => (
-                      <div
-                        key={u._id || u.id}
-                        className="header-team-avatar-overlap"
-                        style={{ zIndex: 10 - index }}
-                      >
-                        <HeaderAvatar user={u} size={30} />
-                      </div>
-                    ))}
-                    {activeUsers.length > 5 && (
-                      <div
-                        className="header-team-more-overlap"
-                        onMouseEnter={() => setShowTeamPopup(true)}
-                        onMouseLeave={() => setShowTeamPopup(false)}
-                      >
-                        +{activeUsers.length - 5}
-                        {showTeamPopup && (
-                          <div className="header-team-popup">
-                            {activeUsers.slice(5).map(u => (
-                              <div key={u._id || u.id} className="header-team-popup-item">
-                                <HeaderAvatar user={u} size={24} />
-                                <span>{u.fullName || u.name || u.email}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <HeaderActiveTeam activeUsers={activeUsers} />
               {attClockedIn && (
                 <div className={`header-timer ${attIsOvertime ? 'overtime' : ''}`}>
                   <span className="header-timer-dot" />
