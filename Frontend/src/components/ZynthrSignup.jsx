@@ -404,14 +404,21 @@ function ZynthrSignup({ onSignup }) {
 
   return (
     <div className={`zynthr-page ${isSliding ? 'zynthr-slide-out' : ''}`}>
-      {/* Branding / Log out */}
+      {/* Noxtm brand - always top left */}
       <div className="zynthr-branding">
-        {authToken ? (
-          <Link to="/login" className="zynthr-brand-text">Log out</Link>
-        ) : (
-          <span className="zynthr-brand-text zynthr-brand-logo">noxtm</span>
-        )}
+        <span className="zynthr-brand-text zynthr-brand-logo">noxtm</span>
       </div>
+
+      {/* Log out - top right, only after signup (authToken set) */}
+      {authToken && (
+        <div className="zynthr-logout">
+          <Link to="/login" className="zynthr-brand-text" onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('zynthr_session');
+          }}>Log out</Link>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="zynthr-messages">

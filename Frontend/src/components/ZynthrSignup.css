@@ -11,10 +11,10 @@
   flex-direction: column;
   z-index: 9999;
   overflow: hidden;
-  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* Log out link top-left */
+/* Noxtm brand - top left */
 .zynthr-branding {
   position: fixed;
   top: 24px;
@@ -22,22 +22,32 @@
   z-index: 10;
 }
 
+/* Log out - top right */
+.zynthr-logout {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 10;
+}
+
 .zynthr-brand-text {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
-  color: #111827;
+  color: #6b7280;
   letter-spacing: -0.01em;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .zynthr-brand-text:hover {
-  color: #000;
+  color: #111827;
 }
 
 .zynthr-brand-logo {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
+  color: #111827;
   cursor: default;
 }
 
@@ -318,13 +328,13 @@
   -webkit-text-security: disc;
 }
 
-/* Send button - small circle */
+/* Send button - small circle, black */
 .zynthr-send-btn {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: #9ca3af;
+  background: #111827;
   color: white;
   display: flex;
   align-items: center;
@@ -335,12 +345,12 @@
 }
 
 .zynthr-send-btn:hover:not(:disabled) {
-  background: #6b7280;
+  background: #000000;
 }
 
 .zynthr-send-btn:active:not(:disabled) {
   transform: scale(0.93);
-  background: #4b5563;
+  background: #000000;
 }
 
 .zynthr-send-btn:disabled {
