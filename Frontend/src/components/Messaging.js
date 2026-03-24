@@ -50,16 +50,8 @@ function Messaging() {
   const [currentUser, setCurrentUser] = useState(null);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // Noxtm Bot Chat State
-  const [noxtmConfig, setNoxtmConfig] = useState(null);
-  const [noxtmMessages, setNoxtmMessages] = useState([]);
-  const [showBotMenu, setShowBotMenu] = useState(false);
-  const botMenuRef = useRef(null);
-  const [noxtmInput, setNoxtmInput] = useState('');
-  const [noxtmLoading, setNoxtmLoading] = useState(false);
-  const [isNoxtmBotSelected, setIsNoxtmBotSelected] = useState(false);
-  const noxtmMessagesEndRef = useRef(null);
-  const noxtmInputRef = useRef(null);
+  // Noxtm Bot Chat removed — replaced by Zynthr
+  const [isNoxtmBotSelected] = useState(false);
 
   // Modal States
   const [showChatSettings, setShowChatSettings] = useState(false);
@@ -103,7 +95,6 @@ function Messaging() {
     }
 
     loadConversations();
-    loadNoxtmConfig();
 
     // Cleanup: Clear active conversation when leaving messaging section
     return () => {
@@ -354,132 +345,7 @@ function Messaging() {
     }
   };
 
-  // === Noxtm Bot Chat Functions ===
-  const loadNoxtmConfig = async () => {
-    try {
-      const res = await api.get('/noxtm-chat/config');
-      if (res.data.success) setNoxtmConfig(res.data.config);
-    } catch (err) {
-      console.error('Failed to load Noxtm config:', err);
-    }
-  };
-
-  const loadNoxtmHistory = async () => {
-    try {
-      const res = await api.get('/noxtm-chat/messages?limit=50');
-      if (res.data.success) setNoxtmMessages(res.data.messages);
-    } catch (err) {
-      console.error('Failed to load Noxtm history:', err);
-    }
-  };
-
-  const handleSelectNoxtmBot = () => {
-    setSelectedConversation(null);
-    setIsNoxtmBotSelected(true);
-    loadNoxtmHistory();
-    setTimeout(() => noxtmInputRef.current?.focus(), 100);
-  };
-
-  const handleSendNoxtm = async () => {
-    if (!noxtmInput.trim() || noxtmLoading) return;
-    const msg = noxtmInput.trim();
-    setNoxtmInput('');
-
-    const tempUserMsg = { _id: 'temp-' + Date.now(), role: 'user', content: msg, createdAt: new Date().toISOString() };
-    setNoxtmMessages(prev => [...prev, tempUserMsg]);
-    setNoxtmLoading(true);
-
-    try {
-      const res = await api.post('/noxtm-chat/send', { message: msg });
-      if (res.data.success) {
-        setNoxtmMessages(prev => {
-          const filtered = prev.filter(m => m._id !== tempUserMsg._id);
-          return [...filtered, res.data.userMessage, res.data.reply];
-        });
-      }
-    } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to send message';
-      toast.error(errMsg);
-      setNoxtmMessages(prev => [
-        ...prev,
-        { _id: 'err-' + Date.now(), role: 'assistant', content: errMsg, createdAt: new Date().toISOString() }
-      ]);
-    } finally {
-      setNoxtmLoading(false);
-    }
-  };
-
-  const handleNoxtmKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendNoxtm();
-    }
-  };
-
-  // Close bot menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (botMenuRef.current && !botMenuRef.current.contains(e.target)) {
-        setShowBotMenu(false);
-      }
-    };
-    if (showBotMenu) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBotMenu]);
-
-  const handleClearBotChat = async () => {
-    setShowBotMenu(false);
-    try {
-      await api.delete('/noxtm-chat/messages');
-      setNoxtmMessages([]);
-      toast.success('Chat cleared');
-    } catch (err) {
-      toast.error('Failed to clear chat');
-    }
-  };
-
-  const handleDeleteBotChat = async () => {
-    setShowBotMenu(false);
-    if (!window.confirm('Delete entire chat history? This cannot be undone.')) return;
-    try {
-      await api.delete('/noxtm-chat/messages');
-      setNoxtmMessages([]);
-      setIsNoxtmBotSelected(false);
-      toast.success('Chat deleted');
-    } catch (err) {
-      toast.error('Failed to delete chat');
-    }
-  };
-
-  const handleMarkBotRead = () => {
-    setShowBotMenu(false);
-    toast.success('Marked as read');
-  };
-
-  const handleBlockBotChat = async () => {
-    setShowBotMenu(false);
-    if (!window.confirm('Block & clear all chat? You can re-open chat anytime.')) return;
-    try {
-      await api.delete('/noxtm-chat/messages');
-      setNoxtmMessages([]);
-      setIsNoxtmBotSelected(false);
-      toast.success('Chat blocked & cleared');
-    } catch (err) {
-      toast.error('Failed to block & clear chat');
-    }
-  };
-
-  // Auto-scroll noxtm messages
-  useEffect(() => {
-    if (isNoxtmBotSelected) {
-      noxtmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [noxtmMessages, noxtmLoading, isNoxtmBotSelected]);
-
-  // Bot config derived values
-  const botName = noxtmConfig?.botName || 'Navraj Panwar';
-  const botPicture = noxtmConfig?.botProfilePicture || '';
-  const botInitials = botName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  // Noxtm Bot functions removed — replaced by Zynthr
 
   const loadMessages = async (conversationId) => {
     try {
@@ -521,8 +387,6 @@ function Messaging() {
   };
 
   const handleSelectConversation = async (conversation) => {
-    setIsNoxtmBotSelected(false);
-
     // If this is a new DM without existing conversation, create one first
     if (conversation.isNewDm && conversation.targetUser) {
       try {
@@ -940,9 +804,6 @@ function Messaging() {
           onCreateGroup={handleCreateGroup}
           onOpenChatSettings={handleOpenChatSettings}
           getGroupIconSrc={getGroupIconSrc}
-          noxtmConfig={noxtmConfig}
-          isNoxtmBotSelected={isNoxtmBotSelected}
-          onSelectNoxtmBot={handleSelectNoxtmBot}
         />
       </div>
 
@@ -1254,124 +1115,6 @@ function Messaging() {
               </div>
             </div>
           </div>
-        ) : isNoxtmBotSelected ? (
-          /* Noxtm Bot Chat View */
-          <>
-            <div className="messaging-header">
-              <div className="chat-header-info">
-                <div className="chat-avatar-container">
-                  <div className="chat-avatar online" style={{ borderRadius: '50%' }}>
-                    {botPicture ? (
-                      <img src={botPicture} alt={botName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    ) : (
-                      <span className="avatar-fallback" style={{ display: 'flex' }}>{botInitials}</span>
-                    )}
-                  </div>
-                  <div className="status-dot online" />
-                </div>
-                <div className="chat-header-text">
-                  <h3 className="chat-header-name">{botName}</h3>
-                  <span className="user-status online">Online</span>
-                </div>
-              </div>
-              <div className="noxtm-bot-header-actions" ref={botMenuRef}>
-                <button className="noxtm-bot-menu-btn" onClick={() => setShowBotMenu(!showBotMenu)}>
-                  <FiMoreVertical size={20} />
-                </button>
-                {showBotMenu && (
-                  <div className="noxtm-bot-dropdown">
-                    <button onClick={handleClearBotChat}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                      Clear Chat
-                    </button>
-                    <button onClick={handleDeleteBotChat}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                      Delete Chat
-                    </button>
-                    <button onClick={handleMarkBotRead}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                      Mark as Read
-                    </button>
-                    <div className="noxtm-bot-dropdown-divider"></div>
-                    <button className="noxtm-bot-dropdown-danger" onClick={handleBlockBotChat}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                      Block & Clear Chat
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="messaging-body noxtm-bot-messages">
-              {noxtmMessages.length === 0 ? (
-                <div className="noxtm-bot-welcome">
-                  <div className="noxtm-bot-welcome-avatar">
-                    {botPicture ? (
-                      <img src={botPicture} alt={botName} />
-                    ) : (
-                      <span>{botInitials}</span>
-                    )}
-                  </div>
-                  <h4>{botName}</h4>
-                  <p>{noxtmConfig?.welcomeMessage || `Hi! I'm ${botName}. How can I help you?`}</p>
-                </div>
-              ) : (
-                noxtmMessages.map((msg) => (
-                  <div key={msg._id} className={`noxtm-bot-msg ${msg.role}`}>
-                    {msg.role === 'assistant' && (
-                      <div className="noxtm-bot-msg-avatar">
-                        {botPicture ? (
-                          <img src={botPicture} alt={botName} />
-                        ) : (
-                          <span>{botInitials}</span>
-                        )}
-                      </div>
-                    )}
-                    <div className="noxtm-bot-msg-content">
-                      <div className="noxtm-bot-msg-bubble" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                      <div className="noxtm-bot-msg-time">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              {noxtmLoading && (
-                <div className="noxtm-bot-msg assistant">
-                  <div className="noxtm-bot-msg-avatar">
-                    {botPicture ? <img src={botPicture} alt={botName} /> : <span>{botInitials}</span>}
-                  </div>
-                  <div className="noxtm-bot-msg-content">
-                    <div className="noxtm-bot-typing"><span></span><span></span><span></span></div>
-                  </div>
-                </div>
-              )}
-              <div ref={noxtmMessagesEndRef} />
-            </div>
-
-            <div className="messaging-footer noxtm-bot-footer">
-              <div className="noxtm-bot-input-wrapper">
-                <input
-                  ref={noxtmInputRef}
-                  type="text"
-                  value={noxtmInput}
-                  onChange={(e) => setNoxtmInput(e.target.value)}
-                  onKeyPress={handleNoxtmKeyPress}
-                  placeholder={`Message ${botName.split(' ')[0]}...`}
-                  disabled={noxtmLoading}
-                  maxLength={2000}
-                  className="noxtm-bot-input"
-                />
-                <button
-                  onClick={handleSendNoxtm}
-                  disabled={!noxtmInput.trim() || noxtmLoading}
-                  className="noxtm-bot-send-btn"
-                >
-                  <MdSend size={18} />
-                </button>
-              </div>
-            </div>
-          </>
         ) : selectedConversation ? (
           <>
             {/* Chat Header */}

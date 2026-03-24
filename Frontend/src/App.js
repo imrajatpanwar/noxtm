@@ -10,7 +10,7 @@ import { trackVisitor, stopTracking, updateCurrentPage } from './utils/fingerpri
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
-import Signup from './components/Signup';
+import ZynthrSignup from './components/ZynthrSignup';
 import ForgotPassword from './components/ForgotPassword';
 import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
@@ -36,6 +36,15 @@ import SecurityPage from './components/SecurityPage';
 import PaymentCheckout from './components/PaymentCheckout';
 
 // API configuration is now handled in config/api.js
+
+function ConditionalHeader({ user, onLogout }) {
+  const location = useLocation();
+  const hideHeaderRoutes = ['/signup'];
+  if (hideHeaderRoutes.includes(location.pathname)) {
+    return null;
+  }
+  return <Header user={user} onLogout={onLogout} />;
+}
 
 function ConditionalFooter() {
   const location = useLocation();
@@ -335,7 +344,7 @@ function App() {
                 }}
                 style={{ zIndex: 10000 }}
               />
-              <Header user={user} onLogout={logout} />
+              <ConditionalHeader user={user} onLogout={logout} />
               <Routes>
                 <Route path="/" element={<Home user={user} />} />
                 <Route
@@ -350,7 +359,7 @@ function App() {
                 />
                 <Route
                   path="/signup"
-                  element={<Signup onSignup={signup} />}
+                  element={<ZynthrSignup onSignup={signup} />}
                 />
                 <Route
                   path="/forgot-password"

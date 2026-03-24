@@ -62,7 +62,12 @@ function AuthCallback({ onAuthCallback }) {
                     if (user.role === 'Admin') {
                         navigate('/dashboard');
                     } else if (!user.companyId) {
-                        navigate('/company-setup');
+                        if (localStorage.getItem('zynthr_onboarding')) {
+                            localStorage.removeItem('zynthr_onboarding');
+                            navigate('/signup?resumed=true');
+                        } else {
+                            navigate('/company-setup');
+                        }
                     } else {
                         navigate('/dashboard');
                     }
@@ -79,7 +84,12 @@ function AuthCallback({ onAuthCallback }) {
                         onAuthCallback(token, { userId: payload.userId, email: payload.email, role: payload.role });
                     }
 
-                    navigate('/company-setup');
+                    if (localStorage.getItem('zynthr_onboarding')) {
+                        localStorage.removeItem('zynthr_onboarding');
+                        navigate('/signup?resumed=true');
+                    } else {
+                        navigate('/company-setup');
+                    }
                 }
             } catch (err) {
                 console.error('Auth callback error:', err);

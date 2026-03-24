@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Use Inter for numbers globally — intercepts all 'Switzer' font-family declarations */
 @font-face {
   font-family: 'Switzer';

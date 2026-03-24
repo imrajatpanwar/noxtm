@@ -43,13 +43,12 @@ import CompanyDataList from './CompanyDataList';
 import LeadsMetrics from './LeadsMetrics';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
-import ChatWidget from './ChatWidget';
-import NoxtmChatAdmin from './NoxtmChatAdmin';
 import MailPoller from './MailPoller';
 import LinkedInManager from './LinkedInManager';
 import SocialMediaCalendar from './SocialMediaCalendar';
 import SocialMediaCredentials from './SocialMediaCredentials';
 import VisitorAnalytics from './VisitorAnalytics';
+import ZynthrAdmin from './ZynthrAdmin';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -305,12 +304,12 @@ function Dashboard({ user, onLogout }) {
         return <SocialMediaCredentials />;
       case 'linkedin':
         return <LinkedInManager />;
-      case 'noxtm-chat':
-        return <NoxtmChatAdmin />;
       case 'workspace-settings':
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
       case 'visitor-analytics':
         return <VisitorAnalytics />;
+      case 'zynthr-admin':
+        return <ZynthrAdmin />;
       default:
         return (
           <div className="dashboard-card">
@@ -357,10 +356,6 @@ function Dashboard({ user, onLogout }) {
       {/* Mail Poller - silent background component for email notifications */}
       <MailPoller />
 
-      {/* Chat Widget - hide when Messages or WhatsApp section is open */}
-      {activeSection !== 'message' && activeSection !== 'whatsapp-marketing' && (
-        <ChatWidget onNavigateToMessages={() => setActiveSection('message')} />
-      )}
 
     </div>
   );

@@ -1,0 +1,422 @@
+/* Zynthr Signup - Ultra Minimal */
+
+.zynthr-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  overflow: hidden;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Log out link top-left */
+.zynthr-branding {
+  position: fixed;
+  top: 24px;
+  left: 28px;
+  z-index: 10;
+}
+
+.zynthr-brand-text {
+  font-size: 15px;
+  font-weight: 400;
+  color: #111827;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.zynthr-brand-text:hover {
+  color: #000;
+}
+
+.zynthr-brand-logo {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  cursor: default;
+}
+
+/* Messages area - centered on page */
+.zynthr-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 80px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  scroll-behavior: smooth;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.zynthr-messages::-webkit-scrollbar {
+  width: 0;
+}
+
+/* Messages - plain text, no bubbles */
+.zynthr-msg {
+  animation: zynthrMsgIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0 24px;
+}
+
+.zynthr-msg-assistant {
+  align-self: flex-start;
+}
+
+.zynthr-msg-user {
+  align-self: flex-start;
+}
+
+.zynthr-msg-bubble {
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+
+.zynthr-msg-user .zynthr-msg-bubble {
+  color: #6b7280;
+}
+
+@keyframes zynthrMsgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Typing indicator */
+.zynthr-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px;
+  align-self: flex-start;
+  animation: zynthrMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zynthr-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ca3af;
+  animation: zynthrTypingBounce 1.4s infinite ease-in-out both;
+}
+
+.zynthr-typing-dot:nth-child(1) { animation-delay: 0s; }
+.zynthr-typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.zynthr-typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes zynthrTypingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Quick reply buttons */
+.zynthr-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 24px;
+}
+
+.zynthr-quick-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Switzer', sans-serif;
+  animation: zynthrMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.zynthr-quick-btn:nth-child(1) { animation-delay: 0s; }
+.zynthr-quick-btn:nth-child(2) { animation-delay: 0.04s; }
+.zynthr-quick-btn:nth-child(3) { animation-delay: 0.08s; }
+.zynthr-quick-btn:nth-child(4) { animation-delay: 0.12s; }
+.zynthr-quick-btn:nth-child(5) { animation-delay: 0.16s; }
+.zynthr-quick-btn:nth-child(6) { animation-delay: 0.20s; }
+
+.zynthr-quick-btn:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+  color: #111827;
+}
+
+.zynthr-quick-btn:active {
+  transform: scale(0.97);
+}
+
+/* Plan cards */
+.zynthr-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 24px;
+  animation: zynthrMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zynthr-plan-card {
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.zynthr-plan-card:hover {
+  background: #fafafa;
+  border-color: #d4d4d4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.zynthr-plan-card:active {
+  transform: scale(0.99);
+}
+
+.zynthr-plan-card.popular {
+  border-color: #a3a3a3;
+}
+
+.zynthr-plan-card.popular:hover {
+  border-color: #737373;
+}
+
+.zynthr-plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.zynthr-plan-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.zynthr-plan-price {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.zynthr-plan-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zynthr-plan-feature {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f5f5f5;
+  color: #6b7280;
+}
+
+.zynthr-plan-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.zynthr-plan-trial {
+  font-size: 11px;
+  color: #16a34a;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* Google signup button */
+.zynthr-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.zynthr-google-btn:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+}
+
+.zynthr-google-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Input area - bottom */
+.zynthr-input-area {
+  padding: 20px 24px 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.zynthr-input {
+  flex: 1;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: 'Switzer', sans-serif;
+  resize: none;
+}
+
+.zynthr-input::placeholder {
+  color: #9ca3af;
+}
+
+.zynthr-input:focus {
+  border-color: #a3a3a3;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
+}
+
+.zynthr-input.password-mode {
+  -webkit-text-security: disc;
+}
+
+/* Send button - small circle */
+.zynthr-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #9ca3af;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.zynthr-send-btn:hover:not(:disabled) {
+  background: #6b7280;
+}
+
+.zynthr-send-btn:active:not(:disabled) {
+  transform: scale(0.93);
+  background: #4b5563;
+}
+
+.zynthr-send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.zynthr-send-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Login link */
+.zynthr-login-link {
+  text-align: center;
+  padding: 0 0 20px;
+  font-size: 13px;
+  color: #9ca3af;
+  position: relative;
+  z-index: 1;
+}
+
+.zynthr-login-link a {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.zynthr-login-link a:hover {
+  color: #000000;
+}
+
+/* Slide-out animation */
+.zynthr-slide-out .zynthr-messages,
+.zynthr-slide-out .zynthr-input-area,
+.zynthr-slide-out .zynthr-login-link {
+  animation: zynthrFadeOut 0.6s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes zynthrFadeOut {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Hide elements not used in this design */
+.zynthr-container,
+.zynthr-header,
+.zynthr-avatar,
+.zynthr-header-info,
+.zynthr-status-dot,
+.zynthr-orb {
+  display: none;
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .zynthr-messages {
+    padding-top: 60px;
+  }
+
+  .zynthr-msg-bubble {
+    font-size: 15px;
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .zynthr-msg,
+  .zynthr-typing,
+  .zynthr-quick-btn {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .zynthr-typing-dot {
+    animation: none !important;
+    opacity: 0.7;
+  }
+}

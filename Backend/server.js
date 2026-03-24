@@ -176,13 +176,9 @@ app.use('/api/projects', projectsRoutes);
 const aiRoutes = require('./routes/ai');
 app.use('/api/ai', aiRoutes);
 
-// Noxtm Chat routes (AI chatbot with persistent history)
-const noxtmChatRoutes = require('./routes/noxtm-chat');
-app.use('/api/noxtm-chat', noxtmChatRoutes);
-
-// Noxtm Memory routes (personalized AI memory)
-const noxtmMemoryRoutes = require('./routes/noxtm-memory');
-app.use('/api/noxtm-memory', noxtmMemoryRoutes);
+// Zynthr AI Onboarding routes
+const zynthrRoutes = require('./routes/zynthr-onboarding');
+app.use('/api/zynthr', zynthrRoutes);
 
 // Billing routes
 const billingRoutes = require('./routes/billing');
@@ -464,7 +460,7 @@ const emailVerificationSchema = new mongoose.Schema({
 // Create TTL index to automatically delete expired documents
 emailVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
+const EmailVerification = mongoose.models.EmailVerification || mongoose.model('EmailVerification', emailVerificationSchema);
 
 // Password Reset Schema
 const passwordResetSchema = new mongoose.Schema({

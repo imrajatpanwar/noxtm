@@ -37,7 +37,6 @@ const sections = [
     items: [
       { id: 'team-messaging', label: 'Messaging' },
       { id: 'noxtm-mail', label: 'Noxtm Mail' },
-      { id: 'noxtm-chat', label: 'Noxtm Chat' },
     ]
   },
   {
@@ -270,14 +269,6 @@ function DocumentationPage() {
               </p>
               <p>
                 Supports custom domains, signatures, templates, and bulk sending through the marketing module.
-              </p>
-            </div>
-
-            {/* Noxtm Chat */}
-            <div className="docs-section-block" id="noxtm-chat">
-              <h2>Noxtm Chat</h2>
-              <p>
-                Embed a live chat widget on your website. Visitors can send messages that route to your team in real-time. The widget supports AI-powered auto-replies, custom branding, and agent assignment.
               </p>
             </div>
 

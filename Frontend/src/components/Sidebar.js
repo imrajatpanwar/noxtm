@@ -289,7 +289,6 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     // Team Communication
     { name: 'Message', section: 'message', category: 'Team Communication' },
-    { name: 'Noxtm Chat', section: 'noxtm-chat', category: 'Team Communication' },
 
     // Marketing
     { name: 'Email Marketing', section: 'email-marketing', category: 'Marketing' },
@@ -319,6 +318,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Company Handbook', section: 'company-handbook', category: 'Internal Policies' },
 
     // Settings & Configuration
+    { name: 'Zynthr AI Setup', section: 'zynthr-admin', category: 'Settings & Configuration' },
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
@@ -549,15 +549,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </>
               )}
 
-              {currentUser?.role === 'Admin' && (
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'noxtm-chat' ? 'active' : ''}`}
-                  onClick={() => onSectionChange('noxtm-chat')}
-                >
-                  <FiMessageCircle className="sidebar-icon" />
-                  <span>Noxtm Chat</span>
-                </div>
-              )}
 
               {/* Open Mail App - Redirects to mail app with auth token in same tab */}
               <a

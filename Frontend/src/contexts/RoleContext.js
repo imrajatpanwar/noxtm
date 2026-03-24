@@ -229,6 +229,9 @@ export const RoleProvider = ({ children }) => {
     // Admin has access to everything
     if (currentUser.role === 'Admin') return true;
 
+    // Company Owner has access to everything
+    if (currentUser.roleInCompany === 'Owner') return true;
+
     // For regular users, check their subscription-based permissions
     const userSpecificPermissions = users.find(u => u.id === currentUser.id)?.permissions;
     if (userSpecificPermissions && userSpecificPermissions.hasOwnProperty(module)) {

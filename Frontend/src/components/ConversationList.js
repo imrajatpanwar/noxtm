@@ -18,9 +18,6 @@ function ConversationList({
   onCreateGroup,
   onOpenChatSettings,
   getGroupIconSrc,
-  noxtmConfig,
-  isNoxtmBotSelected,
-  onSelectNoxtmBot
 }) {
   const { onlineUsers } = useContext(MessagingContext);
   const [searchQuery, setSearchQuery] = useState('');
@@ -333,33 +330,6 @@ function ConversationList({
 
       {/* Conversations List */}
       <div className="cl-conversations-scroll" style={{ position: 'relative' }}>
-        {/* Noxtm Bot — Pinned at top */}
-        {onSelectNoxtmBot && (
-          <div
-            className={`cl-noxtm-bot-pinned ${isNoxtmBotSelected ? 'cl-dm-selected' : ''}`}
-            onClick={onSelectNoxtmBot}
-          >
-            <div className="cl-dm-avatar-wrapper">
-              <div className="cl-dm-avatar cl-user-avatar cl-noxtm-bot-avatar">
-                {noxtmConfig?.botProfilePicture ? (
-                  <img src={noxtmConfig.botProfilePicture} alt={noxtmConfig?.botName || 'Bot'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  (noxtmConfig?.botName || 'NP').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-                )}
-              </div>
-              <div className="cl-dm-online-indicator"></div>
-            </div>
-            <div className="cl-conversation-info">
-              <div className="cl-dm-conversation-header">
-                <span className="cl-conversation-name">{noxtmConfig?.botName || 'Navraj Panwar'}</span>
-              </div>
-              <div className="cl-conversation-preview">
-                <span className="cl-last-message">{noxtmConfig?.welcomeMessage?.substring(0, 35) || 'Ask me anything...'}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Groups Section */}
         {groupConversations.length > 0 && (
           <div className="cl-conversation-section cl-groups-section">

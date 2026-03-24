@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Exhibitor = require('../models/Exhibitor');
+const CompanyData = require('../models/CompanyData');
 const ContactLabel = require('../models/ContactLabel');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
@@ -230,9 +231,8 @@ router.get('/contacts', auth, async (req, res) => {
       if (!ex.contacts || ex.contacts.length === 0) continue;
       for (let i = 0; i < ex.contacts.length; i++) {
         const c = ex.contacts[i];
-        if (!c.fullName && !c.email) continue; // skip empty contacts
+        if (!c.fullName && !c.email) continue;
 
-        // Resolve label details
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
 
         const contact = {
@@ -253,10 +253,58 @@ router.get('/contacts', auth, async (req, res) => {
           website: ex.website,
           tradeShowId: ex.tradeShowId?._id || ex.tradeShowId,
           tradeShowName: ex.tradeShowId?.shortName || ex.tradeShowId?.fullName || '',
+          sourceType: 'tradeshow',
           createdAt: ex.createdAt
         };
 
-        // Apply filters
+        if (status && status !== 'All' && contact.status !== status) continue;
+        if (important === 'true' && !contact.isImportant) continue;
+        if (labelId && !contact.labels.some(l => l._id.toString() === labelId)) continue;
+        if (search) {
+          const q = search.toLowerCase();
+          const match = contact.fullName.toLowerCase().includes(q) ||
+            contact.companyName.toLowerCase().includes(q) ||
+            contact.email.toLowerCase().includes(q) ||
+            contact.designation.toLowerCase().includes(q);
+          if (!match) continue;
+        }
+
+        contacts.push(contact);
+      }
+    }
+
+    // Also include contacts from CompanyData
+    const companyDataEntries = await CompanyData.find({ companyId }).sort({ createdAt: -1 });
+    for (const cd of companyDataEntries) {
+      if (!cd.contacts || cd.contacts.length === 0) continue;
+      for (let i = 0; i < cd.contacts.length; i++) {
+        const c = cd.contacts[i];
+        if (!c.fullName && !c.email) continue;
+
+        const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
+
+        const contact = {
+          _id: `${cd._id}_${i}`,
+          companyDataId: cd._id,
+          contactIndex: i,
+          fullName: c.fullName || '',
+          designation: c.designation || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          location: c.location || '',
+          socialLinks: c.socialLinks || [],
+          status: c.status || 'Cold Lead',
+          followUp: c.followUp || '',
+          isImportant: c.isImportant || false,
+          labels: contactLabels,
+          companyName: cd.companyName,
+          website: cd.website,
+          tradeShowId: null,
+          tradeShowName: '',
+          sourceType: 'company-data',
+          createdAt: cd.createdAt
+        };
+
         if (status && status !== 'All' && contact.status !== status) continue;
         if (important === 'true' && !contact.isImportant) continue;
         if (labelId && !contact.labels.some(l => l._id.toString() === labelId)) continue;

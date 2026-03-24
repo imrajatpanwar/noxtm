@@ -1,0 +1,225 @@
+/* =============================================
+   Header Active Team — Avatar Group + Count
+   ============================================= */
+
+.hat-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+}
+
+/* ---- Avatar Stack ---- */
+.hat-stack {
+  display: flex;
+  align-items: center;
+}
+
+.hat-stack-item {
+  position: relative;
+  margin-left: -8px;
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.hat-stack-item:first-child {
+  margin-left: 0;
+}
+
+.hat-stack-item:hover {
+  transform: translateY(-2px);
+  z-index: 50 !important;
+}
+
+/* ---- Tooltip (below avatar) ---- */
+.hat-stack-item .hat-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #18181b;
+  color: #fff;
+  font-family: 'Switzer', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.hat-stack-item .hat-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-bottom-color: #18181b;
+}
+
+.hat-stack-item:hover .hat-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Avatar Circle ---- */
+.hat-avatar {
+  position: relative;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Switzer', sans-serif;
+  font-weight: 600;
+  color: #fff;
+  overflow: visible;
+  flex-shrink: 0;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.hat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.hat-avatar-initials {
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Green Active Dot ---- */
+.hat-active-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* ---- Overflow "+N" Button ---- */
+.hat-more-wrap {
+  position: relative;
+}
+
+.hat-more-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Switzer', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.hat-more-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ---- Overflow Popup ---- */
+.hat-popup {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 500;
+  animation: hatPopupIn 0.15s ease-out;
+}
+
+@keyframes hatPopupIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hat-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 4px;
+  font-family: 'Switzer', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hat-popup-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.hat-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.1s ease;
+}
+
+.hat-popup-item:hover {
+  background: #f9fafb;
+}
+
+.hat-popup-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hat-popup-name {
+  font-family: 'Switzer', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.hat-popup-email {
+  font-family: 'Switzer', sans-serif;
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* Count badge removed */
