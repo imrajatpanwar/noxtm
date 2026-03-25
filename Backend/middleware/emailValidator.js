@@ -102,11 +102,6 @@ function hasSuspiciousPatterns(email) {
     return true;
   }
 
-  // Excessive numbers at the end (e.g., spam123456@example.com)
-  if (/\d{6,}$/.test(localPart)) {
-    return true;
-  }
-
   return false;
 }
 
