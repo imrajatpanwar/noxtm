@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import './ZynthrSignup.css';
+import './NoxtmBotSignup.css';
 
 // Use same backend URL as the rest of the app (config/api.js)
 const API_BASE = (() => {
@@ -37,7 +37,7 @@ const SendIcon = () => (
   </svg>
 );
 
-function ZynthrSignup({ onSignup }) {
+function NoxtmBotSignup({ onSignup }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef(null);
@@ -49,7 +49,7 @@ function ZynthrSignup({ onSignup }) {
   const [flowState, setFlowState] = useState('INTRO');
   const [collectedData, setCollectedData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(() => 'zynthr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
+  const [sessionId] = useState(() => 'noxtm_bot_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
   const [isSliding, setIsSliding] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
   const [showIndustries, setShowIndustries] = useState(false);
@@ -67,7 +67,7 @@ function ZynthrSignup({ onSignup }) {
 
   // Restore session from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('zynthr_session');
+    const saved = localStorage.getItem('noxtm_bot_session');
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -79,10 +79,10 @@ function ZynthrSignup({ onSignup }) {
           if (data.authToken) setAuthToken(data.authToken);
           return; // Don't fetch intro
         } else {
-          localStorage.removeItem('zynthr_session');
+          localStorage.removeItem('noxtm_bot_session');
         }
       } catch (e) {
-        localStorage.removeItem('zynthr_session');
+        localStorage.removeItem('noxtm_bot_session');
       }
     }
 
@@ -97,7 +97,7 @@ function ZynthrSignup({ onSignup }) {
         setCollectedData({ fullName: userData.fullName, email: userData.email, userId: userData._id });
         setFlowState('PLAN_SELECT');
         setMessages([
-          { role: 'assistant', text: `Welcome back, ${userData.fullName?.split(' ')[0] || 'there'}! 🎉 Google sign-in worked perfectly. Now let's pick a plan for you:` }
+          { role: 'assistant', text: `Welcome back, ${userData.fullName?.split(' ')[0] || 'there'}! Google sign-in worked perfectly. Now let's pick a plan for you:` }
         ]);
         setShowPlans(true);
         return;
@@ -112,7 +112,7 @@ function ZynthrSignup({ onSignup }) {
   // Persist session
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('zynthr_session', JSON.stringify({
+      localStorage.setItem('noxtm_bot_session', JSON.stringify({
         messages, flowState, collectedData, authToken, timestamp: Date.now()
       }));
     }
@@ -120,13 +120,13 @@ function ZynthrSignup({ onSignup }) {
 
   const fetchIntro = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/zynthr/intro`);
+      const res = await fetch(`${API_BASE}/api/noxtm-bot/intro`);
       const data = await res.json();
       if (data.success) {
         setMessages([{ role: 'assistant', text: data.message }]);
       }
     } catch (e) {
-      setMessages([{ role: 'assistant', text: "Hey! I'm Zynthr, your setup assistant at Noxtm. Ready to create your workspace? Sign up with email or continue with Google!" }]);
+      setMessages([{ role: 'assistant', text: "Hey! I'm Noxtm Bot, your setup assistant. Ready to create your workspace? Sign up with email or continue with Google!" }]);
     }
   };
 
@@ -148,7 +148,7 @@ function ZynthrSignup({ onSignup }) {
         content: m.text
       }));
 
-      const res = await fetch(`${API_BASE}/api/zynthr/chat`, {
+      const res = await fetch(`${API_BASE}/api/noxtm-bot/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ function ZynthrSignup({ onSignup }) {
           COLLECT_NAME: "What's your full name?",
           COLLECT_EMAIL: "What's your email address?",
           COLLECT_PASSWORD: "Create a password (at least 6 characters).",
-          EMAIL_VERIFY: "Enter the 6-digit code from your email.",
+          EMAIL_VERIFY: "Enter the 6-digit code from your email. If the email is wrong, say \"change email\".",
           PLAN_SELECT: "Pick a plan from the options above!",
           COMPANY_NAME: "What's your company name?",
           COMPANY_EMAIL: "What's your company email?",
@@ -192,7 +192,7 @@ function ZynthrSignup({ onSignup }) {
         setMessages(prev => [...prev, { role: 'assistant', text: data.reply || "Could you try that again?" }]);
       }
     } catch (error) {
-      console.error('[Zynthr] Send error:', error);
+      console.error('[NoxtmBot] Send error:', error);
       setMessages(prev => [...prev, { role: 'assistant', text: "Connection hiccup! Could you try again?" }]);
     } finally {
       setLoading(false);
@@ -259,7 +259,7 @@ function ZynthrSignup({ onSignup }) {
         setTimeout(() => {
           setIsSliding(true);
           setTimeout(() => {
-            localStorage.removeItem('zynthr_session');
+            localStorage.removeItem('noxtm_bot_session');
             navigate('/dashboard');
           }, 900);
         }, 1500);
@@ -285,7 +285,7 @@ function ZynthrSignup({ onSignup }) {
   };
 
   const handleGoogleSignup = () => {
-    localStorage.setItem('zynthr_onboarding', 'true');
+    localStorage.setItem('noxtm_bot_onboarding', 'true');
     const googleAuthUrl = `${API_BASE}/api/auth/google`;
     window.location.href = googleAuthUrl;
   };
@@ -341,8 +341,8 @@ function ZynthrSignup({ onSignup }) {
               })
             });
 
-            // Tell Zynthr backend payment is done
-            await fetch(`${API_BASE}/api/zynthr/payment-complete`, {
+            // Tell backend payment is done
+            await fetch(`${API_BASE}/api/noxtm-bot/payment-complete`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -355,7 +355,7 @@ function ZynthrSignup({ onSignup }) {
             setCollectedData(prev => ({ ...prev, plan }));
             setMessages(prev => [...prev, {
               role: 'assistant',
-              text: `Payment successful! 🎉 The ${plan} plan is all yours. Now let's set up your workspace — what's your company name?`
+              text: `Payment successful! The ${plan} plan is all yours. Now let's set up your workspace — what's your company name?`
             }]);
           } catch (e) {
             setMessages(prev => [...prev, {
@@ -380,7 +380,7 @@ function ZynthrSignup({ onSignup }) {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (error) {
-      console.error('[Zynthr] Razorpay error:', error);
+      console.error('[NoxtmBot] Razorpay error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Couldn't load the payment form. Want to try a plan with a free trial instead?"
@@ -405,6 +405,7 @@ function ZynthrSignup({ onSignup }) {
   };
 
   const isPasswordState = flowState === 'COLLECT_PASSWORD';
+  const isEmailVerifyState = flowState === 'EMAIL_VERIFY';
 
   const getPlaceholder = () => {
     switch (flowState) {
@@ -412,7 +413,7 @@ function ZynthrSignup({ onSignup }) {
       case 'COLLECT_NAME': return 'Enter your full name...';
       case 'COLLECT_EMAIL': return 'Enter your email address...';
       case 'COLLECT_PASSWORD': return 'Create a password (6+ chars)...';
-      case 'EMAIL_VERIFY': return 'Enter the 6-digit code...';
+      case 'EMAIL_VERIFY': return 'Enter the 6-digit code or type "change email"...';
       case 'PLAN_SELECT': return 'Pick a plan above or type its name...';
       case 'COMPANY_NAME': return 'Enter your company name...';
       case 'COMPANY_EMAIL': return 'Enter company email...';
@@ -423,62 +424,71 @@ function ZynthrSignup({ onSignup }) {
   };
 
   return (
-    <div className={`zynthr-page ${isSliding ? 'zynthr-slide-out' : ''}`}>
+    <div className={`noxtm-bot-page ${isSliding ? 'noxtm-bot-slide-out' : ''}`}>
       {/* Noxtm brand - always top left */}
-      <div className="zynthr-branding">
-        <span className="zynthr-brand-text zynthr-brand-logo">noxtm</span>
+      <div className="noxtm-bot-branding">
+        <span className="noxtm-bot-brand-text noxtm-bot-brand-logo">noxtm</span>
       </div>
 
       {/* Log out - top right, only after signup (authToken set) */}
       {authToken && (
-        <div className="zynthr-logout">
-          <Link to="/login" className="zynthr-brand-text" onClick={() => {
+        <div className="noxtm-bot-logout">
+          <Link to="/login" className="noxtm-bot-brand-text" onClick={() => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            localStorage.removeItem('zynthr_session');
+            localStorage.removeItem('noxtm_bot_session');
           }}>Log out</Link>
         </div>
       )}
 
       {/* Messages */}
-      <div className="zynthr-messages">
+      <div className="noxtm-bot-messages">
         {messages.map((msg, i) => (
-          <div key={i} className={`zynthr-msg zynthr-msg-${msg.role}`}>
-            <div className="zynthr-msg-bubble">{msg.text}</div>
+          <div key={i} className={`noxtm-bot-msg noxtm-bot-msg-${msg.role}`}>
+            <div className="noxtm-bot-msg-bubble">{msg.text}</div>
           </div>
         ))}
 
         {/* Typing indicator */}
         {loading && (
-          <div className="zynthr-typing">
-            <div className="zynthr-typing-dot" />
-            <div className="zynthr-typing-dot" />
-            <div className="zynthr-typing-dot" />
+          <div className="noxtm-bot-typing">
+            <div className="noxtm-bot-typing-dot" />
+            <div className="noxtm-bot-typing-dot" />
+            <div className="noxtm-bot-typing-dot" />
+          </div>
+        )}
+
+        {/* Change email hint during verification */}
+        {isEmailVerifyState && !loading && (
+          <div className="noxtm-bot-quick-replies">
+            <button className="noxtm-bot-quick-btn" onClick={() => handleQuickReply('change email')}>
+              Change Email Address
+            </button>
           </div>
         )}
 
         {/* Plan cards */}
         {showPlans && !loading && (
-          <div className="zynthr-plans">
+          <div className="noxtm-bot-plans">
             {Object.entries(PLANS).map(([name, plan]) => (
               <div
                 key={name}
-                className={`zynthr-plan-card ${plan.popular ? 'popular' : ''}`}
+                className={`noxtm-bot-plan-card ${plan.popular ? 'popular' : ''}`}
                 onClick={() => handlePlanSelect(name)}
               >
-                {plan.popular && <div className="zynthr-plan-badge">Popular</div>}
-                <div className="zynthr-plan-card-header">
-                  <span className="zynthr-plan-name">{name}</span>
-                  <span className="zynthr-plan-price">{plan.price}</span>
+                {plan.popular && <div className="noxtm-bot-plan-badge">Popular</div>}
+                <div className="noxtm-bot-plan-card-header">
+                  <span className="noxtm-bot-plan-name">{name}</span>
+                  <span className="noxtm-bot-plan-price">{plan.price}</span>
                 </div>
-                <div className="zynthr-plan-features">
-                  <span className="zynthr-plan-feature">{plan.members}</span>
-                  <span className="zynthr-plan-feature">{plan.storage}</span>
+                <div className="noxtm-bot-plan-features">
+                  <span className="noxtm-bot-plan-feature">{plan.members}</span>
+                  <span className="noxtm-bot-plan-feature">{plan.storage}</span>
                   {plan.features.slice(0, 2).map((f, j) => (
-                    <span key={j} className="zynthr-plan-feature">{f}</span>
+                    <span key={j} className="noxtm-bot-plan-feature">{f}</span>
                   ))}
                 </div>
-                {plan.trial && <div className="zynthr-plan-trial">14-day free trial</div>}
+                {plan.trial && <div className="noxtm-bot-plan-trial">14-day free trial</div>}
               </div>
             ))}
           </div>
@@ -486,29 +496,29 @@ function ZynthrSignup({ onSignup }) {
 
         {/* Industry quick replies */}
         {showIndustries && !loading && (
-          <div className="zynthr-quick-replies">
+          <div className="noxtm-bot-quick-replies">
             {INDUSTRIES.map(ind => (
-              <button key={ind} className="zynthr-quick-btn" onClick={() => handleQuickReply(ind)}>{ind}</button>
+              <button key={ind} className="noxtm-bot-quick-btn" onClick={() => handleQuickReply(ind)}>{ind}</button>
             ))}
           </div>
         )}
 
         {/* Size quick replies */}
         {showSizes && !loading && (
-          <div className="zynthr-quick-replies">
+          <div className="noxtm-bot-quick-replies">
             {SIZES.map(size => (
-              <button key={size} className="zynthr-quick-btn" onClick={() => handleQuickReply(size)}>{size}</button>
+              <button key={size} className="noxtm-bot-quick-btn" onClick={() => handleQuickReply(size)}>{size}</button>
             ))}
           </div>
         )}
 
         {/* Google signup button (only in INTRO) */}
         {flowState === 'INTRO' && messages.length > 0 && !loading && (
-          <div className="zynthr-quick-replies">
-            <button className="zynthr-quick-btn" onClick={() => handleQuickReply('I want to sign up with email')}>
+          <div className="noxtm-bot-quick-replies">
+            <button className="noxtm-bot-quick-btn" onClick={() => handleQuickReply('I want to sign up with email')}>
               Sign up with Email
             </button>
-            <button className="zynthr-quick-btn" onClick={handleGoogleSignup}>
+            <button className="noxtm-bot-quick-btn" onClick={handleGoogleSignup}>
               Continue with Google
             </button>
           </div>
@@ -518,11 +528,11 @@ function ZynthrSignup({ onSignup }) {
       </div>
 
       {/* Input Area */}
-      <div className="zynthr-input-area">
+      <div className="noxtm-bot-input-area">
         <input
           ref={inputRef}
           type={isPasswordState ? 'password' : 'text'}
-          className={`zynthr-input ${isPasswordState ? 'password-mode' : ''}`}
+          className={`noxtm-bot-input ${isPasswordState ? 'password-mode' : ''}`}
           placeholder={getPlaceholder()}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -531,7 +541,7 @@ function ZynthrSignup({ onSignup }) {
           autoFocus
         />
         <button
-          className="zynthr-send-btn"
+          className="noxtm-bot-send-btn"
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || loading}
         >
@@ -540,11 +550,11 @@ function ZynthrSignup({ onSignup }) {
       </div>
 
       {/* Login link */}
-      <div className="zynthr-login-link">
+      <div className="noxtm-bot-login-link">
         Already have an account? <Link to="/login">Log in</Link>
       </div>
     </div>
   );
 }
 
-export default ZynthrSignup;
+export default NoxtmBotSignup;

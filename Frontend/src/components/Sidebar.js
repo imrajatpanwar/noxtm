@@ -318,7 +318,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     { name: 'Company Handbook', section: 'company-handbook', category: 'Internal Policies' },
 
     // Settings & Configuration
-    { name: 'Zynthr AI Setup', section: 'zynthr-admin', category: 'Settings & Configuration' },
+    { name: 'Noxtm Bot Setup', section: 'noxtm-bot-admin', category: 'Settings & Configuration' },
     { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
     { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
     { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
@@ -855,6 +855,14 @@ function Sidebar({ activeSection, onSectionChange }) {
 
                 {settingsConfigExpanded && (
                   <div className="sidebar-submenu">
+                    {currentUser?.role === 'Admin' && (
+                      <div
+                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-bot-admin' ? 'active' : ''}`}
+                        onClick={() => onSectionChange('noxtm-bot-admin')}
+                      >
+                        <span>Noxtm Bot Management</span>
+                      </div>
+                    )}
                     <div
                       className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'manage-integrations' ? 'active' : ''}`}
                       onClick={() => onSectionChange('manage-integrations')}

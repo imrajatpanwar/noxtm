@@ -48,7 +48,7 @@ import LinkedInManager from './LinkedInManager';
 import SocialMediaCalendar from './SocialMediaCalendar';
 import SocialMediaCredentials from './SocialMediaCredentials';
 import VisitorAnalytics from './VisitorAnalytics';
-import ZynthrAdmin from './ZynthrAdmin';
+import NoxtmBotAdmin from './NoxtmBotAdmin';
 import './Dashboard.css';
 
 function Dashboard({ user, onLogout }) {
@@ -308,8 +308,8 @@ function Dashboard({ user, onLogout }) {
         return <WorkspaceSettings user={user} onLogout={onLogout} />;
       case 'visitor-analytics':
         return <VisitorAnalytics />;
-      case 'zynthr-admin':
-        return <ZynthrAdmin />;
+      case 'noxtm-bot-admin':
+        return <NoxtmBotAdmin />;
       default:
         return (
           <div className="dashboard-card">

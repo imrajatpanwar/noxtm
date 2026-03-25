@@ -7,9 +7,12 @@ const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const EmailVerification = require('../models/EmailVerification');
-const ZynthrConfig = require('../models/ZynthrConfig');
+const NoxtmBotConfig = require('../models/NoxtmBotConfig');
 const { authenticateToken } = require('../middleware/auth');
 const { callClaude } = require('../utils/aiHelpers');
+
+// Default AI model
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
 // ============ SESSION MANAGEMENT ============
 const sessions = new Map();
@@ -33,6 +36,7 @@ const chatLimiter = rateLimit({
 // ============ FLOW STATES ============
 const STATES = {
   INTRO: 'INTRO',
+  // Signup skill states
   COLLECT_NAME: 'COLLECT_NAME',
   COLLECT_EMAIL: 'COLLECT_EMAIL',
   COLLECT_PASSWORD: 'COLLECT_PASSWORD',
@@ -81,8 +85,8 @@ function matchPlan(text) {
   return null;
 }
 
-// Build system prompt for Zynthr
-function buildZynthrPrompt(state, collected) {
+// Build system prompt for Noxtm Bot
+function buildNoxtmBotPrompt(state, collected, activeSkill) {
   let stateInstruction = '';
 
   switch (state) {
@@ -99,7 +103,7 @@ function buildZynthrPrompt(state, collected) {
       stateInstruction = `Ask ${collected.fullName} to create a password (must be at least 6 characters). Remind them it should be secure.`;
       break;
     case STATES.EMAIL_VERIFY:
-      stateInstruction = `A 6-digit verification code was sent to ${collected.email}. Ask them to enter it. If they say they didn't receive it, offer to resend.`;
+      stateInstruction = `A 6-digit verification code was sent to ${collected.email}. Ask them to enter it. If they say they didn't receive it, offer to resend. If they say the email is wrong or want to change it, let them know they can type a new email.`;
       break;
     case STATES.PLAN_SELECT:
       stateInstruction = `${collected.fullName} is now verified! Present the plan options naturally. Don't list prices — the UI will show plan cards. Just say something like "Here are the plans available — pick what works best for you!"`;
@@ -121,12 +125,15 @@ function buildZynthrPrompt(state, collected) {
       break;
   }
 
-  return `You are Zynthr, the AI setup assistant for Noxtm — a modern workspace management platform.
+  const skillContext = activeSkill ? `\nCurrently using skill: ${activeSkill}` : '';
+
+  return `You are Noxtm Bot, the AI assistant for Noxtm — a modern workspace management platform.
 You are warm, friendly, concise (2-3 sentences MAX), and human-like.
-NEVER reveal you are an AI or a bot. You are Zynthr, a team member.
+NEVER reveal you are an AI or a bot. You are a Noxtm team member.
 NEVER use markdown formatting (no **, no ##, no bullets).
 Keep responses under 35 words.
 Use the user's first name when you know it.
+${skillContext}
 
 Current state: ${state}
 Collected data: ${JSON.stringify(collected)}
@@ -156,7 +163,7 @@ async function sendVerificationCode(fullName, email, password) {
       await sendVerificationEmail(email, fullName, code);
     }
   } catch (e) {
-    console.log('[Zynthr] Email service not available, code:', code);
+    console.log('[NoxtmBot] Email service not available, code:', code);
   }
 
   return code;
@@ -201,6 +208,11 @@ async function verifyCodeAndCreateUser(email, code) {
   return { token, user };
 }
 
+// Get the AI model to use (from config or default)
+function getModel(session) {
+  return session?.aiModel || DEFAULT_MODEL;
+}
+
 // ============ MAIN CHAT ENDPOINT ============
 router.post('/chat', chatLimiter, async (req, res) => {
   try {
@@ -211,7 +223,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
     // Get or create session
     let session = sessions.get(sessionId);
     if (!session) {
-      session = { flowState: STATES.INTRO, collectedData: {}, createdAt: Date.now() };
+      session = { flowState: STATES.INTRO, collectedData: {}, createdAt: Date.now(), activeSkill: 'signup' };
       sessions.set(sessionId, session);
     }
 
@@ -219,6 +231,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
     let currentState = flowState || session.flowState;
     let collected = { ...session.collectedData, ...collectedData };
     const userMsg = (message || '').trim();
+    const model = getModel(session);
 
     // Sanitize conversation history - ensure alternating roles for Claude API
     const sanitizedHistory = [];
@@ -240,21 +253,21 @@ router.post('/chat', chatLimiter, async (req, res) => {
           reply = "Great choice! Click the Google button below and I'll be right here when you get back.";
           action = 'GOOGLE_SIGNUP';
         } else {
+          // Activate signup skill
+          session.activeSkill = 'signup';
           newState = STATES.COLLECT_NAME;
-          // Get Claude response for name collection
           const msgs = [
-            { role: 'system', content: buildZynthrPrompt(STATES.COLLECT_NAME, collected) },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_NAME, collected, 'signup') },
             ...sanitizedHistory,
             { role: 'user', content: userMsg || 'I want to sign up with email' }
           ];
-          // Ensure last message is user role (deduplicate if needed)
           while (msgs.length > 1 && msgs[msgs.length - 1].role === msgs[msgs.length - 2].role && msgs[msgs.length - 1].role !== 'system') {
             msgs.splice(msgs.length - 2, 1);
           }
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 40);
+            reply = await callClaude(msgs, model, 40);
           } catch (e) {
-            console.error('[Zynthr] Claude error in INTRO:', e.message);
+            console.error('[NoxtmBot] Claude error in INTRO:', e.message);
             reply = "Awesome, let's get you set up! First, what's your full name?";
           }
         }
@@ -266,14 +279,14 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.fullName = userMsg.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
           newState = STATES.COLLECT_EMAIL;
           const msgs = [
-            { role: 'system', content: buildZynthrPrompt(STATES.COLLECT_EMAIL, collected) },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_EMAIL, collected, 'signup') },
             ...sanitizedHistory.filter(m => m.role !== 'user' || m.content !== userMsg).slice(-4),
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, model, 35);
           } catch (e) {
-            console.error('[Zynthr] Claude error in COLLECT_NAME:', e.message);
+            console.error('[NoxtmBot] Claude error in COLLECT_NAME:', e.message);
             reply = `Nice to meet you, ${collected.fullName.split(' ')[0]}! What's your email address?`;
           }
         } else {
@@ -295,14 +308,14 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.email = email;
           newState = STATES.COLLECT_PASSWORD;
           const msgs = [
-            { role: 'system', content: buildZynthrPrompt(STATES.COLLECT_PASSWORD, collected) },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_PASSWORD, collected, 'signup') },
             ...sanitizedHistory.filter(m => m.role !== 'user' || m.content !== userMsg).slice(-4),
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, model, 35);
           } catch (e) {
-            console.error('[Zynthr] Claude error in COLLECT_EMAIL:', e.message);
+            console.error('[NoxtmBot] Claude error in COLLECT_EMAIL:', e.message);
             reply = `Got it, ${collected.fullName.split(' ')[0]}! Now create a password — at least 6 characters.`;
           }
         } else {
@@ -318,7 +331,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
           try {
             await sendVerificationCode(collected.fullName, collected.email, collected.password);
             newState = STATES.EMAIL_VERIFY;
-            reply = `Perfect! I've sent a 6-digit code to ${collected.email}. Drop it here when you get it!`;
+            reply = `Perfect! I've sent a 6-digit code to ${collected.email}. Drop it here when you get it! If that's not your email, just type "change email" and give me the right one.`;
             // Don't store password in session
             delete collected.password;
           } catch (err) {
@@ -337,37 +350,77 @@ router.post('/chat', chatLimiter, async (req, res) => {
       }
 
       case STATES.EMAIL_VERIFY: {
+        const lowerMsg = userMsg.toLowerCase();
+
+        // Check if user wants to change their email
+        if (lowerMsg.includes('change email') || lowerMsg.includes('wrong email') || lowerMsg.includes('different email') || lowerMsg.includes('not my email') || lowerMsg.includes('change mail') || lowerMsg.includes('wrong mail')) {
+          // Check if they also provided a new email in the same message
+          const newEmail = extractEmail(userMsg);
+          if (newEmail) {
+            const exists = await User.findOne({ email: newEmail.toLowerCase() });
+            if (exists) {
+              reply = `Looks like ${newEmail} already has an account. Try another email address.`;
+              break;
+            }
+            // Clean up old verification
+            await EmailVerification.deleteOne({ email: collected.email?.toLowerCase() });
+            collected.email = newEmail;
+            newState = STATES.COLLECT_PASSWORD;
+            reply = `Got it! I've updated your email to ${newEmail}. Now I need your password again to send the verification code.`;
+          } else {
+            // Go back to collect email
+            newState = STATES.COLLECT_EMAIL;
+            delete collected.email;
+            // Clean up old verification
+            await EmailVerification.deleteOne({ email: collected.email?.toLowerCase() });
+            reply = `No problem! What's the correct email address?`;
+          }
+          break;
+        }
+
+        // Check if they just typed a new email directly (without saying "change")
+        const possibleNewEmail = extractEmail(userMsg);
+        if (possibleNewEmail && possibleNewEmail !== collected.email) {
+          // They seem to be trying to change their email
+          const exists = await User.findOne({ email: possibleNewEmail.toLowerCase() });
+          if (exists) {
+            reply = `Looks like ${possibleNewEmail} already has an account. Enter the 6-digit code from ${collected.email}, or say "change email" to use a different one.`;
+            break;
+          }
+          // Clean up old verification
+          await EmailVerification.deleteOne({ email: collected.email?.toLowerCase() });
+          collected.email = possibleNewEmail;
+          newState = STATES.COLLECT_PASSWORD;
+          reply = `Switching to ${possibleNewEmail}! I'll need your password again to send a new code.`;
+          break;
+        }
+
         const code = extractCode(userMsg);
         if (code) {
           try {
             const { token, user } = await verifyCodeAndCreateUser(collected.email, code);
             collected.userId = user._id.toString();
             newState = STATES.PLAN_SELECT;
-            action = 'STORE_AUTH';
-            actionData = { token, user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role } };
-            reply = `You're verified, ${collected.fullName.split(' ')[0]}! 🎉 Now let's pick the right plan for you. Check these out:`;
             action = 'SHOW_PLANS';
-            actionData = { token, user: actionData?.user, plans: PLANS };
+            actionData = { token, user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role }, plans: PLANS };
+            reply = `You're verified, ${collected.fullName.split(' ')[0]}! Now let's pick the right plan for you. Check these out:`;
           } catch (err) {
             if (err.message === 'INVALID_CODE') {
-              reply = "That code doesn't match. Double-check and try again?";
+              reply = "That code doesn't match. Double-check and try again? Or say \"change email\" if you need to use a different email.";
             } else if (err.message === 'CODE_EXPIRED') {
               reply = "That code expired. Want me to send a new one?";
             } else {
               reply = "Something went wrong verifying. Try entering the code again.";
             }
           }
-        } else if (userMsg.toLowerCase().includes('resend')) {
+        } else if (lowerMsg.includes('resend')) {
           try {
-            // Need password from session or re-collect
-            reply = "I'll send a fresh code to " + collected.email + ". Check your inbox!";
-            // Note: can't resend without password. For MVP, suggest checking spam.
-            reply = "Check your spam folder — the code should be there. If not, try signing up again with a fresh start.";
+            reply = "Check your spam folder — the code should be there. If not, say \"change email\" to try a different email, or start fresh.";
           } catch (e) {
             reply = "Having trouble resending. Please check your spam folder or try again.";
           }
         } else {
-          reply = "I need the 6-digit code from your email. Just paste it here!";
+          reply = `I need the 6-digit code from ${collected.email}. Just paste it here! If that's not your email, say "change email".`;
         }
         break;
       }
@@ -395,10 +448,10 @@ router.post('/chat', chatLimiter, async (req, res) => {
               action = 'TRIAL_STARTED';
               actionData = { plan, trialDays: 14 };
               const msgs = [
-                { role: 'system', content: buildZynthrPrompt(STATES.COMPANY_NAME, collected) },
+                { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_NAME, collected, 'signup') },
                 { role: 'user', content: `I chose ${plan}` }
               ];
-              reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+              reply = await callClaude(msgs, model, 35);
             } catch (e) {
               reply = "Had a hiccup activating your trial. Let me try again — which plan did you want?";
             }
@@ -419,13 +472,13 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.companyName = userMsg;
           newState = STATES.COMPANY_EMAIL;
           const msgs = [
-            { role: 'system', content: buildZynthrPrompt(STATES.COMPANY_EMAIL, collected) },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_EMAIL, collected, 'signup') },
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, model, 35);
           } catch (e) {
-            console.error('[Zynthr] Claude error in COMPANY_NAME:', e.message);
+            console.error('[NoxtmBot] Claude error in COMPANY_NAME:', e.message);
             reply = `"${collected.companyName}" — love it! What's the company email address?`;
           }
         } else {
@@ -491,12 +544,12 @@ router.post('/chat', chatLimiter, async (req, res) => {
             actionData = { companyId: company._id.toString(), user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: company._id } };
 
             const msgs = [
-              { role: 'system', content: buildZynthrPrompt(STATES.COMPLETE, collected) },
+              { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPLETE, collected, 'signup') },
               { role: 'user', content: 'Done!' }
             ];
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 40);
+            reply = await callClaude(msgs, model, 40);
           } catch (e) {
-            console.error('[Zynthr] Company creation error:', e);
+            console.error('[NoxtmBot] Company creation error:', e);
             reply = "Oops, something went wrong setting up your workspace. Let me try once more — what's your team size?";
           }
         } else {
@@ -525,7 +578,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Zynthr] Chat error:', error);
+    console.error('[NoxtmBot] Chat error:', error);
     res.status(500).json({
       success: false,
       reply: "Something went wrong on my end. Could you try that again?",
@@ -538,7 +591,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
 router.get('/intro', (req, res) => {
   res.json({
     success: true,
-    message: "Hey! I'm Zynthr, your setup assistant at Noxtm. Ready to create your workspace? You can sign up with email or continue with Google — totally up to you!",
+    message: "Hey! I'm Noxtm Bot, your setup assistant. Ready to create your workspace? You can sign up with email or continue with Google — totally up to you!",
     flowState: STATES.INTRO
   });
 });
@@ -560,7 +613,7 @@ router.post('/payment-complete', authenticateToken, async (req, res) => {
 
     res.json({ success: true, newFlowState: STATES.COMPANY_NAME });
   } catch (error) {
-    console.error('[Zynthr] Payment complete error:', error);
+    console.error('[NoxtmBot] Payment complete error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -571,15 +624,22 @@ router.get('/config', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user || !user.companyId) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    let config = await ZynthrConfig.findOne({ companyId: user.companyId });
+    let config = await NoxtmBotConfig.findOne({ companyId: user.companyId });
     if (!config) {
-      config = new ZynthrConfig({ companyId: user.companyId });
+      config = new NoxtmBotConfig({ companyId: user.companyId });
       await config.save();
     }
 
-    res.json({ success: true, config });
+    // Don't expose custom API key in response
+    const configObj = config.toObject();
+    if (configObj.customApiKey) {
+      configObj.customApiKey = configObj.customApiKey.substring(0, 8) + '...' + configObj.customApiKey.slice(-4);
+      configObj.hasCustomApiKey = true;
+    }
+
+    res.json({ success: true, config: configObj });
   } catch (error) {
-    console.error('[Zynthr] Config fetch error:', error);
+    console.error('[NoxtmBot] Config fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -593,18 +653,31 @@ router.put('/config', authenticateToken, async (req, res) => {
     const company = await Company.findById(user.companyId);
     const member = company?.members.find(m => m.user.toString() === user._id.toString());
     if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can update Zynthr config' });
+      return res.status(403).json({ success: false, message: 'Only workspace owner can update Noxtm Bot config' });
     }
 
-    const config = await ZynthrConfig.findOneAndUpdate(
+    // If custom API key is masked (from a previous GET), don't overwrite
+    const updateData = { ...req.body, updatedBy: user._id };
+    if (updateData.customApiKey && updateData.customApiKey.includes('...')) {
+      delete updateData.customApiKey;
+    }
+
+    const config = await NoxtmBotConfig.findOneAndUpdate(
       { companyId: user.companyId },
-      { ...req.body, updatedBy: user._id },
-      { upsert: true, new: true }
+      updateData,
+      { upsert: true, new: true, runValidators: true }
     );
 
-    res.json({ success: true, config });
+    // Mask API key in response
+    const configObj = config.toObject();
+    if (configObj.customApiKey) {
+      configObj.customApiKey = configObj.customApiKey.substring(0, 8) + '...' + configObj.customApiKey.slice(-4);
+      configObj.hasCustomApiKey = true;
+    }
+
+    res.json({ success: true, config: configObj });
   } catch (error) {
-    console.error('[Zynthr] Config update error:', error);
+    console.error('[NoxtmBot] Config update error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

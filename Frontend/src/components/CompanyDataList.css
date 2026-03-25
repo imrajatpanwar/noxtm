@@ -219,25 +219,26 @@
 .cd-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .cd-card {
   background: #fff;
   border: 1px solid #e4e4e7;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .cd-card:hover {
   border-color: #d4d4d8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .cd-card-header {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
+  padding: 16px 20px;
   cursor: pointer;
   gap: 12px;
   user-select: none;
@@ -254,7 +255,7 @@
 }
 
 .cd-card-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #09090b;
   margin: 0;
@@ -267,7 +268,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 4px;
+  margin-top: 5px;
   flex-wrap: wrap;
 }
 
@@ -276,8 +277,8 @@
   font-weight: 500;
   color: #3b82f6;
   background: #eff6ff;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
 }
 
 .cd-card-website,
@@ -289,6 +290,25 @@
   color: #71717a;
 }
 
+/* Avatar for created by */
+.cd-card-avatar {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.cd-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  cursor: default;
+}
+
 .cd-card-actions {
   display: flex;
   gap: 4px;
@@ -298,23 +318,32 @@
 /* Expanded Content */
 .cd-card-expanded {
   border-top: 1px solid #f4f4f5;
-  padding: 16px;
+  padding: 20px 24px;
   background: #fafafa;
 }
 
 .cd-company-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
 }
 
 .cd-detail {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
   color: #52525b;
+}
+
+.cd-detail svg {
+  color: #a1a1aa;
+  flex-shrink: 0;
 }
 
 .cd-contacts-section {
@@ -322,42 +351,68 @@
 }
 
 .cd-contacts-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #27272a;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 
 .cd-contacts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .cd-contact-card {
   background: #fff;
   border: 1px solid #e4e4e7;
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cd-contact-card:hover {
+  border-color: #d4d4d8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.cd-contact-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cd-contact-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .cd-contact-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #09090b;
 }
 
 .cd-contact-designation {
-  font-size: 11px;
+  font-size: 12px;
   color: #71717a;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .cd-contact-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .cd-contact-details span {
@@ -369,6 +424,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cd-contact-details svg {
+  color: #a1a1aa;
+  flex-shrink: 0;
 }
 
 .cd-no-contacts {

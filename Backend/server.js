@@ -176,9 +176,11 @@ app.use('/api/projects', projectsRoutes);
 const aiRoutes = require('./routes/ai');
 app.use('/api/ai', aiRoutes);
 
-// Zynthr AI Onboarding routes
-const zynthrRoutes = require('./routes/zynthr-onboarding');
-app.use('/api/zynthr', zynthrRoutes);
+// Noxtm Bot AI Onboarding routes
+const noxtmBotRoutes = require('./routes/noxtm-bot');
+app.use('/api/noxtm-bot', noxtmBotRoutes);
+// Legacy route alias for backward compatibility
+app.use('/api/zynthr', noxtmBotRoutes);
 
 // Billing routes
 const billingRoutes = require('./routes/billing');

@@ -1,0 +1,432 @@
+/* Noxtm Bot Signup - Ultra Minimal */
+
+.noxtm-bot-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Noxtm brand - top left */
+.noxtm-bot-branding {
+  position: fixed;
+  top: 24px;
+  left: 28px;
+  z-index: 10;
+}
+
+/* Log out - top right */
+.noxtm-bot-logout {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 10;
+}
+
+.noxtm-bot-brand-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6b7280;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.noxtm-bot-brand-text:hover {
+  color: #111827;
+}
+
+.noxtm-bot-brand-logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #111827;
+  cursor: default;
+}
+
+/* Messages area - centered on page */
+.noxtm-bot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 80px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  scroll-behavior: smooth;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.noxtm-bot-messages::-webkit-scrollbar {
+  width: 0;
+}
+
+/* Messages - plain text, no bubbles */
+.noxtm-bot-msg {
+  animation: noxtmBotMsgIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0 24px;
+}
+
+.noxtm-bot-msg-assistant {
+  align-self: flex-start;
+}
+
+.noxtm-bot-msg-user {
+  align-self: flex-start;
+}
+
+.noxtm-bot-msg-bubble {
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+
+.noxtm-bot-msg-user .noxtm-bot-msg-bubble {
+  color: #6b7280;
+}
+
+@keyframes noxtmBotMsgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Typing indicator */
+.noxtm-bot-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 24px;
+  align-self: flex-start;
+  animation: noxtmBotMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.noxtm-bot-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ca3af;
+  animation: noxtmBotTypingBounce 1.4s infinite ease-in-out both;
+}
+
+.noxtm-bot-typing-dot:nth-child(1) { animation-delay: 0s; }
+.noxtm-bot-typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.noxtm-bot-typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes noxtmBotTypingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Quick reply buttons */
+.noxtm-bot-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 24px;
+}
+
+.noxtm-bot-quick-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Switzer', sans-serif;
+  animation: noxtmBotMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.noxtm-bot-quick-btn:nth-child(1) { animation-delay: 0s; }
+.noxtm-bot-quick-btn:nth-child(2) { animation-delay: 0.04s; }
+.noxtm-bot-quick-btn:nth-child(3) { animation-delay: 0.08s; }
+.noxtm-bot-quick-btn:nth-child(4) { animation-delay: 0.12s; }
+.noxtm-bot-quick-btn:nth-child(5) { animation-delay: 0.16s; }
+.noxtm-bot-quick-btn:nth-child(6) { animation-delay: 0.20s; }
+
+.noxtm-bot-quick-btn:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+  color: #111827;
+}
+
+.noxtm-bot-quick-btn:active {
+  transform: scale(0.97);
+}
+
+/* Plan cards */
+.noxtm-bot-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 24px;
+  animation: noxtmBotMsgIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.noxtm-bot-plan-card {
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.noxtm-bot-plan-card:hover {
+  background: #fafafa;
+  border-color: #d4d4d4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.noxtm-bot-plan-card:active {
+  transform: scale(0.99);
+}
+
+.noxtm-bot-plan-card.popular {
+  border-color: #a3a3a3;
+}
+
+.noxtm-bot-plan-card.popular:hover {
+  border-color: #737373;
+}
+
+.noxtm-bot-plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.noxtm-bot-plan-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.noxtm-bot-plan-price {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.noxtm-bot-plan-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.noxtm-bot-plan-feature {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f5f5f5;
+  color: #6b7280;
+}
+
+.noxtm-bot-plan-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.noxtm-bot-plan-trial {
+  font-size: 11px;
+  color: #16a34a;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* Google signup button */
+.noxtm-bot-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+  font-family: 'Switzer', sans-serif;
+}
+
+.noxtm-bot-google-btn:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+}
+
+.noxtm-bot-google-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Input area - bottom */
+.noxtm-bot-input-area {
+  padding: 20px 24px 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.noxtm-bot-input {
+  flex: 1;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: 'Switzer', sans-serif;
+  resize: none;
+}
+
+.noxtm-bot-input::placeholder {
+  color: #9ca3af;
+}
+
+.noxtm-bot-input:focus {
+  border-color: #a3a3a3;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
+}
+
+.noxtm-bot-input.password-mode {
+  -webkit-text-security: disc;
+}
+
+/* Send button - small circle, black */
+.noxtm-bot-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #111827;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.noxtm-bot-send-btn:hover:not(:disabled) {
+  background: #000000;
+}
+
+.noxtm-bot-send-btn:active:not(:disabled) {
+  transform: scale(0.93);
+  background: #000000;
+}
+
+.noxtm-bot-send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.noxtm-bot-send-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Login link */
+.noxtm-bot-login-link {
+  text-align: center;
+  padding: 0 0 20px;
+  font-size: 13px;
+  color: #9ca3af;
+  position: relative;
+  z-index: 1;
+}
+
+.noxtm-bot-login-link a {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.noxtm-bot-login-link a:hover {
+  color: #000000;
+}
+
+/* Slide-out animation */
+.noxtm-bot-slide-out .noxtm-bot-messages,
+.noxtm-bot-slide-out .noxtm-bot-input-area,
+.noxtm-bot-slide-out .noxtm-bot-login-link {
+  animation: noxtmBotFadeOut 0.6s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes noxtmBotFadeOut {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Hide elements not used in this design */
+.noxtm-bot-container,
+.noxtm-bot-header,
+.noxtm-bot-avatar,
+.noxtm-bot-header-info,
+.noxtm-bot-status-dot,
+.noxtm-bot-orb {
+  display: none;
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .noxtm-bot-messages {
+    padding-top: 60px;
+  }
+
+  .noxtm-bot-msg-bubble {
+    font-size: 15px;
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .noxtm-bot-msg,
+  .noxtm-bot-typing,
+  .noxtm-bot-quick-btn {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .noxtm-bot-typing-dot {
+    animation: none !important;
+    opacity: 0.7;
+  }
+}

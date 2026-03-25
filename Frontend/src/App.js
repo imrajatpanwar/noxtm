@@ -10,7 +10,7 @@ import { trackVisitor, stopTracking, updateCurrentPage } from './utils/fingerpri
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
-import ZynthrSignup from './components/ZynthrSignup';
+import NoxtmBotSignup from './components/NoxtmBotSignup';
 import ForgotPassword from './components/ForgotPassword';
 import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
@@ -39,7 +39,7 @@ import PaymentCheckout from './components/PaymentCheckout';
 
 function ConditionalHeader({ user, onLogout }) {
   const location = useLocation();
-  const hideHeaderRoutes = ['/signup'];
+  const hideHeaderRoutes = ['/signup', '/login'];
   if (hideHeaderRoutes.includes(location.pathname)) {
     return null;
   }
@@ -359,7 +359,7 @@ function App() {
                 />
                 <Route
                   path="/signup"
-                  element={<ZynthrSignup onSignup={signup} />}
+                  element={<NoxtmBotSignup onSignup={signup} />}
                 />
                 <Route
                   path="/forgot-password"

@@ -50,7 +50,7 @@ function Messaging() {
   const [currentUser, setCurrentUser] = useState(null);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // Noxtm Bot Chat removed — replaced by Zynthr
+  // Noxtm Bot Chat handled by Noxtm Bot setup flow
   const [isNoxtmBotSelected] = useState(false);
 
   // Modal States
@@ -345,7 +345,7 @@ function Messaging() {
     }
   };
 
-  // Noxtm Bot functions removed — replaced by Zynthr
+  // Noxtm Bot functions handled by Noxtm Bot setup flow
 
   const loadMessages = async (conversationId) => {
     try {

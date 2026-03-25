@@ -380,10 +380,10 @@ User Context:
 /**
  * Calls Anthropic Claude API for AI completion
  * @param {Array} messages - Array of message objects with role and content
- * @param {String} model - Model identifier (default: claude-3-haiku-20240307)
+ * @param {String} model - Model identifier (default: claude-3-5-haiku-20241022)
  * @returns {String} AI response text
  */
-const callClaude = async (messages, model = 'claude-3-haiku-20240307', maxWordCount = 200) => {
+const callClaude = async (messages, model = 'claude-3-5-haiku-20241022', maxWordCount = 200) => {
   try {
     // Split system from user/assistant messages
     const systemMessage = messages.find(m => m.role === 'system');
@@ -524,7 +524,7 @@ Return ONLY valid JSON array, nothing else:`;
     const response = await callClaude([
       { role: 'system', content: 'You extract keypoints from conversations. Return ONLY valid JSON arrays.' },
       { role: 'user', content: extractionPrompt }
-    ], 'claude-3-haiku-20240307', 500);
+    ], 'claude-3-5-haiku-20241022', 500);
 
     // Parse the response
     let keypoints = [];

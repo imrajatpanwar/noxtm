@@ -360,13 +360,23 @@ function CompanyDataList() {
                     <span className="cd-card-contacts">
                       <FiUsers size={12} /> {company.contacts?.length || 0} contacts
                     </span>
-                    {company.createdBy && (
-                      <span className="cd-card-contacts" style={{ fontSize: 11, color: '#9ca3af' }}>
-                        by {company.createdBy.fullName || 'Unknown'}
-                      </span>
-                    )}
                   </div>
                 </div>
+                {company.createdBy && (
+                  <div className="cd-card-avatar" title={company.createdBy.fullName || 'Unknown'}>
+                    {(() => {
+                      const name = company.createdBy.fullName || 'U';
+                      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                      const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#38f9d7', '#fa709a'];
+                      const bgColor = colors[name.charCodeAt(0) % colors.length];
+                      return (
+                        <span className="cd-avatar" style={{ background: bgColor }}>
+                          {initials}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
                 <div className="cd-card-actions" onClick={(e) => e.stopPropagation()}>
                   {isOwner && (
                     <button className="cd-btn-icon cd-btn-danger" onClick={() => setDeleteConfirm(company._id)} title="Delete">
@@ -399,10 +409,19 @@ function CompanyDataList() {
                       <div className="cd-contacts-grid">
                         {company.contacts.map((contact, idx) => (
                           <div key={idx} className="cd-contact-card">
-                            <div className="cd-contact-name">{contact.fullName || 'Unnamed'}</div>
-                            {contact.designation && (
-                              <div className="cd-contact-designation">{contact.designation}</div>
-                            )}
+                            <div className="cd-contact-header">
+                              <span className="cd-contact-avatar" style={{
+                                background: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#38f9d7', '#fa709a'][(contact.fullName || 'U').charCodeAt(0) % 8]
+                              }}>
+                                {(contact.fullName || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </span>
+                              <div>
+                                <div className="cd-contact-name">{contact.fullName || 'Unnamed'}</div>
+                                {contact.designation && (
+                                  <div className="cd-contact-designation">{contact.designation}</div>
+                                )}
+                              </div>
+                            </div>
                             <div className="cd-contact-details">
                               {contact.email && <span><FiMail size={12} /> {contact.email}</span>}
                               {contact.phone && <span><FiPhone size={12} /> {contact.phone}</span>}

@@ -62,8 +62,8 @@ function AuthCallback({ onAuthCallback }) {
                     if (user.role === 'Admin') {
                         navigate('/dashboard');
                     } else if (!user.companyId) {
-                        if (localStorage.getItem('zynthr_onboarding')) {
-                            localStorage.removeItem('zynthr_onboarding');
+                        if (localStorage.getItem('noxtm_bot_onboarding')) {
+                            localStorage.removeItem('noxtm_bot_onboarding');
                             navigate('/signup?resumed=true');
                         } else {
                             navigate('/company-setup');
@@ -84,8 +84,8 @@ function AuthCallback({ onAuthCallback }) {
                         onAuthCallback(token, { userId: payload.userId, email: payload.email, role: payload.role });
                     }
 
-                    if (localStorage.getItem('zynthr_onboarding')) {
-                        localStorage.removeItem('zynthr_onboarding');
+                    if (localStorage.getItem('noxtm_bot_onboarding')) {
+                        localStorage.removeItem('noxtm_bot_onboarding');
                         navigate('/signup?resumed=true');
                     } else {
                         navigate('/company-setup');

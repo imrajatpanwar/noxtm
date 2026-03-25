@@ -191,7 +191,7 @@ function Header({ user, onLogout }) {
                 Documentation
               </Link>
               <button className="login-btn" onClick={handleLogin}>
-                Login
+                Sign in
               </button>
             </>
           ) : (
