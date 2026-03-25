@@ -12,19 +12,16 @@ const emailLogSchema = new mongoose.Schema({
   emailAccount: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EmailAccount',
-    required: true,
     index: true
   },
 
   emailAddress: {
     type: String,
-    required: true,
     lowercase: true
   },
 
   domain: {
     type: String,
-    required: true,
     lowercase: true,
     index: true
   },
