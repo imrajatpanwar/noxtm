@@ -134,7 +134,7 @@ Collected data: ${JSON.stringify(collected)}
 ${stateInstruction}`;
 }
 
-// Send verification email (reuses existing email logic)
+// Send verification email via nodemailer (AWS SES SMTP)
 async function sendVerificationCode(fullName, email, password) {
   const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) throw new Error('EMAIL_EXISTS');
@@ -149,14 +149,59 @@ async function sendVerificationCode(fullName, email, password) {
     { upsert: true, new: true }
   );
 
-  // Send email via existing SES/SMTP
+  // Send email via nodemailer
   try {
-    const { sendVerificationEmail } = require('../utils/emailService');
-    if (sendVerificationEmail) {
-      await sendVerificationEmail(email, fullName, code);
+    const nodemailer = require('nodemailer');
+    const transportConfig = {
+      host: process.env.EMAIL_HOST,
+      port: parseInt(process.env.EMAIL_PORT) || 587,
+      secure: false,
+      tls: { rejectUnauthorized: false }
+    };
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      transportConfig.auth = { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS };
     }
+    const transporter = nodemailer.createTransport(transportConfig);
+    const firstName = fullName.split(' ')[0];
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #7c3aed; margin: 0;">Noxtm</h1>
+        </div>
+        <div style="background-color: #f9fafb; border-radius: 8px; padding: 30px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Welcome to Noxtm!</h2>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Thank you for signing up! Please use the verification code below to complete your registration:
+          </p>
+          <div style="background-color: #ffffff; border: 2px dashed #7c3aed; border-radius: 8px; padding: 25px; text-align: center; margin: 30px 0;">
+            <div style="color: #6b7280; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+              Your Verification Code
+            </div>
+            <div style="font-size: 42px; font-weight: bold; color: #7c3aed; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+              ${code}
+            </div>
+          </div>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+            <strong>Important:</strong> This code will expire in <strong>10 minutes</strong> for security reasons.
+          </p>
+        </div>
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 5px 0;">&copy; 2025 Noxtm. All rights reserved.</p>
+        </div>
+      </div>`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'Noxtm <noreply@noxtm.com>',
+      to: email,
+      subject: 'Email Verification Code - Noxtm',
+      html: htmlBody,
+      text: `Hi ${firstName}, your Noxtm verification code is: ${code}. It expires in 10 minutes.`
+    });
+    console.log('[Zynthr] Verification email sent to:', email);
   } catch (e) {
-    console.log('[Zynthr] Email service not available, code:', code);
+    console.error('[Zynthr] Failed to send verification email:', e.message);
   }
 
   return code;
@@ -252,7 +297,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
             msgs.splice(msgs.length - 2, 1);
           }
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 40);
+            reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 40);
           } catch (e) {
             console.error('[Zynthr] Claude error in INTRO:', e.message);
             reply = "Awesome, let's get you set up! First, what's your full name?";
@@ -271,7 +316,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 35);
           } catch (e) {
             console.error('[Zynthr] Claude error in COLLECT_NAME:', e.message);
             reply = `Nice to meet you, ${collected.fullName.split(' ')[0]}! What's your email address?`;
@@ -300,7 +345,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 35);
           } catch (e) {
             console.error('[Zynthr] Claude error in COLLECT_EMAIL:', e.message);
             reply = `Got it, ${collected.fullName.split(' ')[0]}! Now create a password — at least 6 characters.`;
@@ -398,7 +443,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
                 { role: 'system', content: buildZynthrPrompt(STATES.COMPANY_NAME, collected) },
                 { role: 'user', content: `I chose ${plan}` }
               ];
-              reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+              reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 35);
             } catch (e) {
               reply = "Had a hiccup activating your trial. Let me try again — which plan did you want?";
             }
@@ -423,7 +468,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
             { role: 'user', content: userMsg }
           ];
           try {
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 35);
+            reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 35);
           } catch (e) {
             console.error('[Zynthr] Claude error in COMPANY_NAME:', e.message);
             reply = `"${collected.companyName}" — love it! What's the company email address?`;
@@ -494,7 +539,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
               { role: 'system', content: buildZynthrPrompt(STATES.COMPLETE, collected) },
               { role: 'user', content: 'Done!' }
             ];
-            reply = await callClaude(msgs, 'claude-3-5-haiku-20241022', 40);
+            reply = await callClaude(msgs, 'claude-haiku-4-5-20251001', 40);
           } catch (e) {
             console.error('[Zynthr] Company creation error:', e);
             reply = "Oops, something went wrong setting up your workspace. Let me try once more — what's your team size?";

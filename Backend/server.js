@@ -2736,7 +2736,7 @@ app.post('/api/company/ai-settings/test', authenticateToken, async (req, res) =>
       const Anthropic = require('@anthropic-ai/sdk');
       const client = new Anthropic({ apiKey: ai.apiKey });
       const response = await client.messages.create({
-        model: ai.model || 'claude-3-haiku-20240307',
+        model: ai.model || 'claude-haiku-4-5-20251001',
         max_tokens: 100,
         messages: [{ role: 'user', content: testMessage }]
       });
