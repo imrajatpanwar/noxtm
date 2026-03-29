@@ -57,7 +57,7 @@ function Header({ user, onLogout }) {
   const [attWorkingHours, setAttWorkingHours] = useState(8);
 
   const handleLogin = () => {
-    navigate('/login');
+    navigate('/signup');
   };
 
   const handleLogout = () => {
