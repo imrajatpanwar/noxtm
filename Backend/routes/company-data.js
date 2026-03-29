@@ -77,6 +77,87 @@ router.put('/company-data/access-settings', auth, async (req, res) => {
   }
 });
 
+// Get data access permissions (who can view/edit company data)
+router.get('/company-data/data-access', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const company = await Company.findById(user.companyId)
+      .populate('dataAccessPermissions.user', 'fullName email profileImage')
+      .populate('members.user', 'fullName email profileImage');
+
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    res.json({
+      dataAccessPermissions: company.dataAccessPermissions || [],
+      members: company.members.map(m => ({
+        user: m.user,
+        roleInCompany: m.roleInCompany
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching data access:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update a member's data access permission (Owner only)
+router.put('/company-data/data-access/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const company = await Company.findById(user.companyId);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    const member = company.members.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company.owner && company.owner.toString() === user._id.toString());
+    if (!isOwner && user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Only the workspace owner can manage data access' });
+    }
+
+    const { permission } = req.body; // 'view' | 'edit' | 'remove'
+    const targetUserId = req.params.userId;
+
+    if (permission === 'remove') {
+      company.dataAccessPermissions = (company.dataAccessPermissions || []).filter(
+        p => p.user.toString() !== targetUserId
+      );
+    } else if (['view', 'edit'].includes(permission)) {
+      const existing = (company.dataAccessPermissions || []).find(
+        p => p.user.toString() === targetUserId
+      );
+      if (existing) {
+        existing.permission = permission;
+      } else {
+        if (!company.dataAccessPermissions) company.dataAccessPermissions = [];
+        company.dataAccessPermissions.push({ user: targetUserId, permission });
+      }
+    } else {
+      return res.status(400).json({ message: 'Invalid permission. Use view, edit, or remove.' });
+    }
+
+    await company.save();
+
+    const updated = await Company.findById(company._id)
+      .populate('dataAccessPermissions.user', 'fullName email profileImage')
+      .populate('members.user', 'fullName email profileImage');
+
+    res.json({
+      dataAccessPermissions: updated.dataAccessPermissions || [],
+      members: updated.members.map(m => ({
+        user: m.user,
+        roleInCompany: m.roleInCompany
+      }))
+    });
+  } catch (error) {
+    console.error('Error updating data access:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // ============ COMPANY DATA CRUD ============
 
 // Get all company data entries for the user's workspace
@@ -176,10 +257,14 @@ router.post('/company-data', auth, async (req, res) => {
         (company.owner && company.owner.toString() === user._id.toString());
 
       if (!isOwner && user.role !== 'Admin') {
-        const hasAccess = (company.extensionAccessPeople || []).some(
+        const inExtensionAccess = (company.extensionAccessPeople || []).some(
           p => p.toString() === user._id.toString()
         );
-        if (!hasAccess) {
+        const inDataAccess = (company.dataAccessPermissions || []).some(p => {
+          const uid = p.user?._id || p.user;
+          return uid && uid.toString() === user._id.toString();
+        });
+        if (!inExtensionAccess && !inDataAccess) {
           return res.status(403).json({ message: 'You do not have permission to add data via the extension. Contact your workspace owner.' });
         }
       }

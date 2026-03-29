@@ -160,8 +160,13 @@ router.get('/settings', auth, async (req, res) => {
                 const memberRecord = company.members.find(m => m.user && m.user.toString() === userId.toString());
                 const ownerCheck = (memberRecord && memberRecord.roleInCompany === 'Owner') ||
                     (company.owner && company.owner.toString() === userId.toString());
+                const inDataAccess = (company.dataAccessPermissions || []).some(p => {
+                    const uid = p.user?._id || p.user;
+                    return uid && uid.toString() === userId.toString();
+                });
                 extensionAccess = isAdmin || ownerCheck ||
-                    (company.extensionAccessPeople || []).some(id => id.toString() === userId.toString());
+                    (company.extensionAccessPeople || []).some(id => id.toString() === userId.toString()) ||
+                    inDataAccess;
             }
         }
 
@@ -632,8 +637,15 @@ async function checkExtensionAccess(user) {
     if (member && member.roleInCompany === 'Owner') return true;
     if (company.owner && company.owner.toString() === user._id.toString()) return true;
 
-    // Check extensionAccessPeople
-    return (company.extensionAccessPeople || []).some(id => id.toString() === user._id.toString());
+    // Check extensionAccessPeople OR dataAccessPermissions
+    const inExtensionAccess = (company.extensionAccessPeople || []).some(id => id.toString() === user._id.toString());
+    if (inExtensionAccess) return true;
+
+    const inDataAccess = (company.dataAccessPermissions || []).some(p => {
+        const uid = p.user?._id || p.user;
+        return uid && uid.toString() === user._id.toString();
+    });
+    return inDataAccess;
 }
 
 // GET /findr/company-data - List companies for extension

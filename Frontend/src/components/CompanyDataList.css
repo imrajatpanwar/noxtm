@@ -683,6 +683,316 @@
   margin-left: auto;
 }
 
+/* ========== Avatar Stack ========== */
+.cd-avatar-stack-wrap {
+  position: relative;
+}
+
+.cd-avatar-stack {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cd-stacked-avatar {
+  margin-left: -6px;
+  position: relative;
+  transition: transform 0.15s;
+}
+
+.cd-stacked-avatar:first-child {
+  margin-left: 0;
+}
+
+.cd-avatar-stack:hover .cd-stacked-avatar {
+  transform: translateY(-1px);
+}
+
+.cd-avatar-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f4f4f5;
+  border: 2px dashed #d4d4d8;
+  color: #71717a;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.15s;
+}
+
+.cd-avatar-plus:hover {
+  background: #e4e4e7;
+  border-color: #a1a1aa;
+  color: #27272a;
+}
+
+/* ========== Share / Access Panel (Figma style) ========== */
+.cd-share-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 340px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  z-index: 100;
+  overflow: hidden;
+  animation: cd-panel-in 0.15s ease-out;
+}
+
+@keyframes cd-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cd-share-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.cd-share-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #09090b;
+}
+
+.cd-share-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cd-share-close:hover {
+  background: #f4f4f5;
+  color: #27272a;
+}
+
+.cd-share-list {
+  padding: 6px 8px;
+}
+
+.cd-share-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  transition: background 0.1s;
+}
+
+.cd-share-row:hover {
+  background: #fafafa;
+}
+
+.cd-share-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cd-share-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #09090b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cd-share-you {
+  color: #a1a1aa;
+  font-weight: 400;
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.cd-share-email {
+  font-size: 11px;
+  color: #a1a1aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cd-share-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.cd-share-add-btn:hover {
+  background: #dbeafe;
+}
+
+/* ========== Permission Dropdown ========== */
+.cd-perm-select {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cd-perm-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #52525b;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.cd-perm-trigger:hover {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+}
+
+.cd-perm-label {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.cd-perm-owner {
+  color: #71717a;
+}
+
+.cd-perm-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 140px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  padding: 4px;
+  animation: cd-panel-in 0.1s ease-out;
+}
+
+.cd-perm-option {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #27272a;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.cd-perm-option:hover {
+  background: #f4f4f5;
+}
+
+.cd-perm-option-active {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.cd-perm-option-active:hover {
+  background: #dbeafe;
+}
+
+.cd-perm-option-danger {
+  color: #ef4444;
+}
+
+.cd-perm-option-danger:hover {
+  background: #fef2f2;
+}
+
+/* ========== Edit Form ========== */
+.cd-edit-form {
+  padding: 4px 0;
+}
+
+.cd-edit-form .cd-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cd-edit-form .cd-form-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #71717a;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cd-edit-form .cd-form-group input {
+  width: 100%;
+  padding: 7px 10px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #09090b;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.cd-edit-form .cd-form-group input:focus {
+  border-color: #a1a1aa;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+.cd-edit-form .cd-form-full {
+  grid-column: 1 / -1;
+}
+
+.cd-edit-form .cd-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f4f4f5;
+}
+
 /* Modal */
 .cd-modal-overlay {
   position: fixed;

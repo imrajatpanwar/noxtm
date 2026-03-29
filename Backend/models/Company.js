@@ -36,6 +36,10 @@ const companySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  dataAccessPermissions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    permission: { type: String, enum: ['view', 'edit'], default: 'view' }
+  }],
   invitations: [{
     email: { type: String, required: true },
     token: { type: String, required: true },
