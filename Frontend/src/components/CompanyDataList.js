@@ -77,13 +77,7 @@ function CompanyDataList() {
   const accessPanelRef = useRef(null);
 
   // Labels
-  const [showLabelManager, setShowLabelManager] = useState(false);
   const [labels, setLabels] = useState([]);
-  const [newLabelName, setNewLabelName] = useState('');
-  const [newLabelColor, setNewLabelColor] = useState('#6b7280');
-  const [editingLabel, setEditingLabel] = useState(null);
-  const [editLabelName, setEditLabelName] = useState('');
-  const [editLabelColor, setEditLabelColor] = useState('#6b7280');
   const [labelFilter, setLabelFilter] = useState('');
   const [labelAssignCompany, setLabelAssignCompany] = useState(null);
   const [labelAssignContact, setLabelAssignContact] = useState(null);
@@ -100,6 +94,8 @@ function CompanyDataList() {
 
   // Selection
   const [selectedCards, setSelectedCards] = useState(new Set());
+  const [showBulkLabelDropdown, setShowBulkLabelDropdown] = useState(false);
+  const bulkLabelRef = useRef(null);
 
   // Edit
   const [editingCompany, setEditingCompany] = useState(null);
@@ -113,8 +109,6 @@ function CompanyDataList() {
     return perm?.permission || null;
   })();
   const canEdit = currentUserPermission === 'edit';
-
-  const labelColors = ['#6b7280', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
 
   const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -203,10 +197,12 @@ function CompanyDataList() {
 
   const handleStartEdit = (company) => {
     setEditingCompany(company._id);
+    setExpandedId(null);
     setEditFormData({
       companyName: company.companyName || '', companyEmail: company.companyEmail || '',
       companyPhone: company.companyPhone || '', website: company.website || '',
       industry: company.industry || '', address: company.address || '', linkedin: company.linkedin || '',
+      notes: company.notes || '',
     });
   };
 
@@ -221,35 +217,6 @@ function CompanyDataList() {
 
   const handleCancelEdit = () => { setEditingCompany(null); setEditFormData({}); };
 
-  // Label CRUD
-  const handleCreateLabel = async () => {
-    if (!newLabelName.trim()) return;
-    try {
-      const res = await api.post('/contact-labels', { name: newLabelName.trim(), color: newLabelColor });
-      setLabels(prev => [...prev, res.data]);
-      setNewLabelName(''); setNewLabelColor('#6b7280');
-      toast.success('Label created');
-    } catch (error) { toast.error(error.response?.data?.message || 'Failed to create label'); }
-  };
-
-  const handleUpdateLabel = async (id) => {
-    if (!editLabelName.trim()) return;
-    try {
-      const res = await api.put(`/contact-labels/${id}`, { name: editLabelName.trim(), color: editLabelColor });
-      setLabels(prev => prev.map(l => l._id === id ? res.data : l));
-      setEditingLabel(null);
-      toast.success('Label updated');
-    } catch (error) { toast.error(error.response?.data?.message || 'Failed to update label'); }
-  };
-
-  const handleDeleteLabel = async (id) => {
-    try {
-      await api.delete(`/contact-labels/${id}`);
-      setLabels(prev => prev.filter(l => l._id !== id));
-      toast.success('Label deleted');
-    } catch (error) { toast.error('Failed to delete label'); }
-  };
-
   const handleToggleContactLabel = async (companyDataId, contactIndex, labelId, hasLabel) => {
     try {
       await api.patch(`/company-data-contacts/${companyDataId}/${contactIndex}/labels`, {
@@ -259,6 +226,30 @@ function CompanyDataList() {
       toast.success(hasLabel ? 'Label removed' : 'Label applied');
     } catch (error) { toast.error('Failed to update label'); }
   };
+
+  const handleBulkAssignLabel = async (labelId) => {
+    try {
+      const companyIds = Array.from(selectedCards);
+      await Promise.all(
+        companyIds.map(id => api.patch(`/company-data/${id}/bulk-labels`, { labelId, action: 'add' }))
+      );
+      toast.success(`Label applied to ${companyIds.length} companies`);
+      fetchCompanies();
+      setSelectedCards(new Set());
+      setShowBulkLabelDropdown(false);
+    } catch (error) { toast.error('Failed to apply label'); }
+  };
+
+  // Close bulk label dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (bulkLabelRef.current && !bulkLabelRef.current.contains(e.target)) {
+        setShowBulkLabelDropdown(false);
+      }
+    };
+    if (showBulkLabelDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showBulkLabelDropdown]);
 
   const clearAllFilters = () => {
     setFilterIndustries([]);
@@ -362,12 +353,6 @@ function CompanyDataList() {
           <p className="cd-subtitle">Companies and contacts extracted via Chrome Extension</p>
         </div>
         <div className="cd-header-actions">
-          {isOwner && (
-            <button className="cd-btn-outline" onClick={() => setShowLabelManager(!showLabelManager)}>
-              <FiTag size={16} /> Manage Labels
-            </button>
-          )}
-
           <button className="cd-btn-outline cd-filter-trigger" onClick={() => setShowFilterDrawer(true)}>
             <FiSliders size={16} /> Filter
             {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
@@ -441,55 +426,6 @@ function CompanyDataList() {
         </div>
       </div>
 
-      {/* Label Manager Panel */}
-      {showLabelManager && isOwner && (
-        <div className="cd-access-panel">
-          <h3 className="cd-access-title"><FiTag size={16} /> Label Management</h3>
-          <p className="cd-access-subtitle">Create labels to categorize company contacts. Labeled contacts appear as Phone Lists in WhatsApp Campaigns.</p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-            <input type="text" value={newLabelName} onChange={e => setNewLabelName(e.target.value)}
-              placeholder="New label name..." style={{ flex: 1, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13 }}
-              onKeyDown={e => e.key === 'Enter' && handleCreateLabel()} />
-            <div style={{ display: 'flex', gap: 4 }}>
-              {labelColors.map(c => (
-                <button key={c} onClick={() => setNewLabelColor(c)}
-                  style={{ width: 20, height: 20, borderRadius: '50%', background: c, border: newLabelColor === c ? '2px solid #1a1a1a' : '2px solid transparent', cursor: 'pointer' }} />
-              ))}
-            </div>
-            <button className="cd-btn-primary" onClick={handleCreateLabel} style={{ padding: '6px 12px', fontSize: 13 }}><FiPlus size={14} /> Add</button>
-          </div>
-          <div className="cd-access-list">
-            {labels.map(label => (
-              <div key={label._id} className="cd-access-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: label.color, flexShrink: 0 }} />
-                {editingLabel === label._id ? (
-                  <>
-                    <input type="text" value={editLabelName} onChange={e => setEditLabelName(e.target.value)}
-                      style={{ flex: 1, padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }}
-                      onKeyDown={e => e.key === 'Enter' && handleUpdateLabel(label._id)} />
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      {labelColors.map(c => (
-                        <button key={c} onClick={() => setEditLabelColor(c)}
-                          style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: editLabelColor === c ? '2px solid #1a1a1a' : '2px solid transparent', cursor: 'pointer' }} />
-                      ))}
-                    </div>
-                    <button className="cd-btn-outline" onClick={() => handleUpdateLabel(label._id)} style={{ padding: '3px 8px', fontSize: 12 }}>Save</button>
-                    <button className="cd-btn-ghost" onClick={() => setEditingLabel(null)} style={{ padding: '3px 8px', fontSize: 12 }}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{label.name}</span>
-                    <button className="cd-btn-icon" onClick={() => { setEditingLabel(label._id); setEditLabelName(label.name); setEditLabelColor(label.color); }} title="Edit"><FiEdit2 size={13} /></button>
-                    <button className="cd-btn-icon cd-btn-danger" onClick={() => handleDeleteLabel(label._id)} title="Delete"><FiTrash2 size={13} /></button>
-                  </>
-                )}
-              </div>
-            ))}
-            {labels.length === 0 && <p style={{ fontSize: 13, color: '#9ca3af', padding: '8px 0' }}>No labels yet. Create one above.</p>}
-          </div>
-        </div>
-      )}
-
       {/* Search + stats row */}
       <div className="cd-search-stats-row">
         {selectedCards.size > 0 && (
@@ -523,6 +459,34 @@ function CompanyDataList() {
           </div>
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedCards.size > 0 && (
+        <div className="cd-bulk-action-bar">
+          <span className="cd-bulk-count">{selectedCards.size} selected</span>
+          <div className="cd-bulk-actions">
+            <div className="cd-bulk-label-wrapper" ref={bulkLabelRef}>
+              <button className="cd-bulk-btn" onClick={() => setShowBulkLabelDropdown(!showBulkLabelDropdown)}>
+                <FiTag size={14} /> Add Label
+              </button>
+              {showBulkLabelDropdown && (
+                <div className="cd-bulk-label-dropdown">
+                  {labels.map(l => (
+                    <div key={l._id} className="cd-bulk-label-item" onClick={() => handleBulkAssignLabel(l._id)}>
+                      <span className="cd-bulk-label-dot" style={{ background: l.color }} />
+                      <span>{l.name}</span>
+                    </div>
+                  ))}
+                  {labels.length === 0 && <p className="cd-bulk-label-empty">No labels available. Create labels in Workspace Settings.</p>}
+                </div>
+              )}
+            </div>
+            <button className="cd-bulk-btn cd-bulk-btn-ghost" onClick={() => setSelectedCards(new Set())}>
+              <FiX size={14} /> Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Active filters row */}
       {hasActiveFilters && (
@@ -689,11 +653,9 @@ function CompanyDataList() {
                         </button>
                         {kebabOpenId === company._id && (
                           <div className="cd-kebab-menu">
-                            {!isEditing && (
-                              <button className="cd-kebab-item" onClick={() => { setKebabOpenId(null); handleStartEdit(company); }}>
-                                <FiEdit2 size={14} /> Edit
-                              </button>
-                            )}
+                            <button className="cd-kebab-item" onClick={() => { setKebabOpenId(null); handleStartEdit(company); }}>
+                              <FiEdit2 size={14} /> Edit
+                            </button>
                             <button className="cd-kebab-item cd-kebab-item-danger" onClick={() => { setKebabOpenId(null); setDeleteConfirm(company._id); }}>
                               <FiTrash2 size={14} /> Delete
                             </button>
@@ -706,45 +668,6 @@ function CompanyDataList() {
 
                 {expandedId === company._id && (
                   <div className="cd-card-expanded">
-                    {isEditing ? (
-                      <div className="cd-edit-form">
-                        <div className="cd-form-grid">
-                          <div className="cd-form-group">
-                            <label>Company Name</label>
-                            <input type="text" value={editFormData.companyName} onChange={e => setEditFormData({ ...editFormData, companyName: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group">
-                            <label>Industry</label>
-                            <input type="text" value={editFormData.industry} onChange={e => setEditFormData({ ...editFormData, industry: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group">
-                            <label>Email</label>
-                            <input type="email" value={editFormData.companyEmail} onChange={e => setEditFormData({ ...editFormData, companyEmail: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group">
-                            <label>Phone</label>
-                            <input type="text" value={editFormData.companyPhone} onChange={e => setEditFormData({ ...editFormData, companyPhone: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group">
-                            <label>Website</label>
-                            <input type="text" value={editFormData.website} onChange={e => setEditFormData({ ...editFormData, website: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group">
-                            <label>LinkedIn</label>
-                            <input type="text" value={editFormData.linkedin} onChange={e => setEditFormData({ ...editFormData, linkedin: e.target.value })} />
-                          </div>
-                          <div className="cd-form-group cd-form-full">
-                            <label>Address</label>
-                            <input type="text" value={editFormData.address} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} />
-                          </div>
-                        </div>
-                        <div className="cd-form-actions">
-                          <button className="cd-btn-ghost" onClick={handleCancelEdit}>Cancel</button>
-                          <button className="cd-btn-primary" onClick={() => handleSaveEdit(company._id)}><FiCheck size={14} /> Save Changes</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
                         {company.contacts && company.contacts.length > 0 ? (
                           <div className="cd-contacts-section">
                             <h4 className="cd-contacts-title">Decision Makers</h4>
@@ -817,13 +740,62 @@ function CompanyDataList() {
                         ) : (
                           <p className="cd-no-contacts">No decision makers added</p>
                         )}
-                      </>
-                    )}
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {editingCompany && (
+        <div className="cd-edit-modal-overlay" onClick={handleCancelEdit}>
+          <div className="cd-edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cd-edit-modal-header">
+              <h3>Edit Company</h3>
+              <button className="cd-btn-icon" onClick={handleCancelEdit}><FiX size={16} /></button>
+            </div>
+            <div className="cd-edit-modal-body">
+              <div className="cd-form-grid">
+                <div className="cd-form-group">
+                  <label>Company Name</label>
+                  <input type="text" value={editFormData.companyName || ''} onChange={e => setEditFormData({ ...editFormData, companyName: e.target.value })} placeholder="Enter company name" />
+                </div>
+                <div className="cd-form-group">
+                  <label>Industry</label>
+                  <input type="text" value={editFormData.industry || ''} onChange={e => setEditFormData({ ...editFormData, industry: e.target.value })} placeholder="e.g. Technology, Healthcare" />
+                </div>
+                <div className="cd-form-group">
+                  <label>Email</label>
+                  <input type="email" value={editFormData.companyEmail || ''} onChange={e => setEditFormData({ ...editFormData, companyEmail: e.target.value })} placeholder="company@example.com" />
+                </div>
+                <div className="cd-form-group">
+                  <label>Phone</label>
+                  <input type="text" value={editFormData.companyPhone || ''} onChange={e => setEditFormData({ ...editFormData, companyPhone: e.target.value })} placeholder="+91 9876543210" />
+                </div>
+                <div className="cd-form-group">
+                  <label>Website</label>
+                  <input type="text" value={editFormData.website || ''} onChange={e => setEditFormData({ ...editFormData, website: e.target.value })} placeholder="https://..." />
+                </div>
+                <div className="cd-form-group">
+                  <label>LinkedIn</label>
+                  <input type="text" value={editFormData.linkedin || ''} onChange={e => setEditFormData({ ...editFormData, linkedin: e.target.value })} placeholder="https://linkedin.com/..." />
+                </div>
+                <div className="cd-form-group cd-form-full">
+                  <label>Address</label>
+                  <input type="text" value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} placeholder="Enter address" />
+                </div>
+                <div className="cd-form-group cd-form-full">
+                  <label>Notes</label>
+                  <textarea rows="3" value={editFormData.notes || ''} onChange={e => setEditFormData({ ...editFormData, notes: e.target.value })} placeholder="Add notes..." />
+                </div>
+              </div>
+            </div>
+            <div className="cd-edit-modal-footer">
+              <button className="cd-btn-ghost" onClick={handleCancelEdit}>Cancel</button>
+              <button className="cd-btn-primary" onClick={() => handleSaveEdit(editingCompany)}><FiCheck size={14} /> Save Changes</button>
+            </div>
+          </div>
         </div>
       )}
 

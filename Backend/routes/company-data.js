@@ -349,6 +349,37 @@ router.delete('/company-data/:id', auth, async (req, res) => {
   }
 });
 
+// Bulk add/remove label from all contacts of a company
+router.patch('/company-data/:id/bulk-labels', auth, async (req, res) => {
+  try {
+    const { labelId, action } = req.body;
+    if (!labelId) return res.status(400).json({ message: 'labelId is required' });
+
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const company = await CompanyData.findOne({ _id: req.params.id, companyId: user.companyId });
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    company.contacts.forEach(contact => {
+      if (!contact.labels) contact.labels = [];
+      if (action === 'add') {
+        if (!contact.labels.some(l => l.toString() === labelId)) {
+          contact.labels.push(labelId);
+        }
+      } else if (action === 'remove') {
+        contact.labels = contact.labels.filter(l => l.toString() !== labelId);
+      }
+    });
+
+    await company.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error bulk updating labels:', error);
+    res.status(500).json({ message: 'Failed to update labels' });
+  }
+});
+
 // ============ CONTACTS FROM COMPANY DATA ============
 
 // Get all contacts flattened from all company data entries

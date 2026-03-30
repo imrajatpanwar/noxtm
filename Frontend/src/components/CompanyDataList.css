@@ -1717,3 +1717,207 @@
     display: none;
   }
 }
+
+/* Edit Company Modal */
+.cd-edit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cd-edit-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 560px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: cd-modal-in 0.2s ease-out;
+}
+
+@keyframes cd-modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.cd-edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.cd-edit-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #09090b;
+  margin: 0;
+}
+
+.cd-edit-modal-body {
+  padding: 20px 24px;
+}
+
+.cd-edit-modal-body .cd-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cd-edit-modal-body .cd-form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #27272a;
+  margin-bottom: 4px;
+}
+
+.cd-edit-modal-body .cd-form-group input,
+.cd-edit-modal-body .cd-form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #09090b;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.cd-edit-modal-body .cd-form-group input:focus,
+.cd-edit-modal-body .cd-form-group textarea:focus {
+  border-color: #18181b;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+.cd-edit-modal-body .cd-form-group input::placeholder,
+.cd-edit-modal-body .cd-form-group textarea::placeholder {
+  color: #a1a1aa;
+}
+
+.cd-edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid #e4e4e7;
+}
+
+/* Bulk Action Bar */
+.cd-bulk-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #09090b;
+  color: #ffffff;
+  margin: 0 20px 12px;
+  border-radius: 10px;
+  animation: cd-bulk-bar-in 0.2s ease-out;
+}
+
+@keyframes cd-bulk-bar-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cd-bulk-count {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cd-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cd-bulk-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.cd-bulk-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.cd-bulk-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.cd-bulk-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cd-bulk-label-wrapper {
+  position: relative;
+}
+
+.cd-bulk-label-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 9999;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  animation: cd-kebab-in 0.12s ease-out;
+}
+
+.cd-bulk-label-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #27272a;
+  transition: background 0.1s;
+}
+
+.cd-bulk-label-item:hover {
+  background: #f4f4f5;
+}
+
+.cd-bulk-label-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cd-bulk-label-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #a1a1aa;
+  text-align: center;
+  margin: 0;
+}

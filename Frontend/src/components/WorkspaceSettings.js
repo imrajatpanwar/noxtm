@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid, FiCpu, FiSend } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid, FiCpu, FiSend, FiTag, FiEdit2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -81,6 +81,14 @@ function WorkspaceSettings({ user, onLogout }) {
   const [aiTesting, setAiTesting] = useState(false);
   const [aiTestReply, setAiTestReply] = useState(null);
   const [aiTestMsg, setAiTestMsg] = useState('');
+
+  // Labels state
+  const [labels, setLabels] = useState([]);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#6b7280');
+  const [editingLabel, setEditingLabel] = useState(null);
+  const [editLabelName, setEditLabelName] = useState('');
+  const [editLabelColor, setEditLabelColor] = useState('#6b7280');
 
   const AI_PROVIDERS = [
     { id: 'openrouter', name: 'OpenRouter', desc: 'Access 100+ models (Gemini, Claude, Llama, etc.)', placeholder: 'sk-or-...' },
@@ -656,6 +664,159 @@ function WorkspaceSettings({ user, onLogout }) {
       })();
     }
   }, [activeTab, fetchCompanyDetails, fetchCompanyMembers, fetchProfile, fetchTodayAttendance, fetchAiSettings, user?.companyId]);
+
+  // Fetch labels when labels tab is active
+  useEffect(() => {
+    if (activeTab === 'labels') {
+      (async () => {
+        try {
+          const response = await api.get('/contact-labels');
+          setLabels(response.data);
+        } catch (error) {
+          console.error('Error fetching labels:', error);
+        }
+      })();
+    }
+  }, [activeTab]);
+
+  // Label handlers
+  const handleCreateLabel = async () => {
+    if (!newLabelName.trim()) return;
+    try {
+      const res = await api.post('/contact-labels', { name: newLabelName.trim(), color: newLabelColor });
+      setLabels(prev => [...prev, res.data]);
+      setNewLabelName('');
+      setNewLabelColor('#6b7280');
+      toast.success('Label created');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create label');
+    }
+  };
+
+  const handleUpdateLabel = async (id) => {
+    if (!editLabelName.trim()) return;
+    try {
+      const res = await api.put(`/contact-labels/${id}`, { name: editLabelName.trim(), color: editLabelColor });
+      setLabels(prev => prev.map(l => l._id === id ? res.data : l));
+      setEditingLabel(null);
+      toast.success('Label updated');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update label');
+    }
+  };
+
+  const handleDeleteLabel = async (id) => {
+    if (!window.confirm('Delete this label? It will be removed from all contacts.')) return;
+    try {
+      await api.delete(`/contact-labels/${id}`);
+      setLabels(prev => prev.filter(l => l._id !== id));
+      toast.success('Label deleted');
+    } catch (error) {
+      toast.error('Failed to delete label');
+    }
+  };
+
+  const renderLabelsSettings = () => (
+    <div className="labels-settings-section">
+      <div className="labels-section-header">
+        <div className="labels-section-title">Contact Labels</div>
+        <div className="labels-section-subtitle">
+          Create labels to categorize company contacts. Labeled contacts appear as Phone Lists in WhatsApp Campaigns.
+        </div>
+      </div>
+
+      <div className="labels-create-form">
+        <input
+          type="text"
+          value={newLabelName}
+          onChange={e => setNewLabelName(e.target.value)}
+          placeholder="New label name..."
+          onKeyDown={e => e.key === 'Enter' && handleCreateLabel()}
+        />
+        <div className="labels-color-picker-wrapper">
+          <input
+            type="color"
+            className="labels-color-input"
+            value={newLabelColor}
+            onChange={e => setNewLabelColor(e.target.value)}
+          />
+          <input
+            type="text"
+            className="labels-hex-input"
+            value={newLabelColor}
+            onChange={e => {
+              const val = e.target.value;
+              if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) setNewLabelColor(val);
+            }}
+            maxLength={7}
+          />
+        </div>
+        <button className="labels-create-btn" onClick={handleCreateLabel}>
+          <FiPlus size={14} /> Create Label
+        </button>
+      </div>
+
+      <div className="labels-list">
+        {labels.map(label => (
+          <div key={label._id} className="labels-list-item">
+            {editingLabel === label._id ? (
+              <>
+                <span className="labels-list-dot" style={{ background: editLabelColor }} />
+                <div className="labels-edit-row">
+                  <input
+                    type="text"
+                    value={editLabelName}
+                    onChange={e => setEditLabelName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleUpdateLabel(label._id)}
+                  />
+                  <input
+                    type="color"
+                    className="labels-color-input"
+                    value={editLabelColor}
+                    onChange={e => setEditLabelColor(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="labels-hex-input"
+                    value={editLabelColor}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) setEditLabelColor(val);
+                    }}
+                    maxLength={7}
+                  />
+                </div>
+                <div className="labels-list-actions">
+                  <button onClick={() => handleUpdateLabel(label._id)} title="Save">
+                    <FiCheck size={14} />
+                  </button>
+                  <button onClick={() => setEditingLabel(null)} title="Cancel">
+                    <FiX size={14} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="labels-list-dot" style={{ background: label.color }} />
+                <span className="labels-list-name">{label.name}</span>
+                <div className="labels-list-actions">
+                  <button onClick={() => { setEditingLabel(label._id); setEditLabelName(label.name); setEditLabelColor(label.color); }} title="Edit">
+                    <FiEdit2 size={14} />
+                  </button>
+                  <button className="labels-delete-btn" onClick={() => handleDeleteLabel(label._id)} title="Delete">
+                    <FiTrash2 size={14} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        {labels.length === 0 && (
+          <div className="labels-empty">No labels yet. Create one above to get started.</div>
+        )}
+      </div>
+    </div>
+  );
 
   const renderGeneralSettings = () => {
     const sub = companyDetails?.subscription || {};
@@ -2105,6 +2266,12 @@ function WorkspaceSettings({ user, onLogout }) {
             <FiPackage /> Modules
           </button>
         )}
+        <button
+          className={`tab-button ${activeTab === 'labels' ? 'active' : ''}`}
+          onClick={() => setActiveTab('labels')}
+        >
+          <FiTag /> Labels
+        </button>
       </div>
 
       <div className="workspace-content">
@@ -2113,6 +2280,7 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'members' && renderMembersSettings()}
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
+        {activeTab === 'labels' && renderLabelsSettings()}
       </div>
     </div>
   );
