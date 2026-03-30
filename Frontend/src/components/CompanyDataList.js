@@ -535,12 +535,10 @@ function CompanyDataList() {
             </span>
           )}
           <button className="cd-clear-all-btn" onClick={clearAllFilters}>Clear all</button>
+          {!loading && companies.length > 0 && displayedCompanies.length !== companies.length && (
+            <span className="cd-filter-result-count">Showing {displayedCompanies.length} of {companies.length} companies</span>
+          )}
         </div>
-      )}
-
-      {/* Showing count when filtered */}
-      {!loading && companies.length > 0 && displayedCompanies.length !== companies.length && (
-        <p className="cd-filter-result-count">Showing {displayedCompanies.length} of {companies.length} companies</p>
       )}
 
       {/* Company list */}
