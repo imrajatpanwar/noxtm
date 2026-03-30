@@ -678,6 +678,56 @@ router.get('/company-data', auth, async (req, res) => {
     }
 });
 
+// GET /findr/company-data/suggestions - Search existing companies for autocomplete
+router.get('/company-data/suggestions', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('role companyId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const hasAccess = await checkExtensionAccess(user);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'You do not have extension access' });
+        }
+
+        const { q } = req.query;
+        if (!q || !q.trim()) {
+            return res.json({ success: true, suggestions: [] });
+        }
+
+        const query = q.trim().toLowerCase();
+        const companies = await CompanyData.find({
+            companyId: user.companyId,
+            companyName: { $regex: query, $options: 'i' }
+        })
+        .populate('createdBy', 'fullName email profileImage')
+        .sort({ createdAt: -1 })
+        .limit(5);
+
+        const suggestions = companies.map(c => ({
+            _id: c._id,
+            companyName: c.companyName,
+            companyEmail: c.companyEmail,
+            companyPhone: c.companyPhone,
+            address: c.address,
+            website: c.website,
+            linkedin: c.linkedin,
+            industry: c.industry,
+            notes: c.notes,
+            contacts: c.contacts || [],
+            createdBy: c.createdBy ? {
+                _id: c.createdBy._id,
+                fullName: c.createdBy.fullName,
+                email: c.createdBy.email
+            } : null
+        }));
+
+        res.json({ success: true, suggestions });
+    } catch (error) {
+        console.error('Error fetching company suggestions:', error);
+        res.status(500).json({ message: 'Failed to fetch suggestions' });
+    }
+});
+
 // POST /findr/company-data - Add company from extension
 router.post('/company-data', auth, async (req, res) => {
     try {

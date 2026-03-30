@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiSearch, FiChevronDown, FiChevronRight, FiTrash2, FiGlobe, FiMail, FiPhone, FiMapPin, FiLinkedin, FiUsers, FiX, FiTag, FiPlus, FiEdit2, FiCheck } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { FiSearch, FiChevronDown, FiChevronRight, FiTrash2, FiGlobe, FiMail, FiPhone, FiMapPin, FiLinkedin, FiUsers, FiX, FiTag, FiPlus, FiEdit2, FiCheck, FiFilter, FiSliders, FiMoreVertical } from 'react-icons/fi';
+import LinkedInIcon from './assets/LinkedIn_icon.svg';
 import { useRole } from '../contexts/RoleContext';
 import api from '../config/api';
 import { toast } from 'sonner';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { ScrollArea } from './ui/scroll-area';
 import './CompanyDataList.css';
 
-const AVATAR_COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#38f9d7', '#fa709a'];
+const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9', '#10b981', '#14b8a6', '#f97316'];
 
 function getInitials(name) {
   return (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -68,6 +67,8 @@ function CompanyDataList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [kebabOpenId, setKebabOpenId] = useState(null);
+  const kebabRef = useRef(null);
 
   // Data access
   const [dataAccessPermissions, setDataAccessPermissions] = useState([]);
@@ -87,6 +88,19 @@ function CompanyDataList() {
   const [labelAssignCompany, setLabelAssignCompany] = useState(null);
   const [labelAssignContact, setLabelAssignContact] = useState(null);
 
+  // Filter drawer
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [filterIndustries, setFilterIndustries] = useState([]);
+  const [filterAssignedTo, setFilterAssignedTo] = useState('');
+  const [filterContactsMin, setFilterContactsMin] = useState('');
+  const [filterHasWebsite, setFilterHasWebsite] = useState(false);
+  const [filterDateAdded, setFilterDateAdded] = useState('');
+  const [sortOrder, setSortOrder] = useState('az');
+  const [openSections, setOpenSections] = useState({ industry: true, assignedTo: false, contacts: false, dateAdded: false, sort: false });
+
+  // Selection
+  const [selectedCards, setSelectedCards] = useState(new Set());
+
   // Edit
   const [editingCompany, setEditingCompany] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -102,6 +116,8 @@ function CompanyDataList() {
 
   const labelColors = ['#6b7280', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
 
+  const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
   // Close access panel on outside click
   useEffect(() => {
     const handler = (e) => {
@@ -112,6 +128,17 @@ function CompanyDataList() {
     if (showAccessPanel) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAccessPanel]);
+
+  // Close kebab menu on click outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (kebabRef.current && !kebabRef.current.contains(e.target)) {
+        setKebabOpenId(null);
+      }
+    };
+    if (kebabOpenId) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [kebabOpenId]);
 
   const fetchCompanies = useCallback(async () => {
     try {
@@ -233,6 +260,16 @@ function CompanyDataList() {
     } catch (error) { toast.error('Failed to update label'); }
   };
 
+  const clearAllFilters = () => {
+    setFilterIndustries([]);
+    setFilterAssignedTo('');
+    setFilterContactsMin('');
+    setFilterHasWebsite(false);
+    setFilterDateAdded('');
+    setSortOrder('az');
+    setLabelFilter('');
+  };
+
   // Build avatar list for the stack
   const ownerMember = allMembers.find(m => m.roleInCompany === 'Owner');
   const ownerUser = ownerMember?.user;
@@ -267,6 +304,56 @@ function CompanyDataList() {
     };
   });
 
+  // Unique industries for filter
+  const uniqueIndustries = useMemo(() =>
+    [...new Set(companies.map(c => c.industry).filter(Boolean))].sort(),
+    [companies]
+  );
+
+  // Client-side filtered + sorted companies
+  const displayedCompanies = useMemo(() => {
+    let result = [...companies];
+    if (filterIndustries.length > 0) result = result.filter(c => filterIndustries.includes(c.industry));
+    if (filterAssignedTo) result = result.filter(c => (c.createdBy?._id || c.createdBy) === filterAssignedTo);
+    if (filterContactsMin !== '') result = result.filter(c => (c.contacts?.length || 0) >= parseInt(filterContactsMin));
+    if (filterHasWebsite) result = result.filter(c => !!c.website);
+    if (filterDateAdded === 'today') {
+      const today = new Date().toDateString();
+      result = result.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === today);
+    } else if (filterDateAdded === 'week') {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      result = result.filter(c => c.createdAt && new Date(c.createdAt) >= weekAgo);
+    } else if (filterDateAdded === 'month') {
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      result = result.filter(c => c.createdAt && new Date(c.createdAt) >= monthAgo);
+    }
+    result.sort((a, b) => {
+      if (sortOrder === 'az') return (a.companyName || '').localeCompare(b.companyName || '');
+      if (sortOrder === 'za') return (b.companyName || '').localeCompare(a.companyName || '');
+      if (sortOrder === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      if (sortOrder === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      return 0;
+    });
+    return result;
+  }, [companies, filterIndustries, filterAssignedTo, filterContactsMin, filterHasWebsite, filterDateAdded, sortOrder]);
+
+  const addedTodayCount = useMemo(() =>
+    companies.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === new Date().toDateString()).length,
+    [companies]
+  );
+
+  const activeFilterCount = [
+    filterIndustries.length > 0,
+    !!filterAssignedTo,
+    filterContactsMin !== '',
+    filterHasWebsite,
+    !!filterDateAdded,
+    sortOrder !== 'az',
+    !!labelFilter,
+  ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
+
   return (
     <div className="cd-container">
       <div className="cd-header">
@@ -281,25 +368,30 @@ function CompanyDataList() {
             </button>
           )}
 
+          <button className="cd-btn-outline cd-filter-trigger" onClick={() => setShowFilterDrawer(true)}>
+            <FiSliders size={16} /> Filter
+            {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
+          </button>
+
           {/* Avatar stack */}
           <div className="cd-avatar-stack-wrap" ref={accessPanelRef}>
             <div className="cd-avatar-stack" onClick={() => isOwner && setShowAccessPanel(!showAccessPanel)}>
               {visibleAvatars.map((m, i) => (
-                <Avatar
+                <div
                   key={m._id}
-                  className="tw-h-8 tw-w-8 tw-border-2 tw-border-white cd-stacked-avatar"
-                  style={{ zIndex: MAX_AVATARS - i }}
+                  className="cd-stacked-avatar"
+                  style={{ zIndex: MAX_AVATARS - i, background: m.profileImage ? 'transparent' : getAvatarColor(m.fullName) }}
                   title={`${m.fullName || 'User'}${m.isOwner ? ' (Owner)' : ` (${m.permission})`}`}
                 >
-                  <AvatarFallback className="tw-text-[10px] tw-font-semibold tw-text-white" style={{ background: getAvatarColor(m.fullName) }}>
-                    {getInitials(m.fullName)}
-                  </AvatarFallback>
-                </Avatar>
+                  {m.profileImage ? (
+                    <img src={m.profileImage} alt={m.fullName} className="cd-stacked-avatar-img" />
+                  ) : getInitials(m.fullName)}
+                </div>
               ))}
               {overflowCount > 0 && (
-                <Avatar className="tw-h-8 tw-w-8 tw-border-2 tw-border-white cd-stacked-avatar" style={{ zIndex: 0 }}>
-                  <AvatarFallback className="tw-text-[10px] tw-font-semibold tw-bg-[#e4e4e7] tw-text-[#52525b]">+{overflowCount}</AvatarFallback>
-                </Avatar>
+                <div className="cd-stacked-avatar cd-avatar-overflow" style={{ zIndex: 0 }}>
+                  +{overflowCount}
+                </div>
               )}
               {isOwner && (
                 <button className="cd-avatar-plus" title="Manage data access">
@@ -308,48 +400,41 @@ function CompanyDataList() {
               )}
             </div>
 
-            {/* Floating access panel (Figma-style) */}
+            {/* Floating access panel */}
             {showAccessPanel && isOwner && (
               <div className="cd-share-panel">
                 <div className="cd-share-header">
                   <span className="cd-share-title">Who has access</span>
                   <button className="cd-share-close" onClick={() => setShowAccessPanel(false)}><FiX size={14} /></button>
                 </div>
-                <ScrollArea className="tw-max-h-[320px]">
-                  <div className="cd-share-list">
-                    {membersList.map(m => (
-                      <div key={m.userId} className="cd-share-row">
-                        <Avatar className="tw-h-8 tw-w-8 tw-flex-shrink-0">
-                          <AvatarFallback className="tw-text-[10px] tw-font-semibold tw-text-white" style={{ background: getAvatarColor(m.name) }}>
-                            {getInitials(m.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="cd-share-info">
-                          <span className="cd-share-name">
-                            {m.name}
-                            {m.userId === currentUser?._id && <span className="cd-share-you">(you)</span>}
-                          </span>
-                          <span className="cd-share-email">{m.email}</span>
-                        </div>
-                        {m.isOwner ? (
-                          <span className="cd-perm-label cd-perm-owner">owner</span>
-                        ) : m.hasAccess ? (
-                          <PermissionSelect
-                            value={m.permission}
-                            onChange={(perm) => handleUpdatePermission(m.userId, perm)}
-                          />
-                        ) : (
-                          <button
-                            className="cd-share-add-btn"
-                            onClick={() => handleUpdatePermission(m.userId, 'view')}
-                          >
-                            + Add
-                          </button>
-                        )}
+                <div className="cd-share-list">
+                  {membersList.map(m => (
+                    <div key={m.userId} className="cd-share-row">
+                      <div className="cd-share-avatar" style={{ background: getAvatarColor(m.name) }}>
+                        {getInitials(m.name)}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                      <div className="cd-share-info">
+                        <span className="cd-share-name">
+                          {m.name}
+                          {m.userId === currentUser?._id && <span className="cd-share-you">(you)</span>}
+                        </span>
+                        <span className="cd-share-email">{m.email}</span>
+                      </div>
+                      {m.isOwner ? (
+                        <span className="cd-perm-label cd-perm-owner">owner</span>
+                      ) : m.hasAccess ? (
+                        <PermissionSelect
+                          value={m.permission}
+                          onChange={(perm) => handleUpdatePermission(m.userId, perm)}
+                        />
+                      ) : (
+                        <button className="cd-share-add-btn" onClick={() => handleUpdatePermission(m.userId, 'view')}>
+                          + Add
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -405,20 +490,94 @@ function CompanyDataList() {
         </div>
       )}
 
-      {/* Search + filter */}
-      <div className="cd-search-bar" style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      {/* Search + stats row */}
+      <div className="cd-search-stats-row">
+        {selectedCards.size > 0 && (
+          <div className="cd-select-all" onClick={(e) => e.stopPropagation()} title="Select all">
+            <input
+              type="checkbox"
+              checked={displayedCompanies.length > 0 && selectedCards.size === displayedCompanies.length}
+              onChange={() => {
+                if (selectedCards.size === displayedCompanies.length) {
+                  setSelectedCards(new Set());
+                } else {
+                  setSelectedCards(new Set(displayedCompanies.map(c => c._id)));
+                }
+              }}
+            />
+          </div>
+        )}
+        <div className="cd-search-bar">
           <FiSearch className="cd-search-icon" />
           <input type="text" placeholder="Search companies by name or industry..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
-        {labels.length > 0 && (
-          <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
-            style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff', minWidth: 150 }}>
-            <option value="">All Labels</option>
-            {labels.map(l => <option key={l._id} value={l._id}>{l.name}</option>)}
-          </select>
-        )}
+        <div className="cd-stats-container">
+          <div className="cd-stat-item">
+            <span className="cd-stat-value">{addedTodayCount}</span>
+            <span className="cd-stat-label">Added Today</span>
+          </div>
+          <div className="cd-stat-divider" />
+          <div className="cd-stat-item">
+            <span className="cd-stat-value">{companies.length}</span>
+            <span className="cd-stat-label">Total Company Data</span>
+          </div>
+        </div>
       </div>
+
+      {/* Active filters row */}
+      {hasActiveFilters && (
+        <div className="cd-active-filters">
+          <span className="cd-active-filters-label">Active:</span>
+          {filterIndustries.map(ind => (
+            <span key={ind} className="cd-active-tag">
+              {ind}
+              <button onClick={() => setFilterIndustries(prev => prev.filter(i => i !== ind))}><FiX size={10} /></button>
+            </span>
+          ))}
+          {filterAssignedTo && (
+            <span className="cd-active-tag">
+              {allMembers.find(m => m.user?._id === filterAssignedTo)?.user?.fullName || 'User'}
+              <button onClick={() => setFilterAssignedTo('')}><FiX size={10} /></button>
+            </span>
+          )}
+          {filterContactsMin && (
+            <span className="cd-active-tag">
+              {filterContactsMin}+ contacts
+              <button onClick={() => setFilterContactsMin('')}><FiX size={10} /></button>
+            </span>
+          )}
+          {filterHasWebsite && (
+            <span className="cd-active-tag">
+              Has website
+              <button onClick={() => setFilterHasWebsite(false)}><FiX size={10} /></button>
+            </span>
+          )}
+          {filterDateAdded && (
+            <span className="cd-active-tag">
+              {filterDateAdded === 'today' ? 'Today' : filterDateAdded === 'week' ? 'Last 7 days' : 'Last 30 days'}
+              <button onClick={() => setFilterDateAdded('')}><FiX size={10} /></button>
+            </span>
+          )}
+          {labelFilter && (
+            <span className="cd-active-tag">
+              {labels.find(l => l._id === labelFilter)?.name || 'Label'}
+              <button onClick={() => setLabelFilter('')}><FiX size={10} /></button>
+            </span>
+          )}
+          {sortOrder !== 'az' && (
+            <span className="cd-active-tag">
+              Sort: {sortOrder === 'za' ? 'Z→A' : sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+              <button onClick={() => setSortOrder('az')}><FiX size={10} /></button>
+            </span>
+          )}
+          <button className="cd-clear-all-btn" onClick={clearAllFilters}>Clear all</button>
+        </div>
+      )}
+
+      {/* Showing count when filtered */}
+      {!loading && companies.length > 0 && displayedCompanies.length !== companies.length && (
+        <p className="cd-filter-result-count">Showing {displayedCompanies.length} of {companies.length} companies</p>
+      )}
 
       {/* Company list */}
       {loading ? (
@@ -430,19 +589,37 @@ function CompanyDataList() {
             </div>
           ))}
         </div>
-      ) : companies.length === 0 ? (
+      ) : displayedCompanies.length === 0 ? (
         <div className="cd-empty">
           <FiUsers size={48} strokeWidth={1} />
-          <h3>No companies yet</h3>
-          <p>Companies will appear here when added via the Chrome Extension</p>
+          <h3>{companies.length === 0 ? 'No companies yet' : 'No results match your filters'}</h3>
+          <p>{companies.length === 0 ? 'Companies will appear here when added via the Chrome Extension' : 'Try adjusting or clearing your filters'}</p>
+          {hasActiveFilters && <button className="cd-btn-outline" onClick={clearAllFilters} style={{ marginTop: 12 }}>Clear filters</button>}
         </div>
       ) : (
         <div className="cd-list">
-          {companies.map((company) => {
+          {displayedCompanies.map((company) => {
             const isEditing = editingCompany === company._id;
+            const linkedinUrl = company.linkedin
+              ? (company.linkedin.startsWith('http') ? company.linkedin : `https://${company.linkedin}`)
+              : null;
             return (
-              <div key={company._id} className="cd-card">
+              <div key={company._id} className={`cd-card${selectedCards.has(company._id) ? ' cd-card-selected' : ''}`}>
                 <div className="cd-card-header" onClick={() => !isEditing && setExpandedId(expandedId === company._id ? null : company._id)}>
+                  <div className="cd-card-checkbox" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCards.has(company._id)}
+                      onChange={() => {
+                        setSelectedCards(prev => {
+                          const next = new Set(prev);
+                          if (next.has(company._id)) next.delete(company._id);
+                          else next.add(company._id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
                   <div className="cd-card-expand">
                     {expandedId === company._id ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
                   </div>
@@ -454,19 +631,75 @@ function CompanyDataList() {
                       <span className="cd-card-contacts"><FiUsers size={12} /> {company.contacts?.length || 0} contacts</span>
                     </div>
                   </div>
+
+                  {/* Right meta: email, phone, linkedin */}
+                  <div className="cd-card-right-meta" onClick={(e) => e.stopPropagation()}>
+                    <div className="cd-right-meta-top">
+                      {company.companyEmail && (
+                        <span className="cd-card-meta-item" title={company.companyEmail}>
+                          <FiMail size={13} />
+                          <span className="cd-meta-text">{company.companyEmail}</span>
+                        </span>
+                      )}
+                      {company.companyPhone && (
+                        <span className="cd-card-meta-item" title={company.companyPhone}>
+                          <FiPhone size={13} />
+                          <span className="cd-meta-text">{company.companyPhone}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="cd-right-meta-bottom">
+                      {company.address && (
+                        <span className="cd-card-meta-item" title={company.address}>
+                          <FiMapPin size={13} />
+                          <span className="cd-meta-text">{company.address}</span>
+                        </span>
+                      )}
+                      {linkedinUrl && (
+                        <a
+                          href={linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="cd-card-linkedin"
+                          title={company.linkedin}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <img src={LinkedInIcon} alt="LinkedIn" className="cd-linkedin-svg" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
                   {company.createdBy && (
                     <div className="cd-card-avatar" title={company.createdBy.fullName || 'Unknown'}>
-                      <span className="cd-avatar" style={{ background: getAvatarColor(company.createdBy.fullName) }}>
-                        {getInitials(company.createdBy.fullName)}
-                      </span>
+                      {company.createdBy.profileImage ? (
+                        <img src={company.createdBy.profileImage} alt={company.createdBy.fullName} className="cd-avatar-img" />
+                      ) : (
+                        <span className="cd-avatar" style={{ background: getAvatarColor(company.createdBy.fullName) }}>
+                          {getInitials(company.createdBy.fullName)}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="cd-card-actions" onClick={(e) => e.stopPropagation()}>
-                    {(isOwner || canEdit) && !isEditing && (
-                      <button className="cd-btn-icon" onClick={() => handleStartEdit(company)} title="Edit"><FiEdit2 size={14} /></button>
-                    )}
                     {(isOwner || canEdit) && (
-                      <button className="cd-btn-icon cd-btn-danger" onClick={() => setDeleteConfirm(company._id)} title="Delete"><FiTrash2 size={14} /></button>
+                      <div className="cd-kebab-wrapper" ref={kebabOpenId === company._id ? kebabRef : null}>
+                        <button className="cd-btn-icon" onClick={() => setKebabOpenId(kebabOpenId === company._id ? null : company._id)} title="More options">
+                          <FiMoreVertical size={16} />
+                        </button>
+                        {kebabOpenId === company._id && (
+                          <div className="cd-kebab-menu">
+                            {!isEditing && (
+                              <button className="cd-kebab-item" onClick={() => { setKebabOpenId(null); handleStartEdit(company); }}>
+                                <FiEdit2 size={14} /> Edit
+                              </button>
+                            )}
+                            <button className="cd-kebab-item cd-kebab-item-danger" onClick={() => { setKebabOpenId(null); setDeleteConfirm(company._id); }}>
+                              <FiTrash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -512,12 +745,6 @@ function CompanyDataList() {
                       </div>
                     ) : (
                       <>
-                        <div className="cd-company-details">
-                          {company.companyEmail && <span className="cd-detail"><FiMail size={13} /> {company.companyEmail}</span>}
-                          {company.companyPhone && <span className="cd-detail"><FiPhone size={13} /> {company.companyPhone}</span>}
-                          {company.address && <span className="cd-detail"><FiMapPin size={13} /> {company.address}</span>}
-                          {company.linkedin && <span className="cd-detail"><FiLinkedin size={13} /> {company.linkedin}</span>}
-                        </div>
                         {company.contacts && company.contacts.length > 0 ? (
                           <div className="cd-contacts-section">
                             <h4 className="cd-contacts-title">Decision Makers</h4>
@@ -536,7 +763,11 @@ function CompanyDataList() {
                                   <div className="cd-contact-details">
                                     {contact.email && <span><FiMail size={12} /> {contact.email}</span>}
                                     {contact.phone && <span><FiPhone size={12} /> {contact.phone}</span>}
-                                    {contact.socialLinks && contact.socialLinks[0] && <span><FiLinkedin size={12} /> LinkedIn</span>}
+                                    {contact.socialLinks && contact.socialLinks[0] && (
+                                      <a href={contact.socialLinks[0].startsWith('http') ? contact.socialLinks[0] : `https://${contact.socialLinks[0]}`} target="_blank" rel="noopener noreferrer" className="cd-contact-linkedin" title={contact.socialLinks[0]}>
+                                        <img src={LinkedInIcon} alt="LinkedIn" className="cd-linkedin-svg-sm" /> LinkedIn
+                                      </a>
+                                    )}
                                   </div>
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                                     {(contact.labels || []).map(lid => {
@@ -608,6 +839,199 @@ function CompanyDataList() {
           </div>
         </div>
       )}
+
+      {/* ===== Right-side Filter Drawer ===== */}
+      {showFilterDrawer && (
+        <div className="cd-drawer-overlay" onClick={() => setShowFilterDrawer(false)} />
+      )}
+      <div className={`cd-filter-drawer${showFilterDrawer ? ' cd-filter-drawer-open' : ''}`}>
+        <div className="cd-drawer-header">
+          <div className="cd-drawer-title-row">
+            <FiSliders size={16} />
+            <span className="cd-drawer-title">Filters</span>
+            {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
+          </div>
+          <button className="cd-share-close" onClick={() => setShowFilterDrawer(false)}><FiX size={14} /></button>
+        </div>
+
+        <div className="cd-drawer-body">
+          {/* Assigned to */}
+          <div className="cd-filter-section">
+            <button className="cd-filter-section-header" onClick={() => toggleSection('assignedTo')}>
+              <span className="cd-filter-section-title">
+                Assigned to
+                {filterAssignedTo && <span className="cd-filter-badge">1</span>}
+              </span>
+              <FiChevronDown size={14} className={`cd-section-chevron${openSections.assignedTo ? ' open' : ''}`} />
+            </button>
+            {openSections.assignedTo && (
+              <div className="cd-filter-options">
+                {allMembers.map(m => (
+                  <label key={m.user?._id} className="cd-filter-checkbox-row">
+                    <input type="radio" name="assignedTo" checked={filterAssignedTo === m.user?._id}
+                      onChange={() => setFilterAssignedTo(filterAssignedTo === m.user?._id ? '' : m.user?._id)} />
+                    <span className="cd-filter-user-row">
+                      <span className="cd-filter-avatar" style={{ background: getAvatarColor(m.user?.fullName) }}>
+                        {m.user?.profileImage
+                          ? <img src={m.user.profileImage} alt={m.user.fullName} className="cd-filter-avatar-img" />
+                          : getInitials(m.user?.fullName)}
+                      </span>
+                      {m.user?.fullName || 'User'}
+                    </span>
+                  </label>
+                ))}
+                {allMembers.length === 0 && <p className="cd-filter-empty">No members found</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Industry */}
+          <div className="cd-filter-section">
+            <button className="cd-filter-section-header" onClick={() => toggleSection('industry')}>
+              <span className="cd-filter-section-title">
+                Industry
+                {filterIndustries.length > 0 && <span className="cd-filter-badge">{filterIndustries.length}</span>}
+              </span>
+              <FiChevronDown size={14} className={`cd-section-chevron${openSections.industry ? ' open' : ''}`} />
+            </button>
+            {openSections.industry && (
+              <div className="cd-filter-options">
+                {uniqueIndustries.length === 0 && <p className="cd-filter-empty">No industries found</p>}
+                {uniqueIndustries.map(ind => (
+                  <label key={ind} className="cd-filter-checkbox-row">
+                    <input type="checkbox" checked={filterIndustries.includes(ind)}
+                      onChange={() => setFilterIndustries(prev => prev.includes(ind) ? prev.filter(i => i !== ind) : [...prev, ind])} />
+                    <span>{ind}</span>
+                    <span className="cd-filter-row-count">{companies.filter(c => c.industry === ind).length}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contacts */}
+          <div className="cd-filter-section">
+            <button className="cd-filter-section-header" onClick={() => toggleSection('contacts')}>
+              <span className="cd-filter-section-title">
+                Contacts
+                {filterContactsMin !== '' && <span className="cd-filter-badge">1</span>}
+              </span>
+              <FiChevronDown size={14} className={`cd-section-chevron${openSections.contacts ? ' open' : ''}`} />
+            </button>
+            {openSections.contacts && (
+              <div className="cd-filter-options">
+                {['1', '2', '3', '5', '10'].map(n => (
+                  <label key={n} className="cd-filter-checkbox-row">
+                    <input type="radio" name="contacts" checked={filterContactsMin === n}
+                      onChange={() => setFilterContactsMin(filterContactsMin === n ? '' : n)} />
+                    <span>{n}+ contacts</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Date Added */}
+          <div className="cd-filter-section">
+            <button className="cd-filter-section-header" onClick={() => toggleSection('dateAdded')}>
+              <span className="cd-filter-section-title">
+                Date added
+                {filterDateAdded && <span className="cd-filter-badge">1</span>}
+              </span>
+              <FiChevronDown size={14} className={`cd-section-chevron${openSections.dateAdded ? ' open' : ''}`} />
+            </button>
+            {openSections.dateAdded && (
+              <div className="cd-filter-options">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'week', label: 'Last 7 days' },
+                  { value: 'month', label: 'Last 30 days' },
+                ].map(opt => (
+                  <label key={opt.value} className="cd-filter-checkbox-row">
+                    <input type="radio" name="dateAdded" checked={filterDateAdded === opt.value}
+                      onChange={() => setFilterDateAdded(filterDateAdded === opt.value ? '' : opt.value)} />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Has Website */}
+          <div className="cd-filter-section">
+            <div className="cd-filter-section-header cd-filter-section-header-toggle">
+              <span className="cd-filter-section-title">Has website</span>
+              <label className="cd-filter-toggle" onClick={e => e.stopPropagation()}>
+                <input type="checkbox" checked={filterHasWebsite} onChange={e => setFilterHasWebsite(e.target.checked)} />
+                <span className={`cd-toggle-track${filterHasWebsite ? ' active' : ''}`}>
+                  <span className="cd-toggle-thumb" />
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Sort */}
+          <div className="cd-filter-section">
+            <button className="cd-filter-section-header" onClick={() => toggleSection('sort')}>
+              <span className="cd-filter-section-title">
+                Sort
+                {sortOrder !== 'az' && <span className="cd-filter-badge">1</span>}
+              </span>
+              <FiChevronDown size={14} className={`cd-section-chevron${openSections.sort ? ' open' : ''}`} />
+            </button>
+            {openSections.sort && (
+              <div className="cd-filter-options">
+                {[
+                  { value: 'az', label: 'A → Z' },
+                  { value: 'za', label: 'Z → A' },
+                  { value: 'newest', label: 'Newest first' },
+                  { value: 'oldest', label: 'Oldest first' },
+                ].map(opt => (
+                  <label key={opt.value} className="cd-filter-checkbox-row">
+                    <input type="radio" name="sort" checked={sortOrder === opt.value}
+                      onChange={() => setSortOrder(opt.value)} />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Label filter */}
+          {labels.length > 0 && (
+            <div className="cd-filter-section">
+              <button className="cd-filter-section-header" onClick={() => toggleSection('label')}>
+                <span className="cd-filter-section-title">
+                  Label
+                  {labelFilter && <span className="cd-filter-badge">1</span>}
+                </span>
+                <FiChevronDown size={14} className={`cd-section-chevron${openSections.label ? ' open' : ''}`} />
+              </button>
+              {openSections.label && (
+                <div className="cd-filter-options">
+                  {labels.map(l => (
+                    <label key={l._id} className="cd-filter-checkbox-row">
+                      <input type="radio" name="label" checked={labelFilter === l._id}
+                        onChange={() => setLabelFilter(labelFilter === l._id ? '' : l._id)} />
+                      <span className="cd-filter-label-row">
+                        <span className="cd-filter-label-dot" style={{ background: l.color }} />
+                        {l.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="cd-drawer-footer">
+          <button className="cd-btn-ghost" onClick={clearAllFilters}>Clear All</button>
+          <button className="cd-btn-primary" onClick={() => setShowFilterDrawer(false)}>
+            Apply{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
