@@ -587,20 +587,6 @@ function CompanyDataList() {
                   </div>
                   <div className="cd-card-info">
                     <h3 className="cd-card-name">{company.companyName}</h3>
-                    {(() => {
-                      const companyLabelIds = new Set();
-                      (company.contacts || []).forEach(c => (c.labels || []).forEach(lid => companyLabelIds.add(lid._id || lid)));
-                      const companyLabels = labels.filter(l => companyLabelIds.has(l._id));
-                      return companyLabels.length > 0 ? (
-                        <div className="cd-card-labels">
-                          {companyLabels.map(lbl => (
-                            <span key={lbl._id} className="cd-card-label-tag" style={{ background: lbl.color + '18', color: lbl.color, borderColor: lbl.color + '40' }}>
-                              {lbl.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null;
-                    })()}
                     <div className="cd-card-meta">
                       {company.industry && <span className="cd-card-industry">{company.industry}</span>}
                       {company.website && <span className="cd-card-website"><FiGlobe size={12} /> {company.website.replace(/^https?:\/\//, '')}</span>}
@@ -625,6 +611,20 @@ function CompanyDataList() {
                       )}
                     </div>
                     <div className="cd-right-meta-bottom">
+                      {(() => {
+                        const companyLabelIds = new Set();
+                        (company.contacts || []).forEach(c => (c.labels || []).forEach(lid => companyLabelIds.add(lid._id || lid)));
+                        const companyLabels = labels.filter(l => companyLabelIds.has(l._id));
+                        return companyLabels.length > 0 ? (
+                          <div className="cd-card-labels">
+                            {companyLabels.map(lbl => (
+                              <span key={lbl._id} className="cd-card-label-tag" style={{ background: lbl.color + '18', color: lbl.color, borderColor: lbl.color + '40' }}>
+                                {lbl.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                       {company.address && (
                         <span className="cd-card-meta-item" title={company.address}>
                           <FiMapPin size={13} />
