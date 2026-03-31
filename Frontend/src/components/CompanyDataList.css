@@ -422,6 +422,24 @@
   text-overflow: ellipsis;
 }
 
+.cd-card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.cd-card-label-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  border: 1px solid;
+  line-height: 1.4;
+}
+
 .cd-card-meta {
   display: flex;
   align-items: center;

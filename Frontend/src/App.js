@@ -10,7 +10,7 @@ import { trackVisitor, stopTracking, updateCurrentPage } from './utils/fingerpri
 import Header from './components/Header';
 import Home from './components/Home';
 import Login from './components/Login';
-import NoxtmBotSignup from './components/NoxtmBotSignup';
+import Signup from './components/Signup';
 import ForgotPassword from './components/ForgotPassword';
 import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
@@ -359,7 +359,7 @@ function App() {
                 />
                 <Route
                   path="/signup"
-                  element={<NoxtmBotSignup onSignup={signup} />}
+                  element={<Signup onSignup={signup} />}
                 />
                 <Route
                   path="/forgot-password"

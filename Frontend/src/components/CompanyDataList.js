@@ -353,10 +353,17 @@ function CompanyDataList() {
           <p className="cd-subtitle">Companies and contacts extracted via Chrome Extension</p>
         </div>
         <div className="cd-header-actions">
-          <button className="cd-btn-outline cd-filter-trigger" onClick={() => setShowFilterDrawer(true)}>
-            <FiSliders size={16} /> Filter
-            {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
-          </button>
+          <div className="cd-stats-container">
+            <div className="cd-stat-item">
+              <span className="cd-stat-value">{addedTodayCount}</span>
+              <span className="cd-stat-label">Added Today</span>
+            </div>
+            <div className="cd-stat-divider" />
+            <div className="cd-stat-item">
+              <span className="cd-stat-value">{companies.length}</span>
+              <span className="cd-stat-label">Total Company Data</span>
+            </div>
+          </div>
 
           {/* Avatar stack */}
           <div className="cd-avatar-stack-wrap" ref={accessPanelRef}>
@@ -447,17 +454,10 @@ function CompanyDataList() {
           <FiSearch className="cd-search-icon" />
           <input type="text" placeholder="Search companies by name or industry..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
-        <div className="cd-stats-container">
-          <div className="cd-stat-item">
-            <span className="cd-stat-value">{addedTodayCount}</span>
-            <span className="cd-stat-label">Added Today</span>
-          </div>
-          <div className="cd-stat-divider" />
-          <div className="cd-stat-item">
-            <span className="cd-stat-value">{companies.length}</span>
-            <span className="cd-stat-label">Total Company Data</span>
-          </div>
-        </div>
+        <button className="cd-btn-outline cd-filter-trigger" onClick={() => setShowFilterDrawer(true)}>
+          <FiSliders size={16} /> Filter
+          {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
+        </button>
       </div>
 
       {/* Bulk action bar */}
@@ -587,6 +587,20 @@ function CompanyDataList() {
                   </div>
                   <div className="cd-card-info">
                     <h3 className="cd-card-name">{company.companyName}</h3>
+                    {(() => {
+                      const companyLabelIds = new Set();
+                      (company.contacts || []).forEach(c => (c.labels || []).forEach(lid => companyLabelIds.add(lid._id || lid)));
+                      const companyLabels = labels.filter(l => companyLabelIds.has(l._id));
+                      return companyLabels.length > 0 ? (
+                        <div className="cd-card-labels">
+                          {companyLabels.map(lbl => (
+                            <span key={lbl._id} className="cd-card-label-tag" style={{ background: lbl.color + '18', color: lbl.color, borderColor: lbl.color + '40' }}>
+                              {lbl.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="cd-card-meta">
                       {company.industry && <span className="cd-card-industry">{company.industry}</span>}
                       {company.website && <span className="cd-card-website"><FiGlobe size={12} /> {company.website.replace(/^https?:\/\//, '')}</span>}

@@ -7,66 +7,42 @@ import { API_BASE_URL } from '../config/apiConfig';
 const API_URL = API_BASE_URL;
 
 function Signup({ onSignup }) {
-  const [step, setStep] = useState(1); // 1 = form, 2 = verification
+  const [step, setStep] = useState(1); // 1 = email, 2 = details, 3 = verification
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
   });
   const [verificationCode, setVerificationCode] = useState('');
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState(''); // 'success' or 'error'
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [touchedConfirm, setTouchedConfirm] = useState(false);
-  const [passwordsMatch, setPasswordsMatch] = useState(true);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  const handleBlurTrim = (e) => {
-    const { name, value } = e.target;
-    if (name === 'password' || name === 'confirmPassword') {
-      const trimmed = (value || '').trim();
-      if (trimmed !== value) {
-        setFormData((prev) => ({ ...prev, [name]: trimmed }));
-      }
-    }
-  };
-
-  useEffect(() => {
-    setPasswordsMatch((formData.password || '').trim() === (formData.confirmPassword || '').trim());
-  }, [formData.password, formData.confirmPassword]);
-
-  useEffect(() => {
-    if (passwordsMatch && message === 'Passwords do not match') {
-      setMessage('');
-    }
-  }, [passwordsMatch, message]);
 
   const handleGoogleSignup = () => {
     window.location.href = `${API_URL}/api/auth/google`;
   };
 
-  const handleSubmit = async (e) => {
+  const handleEmailStep = (e) => {
+    e.preventDefault();
+    if (!formData.email) return;
+    setMessage('');
+    setStep(2);
+  };
+
+  const handleDetailsSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
-    setTouchedConfirm(true);
-
-    if ((formData.password || '').trim() !== (formData.confirmPassword || '').trim()) {
-      setMessage('Passwords do not match');
-      setLoading(false);
-      return;
-    }
+    setMessageType('');
 
     if (formData.password.length < 6) {
-      setMessage('Password must be at least 6 characters long');
+      setMessage('Password must be at least 6 characters');
+      setMessageType('error');
       setLoading(false);
       return;
     }
@@ -81,20 +57,22 @@ function Signup({ onSignup }) {
 
       if (response.data.success) {
         setMessage('Verification code sent to ' + formData.email);
-        setStep(2);
+        setMessageType('success');
+        setStep(3);
       }
     } catch (error) {
       const errData = error.response?.data;
       if (errData?.userExists || errData?.redirectToLogin) {
-        setMessage('This email is already registered. Please log in instead.');
+        setMessage('This email is already registered. Redirecting to login...');
+        setMessageType('error');
         setTimeout(() => {
           window.location.href = `/login?email=${encodeURIComponent(formData.email)}`;
         }, 2000);
       } else {
         setMessage(errData?.message || 'Failed to send verification code');
+        setMessageType('error');
       }
     }
-
     setLoading(false);
   };
 
@@ -102,6 +80,7 @@ function Signup({ onSignup }) {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setMessageType('');
 
     try {
       const response = await api.post('/verify-code', {
@@ -112,223 +91,187 @@ function Signup({ onSignup }) {
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-
-        const user = response.data.user;
-
         setMessage('Account created successfully! Redirecting...');
+        setMessageType('success');
         setTimeout(() => {
-          // Always go to company setup first for new signups
           window.location.href = '/company-setup';
         }, 1500);
       }
     } catch (error) {
       const errData = error.response?.data;
       if (errData?.userExists || errData?.redirectToLogin) {
-        setMessage('This email is already registered with another organization. Redirecting to login...');
+        setMessage('This email is already registered. Redirecting to login...');
+        setMessageType('error');
         setTimeout(() => {
           window.location.href = `/login?email=${encodeURIComponent(formData.email)}`;
         }, 2000);
       } else {
-        const errorMessage = errData?.message ||
-          errData?.error ||
-          'Verification failed. Please try again.';
-        setMessage(errorMessage);
+        setMessage(errData?.message || 'Verification failed. Please try again.');
+        setMessageType('error');
       }
     }
-
     setLoading(false);
   };
 
   return (
-    <div className="signup-page">
-      <div className="signup-centered-container">
-        <div className="signup-form">
-          {message && (
-            <div className={`alert ${message.includes('successfully') || message.includes('sent to') ? 'alert-success' : 'alert-error'}`}>
-              {message}
-            </div>
-          )}
+    <div className="su-page">
+      <div className="su-card">
+        {/* Logo */}
+        <div className="su-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 7V5a4 4 0 0 0-8 0v2" />
+          </svg>
+        </div>
 
-          {step === 1 ? (
-            <>
-              <h1 className="signup-title">Create your Account</h1>
+        {message && (
+          <div className={`su-alert su-alert-${messageType}`}>
+            {message}
+          </div>
+        )}
 
-              {/* Google Signup Button */}
-              <div className="social-signup-section">
-                <button type="button" className="google-signup-btn" onClick={handleGoogleSignup}>
-                  <svg width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-              </div>
+        {step === 1 && (
+          <>
+            <h1 className="su-title">Welcome to Noxtm</h1>
+            <p className="su-subtitle">
+              Already have an account? <Link to="/login" className="su-link">Sign in</Link>
+            </p>
 
-              {/* Divider */}
-              <div className="signup-divider">
-                <span>or</span>
-              </div>
-
-              <form onSubmit={handleSubmit} className="email-signup-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="fullName" className="form-label">Full Name</label>
-                    <input
-                      type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      placeholder="Enter your full name..."
-                      className="form-input"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="email" className="form-label">Email</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Enter your email address..."
-                      className="form-input"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="password" className="form-label">Password</label>
-                    <div className="signup-password-input-container">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        id="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        onBlur={handleBlurTrim}
-                        placeholder="••••••••••••••••••••••••"
-                        className="form-input password-input"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="password-toggle-btn"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                            <line x1="1" y1="1" x2="23" y2="23" />
-                          </svg>
-                        ) : (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                    <div className="signup-password-input-container">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        onBlur={(e) => { setTouchedConfirm(true); handleBlurTrim(e); }}
-                        placeholder="••••••••••••••••••••••••"
-                        className="form-input password-input"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="password-toggle-btn"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      >
-                        {showConfirmPassword ? (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                            <line x1="1" y1="1" x2="23" y2="23" />
-                          </svg>
-                        ) : (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                {touchedConfirm && !passwordsMatch && (
-                  <div className="field-error">
-                    Passwords do not match
-                  </div>
-                )}
-
-                <div className="terms-section">
-                  <p>
-                    By clicking "Create Account" above, you acknowledge that you
-                    have read and understood, and agree to Noxtm's{' '}
-                    <Link to="/terms" className="terms-link">Terms & Conditions</Link> and{' '}
-                    <Link to="/privacy" className="terms-link">Privacy Policy</Link>.
-                  </p>
-                </div>
-                <button type="submit" className="continue-btn" disabled={loading}>
-                  {loading ? 'Sending Code...' : 'Send Verification Code'}
-                </button>
-              </form>
-            </>
-          ) : (
-            <form onSubmit={handleVerifyCode} className="email-signup-form">
-              <div className="verification-info">
-                <h3>Verify Your Email</h3>
-                <p>We've sent a verification code to <strong>{formData.email}</strong></p>
-              </div>
-              <div className="form-group">
-                <label htmlFor="verificationCode" className="form-label">Enter Verification Code</label>
+            <form onSubmit={handleEmailStep}>
+              <div className="su-field">
+                <label className="su-label" htmlFor="email">Email</label>
                 <input
-                  type="text"
-                  id="verificationCode"
-                  name="verificationCode"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter 6-digit code..."
-                  className="form-input"
-                  maxLength="6"
+                  id="email"
+                  name="email"
+                  type="email"
+                  className="su-input"
+                  placeholder="m@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
                   required
+                  autoFocus
                 />
               </div>
-              <button type="submit" className="continue-btn" disabled={loading}>
-                {loading ? 'Verifying...' : 'Verify & Create Account'}
-              </button>
-              <button
-                type="button"
-                className="back-btn"
-                onClick={() => setStep(1)}
-                disabled={loading}
-              >
-                Back to Sign Up
+              <button type="submit" className="su-btn su-btn-primary">
+                Create Account
               </button>
             </form>
-          )}
 
-          <div className="create-account-section">
-            <p className="create-account-text">
-              Already have an account? <Link to="/login" className="create-account-link">Log in</Link>
+            <div className="su-divider">
+              <span>Or</span>
+            </div>
+
+            <div className="su-social-row">
+              <button type="button" className="su-btn su-btn-outline" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                Continue with Apple
+              </button>
+              <button type="button" className="su-btn su-btn-outline" onClick={handleGoogleSignup}>
+                <svg width="16" height="16" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </button>
+            </div>
+
+            <p className="su-terms">
+              By clicking continue, you agree to our{' '}
+              <Link to="/terms" className="su-link">Terms of Service</Link> and{' '}
+              <Link to="/privacy" className="su-link">Privacy Policy</Link>.
             </p>
-          </div>
-        </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <h1 className="su-title">Complete your account</h1>
+            <p className="su-subtitle">
+              Signing up as <strong>{formData.email}</strong>
+            </p>
+
+            <form onSubmit={handleDetailsSubmit}>
+              <div className="su-field">
+                <label className="su-label" htmlFor="fullName">Full Name</label>
+                <input
+                  id="fullName"
+                  name="fullName"
+                  type="text"
+                  className="su-input"
+                  placeholder="Enter your full name"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="su-field">
+                <label className="su-label" htmlFor="password">Password</label>
+                <div className="su-password-wrap">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="su-input"
+                    placeholder="Create a password (min. 6 characters)"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  <button type="button" className="su-password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" className="su-btn su-btn-primary" disabled={loading}>
+                {loading ? 'Sending code...' : 'Continue'}
+              </button>
+              <button type="button" className="su-btn su-btn-ghost" onClick={() => setStep(1)}>
+                Back
+              </button>
+            </form>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <h1 className="su-title">Verify your email</h1>
+            <p className="su-subtitle">
+              We've sent a 6-digit code to <strong>{formData.email}</strong>
+            </p>
+
+            <form onSubmit={handleVerifyCode}>
+              <div className="su-field">
+                <label className="su-label" htmlFor="verificationCode">Verification Code</label>
+                <input
+                  id="verificationCode"
+                  type="text"
+                  className="su-input"
+                  placeholder="Enter 6-digit code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  maxLength="6"
+                  required
+                  autoFocus
+                />
+              </div>
+              <button type="submit" className="su-btn su-btn-primary" disabled={loading}>
+                {loading ? 'Verifying...' : 'Verify & Create Account'}
+              </button>
+              <button type="button" className="su-btn su-btn-ghost" onClick={() => setStep(2)}>
+                Back
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
