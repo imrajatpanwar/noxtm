@@ -1759,7 +1759,10 @@
   background: #ffffff;
   border-radius: 12px;
   width: 90%;
-  max-width: 560px;
+  max-width: 620px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   animation: cd-modal-in 0.2s ease-out;
 }
@@ -1785,6 +1788,8 @@
 
 .cd-edit-modal-body {
   padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .cd-edit-modal-body .cd-form-grid {
@@ -1833,6 +1838,104 @@
   gap: 8px;
   padding: 16px 24px;
   border-top: 1px solid #e4e4e7;
+}
+
+/* Edit Contacts / Decision Makers Section */
+.cd-edit-contacts-section {
+  margin-top: 20px;
+  border-top: 1px solid #e4e4e7;
+  padding-top: 16px;
+}
+
+.cd-edit-contacts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cd-edit-contacts-header h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #18181b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.cd-btn-sm {
+  font-size: 12px;
+  padding: 4px 10px;
+  gap: 4px;
+}
+
+.cd-edit-contact-card {
+  background: #f8fafc;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.cd-edit-contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cd-edit-contact-row:last-child {
+  margin-bottom: 0;
+}
+
+.cd-edit-contact-card .cd-form-group label {
+  font-size: 11px;
+  color: #71717a;
+  margin-bottom: 3px;
+  display: block;
+}
+
+.cd-edit-contact-card .cd-form-group input {
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.cd-edit-contact-card .cd-form-group input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.08);
+}
+
+.cd-form-actions-cell {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+}
+
+.cd-btn-danger-icon {
+  color: #ef4444;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.cd-btn-danger-icon:hover {
+  opacity: 1;
+}
+
+.cd-edit-no-contacts {
+  text-align: center;
+  color: #a1a1aa;
+  font-size: 13px;
+  padding: 20px 0;
+  margin: 0;
 }
 
 /* Bulk Action Bar */

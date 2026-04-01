@@ -203,6 +203,13 @@ function CompanyDataList() {
       companyPhone: company.companyPhone || '', website: company.website || '',
       industry: company.industry || '', address: company.address || '', linkedin: company.linkedin || '',
       notes: company.notes || '',
+      contacts: (company.contacts || []).map(c => ({
+        fullName: c.fullName || '', designation: c.designation || '',
+        phone: c.phone || '', email: c.email || '',
+        socialLinks: c.socialLinks || [], location: c.location || '',
+        status: c.status || 'Cold Lead', followUp: c.followUp || '',
+        isImportant: c.isImportant || false, labels: c.labels || []
+      })),
     });
   };
 
@@ -801,6 +808,74 @@ function CompanyDataList() {
                   <label>Notes</label>
                   <textarea rows="3" value={editFormData.notes || ''} onChange={e => setEditFormData({ ...editFormData, notes: e.target.value })} placeholder="Add notes..." />
                 </div>
+              </div>
+
+              {/* Decision Makers / Contacts */}
+              <div className="cd-edit-contacts-section">
+                <div className="cd-edit-contacts-header">
+                  <h4><FiUsers size={14} /> Decision Makers ({(editFormData.contacts || []).length})</h4>
+                  <button className="cd-btn-ghost cd-btn-sm" onClick={() => setEditFormData({
+                    ...editFormData,
+                    contacts: [...(editFormData.contacts || []), { fullName: '', designation: '', phone: '', email: '', socialLinks: [], location: '', status: 'Cold Lead', followUp: '', isImportant: false, labels: [] }]
+                  })}><FiPlus size={13} /> Add Contact</button>
+                </div>
+                {(editFormData.contacts || []).map((contact, idx) => (
+                  <div key={idx} className="cd-edit-contact-card">
+                    <div className="cd-edit-contact-row">
+                      <div className="cd-form-group">
+                        <label>Full Name</label>
+                        <input type="text" value={contact.fullName || ''} placeholder="John Doe" onChange={e => {
+                          const updated = [...editFormData.contacts];
+                          updated[idx] = { ...updated[idx], fullName: e.target.value };
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }} />
+                      </div>
+                      <div className="cd-form-group">
+                        <label>Designation</label>
+                        <input type="text" value={contact.designation || ''} placeholder="CEO, CTO, etc." onChange={e => {
+                          const updated = [...editFormData.contacts];
+                          updated[idx] = { ...updated[idx], designation: e.target.value };
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }} />
+                      </div>
+                      <div className="cd-form-group">
+                        <label>Phone</label>
+                        <input type="text" value={contact.phone || ''} placeholder="+91 9876543210" onChange={e => {
+                          const updated = [...editFormData.contacts];
+                          updated[idx] = { ...updated[idx], phone: e.target.value };
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }} />
+                      </div>
+                    </div>
+                    <div className="cd-edit-contact-row">
+                      <div className="cd-form-group">
+                        <label>Email</label>
+                        <input type="email" value={contact.email || ''} placeholder="john@company.com" onChange={e => {
+                          const updated = [...editFormData.contacts];
+                          updated[idx] = { ...updated[idx], email: e.target.value };
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }} />
+                      </div>
+                      <div className="cd-form-group">
+                        <label>LinkedIn</label>
+                        <input type="text" value={(contact.socialLinks || [])[0] || ''} placeholder="https://linkedin.com/in/..." onChange={e => {
+                          const updated = [...editFormData.contacts];
+                          updated[idx] = { ...updated[idx], socialLinks: e.target.value ? [e.target.value] : [] };
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }} />
+                      </div>
+                      <div className="cd-form-group cd-form-actions-cell">
+                        <button className="cd-btn-icon cd-btn-danger-icon" title="Remove contact" onClick={() => {
+                          const updated = editFormData.contacts.filter((_, i) => i !== idx);
+                          setEditFormData({ ...editFormData, contacts: updated });
+                        }}><FiTrash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(!editFormData.contacts || editFormData.contacts.length === 0) && (
+                  <p className="cd-edit-no-contacts">No decision makers added yet. Click "Add Contact" above.</p>
+                )}
               </div>
             </div>
             <div className="cd-edit-modal-footer">
