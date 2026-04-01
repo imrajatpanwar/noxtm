@@ -638,24 +638,50 @@ function initializeRoutes({ io }) {
 
       // If phoneListId provided, fetch phones from the list
       if (phoneListId) {
-        const phoneList = await WhatsAppPhoneList.findOne({
-          _id: phoneListId,
-          companyId: req.user.companyId
-        });
-        if (phoneList && phoneList.phones.length > 0) {
-          const listRecipients = phoneList.phones
-            .map(entry => {
-              const cleanPhone = String(entry.phone).replace(/[^0-9]/g, '');
-              if (!cleanPhone) return null;
-              return {
-                whatsappId: `${cleanPhone}@s.whatsapp.net`,
-                name: entry.name || cleanPhone,
-                phone: cleanPhone,
-                status: 'pending'
-              };
-            })
-            .filter(Boolean);
-          recipientsList = [...recipientsList, ...listRecipients];
+        // Handle labeled company data lists (ID starts with "label_")
+        if (String(phoneListId).startsWith('label_')) {
+          const labelId = String(phoneListId).replace('label_', '');
+          const CompanyData = require('../models/CompanyData');
+          const companies = await CompanyData.find({ companyId: req.user.companyId }).lean();
+
+          for (const comp of companies) {
+            if (!comp.contacts || comp.contacts.length === 0) continue;
+            for (const contact of comp.contacts) {
+              if (!contact.phone) continue;
+              const hasLabel = (contact.labels || []).some(lid => lid.toString() === labelId);
+              if (hasLabel) {
+                const cleanPhone = String(contact.phone).replace(/[^0-9]/g, '');
+                if (!cleanPhone) continue;
+                recipientsList.push({
+                  whatsappId: `${cleanPhone}@s.whatsapp.net`,
+                  name: contact.fullName || comp.companyName || cleanPhone,
+                  phone: cleanPhone,
+                  status: 'pending'
+                });
+              }
+            }
+          }
+        } else {
+          // Regular WhatsApp phone list
+          const phoneList = await WhatsAppPhoneList.findOne({
+            _id: phoneListId,
+            companyId: req.user.companyId
+          });
+          if (phoneList && phoneList.phones.length > 0) {
+            const listRecipients = phoneList.phones
+              .map(entry => {
+                const cleanPhone = String(entry.phone).replace(/[^0-9]/g, '');
+                if (!cleanPhone) return null;
+                return {
+                  whatsappId: `${cleanPhone}@s.whatsapp.net`,
+                  name: entry.name || cleanPhone,
+                  phone: cleanPhone,
+                  status: 'pending'
+                };
+              })
+              .filter(Boolean);
+            recipientsList = [...recipientsList, ...listRecipients];
+          }
         }
       }
 
