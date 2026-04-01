@@ -741,23 +741,39 @@ router.post('/company-data', auth, async (req, res) => {
 
         const {
             companyName, companyEmail, companyPhone, address,
-            website, linkedin, industry, notes, contacts
+            website, linkedin, industry, notes, contacts,
+            // Accept alternate field names from Chrome extension
+            email, phone, decisionMakers
         } = req.body;
 
         if (!companyName || !companyName.trim()) {
             return res.status(400).json({ message: 'Company name is required' });
         }
 
+        // Normalize contacts: accept both 'contacts' and 'decisionMakers' from extension
+        const rawContacts = contacts || decisionMakers || [];
+        const normalizedContacts = rawContacts.map(c => ({
+            fullName: c.fullName || c.name || '',
+            designation: c.designation || '',
+            phone: c.phone || '',
+            email: c.email || '',
+            socialLinks: c.socialLinks || (c.linkedin ? [c.linkedin] : []),
+            location: c.location || '',
+            status: c.status || 'Cold Lead',
+            followUp: c.followUp || '',
+            isImportant: c.isImportant || false
+        }));
+
         const companyData = new CompanyData({
             companyName: companyName.trim(),
-            companyEmail,
-            companyPhone,
+            companyEmail: companyEmail || email || '',
+            companyPhone: companyPhone || phone || '',
             address,
             website,
             linkedin,
             industry,
             notes,
-            contacts: contacts || [],
+            contacts: normalizedContacts,
             source: 'extension',
             createdBy: user._id,
             companyId: user.companyId
@@ -791,18 +807,35 @@ router.put('/company-data/:id', auth, async (req, res) => {
 
         const {
             companyName, companyEmail, companyPhone, address,
-            website, linkedin, industry, notes, contacts
+            website, linkedin, industry, notes, contacts,
+            // Accept alternate field names from Chrome extension
+            email, phone, decisionMakers
         } = req.body;
 
         if (companyName !== undefined) company.companyName = companyName;
-        if (companyEmail !== undefined) company.companyEmail = companyEmail;
-        if (companyPhone !== undefined) company.companyPhone = companyPhone;
+        if (companyEmail !== undefined || email !== undefined) company.companyEmail = companyEmail || email;
+        if (companyPhone !== undefined || phone !== undefined) company.companyPhone = companyPhone || phone;
         if (address !== undefined) company.address = address;
         if (website !== undefined) company.website = website;
         if (linkedin !== undefined) company.linkedin = linkedin;
         if (industry !== undefined) company.industry = industry;
         if (notes !== undefined) company.notes = notes;
-        if (contacts !== undefined) company.contacts = contacts;
+
+        // Normalize contacts: accept both 'contacts' and 'decisionMakers'
+        const rawContacts = contacts || decisionMakers;
+        if (rawContacts !== undefined) {
+            company.contacts = rawContacts.map(c => ({
+                fullName: c.fullName || c.name || '',
+                designation: c.designation || '',
+                phone: c.phone || '',
+                email: c.email || '',
+                socialLinks: c.socialLinks || (c.linkedin ? [c.linkedin] : []),
+                location: c.location || '',
+                status: c.status || 'Cold Lead',
+                followUp: c.followUp || '',
+                isImportant: c.isImportant || false
+            }));
+        }
 
         await company.save();
         res.json({ success: true, company });
