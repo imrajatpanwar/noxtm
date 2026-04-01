@@ -143,6 +143,22 @@ export function WhatsAppProvider({ children, socket }) {
       }
     };
 
+    // WhatsApp error from backend (e.g. phone already linked, session failure)
+    const handleError = (data) => {
+      console.error('WhatsApp error:', data);
+      setQrCode(null);
+      setLinkingAccountId(null);
+
+      if (data.error === 'PHONE_ALREADY_LINKED') {
+        toast.error(data.message || 'This phone is already linked to another account');
+      } else {
+        toast.error(data.message || 'WhatsApp connection failed');
+      }
+
+      // Refresh accounts to get updated statuses
+      fetchAccounts();
+    };
+
     // Bot typing indicator
     const handleBotTyping = (data) => {
       const { contactId, typing } = data;
@@ -162,6 +178,7 @@ export function WhatsAppProvider({ children, socket }) {
     socket.on('whatsapp:message-status', handleStatusUpdate);
     socket.on('whatsapp:campaign:progress', handleCampaignProgress);
     socket.on('whatsapp:bot-typing', handleBotTyping);
+    socket.on('whatsapp:error', handleError);
 
     return () => {
       socket.off('connect', handleReconnect);
@@ -172,6 +189,7 @@ export function WhatsAppProvider({ children, socket }) {
       socket.off('whatsapp:message-status', handleStatusUpdate);
       socket.off('whatsapp:campaign:progress', handleCampaignProgress);
       socket.off('whatsapp:bot-typing', handleBotTyping);
+      socket.off('whatsapp:error', handleError);
     };
   }, [socket]);
 
