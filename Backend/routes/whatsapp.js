@@ -12,6 +12,7 @@ const WhatsAppTemplate = require('../models/WhatsAppTemplate');
 const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
 const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
 const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
+const WhatsAppChatbotRule = require('../models/WhatsAppChatbotRule');
 const User = require('../models/User');
 
 const sessionManager = require('../services/whatsappSessionManager');
@@ -157,12 +158,17 @@ function initializeRoutes({ io }) {
       // Remove session and auth files
       await sessionManager.removeSession(account._id.toString());
 
-      // Delete related data
+      // Delete all related data across every WhatsApp collection
+      const accountObjId = account._id;
+      const accountIdStr = account._id.toString();
       await Promise.all([
-        WhatsAppContact.deleteMany({ accountId: account._id }),
-        WhatsAppMessage.deleteMany({ accountId: account._id }),
-        WhatsAppCampaign.deleteMany({ accountId: account._id }),
-        WhatsAppChatbot.updateMany({ companyId: req.user.companyId }, { $pull: { accountIds: account._id.toString() } }),
+        WhatsAppContact.deleteMany({ accountId: accountObjId }),
+        WhatsAppMessage.deleteMany({ accountId: accountObjId }),
+        WhatsAppCampaign.deleteMany({ accountId: accountObjId }),
+        WhatsAppChatbot.updateMany({ companyId: req.user.companyId }, { $pull: { accountIds: accountIdStr } }),
+        WhatsAppChatbotRule.deleteMany({ accountId: accountObjId }).catch(() => {}),
+        WhatsAppKeypoint.deleteMany({ accountId: accountObjId }).catch(() => {}),
+        WhatsAppScheduledMsg.deleteMany({ accountId: accountObjId }).catch(() => {}),
         account.deleteOne()
       ]);
 
