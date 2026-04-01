@@ -36,16 +36,29 @@ export function WhatsAppProvider({ children, socket }) {
   useEffect(() => {
     if (!socket) return;
 
-    // Join WhatsApp room
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.companyId) {
-          socket.emit('join-whatsapp', payload.companyId);
-        }
-      } catch (e) { }
-    }
+    // Helper to join the WhatsApp room
+    const joinWhatsAppRoom = () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.companyId) {
+            socket.emit('join-whatsapp', payload.companyId);
+          }
+        } catch (e) { }
+      }
+    };
+
+    // Join WhatsApp room immediately
+    joinWhatsAppRoom();
+
+    // Re-join WhatsApp room on reconnect (server loses room membership)
+    const handleReconnect = () => {
+      console.log('WhatsAppContext: Socket reconnected, re-joining WhatsApp room');
+      joinWhatsAppRoom();
+    };
+
+    socket.on('connect', handleReconnect);
 
     // QR Code received from backend
     const handleQR = (data) => {
@@ -151,6 +164,7 @@ export function WhatsAppProvider({ children, socket }) {
     socket.on('whatsapp:bot-typing', handleBotTyping);
 
     return () => {
+      socket.off('connect', handleReconnect);
       socket.off('whatsapp:qr', handleQR);
       socket.off('whatsapp:connected', handleConnected);
       socket.off('whatsapp:disconnected', handleDisconnected);

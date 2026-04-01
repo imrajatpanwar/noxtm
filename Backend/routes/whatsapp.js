@@ -771,7 +771,13 @@ function initializeRoutes({ io }) {
    */
   router.post('/campaigns/:id/pause', async (req, res) => {
     try {
-      const result = await campaignService.pauseCampaign(req.params.id);
+      const campaign = await WhatsAppCampaign.findOne({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+      if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });
+
+      const result = await campaignService.pauseCampaign(campaign._id.toString());
       res.json(result);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -783,7 +789,13 @@ function initializeRoutes({ io }) {
    */
   router.post('/campaigns/:id/resume', whatsappCampaignLimiter, async (req, res) => {
     try {
-      const result = await campaignService.resumeCampaign(req.params.id);
+      const campaign = await WhatsAppCampaign.findOne({
+        _id: req.params.id,
+        companyId: req.user.companyId
+      });
+      if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });
+
+      const result = await campaignService.resumeCampaign(campaign._id.toString());
       res.json(result);
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

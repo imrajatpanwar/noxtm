@@ -12,8 +12,18 @@ const sessions = new Map();
 const chatbotCooldowns = new Map();
 
 // Dedup: track recently processed Baileys message IDs to prevent double-processing
-const processedMsgIds = new Set();
+// Uses a Map with timestamps instead of Set+setTimeout to avoid memory leaks under load
+const processedMsgIds = new Map(); // key -> timestamp
 const DEDUP_TTL = 60000; // 60 seconds
+const DEDUP_SWEEP_INTERVAL = 30000; // sweep every 30s
+
+// Single periodic sweep instead of one setTimeout per message
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of processedMsgIds) {
+    if (now - ts > DEDUP_TTL) processedMsgIds.delete(key);
+  }
+}, DEDUP_SWEEP_INTERVAL);
 
 // Reference to Socket.IO instance (set via init)
 let io = null;
@@ -162,17 +172,92 @@ async function startSession(accountId) {
 
       // Update account in DB
       const me = socket.user;
-      await WhatsAppAccount.findByIdAndUpdate(accountId, {
-        status: 'connected',
-        phoneNumber: me?.id?.split(':')[0] || me?.id?.split('@')[0] || account.phoneNumber,
-        displayName: me?.name || account.displayName,
-        lastConnected: new Date()
-      });
+      const newPhoneNumber = me?.id?.split(':')[0] || me?.id?.split('@')[0] || account.phoneNumber;
+
+      try {
+        // Check if this phone number is already linked to another account in the same company
+        const existingAccount = await WhatsAppAccount.findOne({
+          companyId: account.companyId,
+          phoneNumber: newPhoneNumber,
+          _id: { $ne: accountId }
+        });
+
+        if (existingAccount) {
+          console.error(`[WA] Phone ${newPhoneNumber} already linked to account ${existingAccount._id} in company ${account.companyId}`);
+
+          // Disconnect this session since the phone is already linked elsewhere
+          try {
+            socket.ev.removeAllListeners();
+            await socket.logout();
+          } catch (e) { /* best-effort logout */ }
+          sessions.delete(accountId);
+
+          // Clean up session files
+          const dupSessionDir = path.join(SESSIONS_DIR, account.sessionFolder);
+          if (fs.existsSync(dupSessionDir)) {
+            fs.rmSync(dupSessionDir, { recursive: true, force: true });
+          }
+
+          // Reset account status back to disconnected
+          await WhatsAppAccount.findByIdAndUpdate(accountId, {
+            status: 'disconnected',
+            lastDisconnected: new Date()
+          });
+
+          emitToCompany(account.companyId, 'whatsapp:error', {
+            accountId,
+            error: 'PHONE_ALREADY_LINKED',
+            message: `This phone number (+${newPhoneNumber}) is already linked to another account in your workspace. Please unlink it first or use a different phone.`,
+            existingAccountId: existingAccount._id.toString()
+          });
+          return;
+        }
+
+        await WhatsAppAccount.findByIdAndUpdate(accountId, {
+          status: 'connected',
+          phoneNumber: newPhoneNumber,
+          displayName: me?.name || account.displayName,
+          lastConnected: new Date()
+        });
+      } catch (dbError) {
+        // Handle duplicate key error (E11000) as a safety net
+        if (dbError.code === 11000) {
+          console.error(`[WA] Duplicate key error linking phone ${newPhoneNumber} to account ${accountId}:`, dbError.message);
+
+          // Disconnect this session
+          try {
+            socket.ev.removeAllListeners();
+            await socket.logout();
+          } catch (e) { /* best-effort logout */ }
+          sessions.delete(accountId);
+
+          // Clean up session files
+          const dupSessionDir = path.join(SESSIONS_DIR, account.sessionFolder);
+          if (fs.existsSync(dupSessionDir)) {
+            fs.rmSync(dupSessionDir, { recursive: true, force: true });
+          }
+
+          // Reset account status
+          await WhatsAppAccount.findByIdAndUpdate(accountId, {
+            status: 'disconnected',
+            lastDisconnected: new Date()
+          }).catch(() => {});
+
+          emitToCompany(account.companyId, 'whatsapp:error', {
+            accountId,
+            error: 'PHONE_ALREADY_LINKED',
+            message: `This phone number (+${newPhoneNumber}) is already linked to another account in your workspace. Please unlink it first or use a different phone.`
+          });
+          return;
+        }
+        // Re-throw non-duplicate errors
+        throw dbError;
+      }
 
       emitToCompany(account.companyId, 'whatsapp:connected', {
         accountId,
         status: 'connected',
-        phoneNumber: me?.id?.split(':')[0] || me?.id?.split('@')[0],
+        phoneNumber: newPhoneNumber,
         displayName: me?.name,
         profilePicture: account.profilePicture
       });
@@ -297,8 +382,7 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     console.log(`[WA] Skipping duplicate message ${msg.key.id}`);
     return;
   }
-  processedMsgIds.add(dedupKey);
-  setTimeout(() => processedMsgIds.delete(dedupKey), DEDUP_TTL);
+  processedMsgIds.set(dedupKey, Date.now());
 
   const jid = msg.key.remoteJid;
   const pushName = msg.pushName || '';
@@ -510,13 +594,39 @@ async function sendMessage(accountId, jid, content, options = {}) {
   const account = await WhatsAppAccount.findById(accountId);
   if (!account) throw new Error('Account not found');
 
-  // Check daily limit
-  if (!account.checkDailyLimit()) {
+  // Atomic daily limit check + increment to prevent race conditions
+  const today = new Date().toISOString().split('T')[0];
+  const limitResult = await WhatsAppAccount.findOneAndUpdate(
+    {
+      _id: accountId,
+      $or: [
+        { dailyMessageDate: { $ne: today } }, // new day — reset count
+        { dailyMessageCount: { $lt: account.settings?.dailyLimit || 500 } } // under limit
+      ]
+    },
+    [
+      {
+        $set: {
+          dailyMessageDate: today,
+          dailyMessageCount: {
+            $cond: {
+              if: { $ne: ['$dailyMessageDate', today] },
+              then: 1, // reset to 1 for new day
+              else: { $add: ['$dailyMessageCount', 1] }
+            }
+          }
+        }
+      }
+    ],
+    { new: true }
+  );
+
+  if (!limitResult) {
     throw new Error('Daily message limit reached');
   }
 
   // Simulate typing: 75 WPM, 0 words = 8s, 75 words = 48s (linear: 8s + wordCount/75 * 40s)
-  if (account.settings.typingSimulation) {
+  if (account.settings?.typingSimulation) {
     try {
       await session.socket.sendPresenceUpdate('composing', jid);
       let typingDelay;
@@ -574,9 +684,7 @@ async function sendMessage(accountId, jid, content, options = {}) {
     throw new Error('Message send failed - no response from WhatsApp');
   }
 
-  // Increment daily counter
-  account.incrementDailyCount();
-  await account.save();
+  // Daily counter already incremented atomically above
 
   // Find or create contact (upsert to avoid race condition)
   let contact = await WhatsAppContact.findOneAndUpdate(
@@ -665,6 +773,12 @@ async function disconnectSession(accountId) {
     }
   }
   sessions.delete(accountId);
+
+  // Update DB status so health check doesn't revive an intentionally disconnected session
+  await WhatsAppAccount.findByIdAndUpdate(accountId, {
+    status: 'disconnected',
+    lastDisconnected: new Date()
+  }).catch(err => console.error(`[WA] Failed to update status on disconnect for ${accountId}:`, err.message));
 }
 
 /**

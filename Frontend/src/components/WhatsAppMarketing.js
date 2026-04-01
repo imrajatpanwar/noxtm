@@ -161,7 +161,7 @@ function AccountsTab() {
   const {
     accounts, fetchAccounts, linkAccount, reconnectAccount,
     disconnectAccount, removeAccount, updateAccountSettings,
-    setDefaultAccount, qrCode, setQrCode, loading,
+    setDefaultAccount, qrCode, setQrCode, linkingAccountId, loading,
     fetchTeamMembers, assignAccountUsers
   } = useWhatsApp();
 
@@ -175,19 +175,22 @@ function AccountsTab() {
 
   useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-  // Auto-close QR modal when an account connects
+  // Auto-close QR modal when the specific account being linked connects
   useEffect(() => {
-    if (showLinkModal && accounts.some(a => a.status === 'connected' && !qrCode)) {
-      setShowLinkModal(false);
+    if (showLinkModal && linkingAccountId) {
+      const linkedAccount = accounts.find(a => a._id === linkingAccountId);
+      if (linkedAccount && linkedAccount.status === 'connected' && !qrCode) {
+        setShowLinkModal(false);
+      }
     }
-  }, [accounts, qrCode, showLinkModal]);
+  }, [accounts, qrCode, showLinkModal, linkingAccountId]);
 
   const handleLink = async () => {
     try {
-      await linkAccount(linkName || 'My WhatsApp');
       setShowLinkModal(true);
-      setLinkName('');
       toast.info('Scan the QR code with your WhatsApp');
+      await linkAccount(linkName || 'My WhatsApp');
+      setLinkName('');
     } catch (e) {
       toast.error('Failed to link: ' + (e.response?.data?.message || e.message));
     }
