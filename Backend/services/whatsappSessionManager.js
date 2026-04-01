@@ -877,7 +877,8 @@ function startHealthCheck() {
 }
 
 /**
- * Stop all sessions (for graceful shutdown)
+ * Stop all sessions (for graceful shutdown / server restart)
+ * Does NOT update DB status — sessions will be restored on next startup
  */
 async function stopAllSessions() {
   console.log(`[WA] Stopping ${sessions.size} WhatsApp sessions...`);
@@ -887,7 +888,14 @@ async function stopAllSessions() {
   }
   for (const [accountId] of sessions) {
     try {
-      await disconnectSession(accountId);
+      const session = sessions.get(accountId);
+      if (session && session.socket) {
+        try {
+          session.socket.ev.removeAllListeners();
+          session.socket.end(undefined);
+        } catch (e) { /* best-effort */ }
+      }
+      sessions.delete(accountId);
     } catch (e) {
       // Best-effort cleanup
     }
