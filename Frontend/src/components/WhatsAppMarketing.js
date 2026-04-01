@@ -179,11 +179,13 @@ function AccountsTab() {
   useEffect(() => {
     if (showLinkModal && linkingAccountId) {
       const linkedAccount = accounts.find(a => a._id === linkingAccountId);
-      if (linkedAccount && linkedAccount.status === 'connected' && !qrCode) {
+      if (linkedAccount && linkedAccount.status === 'connected') {
         setShowLinkModal(false);
+        setQrCode(null);
+        setLinkingAccountId(null);
       }
     }
-  }, [accounts, qrCode, showLinkModal, linkingAccountId]);
+  }, [accounts, showLinkModal, linkingAccountId, setQrCode, setLinkingAccountId]);
 
   const handleLink = async () => {
     try {

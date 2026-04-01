@@ -69,7 +69,10 @@ export function WhatsAppProvider({ children, socket }) {
     // Account connected successfully
     const handleConnected = (data) => {
       setQrCode(null);
-      setLinkingAccountId(null);
+      // NOTE: Don't clear linkingAccountId here — let the auto-close useEffect
+      // in AccountsTab detect the connected status and close the modal first.
+      // Clearing it here causes a race where the effect sees linkingAccountId=null
+      // and never closes the modal.
       setAccounts(prev =>
         prev.map(a =>
           a._id === data.accountId
