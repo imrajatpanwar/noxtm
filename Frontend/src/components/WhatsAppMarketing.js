@@ -161,7 +161,7 @@ function AccountsTab() {
   const {
     accounts, fetchAccounts, linkAccount, reconnectAccount,
     disconnectAccount, removeAccount, updateAccountSettings,
-    setDefaultAccount, qrCode, setQrCode, linkingAccountId, loading,
+    setDefaultAccount, qrCode, setQrCode, linkingAccountId, setLinkingAccountId, loading,
     fetchTeamMembers, assignAccountUsers
   } = useWhatsApp();
 
