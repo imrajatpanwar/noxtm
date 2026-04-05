@@ -145,8 +145,14 @@ async function sendVerificationCode(fullName, email, password) {
 
   await EmailVerification.findOneAndUpdate(
     { email: email.toLowerCase() },
-    { fullName, email: email.toLowerCase(), password: hashedPassword, code, createdAt: new Date() },
-    { upsert: true, new: true }
+    {
+      email: email.toLowerCase(),
+      code,
+      userData: { fullName, email: email.toLowerCase(), password: hashedPassword, role: 'User' },
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
   // Send email via nodemailer
@@ -220,10 +226,15 @@ async function verifyCodeAndCreateUser(email, code) {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw new Error('EMAIL_EXISTS');
 
+  const ud = record.userData || {};
+  const fullName = ud.fullName || record.fullName;
+  const password = ud.password || record.password;
+  if (!fullName || !password) throw new Error('NO_VERIFICATION');
+
   const user = new User({
-    fullName: record.fullName,
+    fullName: fullName,
     email: record.email,
-    password: record.password,
+    password: password,
     isEmailVerified: true,
     role: 'User',
     permissions: {

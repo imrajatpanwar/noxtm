@@ -117,6 +117,7 @@ function Signup({ onSignup }) {
     setLoading(true);
     setMessage('');
     setMessageType('');
+    setVerificationCode(''); // Clear old code so user doesn't submit it
 
     try {
       const response = await api.post('/send-verification-code', {
@@ -127,7 +128,7 @@ function Signup({ onSignup }) {
       });
 
       if (response.data.success) {
-        setMessage('A new verification code has been sent to ' + formData.email);
+        setMessage('A new verification code has been sent to ' + formData.email + '. The previous code is no longer valid.');
         setMessageType('success');
       }
     } catch (error) {
