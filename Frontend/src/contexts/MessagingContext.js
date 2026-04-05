@@ -64,13 +64,8 @@ export function MessagingProvider({ children }) {
     if (savedSettings) {
       const parsed = JSON.parse(savedSettings);
 
-      // DEBUG: Log loaded settings
-      console.log('🔧 Loaded chat settings from localStorage:', parsed);
-      console.log('🔧 Notifications enabled?', parsed.notifications);
-
       // FORCE ENABLE notifications if disabled (for debugging toast issues)
       if (parsed.notifications === false) {
-        console.warn('⚠️ Notifications were disabled in localStorage. Forcing ON for debugging.');
         parsed.notifications = true;
         localStorage.setItem('chatSettings', JSON.stringify(parsed));
       }
@@ -86,7 +81,6 @@ export function MessagingProvider({ children }) {
         typingIndicator: true,
         tag: true
       };
-      console.log('💾 No saved settings found. Using defaults:', defaultSettings);
       localStorage.setItem('chatSettings', JSON.stringify(defaultSettings));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +108,6 @@ export function MessagingProvider({ children }) {
           const parsed = JSON.parse(cachedConversations);
           setConversations(parsed);
           conversationsRef.current = parsed;
-          console.log(`⚡ [T=${(performance.now() - t0).toFixed(0)}ms] Loaded ${parsed.length} cached conversations`);
         } catch (e) {
           console.error('Cache parse error:', e);
         }
@@ -122,7 +115,6 @@ export function MessagingProvider({ children }) {
 
       // Step 2: Connect socket IMMEDIATELY (don't wait for API!)
       const socketUrl = getSocketUrl();
-      console.log(`🔌 [T=${(performance.now() - t0).toFixed(0)}ms] Connecting socket immediately...`);
 
       newSocket = io(socketUrl, {
         transports: ['polling', 'websocket'],  // ⚡ Start with polling (more stable), upgrade to WebSocket
@@ -146,7 +138,6 @@ export function MessagingProvider({ children }) {
         try {
           const token = localStorage.getItem('token');
           if (token) {
-            console.log(`📋 [T=${(performance.now() - t0).toFixed(0)}ms] Fetching conversations (async)...`);
             const response = await axios.get('/api/messaging/conversations', {
               headers: { Authorization: `Bearer ${token}` }
             });
@@ -156,7 +147,6 @@ export function MessagingProvider({ children }) {
               conversationsRef.current = response.data.conversations;
               // Update cache
               localStorage.setItem('cachedConversations', JSON.stringify(response.data.conversations));
-              console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Loaded ${response.data.conversations.length} fresh conversations`);
             }
           }
         } catch (error) {
@@ -175,7 +165,6 @@ export function MessagingProvider({ children }) {
           const userId = (userData.id || userData._id).toString();
           // Emit user-online event
           newSocket.emit('user-online', userId);
-          console.log('👤 MessagingContext: User online event sent:', userId);
 
           // Store userId in socket for later reference
           newSocket.userId = userId;
@@ -183,13 +172,11 @@ export function MessagingProvider({ children }) {
       };
 
       newSocket.on('connect', () => {
-        console.log(`✅ [T=${(performance.now() - t0).toFixed(0)}ms] Socket connected! Ready to receive messages 🚀`);
         setIsConnected(true);
         registerUserOnline();
       });
 
       newSocket.on('reconnect', (attemptNumber) => {
-        console.log(`🔄 MessagingContext: Reconnected after ${attemptNumber} attempts`);
         setIsConnected(true);
         registerUserOnline();
 
@@ -198,7 +185,6 @@ export function MessagingProvider({ children }) {
       });
 
       newSocket.on('disconnect', (reason) => {
-        console.log('❌ MessagingContext: Disconnected from Socket.IO. Reason:', reason);
         setIsConnected(false);
         window.dispatchEvent(new CustomEvent('socket:disconnected', { detail: { reason } }));
       });
@@ -214,7 +200,6 @@ export function MessagingProvider({ children }) {
 
       // Listen for initial online users list
       newSocket.on('online-users-list', (data) => {
-        console.log('📋 MessagingContext: Received online users list:', data.onlineUsers);
         // Convert all IDs to strings for consistent comparison
         const onlineUserIds = (data.onlineUsers || []).map(id => id.toString());
         setOnlineUsers(onlineUserIds);
@@ -222,20 +207,17 @@ export function MessagingProvider({ children }) {
 
       // Listen for user status changes
       newSocket.on('user-status-changed', (data) => {
-        console.log('👤 MessagingContext: User status changed:', data);
         const { userId, status } = data;
         const userIdStr = userId.toString();
 
         if (status === 'online') {
           setOnlineUsers(prev => {
             if (!prev.includes(userIdStr)) {
-              console.log('➕ Adding user to online list:', userIdStr);
               return [...prev, userIdStr];
             }
             return prev;
           });
         } else if (status === 'offline') {
-          console.log('➖ Removing user from online list:', userIdStr);
           setOnlineUsers(prev => prev.filter(id => id !== userIdStr));
         }
       });
@@ -243,7 +225,6 @@ export function MessagingProvider({ children }) {
       // Listen for typing indicators
       newSocket.on('user-typing', (data) => {
         const { conversationId, userId, userName, isTyping } = data;
-        console.log('⌨️ MessagingContext: User typing:', { conversationId, userId, isTyping });
 
         setTypingUsers(prev => {
           const newTypingUsers = { ...prev };

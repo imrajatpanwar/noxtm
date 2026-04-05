@@ -1793,7 +1793,19 @@ app.post('/api/verify-code', async (req, res) => {
     }
 
     // Create user with stored data
-    const { fullName, password, role } = verification.userData;
+    // Support both schemas: nested userData (signup flow) or top-level fields (bot flows)
+    const userData = verification.userData || {};
+    const fullName = userData.fullName || verification.fullName;
+    const password = userData.password || verification.password;
+    const role = userData.role || verification.role;
+
+    if (!fullName || !password) {
+      console.log('Verification record missing user data fields');
+      await EmailVerification.findByIdAndDelete(verification._id);
+      return res.status(400).json({
+        message: 'Verification record is invalid. Please request a new code.'
+      });
+    }
     console.log('Creating user with data:', { fullName, email, role });
 
     // Re-check if email was registered between sending code and verifying
