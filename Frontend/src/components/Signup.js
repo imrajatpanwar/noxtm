@@ -113,6 +113,31 @@ function Signup({ onSignup }) {
     setLoading(false);
   };
 
+  const handleResendCode = async () => {
+    setLoading(true);
+    setMessage('');
+    setMessageType('');
+
+    try {
+      const response = await api.post('/send-verification-code', {
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: 'User'
+      });
+
+      if (response.data.success) {
+        setMessage('A new verification code has been sent to ' + formData.email);
+        setMessageType('success');
+      }
+    } catch (error) {
+      const errData = error.response?.data;
+      setMessage(errData?.message || 'Failed to resend verification code');
+      setMessageType('error');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="su-page">
       <div className="su-card">
@@ -250,7 +275,28 @@ function Signup({ onSignup }) {
 
             <form onSubmit={handleVerifyCode}>
               <div className="su-field">
-                <label className="su-label" htmlFor="verificationCode">Verification Code</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label className="su-label" htmlFor="verificationCode" style={{ margin: 0 }}>Verification Code</label>
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={loading}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: '13px',
+                      color: '#09090b',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '2px',
+                      opacity: loading ? 0.5 : 1
+                    }}
+                  >
+                    Resend Code
+                  </button>
+                </div>
                 <input
                   id="verificationCode"
                   type="text"
