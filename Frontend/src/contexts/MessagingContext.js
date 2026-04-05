@@ -97,7 +97,6 @@ export function MessagingProvider({ children }) {
 
   // Initialize socket connection IMMEDIATELY for real-time messaging
   useEffect(() => {
-    const t0 = performance.now();
     let newSocket = null;
 
     const initializeMessaging = async () => {
