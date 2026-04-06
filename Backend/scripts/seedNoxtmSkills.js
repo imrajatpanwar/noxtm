@@ -20,13 +20,16 @@ const companySetupSkill = {
   trigger: 'company-setup',
   priority: 1,
   targetModel: 'Company',
+  autoEnrich: true,
+  allowDefer: true,
+  requiredRole: 'any',
   systemPrompt: `You are Noxtm Bot, a warm friendly workspace setup assistant for Noxtm — a modern workspace platform.
-You are helping a new user set up their workspace. Be warm, conversational, concise (under 25 words).
+You are helping {{userName}} set up their workspace. Be warm, conversational, concise (under 25 words).
 Never reveal you are AI or a bot. No markdown. Use the user's first name if known.`,
   questions: [
     {
       id: 'q_companyName',
-      prompt: 'What would you like to name your workspace?',
+      prompt: 'What would you like to name your workspace, {{userName}}?',
       fieldPath: 'companyName',
       type: 'text',
       required: true,
@@ -34,6 +37,8 @@ Never reveal you are AI or a bot. No markdown. Use the user's first name if know
       validator: 'minLength:2',
       retryPrompt: 'Hmm, need at least 2 characters. What should I call your workspace?',
       extractionHint: 'the company or workspace name',
+      allowFollowUp: true,
+      followUpHint: 'Confirm the workspace/company name the user wants',
     },
     {
       id: 'q_companyEmail',
@@ -44,6 +49,7 @@ Never reveal you are AI or a bot. No markdown. Use the user's first name if know
       placeholder: 'contact@company.com',
       retryPrompt: "That doesn't look like a valid email. Mind trying again?",
       extractionHint: 'an email address',
+      triggerEnrich: true,
     },
     {
       id: 'q_companyWebsite',
@@ -52,8 +58,10 @@ Never reveal you are AI or a bot. No markdown. Use the user's first name if know
       type: 'url',
       required: false,
       skippable: true,
+      deferrable: true,
       placeholder: 'https://yourcompany.com',
       extractionHint: 'a website URL',
+      triggerEnrich: true,
     },
     {
       id: 'q_type',
@@ -95,16 +103,18 @@ Never reveal you are AI or a bot. No markdown. Use the user's first name if know
       type: 'text',
       required: false,
       skippable: true,
+      deferrable: true,
       placeholder: 'e.g. India, United States',
       extractionHint: 'country name',
     },
     {
       id: 'q_description',
-      prompt: 'Give a short description of what the company does (optional):',
+      prompt: 'Give a short description of what {{companyName}} does (optional):',
       fieldPath: 'description',
       type: 'textarea',
       required: false,
       skippable: true,
+      deferrable: true,
       placeholder: 'We help companies...',
       extractionHint: 'short company description',
     },
@@ -112,10 +122,131 @@ Never reveal you are AI or a bot. No markdown. Use the user's first name if know
   onComplete: {
     action: 'createCompany',
     redirect: '/pricing',
-    message: 'All set! Your workspace is ready. Taking you to pick a plan.',
+    message: 'All set! {{companyName}} is ready. Taking you to pick a plan.',
+    nextSkill: 'invite-team',
+    seedMemory: true,
   },
   version: 1,
 };
+
+// Post-onboarding: Invite Team skill
+const inviteTeamSkill = {
+  companyId: null,
+  slug: 'invite-team',
+  name: 'Invite Your Team',
+  description: 'Help new owners invite their first team members after workspace setup',
+  enabled: true,
+  isBuiltIn: true,
+  trigger: 'post-signup',
+  priority: 10,
+  targetModel: 'Custom',
+  requiredRole: 'Owner',
+  autoEnrich: false,
+  systemPrompt: `You are Noxtm Bot helping {{userName}} invite team members to {{companyName}}.
+Be brief, encouraging, casual (under 25 words). No markdown.`,
+  questions: [
+    {
+      id: 'q_inviteEmail1',
+      prompt: 'Who should I invite first? Drop their email address.',
+      fieldPath: 'inviteEmail1',
+      type: 'email',
+      required: false,
+      skippable: true,
+      placeholder: 'teammate@company.com',
+      extractionHint: 'an email address to invite',
+      retryPrompt: "Hmm, that doesn't look like an email. Try again?",
+    },
+    {
+      id: 'q_inviteEmail2',
+      prompt: 'Anyone else? (say skip if done)',
+      fieldPath: 'inviteEmail2',
+      type: 'email',
+      required: false,
+      skippable: true,
+      placeholder: 'another@company.com',
+      extractionHint: 'an email address to invite',
+    },
+    {
+      id: 'q_inviteEmail3',
+      prompt: 'One more? (skip to finish)',
+      fieldPath: 'inviteEmail3',
+      type: 'email',
+      required: false,
+      skippable: true,
+      placeholder: 'one-more@company.com',
+      extractionHint: 'an email address to invite',
+    },
+  ],
+  onComplete: {
+    action: 'none',
+    redirect: '/dashboard',
+    message: 'Team invites queued! Head to your dashboard to get started.',
+    nextSkill: 'first-project',
+  },
+  version: 1,
+};
+
+// Post-onboarding: First Project skill
+const firstProjectSkill = {
+  companyId: null,
+  slug: 'first-project',
+  name: 'Create Your First Project',
+  description: 'Guide new users through creating their first workspace project',
+  enabled: true,
+  isBuiltIn: true,
+  trigger: 'post-signup',
+  priority: 20,
+  targetModel: 'Custom',
+  requiredRole: 'Owner',
+  autoEnrich: false,
+  systemPrompt: `You are Noxtm Bot helping {{userName}} at {{companyName}} create their first project.
+Be brief, fun, encouraging (under 25 words). No markdown.`,
+  questions: [
+    {
+      id: 'q_projectName',
+      prompt: "Let's create your first project! What should we call it?",
+      fieldPath: 'projectName',
+      type: 'text',
+      required: true,
+      placeholder: 'e.g. Product Launch, Q4 Campaign',
+      validator: 'minLength:2',
+      retryPrompt: 'Need at least 2 characters for a project name.',
+      extractionHint: 'a project name',
+    },
+    {
+      id: 'q_projectDescription',
+      prompt: 'Give a quick one-liner about this project (optional):',
+      fieldPath: 'projectDescription',
+      type: 'textarea',
+      required: false,
+      skippable: true,
+      placeholder: 'What this project is about...',
+      extractionHint: 'project description',
+    },
+  ],
+  onComplete: {
+    action: 'none',
+    redirect: '/dashboard',
+    message: "Project ready! Let's jump into your dashboard.",
+    seedMemory: true,
+  },
+  version: 1,
+};
+
+async function upsertSkill(data) {
+  const existing = await NoxtmSkill.findOne({ slug: data.slug, companyId: null });
+  if (existing) {
+    console.log(`[Seed] ${data.slug} exists. Updating...`);
+    Object.assign(existing, data);
+    existing.version = (existing.version || 1) + 1;
+    await existing.save();
+    console.log(`[Seed] Updated ${data.slug}. version =`, existing.version);
+  } else {
+    const s = new NoxtmSkill(data);
+    await s.save();
+    console.log(`[Seed] Created ${data.slug}:`, s._id.toString());
+  }
+}
 
 async function run() {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/noxtm';
@@ -123,22 +254,9 @@ async function run() {
   await mongoose.connect(uri);
   console.log('[Seed] Connected.');
 
-  const existing = await NoxtmSkill.findOne({ slug: 'company-setup', companyId: null });
-  if (existing) {
-    console.log('[Seed] company-setup skill exists. Updating questions + prompt...');
-    existing.name = companySetupSkill.name;
-    existing.description = companySetupSkill.description;
-    existing.systemPrompt = companySetupSkill.systemPrompt;
-    existing.questions = companySetupSkill.questions;
-    existing.onComplete = companySetupSkill.onComplete;
-    existing.version = (existing.version || 1) + 1;
-    await existing.save();
-    console.log('[Seed] Updated. version =', existing.version);
-  } else {
-    const s = new NoxtmSkill(companySetupSkill);
-    await s.save();
-    console.log('[Seed] Created company-setup skill:', s._id.toString());
-  }
+  await upsertSkill(companySetupSkill);
+  await upsertSkill(inviteTeamSkill);
+  await upsertSkill(firstProjectSkill);
 
   await mongoose.disconnect();
   console.log('[Seed] Done.');

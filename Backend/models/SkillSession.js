@@ -8,7 +8,7 @@ const auditEntrySchema = new mongoose.Schema({
   userMessage: { type: String, default: '' },
   extractedValue: { type: mongoose.Schema.Types.Mixed, default: null },
   confidence: { type: Number, default: 0 },
-  method: { type: String, enum: ['regex', 'direct', 'llm', 'bulk', 'skip', 'retry', 'init'], default: 'direct' },
+  method: { type: String, enum: ['regex', 'direct', 'llm', 'bulk', 'skip', 'retry', 'init', 'defer', 'enrich', 'followup'], default: 'direct' },
   valid: { type: Boolean, default: true },
   retryReason: { type: String, default: '' },
 }, { _id: false });
@@ -20,6 +20,7 @@ const skillSessionSchema = new mongoose.Schema({
   skillId: { type: mongoose.Schema.Types.ObjectId, ref: 'NoxtmSkill' },
   collected: { type: mongoose.Schema.Types.Mixed, default: {} },
   skipped: [{ type: String }],
+  deferred: [{ type: String }],
   currentQuestionId: { type: String, default: null },
   turnCount: { type: Number, default: 0 },
   complete: { type: Boolean, default: false },

@@ -65,6 +65,10 @@ const methodBadge = (method) => {
     bulk: { bg: '#f3e8ff', color: '#7c3aed' },
     skip: { bg: '#f3f4f6', color: '#6b7280' },
     retry: { bg: '#fee2e2', color: '#991b1b' },
+    defer: { bg: '#fdf4ff', color: '#a855f7' },
+    enrich: { bg: '#ecfdf5', color: '#059669' },
+    followup: { bg: '#fff7ed', color: '#c2410c' },
+    init: { bg: '#f1f5f9', color: '#475569' },
   };
   const c = colors[method] || colors.direct;
   return {

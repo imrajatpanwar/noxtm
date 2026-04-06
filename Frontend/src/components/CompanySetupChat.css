@@ -93,3 +93,157 @@
   font-size: 13px;
   font-style: italic;
 }
+
+/* Enrichment note */
+.csc-enrich-note .noxtm-bot-msg-bubble {
+  background: #eff6ff !important;
+  color: #1e40af !important;
+  border: 1px solid #bfdbfe;
+  font-size: 13px;
+}
+
+.csc-enrich-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.csc-enrich-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.csc-enrich-domain {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Defer button */
+.csc-defer-btn {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-right: 8px;
+  color: #a78bfa;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.csc-defer-btn:hover:not(:disabled) {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #c4b5fd;
+}
+
+.csc-defer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mic button */
+.csc-mic-btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #9ca3af;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  width: 36px;
+  height: 36px;
+}
+
+.csc-mic-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.csc-mic-btn:hover {
+  background: #f3f4f6;
+  color: #6366f1;
+}
+
+.csc-mic-active {
+  background: #fef2f2 !important;
+  animation: csc-pulse 1.5s infinite;
+}
+
+@keyframes csc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* Upload button */
+.csc-upload-btn {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-right: 6px;
+}
+
+.csc-upload-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.csc-upload-btn:hover {
+  background: #f3f4f6;
+  color: #6366f1;
+  border-color: #c7d2fe;
+}
+
+/* Upload preview */
+.csc-upload-preview {
+  max-width: 160px;
+  max-height: 120px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Divider between skill chains */
+.csc-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+  gap: 12px;
+}
+
+.csc-divider::before,
+.csc-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.csc-divider span {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

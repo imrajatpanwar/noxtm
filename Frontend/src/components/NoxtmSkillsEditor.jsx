@@ -65,7 +65,8 @@ const btnAccent = {
   borderColor: '#c4b5fd',
 };
 
-const QUESTION_TYPES = ['text', 'textarea', 'email', 'phone', 'url', 'number', 'select', 'multiselect'];
+const QUESTION_TYPES = ['text', 'textarea', 'email', 'phone', 'url', 'number', 'select', 'multiselect', 'file', 'image'];
+const REQUIRED_ROLES = ['any', 'Owner', 'Admin', 'Member'];
 const TRIGGERS = ['company-setup', 'signup', 'post-signup', 'on-demand', 'always'];
 const TARGETS = ['Company', 'User', 'Workspace', 'Custom'];
 const COMPLETE_ACTIONS = ['none', 'createCompany', 'updateCompany', 'updateUser', 'redirect'];
@@ -180,7 +181,10 @@ function NoxtmSkillsEditor() {
       targetModel: 'Company',
       systemPrompt: '',
       questions: [],
-      onComplete: { action: 'none', redirect: '', message: '' },
+      onComplete: { action: 'none', redirect: '', message: '', nextSkill: '', seedMemory: false },
+      requiredRole: 'any',
+      allowDefer: false,
+      autoEnrich: true,
     });
     setView('edit');
   };
@@ -293,6 +297,10 @@ function NoxtmSkillsEditor() {
         type: 'text',
         required: true,
         skippable: false,
+        deferrable: false,
+        allowFollowUp: false,
+        followUpHint: '',
+        triggerEnrich: false,
         options: [],
         placeholder: '',
         validator: '',
@@ -637,6 +645,22 @@ function NoxtmSkillsEditor() {
             <input type="number" style={inputStyle} value={selected.priority || 100} onChange={e => updateField('priority', parseInt(e.target.value) || 100)} />
           </div>
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '12px' }}>
+          <div>
+            <label style={labelStyle}>Required Role</label>
+            <select style={inputStyle} value={selected.requiredRole || 'any'} onChange={e => updateField('requiredRole', e.target.value)}>
+              {REQUIRED_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '20px' }}>
+            <input type="checkbox" checked={selected.allowDefer || false} onChange={e => updateField('allowDefer', e.target.checked)} />
+            <label style={{ fontSize: '13px', color: '#374151' }}>Allow Defer</label>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '20px' }}>
+            <input type="checkbox" checked={selected.autoEnrich !== false} onChange={e => updateField('autoEnrich', e.target.checked)} />
+            <label style={{ fontSize: '13px', color: '#374151' }}>Auto-Enrich</label>
+          </div>
+        </div>
         <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={selected.enabled} onChange={e => updateField('enabled', e.target.checked)} />
@@ -720,8 +744,35 @@ function NoxtmSkillsEditor() {
                 </select>
               </div>
               <div>
+                <label style={labelStyle}>Deferrable</label>
+                <select style={inputStyle} value={q.deferrable ? 'yes' : 'no'} onChange={e => updateQuestion(i, 'deferrable', e.target.value === 'yes')}>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </div>
+              <div>
                 <label style={labelStyle}>Validator</label>
                 <input style={inputStyle} value={q.validator || ''} onChange={e => updateQuestion(i, 'validator', e.target.value)} placeholder="minLength:3" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
+              <div>
+                <label style={labelStyle}>Allow Follow-Up</label>
+                <select style={inputStyle} value={q.allowFollowUp ? 'yes' : 'no'} onChange={e => updateQuestion(i, 'allowFollowUp', e.target.value === 'yes')}>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Follow-Up Hint</label>
+                <input style={inputStyle} value={q.followUpHint || ''} onChange={e => updateQuestion(i, 'followUpHint', e.target.value)} placeholder="What to clarify" />
+              </div>
+              <div>
+                <label style={labelStyle}>Trigger Enrich</label>
+                <select style={inputStyle} value={q.triggerEnrich ? 'yes' : 'no'} onChange={e => updateQuestion(i, 'triggerEnrich', e.target.value === 'yes')}>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
               </div>
             </div>
             {(q.type === 'select' || q.type === 'multiselect') && (
@@ -787,7 +838,7 @@ function NoxtmSkillsEditor() {
             />
           </div>
         </div>
-        <div>
+        <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle}>Completion Message</label>
           <input
             style={inputStyle}
@@ -795,6 +846,25 @@ function NoxtmSkillsEditor() {
             onChange={e => updateField('onComplete', { ...(selected.onComplete || {}), message: e.target.value })}
             placeholder="All set! Moving to the next step."
           />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div>
+            <label style={labelStyle}>Next Skill (slug)</label>
+            <input
+              style={inputStyle}
+              value={selected.onComplete?.nextSkill || ''}
+              onChange={e => updateField('onComplete', { ...(selected.onComplete || {}), nextSkill: e.target.value })}
+              placeholder="invite-team"
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '20px' }}>
+            <input
+              type="checkbox"
+              checked={selected.onComplete?.seedMemory || false}
+              onChange={e => updateField('onComplete', { ...(selected.onComplete || {}), seedMemory: e.target.checked })}
+            />
+            <label style={{ fontSize: '13px', color: '#374151' }}>Seed Workspace Memory</label>
+          </div>
         </div>
       </div>
     </div>

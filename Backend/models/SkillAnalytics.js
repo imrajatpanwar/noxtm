@@ -12,6 +12,9 @@ const fieldStatSchema = new mongoose.Schema({
     direct: { type: Number, default: 0 },
     llm: { type: Number, default: 0 },
     bulk: { type: Number, default: 0 },
+    enrich: { type: Number, default: 0 },
+    followup: { type: Number, default: 0 },
+    defer: { type: Number, default: 0 },
   },
 }, { _id: false });
 

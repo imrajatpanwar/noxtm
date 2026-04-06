@@ -8,6 +8,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const { authenticateToken } = require('../middleware/auth');
 const { runSkillTurn } = require('../utils/skillRunner');
+const { CoreMemory, LearnedMemory } = require('../models/NoxtmMemory');
 
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -64,9 +65,76 @@ async function isCompanyOwner(userId, companyId) {
   return member?.roleInCompany === 'Owner';
 }
 
+// Get user's role within their company (Owner/Admin/Member)
+async function getUserCompanyRole(userId, companyId) {
+  if (!companyId) return null;
+  const company = await Company.findById(companyId);
+  if (!company) return null;
+  const member = company.members.find(m => m.user?.toString() === userId.toString());
+  return member?.roleInCompany || null;
+}
+
+// Check if user passes the requiredRole gate
+function passesRoleGate(skill, userRole) {
+  if (!skill.requiredRole || skill.requiredRole === 'any') return true;
+  if (!userRole) return false;
+  const hierarchy = { Owner: 3, Admin: 2, Member: 1 };
+  return (hierarchy[userRole] || 0) >= (hierarchy[skill.requiredRole] || 0);
+}
+
+// Seed workspace memory from collected data
+async function seedWorkspaceMemory(collected, user, skill) {
+  try {
+    // Update or create CoreMemory with company info
+    let core = await CoreMemory.findOne({ userId: user._id });
+    if (!core) {
+      core = new CoreMemory({
+        userId: user._id,
+        companyId: user.companyId,
+        name: user.fullName || '',
+      });
+    }
+    if (collected.description) core.workContext = collected.description;
+    if (collected.industry) core.additionalNotes = `Industry: ${collected.industry}`;
+    core.companyId = user.companyId;
+    await core.save();
+
+    // Create LearnedMemory entries for key collected fields
+    const memoryFields = {
+      companyName: { category: 'fact', prefix: 'Company name' },
+      industry: { category: 'fact', prefix: 'Industry' },
+      size: { category: 'fact', prefix: 'Company size' },
+      companyWebsite: { category: 'fact', prefix: 'Website' },
+      companyCountry: { category: 'fact', prefix: 'Country' },
+      description: { category: 'fact', prefix: 'About the company' },
+      type: { category: 'fact', prefix: 'Business type' },
+    };
+
+    const entries = [];
+    for (const [field, meta] of Object.entries(memoryFields)) {
+      if (collected[field] && collected[field] !== '') {
+        entries.push({
+          userId: user._id,
+          companyId: user.companyId,
+          category: meta.category,
+          content: `${meta.prefix}: ${collected[field]}`,
+          source: 'conversation',
+          active: true,
+        });
+      }
+    }
+
+    if (entries.length > 0) {
+      await LearnedMemory.insertMany(entries);
+    }
+  } catch (err) {
+    console.error('[SkillMemory] seed error:', err.message);
+  }
+}
+
 async function executeOnComplete(skill, collected, user) {
   const action = skill.onComplete?.action;
-  if (!action || action === 'none') return { success: true };
+  const result = { success: true };
 
   try {
     if (action === 'createCompany') {
@@ -97,33 +165,37 @@ async function executeOnComplete(skill, collected, user) {
       u.companyId = company._id;
       await u.save();
 
-      return { success: true, companyId: company._id.toString() };
-    }
-
-    if (action === 'updateCompany') {
+      result.companyId = company._id.toString();
+    } else if (action === 'updateCompany') {
       if (!user.companyId) return { success: false, error: 'No company' };
       const updates = {};
       for (const [k, v] of Object.entries(collected)) {
         if (v !== null && v !== undefined && v !== '') updates[k] = v;
       }
       await Company.findByIdAndUpdate(user.companyId, { $set: updates });
-      return { success: true };
-    }
-
-    if (action === 'updateUser') {
+    } else if (action === 'updateUser') {
       const updates = {};
       for (const [k, v] of Object.entries(collected)) {
         if (v !== null && v !== undefined && v !== '') updates[k] = v;
       }
       await User.findByIdAndUpdate(user._id, { $set: updates });
-      return { success: true };
     }
-
-    return { success: true };
   } catch (err) {
     console.error('[SkillRunner] onComplete error:', err);
     return { success: false, error: err.message };
   }
+
+  // Seed workspace memory (fire-and-forget)
+  if (skill.onComplete?.seedMemory) {
+    setImmediate(() => seedWorkspaceMemory(collected, user, skill));
+  }
+
+  // Skill composition: signal nextSkill slug to frontend
+  if (skill.onComplete?.nextSkill) {
+    result.nextSkill = skill.onComplete.nextSkill;
+  }
+
+  return result;
 }
 
 function formatQuestion(q) {
@@ -135,6 +207,7 @@ function formatQuestion(q) {
     placeholder: q.placeholder,
     uiAction: q.uiAction,
     skippable: q.skippable || !q.required,
+    deferrable: q.deferrable || false,
     required: q.required,
   };
 }
@@ -263,6 +336,14 @@ router.post('/start', authenticateToken, async (req, res) => {
     const skill = await loadSkill(slug, user.companyId, user._id.toString());
     if (!skill) return res.status(404).json({ success: false, message: 'Skill not found' });
 
+    // Role-aware gate
+    if (skill.requiredRole && skill.requiredRole !== 'any') {
+      const userRole = await getUserCompanyRole(user._id, user.companyId);
+      if (!passesRoleGate(skill, userRole)) {
+        return res.status(403).json({ success: false, message: `This skill requires ${skill.requiredRole} role or above.` });
+      }
+    }
+
     if (skill.onComplete?.action === 'createCompany' && user.companyId) {
       return res.json({
         success: true,
@@ -296,6 +377,7 @@ router.post('/start', authenticateToken, async (req, res) => {
           skillId: skill._id,
           collected: {},
           skipped: [],
+          deferred: [],
           audit: [],
           currentQuestionId: null,
           turnCount: 0,
@@ -313,6 +395,7 @@ router.post('/start', authenticateToken, async (req, res) => {
       if (session.complete) {
         session.collected = {};
         session.skipped = [];
+        session.deferred = [];
         session.audit = [];
         session.currentQuestionId = null;
         session.complete = false;
@@ -325,17 +408,21 @@ router.post('/start', authenticateToken, async (req, res) => {
       await session.save();
     }
 
+    const userContext = { userName: user.fullName || '', userEmail: user.email || '' };
+
     const result = await runSkillTurn({
       skill,
-      session: { collected: session.collected, skipped: session.skipped, currentQuestionId: session.currentQuestionId },
+      session: { collected: session.collected, skipped: session.skipped, deferred: session.deferred || [], currentQuestionId: session.currentQuestionId },
       userMsg: '',
       model: null,
       conversationHistory: [],
+      userContext,
     });
 
     session.currentQuestionId = result.currentQuestionId;
     session.collected = result.collected;
     session.skipped = result.skipped || [];
+    session.deferred = result.deferred || [];
     session.complete = result.complete || false;
     session.lastActiveAt = new Date();
     await session.save();
@@ -349,13 +436,16 @@ router.post('/start', authenticateToken, async (req, res) => {
       question: formatQuestion(question),
       collected: result.collected,
       skipped: result.skipped,
+      deferred: result.deferred || [],
       complete: false,
       resumed,
       skillName: skill.name,
+      enrichResult: result.enrichResult || null,
       progress: {
         total: skill.questions.length,
         answered: Object.keys(result.collected).length,
         skipped: (result.skipped || []).length,
+        deferred: (result.deferred || []).length,
       },
     });
   } catch (err) {
@@ -381,13 +471,15 @@ router.post('/chat', chatLimiter, authenticateToken, async (req, res) => {
 
     const prevCollectedKeys = Object.keys(session.collected || {});
     const turnNumber = (session.turnCount || 0) + 1;
+    const userContext = { userName: user.fullName || '', userEmail: user.email || '' };
 
     const result = await runSkillTurn({
       skill,
-      session: { collected: session.collected, skipped: session.skipped, currentQuestionId: session.currentQuestionId },
+      session: { collected: session.collected, skipped: session.skipped, deferred: session.deferred || [], currentQuestionId: session.currentQuestionId },
       userMsg: message || '',
       model: null,
       conversationHistory,
+      userContext,
     });
 
     const newKeys = Object.keys(result.collected).filter(k => !prevCollectedKeys.includes(k));
@@ -409,6 +501,7 @@ router.post('/chat', chatLimiter, authenticateToken, async (req, res) => {
     session.currentQuestionId = result.currentQuestionId;
     session.collected = result.collected;
     session.skipped = result.skipped || [];
+    session.deferred = result.deferred || [];
     session.complete = result.complete || false;
     session.turnCount = turnNumber;
     session.lastActiveAt = new Date();
@@ -441,19 +534,23 @@ router.post('/chat', chatLimiter, authenticateToken, async (req, res) => {
       question: formatQuestion(question),
       collected: result.collected,
       skipped: result.skipped,
+      deferred: result.deferred || [],
       newlyExtracted: newKeys,
       bulkExtraction: newKeys.length >= 2,
       confidence: turnConfidence,
+      enrichResult: result.enrichResult || null,
       complete: result.complete,
       onComplete: result.complete ? {
         action: result.onComplete?.action,
         redirect: result.onComplete?.redirect,
+        nextSkill: completionResult?.nextSkill || null,
         result: completionResult,
       } : null,
       progress: {
         total: skill.questions.length,
         answered: Object.keys(result.collected).length,
         skipped: (result.skipped || []).length,
+        deferred: (result.deferred || []).length,
       },
     });
   } catch (err) {
@@ -613,7 +710,11 @@ router.get('/', authenticateToken, async (req, res) => {
     for (const s of globalSkills) bySlug.set(s.slug, s);
     for (const s of companySkills) bySlug.set(s.slug, s);
 
-    res.json({ success: true, skills: Array.from(bySlug.values()) });
+    // Role-aware filtering: remove skills the user doesn't have the role for
+    const userRole = user.companyId ? await getUserCompanyRole(user._id, user.companyId) : null;
+    const filtered = Array.from(bySlug.values()).filter(s => passesRoleGate(s, userRole));
+
+    res.json({ success: true, skills: filtered });
   } catch (err) {
     console.error('[NoxtmSkills] list error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
