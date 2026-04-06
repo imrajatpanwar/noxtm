@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
+import NoxtmSkillsEditor from './NoxtmSkillsEditor';
+import NoxtmSkillAnalytics from './NoxtmSkillAnalytics';
 
 const containerStyle = {
   padding: '28px 32px',
@@ -314,9 +316,9 @@ function NoxtmBotAdmin() {
 
       {/* Tabs */}
       <div style={tabBarStyle}>
-        {['settings', 'skills', 'api', 'plans'].map(tab => (
+        {['settings', 'skills', 'advanced', 'analytics', 'api', 'plans'].map(tab => (
           <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
-            {tab === 'settings' ? 'Settings' : tab === 'skills' ? 'Skills' : tab === 'api' ? 'API & Model' : 'Plans'}
+            {tab === 'settings' ? 'Settings' : tab === 'skills' ? 'Skills' : tab === 'advanced' ? 'Advanced Skills' : tab === 'analytics' ? 'Analytics' : tab === 'api' ? 'API & Model' : 'Plans'}
           </button>
         ))}
       </div>
@@ -474,6 +476,28 @@ function NoxtmBotAdmin() {
             {saving ? 'Saving...' : 'Save Skills'}
           </button>
         </>
+      )}
+
+      {/* Advanced Skills Tab — full skill + question editor */}
+      {activeTab === 'advanced' && (
+        <div style={cardStyle}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>Advanced Skills</h3>
+          <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 20px' }}>
+            Full skill editor with questions, field mappings, validators, and completion actions. These skills power chat-based flows like the company setup assistant.
+          </p>
+          <NoxtmSkillsEditor />
+        </div>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div style={cardStyle}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>Skill Analytics</h3>
+          <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 20px' }}>
+            Confidence scoring, extraction methods, completion rates, and per-session audit trails.
+          </p>
+          <NoxtmSkillAnalytics />
+        </div>
       )}
 
       {/* API & Model Tab */}

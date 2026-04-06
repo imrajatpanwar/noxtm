@@ -16,6 +16,7 @@ import Pricing from './components/Pricing';
 import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
 import CompanySetup from './components/CompanySetup';
+import CompanySetupChat from './components/CompanySetupChat';
 import JoinCompany from './components/JoinCompany';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
@@ -383,6 +384,16 @@ function App() {
                 />
                 <Route
                   path="/company-setup"
+                  element={
+                    user ? (
+                      <CompanySetupChat />
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  }
+                />
+                <Route
+                  path="/company-setup/classic"
                   element={
                     user ? (
                       <CompanySetup />

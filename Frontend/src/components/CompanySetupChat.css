@@ -1,0 +1,95 @@
+/* Additions / overrides for CompanySetupChat — reuses noxtm-bot-* base classes */
+
+.noxtm-bot-step-indicator {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.noxtm-bot-logout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Skip button */
+.csc-skip-btn {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-right: 8px;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.csc-skip-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #1f2937;
+  border-color: #d1d5db;
+}
+
+.csc-skip-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Restart button */
+.csc-restart-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.csc-restart-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+/* Progress bar */
+.csc-progress-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 8px;
+}
+
+.csc-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.csc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.csc-progress-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Bulk extraction note */
+.csc-bulk-note .noxtm-bot-msg-bubble {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border: 1px solid #bbf7d0;
+  font-size: 13px;
+  font-style: italic;
+}

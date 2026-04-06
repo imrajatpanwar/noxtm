@@ -182,6 +182,10 @@ app.use('/api/noxtm-bot', noxtmBotRoutes);
 // Legacy route alias for backward compatibility
 app.use('/api/zynthr', noxtmBotRoutes);
 
+// Noxtm Skills (skill-driven chat onboarding)
+const noxtmSkillsRoutes = require('./routes/noxtm-skills');
+app.use('/api/noxtm-skills', noxtmSkillsRoutes);
+
 // Billing routes
 const billingRoutes = require('./routes/billing');
 app.use('/api/billing', billingRoutes);
