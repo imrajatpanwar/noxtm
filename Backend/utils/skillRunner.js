@@ -1,5 +1,5 @@
 const { callClaude } = require('./aiHelpers');
-const { extractDomain, enrichFromDomain, mapEnrichedToFields } = require('./domainEnrich');
+const { extractDomain, enrichFromDomain, mapEnrichedToFields, countryFromTimezone } = require('./domainEnrich');
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -222,8 +222,18 @@ async function tryAutoEnrich(collected, skill) {
   if (enriched.description) newFields._enrichedDescription = enriched.description;
   if (enriched.industry) newFields._enrichedIndustry = enriched.industry;
   if (enriched.country) newFields._enrichedCountry = enriched.country;
+  if (enriched.city) newFields._enrichedCity = enriched.city;
   if (enriched.companyName) newFields._enrichedCompanyName = enriched.companyName;
   if (enriched.website) newFields._enrichedWebsite = enriched.website;
+  if (enriched.phone) newFields._enrichedPhone = enriched.phone;
+  if (enriched.address) newFields._enrichedAddress = enriched.address;
+  if (enriched.socialLinks && Object.keys(enriched.socialLinks).length) newFields._enrichedSocialLinks = enriched.socialLinks;
+  if (enriched.techStack?.length) newFields._enrichedTechStack = enriched.techStack;
+  if (enriched.specialties?.length) newFields._enrichedSpecialties = enriched.specialties;
+  if (enriched.foundedYear) newFields._enrichedFoundedYear = enriched.foundedYear;
+  if (enriched.size) newFields._enrichedSize = enriched.size;
+  if (enriched.headquarters) newFields._enrichedHeadquarters = enriched.headquarters;
+  if (enriched.followerCount) newFields._enrichedFollowerCount = enriched.followerCount;
 
   return newFields;
 }
@@ -512,6 +522,15 @@ async function runSkillTurn({ skill, session, userMsg, model, conversationHistor
               }
             }
           }
+          // Timezone country fallback: if enrichment didn't find country, use browser timezone
+          if (enrichResult && !enrichResult._enrichedCountry && !collected.companyCountry && userContext.timezone) {
+            const tzCountry = countryFromTimezone(userContext.timezone);
+            if (tzCountry) {
+              collected.companyCountry = tzCountry;
+              enrichResult._enrichedCountry = tzCountry;
+              turnAudit.push({ questionId: 'companyCountry', fieldPath: 'companyCountry', userMessage: '[timezone-detected]', extractedValue: tzCountry, confidence: 0.7, method: 'enrich', valid: true });
+            }
+          }
         }
 
         currentQuestion = getNextQuestion(skill, collected, skipped, deferred);
@@ -585,7 +604,17 @@ async function runSkillTurn({ skill, session, userMsg, model, conversationHistor
       description: enrichResult._enrichedDescription,
       industry: enrichResult._enrichedIndustry,
       country: enrichResult._enrichedCountry,
+      city: enrichResult._enrichedCity,
       website: enrichResult._enrichedWebsite,
+      phone: enrichResult._enrichedPhone,
+      address: enrichResult._enrichedAddress,
+      socialLinks: enrichResult._enrichedSocialLinks,
+      techStack: enrichResult._enrichedTechStack,
+      specialties: enrichResult._enrichedSpecialties,
+      foundedYear: enrichResult._enrichedFoundedYear,
+      size: enrichResult._enrichedSize,
+      headquarters: enrichResult._enrichedHeadquarters,
+      followerCount: enrichResult._enrichedFollowerCount,
       pendingConfirmation: true,
     } : null,
   };

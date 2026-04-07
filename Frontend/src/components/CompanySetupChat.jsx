@@ -112,7 +112,7 @@ function CompanySetupChat() {
         const res = await fetch(`${API_BASE}/api/noxtm-skills/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ slug: currentSlug, sessionId }),
+          body: JSON.stringify({ slug: currentSlug, sessionId, userContext: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } }),
         });
         const data = await res.json();
         if (!data.success) {
@@ -441,6 +441,7 @@ function CompanySetupChat() {
               )}
               {msg.isEnrichNote && msg.enrichData && (
                 <div className="csc-enrich-card">
+                  {/* Header: Logo + Name + Domain */}
                   <div className="csc-enrich-header">
                     {msg.enrichData.logo && (
                       <img src={`${API_BASE}${msg.enrichData.logo}`} alt="logo" className="csc-enrich-logo" onError={(e) => { e.target.style.display = 'none'; }} />
@@ -450,15 +451,55 @@ function CompanySetupChat() {
                       <a href={msg.enrichData.website || `https://${msg.enrichData.domain}`} target="_blank" rel="noopener noreferrer" className="csc-enrich-domain">{msg.enrichData.domain}</a>
                     </div>
                   </div>
-                  {(msg.enrichData.industry || msg.enrichData.country) && (
-                    <div className="csc-enrich-meta">
-                      {msg.enrichData.industry && <span className="csc-enrich-industry">{msg.enrichData.industry}</span>}
-                      {msg.enrichData.country && <span className="csc-enrich-country">{msg.enrichData.country}</span>}
-                    </div>
-                  )}
+
+                  {/* Tags: Industry + Country + Size */}
+                  <div className="csc-enrich-meta">
+                    {msg.enrichData.industry && <span className="csc-enrich-industry">{msg.enrichData.industry}</span>}
+                    {msg.enrichData.country && <span className="csc-enrich-tag">{msg.enrichData.city ? `${msg.enrichData.city}, ` : ''}{msg.enrichData.country}</span>}
+                    {msg.enrichData.size && <span className="csc-enrich-tag">{msg.enrichData.size} employees</span>}
+                    {msg.enrichData.foundedYear && <span className="csc-enrich-tag">Est. {msg.enrichData.foundedYear}</span>}
+                  </div>
+
+                  {/* Description */}
                   {msg.enrichData.description && !enrichEditing && (
                     <div className="csc-enrich-description">{msg.enrichData.description}</div>
                   )}
+
+                  {/* Extra Details Row */}
+                  {!enrichEditing && (msg.enrichData.phone || msg.enrichData.specialties?.length > 0 || msg.enrichData.techStack?.length > 0) && (
+                    <div className="csc-enrich-details">
+                      {msg.enrichData.phone && (
+                        <div className="csc-enrich-detail-row">
+                          <span className="csc-enrich-detail-label">Phone</span>
+                          <span className="csc-enrich-detail-value">{msg.enrichData.phone}</span>
+                        </div>
+                      )}
+                      {msg.enrichData.specialties?.length > 0 && (
+                        <div className="csc-enrich-detail-row">
+                          <span className="csc-enrich-detail-label">Specialties</span>
+                          <span className="csc-enrich-detail-value">{msg.enrichData.specialties.join(', ')}</span>
+                        </div>
+                      )}
+                      {msg.enrichData.techStack?.length > 0 && (
+                        <div className="csc-enrich-detail-row">
+                          <span className="csc-enrich-detail-label">Tech</span>
+                          <span className="csc-enrich-detail-value">{msg.enrichData.techStack.slice(0, 5).join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Social Links */}
+                  {!enrichEditing && msg.enrichData.socialLinks && Object.values(msg.enrichData.socialLinks).some(Boolean) && (
+                    <div className="csc-enrich-socials">
+                      {msg.enrichData.socialLinks.linkedin && <a href={msg.enrichData.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="csc-enrich-social-link">LinkedIn</a>}
+                      {msg.enrichData.socialLinks.twitter && <a href={msg.enrichData.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="csc-enrich-social-link">Twitter</a>}
+                      {msg.enrichData.socialLinks.facebook && <a href={msg.enrichData.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="csc-enrich-social-link">Facebook</a>}
+                      {msg.enrichData.socialLinks.instagram && <a href={msg.enrichData.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="csc-enrich-social-link">Instagram</a>}
+                    </div>
+                  )}
+
+                  {/* Edit Mode */}
                   {enrichEditing && (
                     <div className="csc-enrich-edit-fields">
                       <div className="csc-enrich-edit-row">
@@ -478,6 +519,8 @@ function CompanySetupChat() {
                       </div>
                     </div>
                   )}
+
+                  {/* Action Buttons */}
                   {!isComplete && (
                     <div className="csc-enrich-actions">
                       {enrichEditing ? (

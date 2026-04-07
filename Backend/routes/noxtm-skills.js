@@ -143,19 +143,24 @@ async function executeOnComplete(skill, collected, user) {
       const company = new Company({
         companyName: collected.companyName,
         companyEmail: collected.companyEmail || '',
-        companyPhone: collected.companyPhone || '',
-        companyWebsite: collected.companyWebsite || '',
+        companyPhone: collected._enrichedPhone || collected.companyPhone || '',
+        companyWebsite: collected.companyWebsite || collected._enrichedWebsite || '',
         companyLogo: collected._enrichedLogo || '',
         type: collected.type || 'Business',
         industry: collected.industry || '',
-        size: collected.size || '1-10',
+        size: collected._enrichedSize || collected.size || '1-10',
         description: collected.description || '',
-        address: collected.address || '',
-        companyCity: collected.companyCity || '',
+        address: collected._enrichedAddress || collected.address || '',
+        companyCity: collected._enrichedCity || collected.companyCity || '',
         companyState: collected.companyState || '',
         companyCountry: collected.companyCountry || '',
         companyZipCode: collected.companyZipCode || '',
         gstin: collected.gstin || '',
+        socialLinks: collected._enrichedSocialLinks || {},
+        foundedYear: collected._enrichedFoundedYear || null,
+        headquarters: collected._enrichedHeadquarters || '',
+        specialties: collected._enrichedSpecialties || [],
+        techStack: collected._enrichedTechStack || [],
         owner: user._id,
         members: [{ user: user._id, roleInCompany: 'Owner', joinedAt: new Date() }],
         subscription: { plan: 'Trial', status: 'inactive', startDate: new Date() },
@@ -326,7 +331,7 @@ function updateAnalytics(session, skill, auditEntries) {
 // Start or resume a skill session
 router.post('/start', authenticateToken, async (req, res) => {
   try {
-    const { slug, sessionId } = req.body;
+    const { slug, sessionId, userContext: clientContext } = req.body;
     if (!slug || !sessionId) {
       return res.status(400).json({ success: false, message: 'slug and sessionId required' });
     }
@@ -410,7 +415,7 @@ router.post('/start', authenticateToken, async (req, res) => {
       await session.save();
     }
 
-    const userContext = { userName: user.fullName || '', userEmail: user.email || '' };
+    const userContext = { userName: user.fullName || '', userEmail: user.email || '', timezone: clientContext?.timezone || '' };
 
     const result = await runSkillTurn({
       skill,

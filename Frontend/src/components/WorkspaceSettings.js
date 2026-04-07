@@ -19,13 +19,15 @@ function WorkspaceSettings({ user, onLogout }) {
   const [moduleTab, setModuleTab] = useState('all'); // 'all' or 'installed'
   const [isEditing, setIsEditing] = useState(false);
   const [workspaceData, setWorkspaceData] = useState({
-    name: 'NOXTM Workspace',
-    description: 'Primary workspace for team collaboration',
+    name: '',
+    description: '',
     type: 'Business',
-    plan: 'Professional',
-    storage: '85% used (8.5GB of 10GB)',
-    members: 12,
-    projects: 8
+    industry: '',
+    size: '',
+    companyCountry: '',
+    companyWebsite: '',
+    companyEmail: '',
+    companyPhone: '',
   });
 
   const [editedWorkspace, setEditedWorkspace] = useState({ ...workspaceData });
@@ -149,11 +151,28 @@ function WorkspaceSettings({ user, onLogout }) {
     setIsEditing(!isEditing);
   };
 
-  const handleSave = () => {
-    setWorkspaceData(editedWorkspace);
-    setIsEditing(false);
-    // Add API call here to save workspace settings
-    console.log('Saving workspace data:', editedWorkspace);
+  const handleSave = async () => {
+    try {
+      const updates = {
+        companyName: editedWorkspace.name,
+        description: editedWorkspace.description,
+        type: editedWorkspace.type,
+        industry: editedWorkspace.industry,
+        size: editedWorkspace.size,
+        companyCountry: editedWorkspace.companyCountry,
+        companyWebsite: editedWorkspace.companyWebsite,
+        companyEmail: editedWorkspace.companyEmail,
+        companyPhone: editedWorkspace.companyPhone,
+      };
+      await api.put('/company/update', updates);
+      setWorkspaceData(editedWorkspace);
+      setIsEditing(false);
+      fetchCompanyDetails();
+      toast.success('Workspace settings saved');
+    } catch (error) {
+      console.error('Error saving workspace:', error);
+      toast.error('Failed to save workspace settings');
+    }
   };
 
   const handleInputChange = (field, value) => {
@@ -294,6 +313,25 @@ function WorkspaceSettings({ user, onLogout }) {
       setCompanyDetails(null);
     }
   }, []);
+
+  // Sync workspaceData when companyDetails loads
+  useEffect(() => {
+    if (companyDetails) {
+      const synced = {
+        name: companyDetails.companyName || '',
+        description: companyDetails.description || '',
+        type: companyDetails.type || 'Business',
+        industry: companyDetails.industry || '',
+        size: companyDetails.size || '',
+        companyCountry: companyDetails.companyCountry || '',
+        companyWebsite: companyDetails.companyWebsite || '',
+        companyEmail: companyDetails.companyEmail || '',
+        companyPhone: companyDetails.companyPhone || '',
+      };
+      setWorkspaceData(synced);
+      setEditedWorkspace(synced);
+    }
+  }, [companyDetails]);
 
   // Generate invite link
   const handleGenerateInvite = async () => {
@@ -822,14 +860,14 @@ function WorkspaceSettings({ user, onLogout }) {
     const sub = companyDetails?.subscription || {};
     const bill = billingInfo || {};
     const usage = billingUsage || {};
-    const planName = sub.plan || workspaceData.plan || 'Trial';
+    const planName = sub.plan || 'Trial';
     const subStatus = sub.status || 'inactive';
     const isActive = ['active', 'trial'].includes(subStatus);
     const startDate = sub.startDate ? new Date(sub.startDate) : null;
     const endDate = sub.endDate ? new Date(sub.endDate) : null;
     const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-    const memberCount = companyDetails?.memberCount || workspaceData.members;
+    const memberCount = companyDetails?.memberCount || 0;
     const emailQuota = companyDetails?.emailSettings?.emailQuota;
     const storageUsedPct = emailQuota ? Math.min(100, Math.round((emailQuota.usedMB / emailQuota.totalMB) * 100)) : 85;
 
@@ -857,13 +895,15 @@ function WorkspaceSettings({ user, onLogout }) {
 
           {!isEditing ? (
             <div className="wsg-fields">
-              <div className="wsg-field"><label>Workspace Name</label><p>{companyDetails?.companyName || workspaceData.name}</p></div>
-              <div className="wsg-field"><label>Type</label><p>{workspaceData.type}</p></div>
-              <div className="wsg-field"><label>Industry</label><p>{companyDetails?.industry || '—'}</p></div>
-              <div className="wsg-field"><label>Team Size</label><p>{companyDetails?.size || '—'}</p></div>
+              <div className="wsg-field"><label>Workspace Name</label><p>{workspaceData.name || '—'}</p></div>
+              <div className="wsg-field"><label>Type</label><p>{workspaceData.type || '—'}</p></div>
+              <div className="wsg-field"><label>Industry</label><p>{workspaceData.industry || '—'}</p></div>
+              <div className="wsg-field"><label>Team Size</label><p>{workspaceData.size || '—'}</p></div>
+              <div className="wsg-field"><label>Country</label><p>{workspaceData.companyCountry || '—'}</p></div>
+              <div className="wsg-field"><label>Website</label><p>{workspaceData.companyWebsite ? <a href={workspaceData.companyWebsite} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1' }}>{workspaceData.companyWebsite}</a> : '—'}</p></div>
               <div className="wsg-field wsg-full"><label>Description</label><p>{workspaceData.description || '—'}</p></div>
-              {companyDetails?.address && (
-                <div className="wsg-field wsg-full"><label>Address</label><p>{companyDetails.address}</p></div>
+              {companyDetails?.companyLogo && (
+                <div className="wsg-field"><label>Company Logo</label><p><img src={companyDetails.companyLogo.startsWith('/') ? `${api.defaults.baseURL?.replace('/api', '') || ''}${companyDetails.companyLogo}` : companyDetails.companyLogo} alt="logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }} /></p></div>
               )}
             </div>
           ) : (
@@ -877,7 +917,20 @@ function WorkspaceSettings({ user, onLogout }) {
                   <option value="Educational">Educational</option>
                 </select>
               </div>
-              <div className="wsg-field wsg-full"><label>Description</label><input type="text" value={editedWorkspace.description} onChange={(e) => handleInputChange('description', e.target.value)} /></div>
+              <div className="wsg-field"><label>Industry</label><input type="text" value={editedWorkspace.industry || ''} onChange={(e) => handleInputChange('industry', e.target.value)} /></div>
+              <div className="wsg-field"><label>Team Size</label>
+                <select value={editedWorkspace.size || ''} onChange={(e) => handleInputChange('size', e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="1-10">1-10</option>
+                  <option value="11-50">11-50</option>
+                  <option value="51-200">51-200</option>
+                  <option value="201-500">201-500</option>
+                  <option value="500+">500+</option>
+                </select>
+              </div>
+              <div className="wsg-field"><label>Country</label><input type="text" value={editedWorkspace.companyCountry || ''} onChange={(e) => handleInputChange('companyCountry', e.target.value)} /></div>
+              <div className="wsg-field"><label>Website</label><input type="url" value={editedWorkspace.companyWebsite || ''} onChange={(e) => handleInputChange('companyWebsite', e.target.value)} /></div>
+              <div className="wsg-field wsg-full"><label>Description</label><input type="text" value={editedWorkspace.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} /></div>
             </div>
           )}
         </div>

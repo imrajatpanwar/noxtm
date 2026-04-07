@@ -2639,9 +2639,24 @@ app.get('/api/company/details', authenticateToken, async (req, res) => {
       company: {
         _id: company._id,
         companyName: company.companyName,
-        industry: company.industry,
-        size: company.size,
-        address: company.address,
+        companyEmail: company.companyEmail || '',
+        companyPhone: company.companyPhone || '',
+        companyWebsite: company.companyWebsite || '',
+        companyLogo: company.companyLogo || '',
+        companyCountry: company.companyCountry || '',
+        companyCity: company.companyCity || '',
+        companyState: company.companyState || '',
+        type: company.type || 'Business',
+        industry: company.industry || '',
+        size: company.size || '',
+        description: company.description || '',
+        address: company.address || '',
+        socialLinks: company.socialLinks || {},
+        foundedYear: company.foundedYear || null,
+        headquarters: company.headquarters || '',
+        specialties: company.specialties || [],
+        techStack: company.techStack || [],
+        annualRevenue: company.annualRevenue || '',
         owner: company.owner,
         memberCount: company.members.length,
         subscription: company.subscription,
@@ -2664,6 +2679,45 @@ app.get('/api/company/details', authenticateToken, async (req, res) => {
       message: 'Server error while fetching company details',
       error: error.message
     });
+  }
+});
+
+// PUT /api/company/update — Update company details (Owner only)
+app.put('/api/company/update', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) {
+      return res.status(404).json({ success: false, message: 'No company found' });
+    }
+
+    const company = await Company.findById(user.companyId);
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    // Only owner can update
+    const member = company.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only the workspace owner can update settings' });
+    }
+
+    const allowedFields = [
+      'companyName', 'companyEmail', 'companyPhone', 'companyWebsite',
+      'type', 'industry', 'size', 'description', 'address',
+      'companyCity', 'companyState', 'companyCountry', 'companyZipCode',
+      'socialLinks', 'foundedYear', 'headquarters', 'specialties', 'techStack', 'annualRevenue',
+    ];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    await Company.findByIdAndUpdate(user.companyId, { $set: updates });
+    res.json({ success: true, message: 'Company updated' });
+  } catch (error) {
+    console.error('Company update error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

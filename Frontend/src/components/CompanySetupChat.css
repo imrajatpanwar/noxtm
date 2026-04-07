@@ -286,6 +286,76 @@
   border-color: #6366f1;
 }
 
+/* Generic tag pill (country, size, etc.) */
+.csc-enrich-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Extra details section */
+.csc-enrich-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.csc-enrich-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.csc-enrich-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 65px;
+  flex-shrink: 0;
+}
+
+.csc-enrich-detail-value {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* Social links row */
+.csc-enrich-socials {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.csc-enrich-social-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  text-decoration: none;
+  padding: 3px 10px;
+  background: #eef2ff;
+  border-radius: 20px;
+  border: 1px solid #c7d2fe;
+  transition: all 0.15s ease;
+}
+
+.csc-enrich-social-link:hover {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
 /* Defer button */
 .csc-defer-btn {
   background: transparent;

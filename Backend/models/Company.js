@@ -16,6 +16,17 @@ const companySchema = new mongoose.Schema({
   companyCountry: { type: String },
   companyZipCode: { type: String },
   gstin: { type: String },
+  socialLinks: {
+    linkedin: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    facebook: { type: String, default: '' },
+    instagram: { type: String, default: '' },
+  },
+  foundedYear: { type: Number },
+  headquarters: { type: String },
+  specialties: [{ type: String }],
+  techStack: [{ type: String }],
+  annualRevenue: { type: String },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   members: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
