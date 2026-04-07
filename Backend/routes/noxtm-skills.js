@@ -405,6 +405,7 @@ router.post('/start', authenticateToken, async (req, res) => {
         resumed = Object.keys(session.collected || {}).length > 0;
         if (resumed) session.resumed = true;
       }
+      session.markModified('collected');
       await session.save();
     }
 
@@ -425,6 +426,7 @@ router.post('/start', authenticateToken, async (req, res) => {
     session.deferred = result.deferred || [];
     session.complete = result.complete || false;
     session.lastActiveAt = new Date();
+    session.markModified('collected');
     await session.save();
 
     const question = skill.questions.find(q => q.id === result.currentQuestionId);
@@ -505,6 +507,7 @@ router.post('/chat', chatLimiter, authenticateToken, async (req, res) => {
     session.complete = result.complete || false;
     session.turnCount = turnNumber;
     session.lastActiveAt = new Date();
+    session.markModified('collected');
     await session.save();
 
     // Fire analytics update
