@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import './NoxtmBotSignup.css';
 import './CompanySetupChat.css';
+import setupBg from '../assets/background_setup.webp';
 
 const API_BASE = (() => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
@@ -403,32 +404,29 @@ function CompanySetupChat() {
   const progressPct = progress.total > 0 ? Math.round(((progress.answered + progress.skipped + (progress.deferred || 0)) / progress.total) * 100) : 0;
 
   return (
-    <div className={`noxtm-bot-page ${isSliding ? 'noxtm-bot-slide-out' : ''}`}>
-      <div className="noxtm-bot-branding">
-        <span className="noxtm-bot-brand-text noxtm-bot-brand-logo">noxtm</span>
-      </div>
-
-      <div className="noxtm-bot-logout">
-        <span className="noxtm-bot-step-indicator">
-          Step 1 of 3 · Company Setup
-        </span>
-        {initialized && !isComplete && (
-          <button className="csc-restart-btn" onClick={handleRestart} title="Start over">
-            Start over
-          </button>
-        )}
-      </div>
-
-      {progress.total > 0 && (
-        <div className="csc-progress-bar-wrapper">
-          <div className="csc-progress-bar">
-            <div className="csc-progress-fill" style={{ width: `${progressPct}%` }} />
+    <div className={`csc-page ${isSliding ? 'noxtm-bot-slide-out' : ''}`} style={{ backgroundImage: `url(${setupBg})` }}>
+      <div className="csc-glass-card">
+        {/* Card Header */}
+        <div className="csc-card-header">
+          <span className="csc-brand">noxtm</span>
+          <div className="csc-header-right">
+            <span className="csc-step-label">Company Setup</span>
+            {initialized && !isComplete && (
+              <button className="csc-restart-btn" onClick={handleRestart}>Start over</button>
+            )}
           </div>
-          <span className="csc-progress-label">{progressPct}%</span>
         </div>
-      )}
 
-      <div className="noxtm-bot-messages">
+        {progress.total > 0 && (
+          <div className="csc-progress-bar-wrapper">
+            <div className="csc-progress-bar">
+              <div className="csc-progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="csc-progress-label">{progressPct}%</span>
+          </div>
+        )}
+
+        <div className="csc-messages">
         {messages.map((msg, i) => {
           if (msg.isDivider) {
             return <div key={i} className="csc-divider"><span>Next Step</span></div>;
@@ -569,68 +567,53 @@ function CompanySetupChat() {
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+        </div>
 
-      <div className="noxtm-bot-input-area">
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf,.doc,.docx"
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
+        {/* Input Area */}
+        <div className="csc-input-area">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
 
-        {showFileUpload && !loading && (
-          <button
-            className="csc-upload-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Upload file"
-          >
-            <UploadIcon />
+          {showFileUpload && !loading && (
+            <button className="csc-upload-btn" onClick={() => fileInputRef.current?.click()} title="Upload file">
+              <UploadIcon />
+            </button>
+          )}
+
+          <input
+            ref={inputRef}
+            type="text"
+            className="csc-input"
+            placeholder={isListening ? 'Listening...' : placeholder}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading || isComplete || !initialized}
+            autoFocus
+          />
+
+          {canDefer && !canSkip && !loading && (
+            <button className="csc-defer-btn" onClick={handleDefer} disabled={loading || isComplete}>Later</button>
+          )}
+          {canSkip && !loading && (
+            <button className="csc-skip-btn" onClick={handleSkip} disabled={loading || isComplete}>Skip</button>
+          )}
+
+          {hasSpeech && !loading && !isComplete && (
+            <button className={`csc-mic-btn ${isListening ? 'csc-mic-active' : ''}`} onClick={toggleVoice}>
+              <MicIcon active={isListening} />
+            </button>
+          )}
+
+          <button className="csc-send-btn" onClick={() => sendMessage(input)} disabled={!input.trim() || loading || isComplete}>
+            <SendIcon />
           </button>
-        )}
-
-        <input
-          ref={inputRef}
-          type="text"
-          className="noxtm-bot-input"
-          placeholder={isListening ? 'Listening...' : placeholder}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading || isComplete || !initialized}
-          autoFocus
-        />
-
-        {canDefer && !canSkip && !loading && (
-          <button className="csc-defer-btn" onClick={handleDefer} disabled={loading || isComplete} title="Answer later">
-            Later
-          </button>
-        )}
-        {canSkip && !loading && (
-          <button className="csc-skip-btn" onClick={handleSkip} disabled={loading || isComplete}>
-            Skip
-          </button>
-        )}
-
-        {hasSpeech && !loading && !isComplete && (
-          <button
-            className={`csc-mic-btn ${isListening ? 'csc-mic-active' : ''}`}
-            onClick={toggleVoice}
-            title={isListening ? 'Stop listening' : 'Voice input'}
-          >
-            <MicIcon active={isListening} />
-          </button>
-        )}
-
-        <button
-          className="noxtm-bot-send-btn"
-          onClick={() => sendMessage(input)}
-          disabled={!input.trim() || loading || isComplete}
-        >
-          <SendIcon />
-        </button>
+        </div>
       </div>
     </div>
   );
