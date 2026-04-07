@@ -145,6 +145,7 @@ async function executeOnComplete(skill, collected, user) {
         companyEmail: collected.companyEmail || '',
         companyPhone: collected.companyPhone || '',
         companyWebsite: collected.companyWebsite || '',
+        companyLogo: collected._enrichedLogo || '',
         type: collected.type || 'Business',
         industry: collected.industry || '',
         size: collected.size || '1-10',
@@ -689,6 +690,36 @@ router.delete('/session/:sessionId', authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[NoxtmSkills] session delete error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update enriched fields (from confirmation card edits)
+router.patch('/session/:sessionId/enrich', authenticateToken, async (req, res) => {
+  try {
+    const { fields } = req.body; // { description, industry, companyCountry }
+    if (!fields || typeof fields !== 'object') {
+      return res.status(400).json({ success: false, message: 'fields object required' });
+    }
+
+    const session = await SkillSession.findOne({ sessionId: req.params.sessionId, userId: req.user.userId });
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+
+    // Only allow overriding enrichment-related fields
+    const allowedFields = ['description', 'industry', 'companyCountry', 'companyName', 'companyWebsite'];
+    for (const [k, v] of Object.entries(fields)) {
+      if (allowedFields.includes(k) && v !== undefined) {
+        session.collected[k] = v;
+      }
+    }
+
+    session.markModified('collected');
+    session.lastActiveAt = new Date();
+    await session.save();
+
+    res.json({ success: true, collected: session.collected });
+  } catch (err) {
+    console.error('[NoxtmSkills] enrich update error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

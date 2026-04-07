@@ -216,9 +216,14 @@ async function tryAutoEnrich(collected, skill) {
     }
   }
 
-  // Attach logo URL and domain as metadata (not field values)
-  if (enriched.logoUrl) newFields._enrichedLogo = enriched.logoUrl;
+  // Attach metadata (not field values — prefixed with _)
+  if (enriched.processedLogoPath) newFields._enrichedLogo = enriched.processedLogoPath;
   if (enriched.domain) newFields._enrichedDomain = enriched.domain;
+  if (enriched.description) newFields._enrichedDescription = enriched.description;
+  if (enriched.industry) newFields._enrichedIndustry = enriched.industry;
+  if (enriched.country) newFields._enrichedCountry = enriched.country;
+  if (enriched.companyName) newFields._enrichedCompanyName = enriched.companyName;
+  if (enriched.website) newFields._enrichedWebsite = enriched.website;
 
   return newFields;
 }
@@ -529,6 +534,12 @@ async function runSkillTurn({ skill, session, userMsg, model, conversationHistor
       enrichResult: enrichResult ? {
         logo: enrichResult._enrichedLogo,
         domain: enrichResult._enrichedDomain,
+        companyName: enrichResult._enrichedCompanyName,
+        description: enrichResult._enrichedDescription,
+        industry: enrichResult._enrichedIndustry,
+        country: enrichResult._enrichedCountry,
+        website: enrichResult._enrichedWebsite,
+        pendingConfirmation: true,
       } : null,
     };
   }
@@ -570,6 +581,12 @@ async function runSkillTurn({ skill, session, userMsg, model, conversationHistor
     enrichResult: enrichResult ? {
       logo: enrichResult._enrichedLogo,
       domain: enrichResult._enrichedDomain,
+      companyName: enrichResult._enrichedCompanyName,
+      description: enrichResult._enrichedDescription,
+      industry: enrichResult._enrichedIndustry,
+      country: enrichResult._enrichedCountry,
+      website: enrichResult._enrichedWebsite,
+      pendingConfirmation: true,
     } : null,
   };
 }

@@ -33,6 +33,15 @@ const UploadIcon = () => (
 
 const SKILL_SLUG = 'company-setup';
 
+const INDUSTRIES = [
+  'Technology', 'Marketing', 'Healthcare', 'Finance', 'Education',
+  'E-commerce', 'Real Estate', 'Manufacturing', 'Media', 'Consulting',
+  'Legal', 'Non-profit', 'Hospitality', 'Retail', 'Automotive',
+  'Agriculture', 'Construction', 'Energy', 'Entertainment', 'Food & Beverage',
+  'Insurance', 'Logistics', 'Pharmaceutical', 'Sports', 'Telecom',
+  'Design', 'SaaS', 'Agency', 'Freelance', 'Other',
+];
+
 // Web Speech API availability
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const hasSpeech = !!SpeechRecognition;
@@ -58,6 +67,7 @@ function CompanySetupChat() {
   const [enrichInfo, setEnrichInfo] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [currentSlug, setCurrentSlug] = useState(SKILL_SLUG);
+  const [enrichEditing, setEnrichEditing] = useState(null); // null | { description, industry, country }
 
   // Redirect if user already has company
   useEffect(() => {
@@ -194,8 +204,9 @@ function CompanySetupChat() {
       }
 
       // Show enrichment result (company found from email/domain)
-      if (data.enrichResult?.logo && data.enrichResult?.domain) {
+      if (data.enrichResult?.pendingConfirmation && data.enrichResult?.domain) {
         setEnrichInfo(data.enrichResult);
+        setEnrichEditing(null);
         setMessages(prev => [...prev, {
           role: 'assistant',
           text: `Found your company!`,
@@ -261,6 +272,38 @@ function CompanySetupChat() {
 
   const handleSkip = () => sendMessage('skip');
   const handleDefer = () => sendMessage('later');
+
+  // Enrichment card: "Looks good!" — just dismiss, data already saved
+  const handleEnrichConfirm = useCallback(() => {
+    setEnrichEditing(null);
+    setEnrichInfo(null);
+  }, []);
+
+  // Enrichment card: "Save changes" — PATCH overridden fields to backend
+  const handleEnrichSave = useCallback(async (edits) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/noxtm-skills/session/${sessionId}/enrich`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          fields: {
+            description: edits.description,
+            industry: edits.industry,
+            companyCountry: edits.country,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.collected) {
+        setCollected(data.collected);
+      }
+    } catch (e) {
+      console.error('[EnrichSave] error:', e);
+    }
+    setEnrichEditing(null);
+    setEnrichInfo(null);
+  }, [sessionId]);
 
   // Voice input via Web Speech API
   const toggleVoice = useCallback(() => {
@@ -396,10 +439,67 @@ function CompanySetupChat() {
               {msg.imagePreview && (
                 <img src={msg.imagePreview} alt="upload" className="csc-upload-preview" />
               )}
-              {msg.isEnrichNote && msg.enrichData?.logo && (
+              {msg.isEnrichNote && msg.enrichData && (
                 <div className="csc-enrich-card">
-                  <img src={msg.enrichData.logo} alt="logo" className="csc-enrich-logo" onError={(e) => { e.target.style.display = 'none'; }} />
-                  <span className="csc-enrich-domain">{msg.enrichData.domain}</span>
+                  <div className="csc-enrich-header">
+                    {msg.enrichData.logo && (
+                      <img src={`${API_BASE}${msg.enrichData.logo}`} alt="logo" className="csc-enrich-logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                    )}
+                    <div className="csc-enrich-info">
+                      <span className="csc-enrich-name">{msg.enrichData.companyName || msg.enrichData.domain}</span>
+                      <a href={msg.enrichData.website || `https://${msg.enrichData.domain}`} target="_blank" rel="noopener noreferrer" className="csc-enrich-domain">{msg.enrichData.domain}</a>
+                    </div>
+                  </div>
+                  {(msg.enrichData.industry || msg.enrichData.country) && (
+                    <div className="csc-enrich-meta">
+                      {msg.enrichData.industry && <span className="csc-enrich-industry">{msg.enrichData.industry}</span>}
+                      {msg.enrichData.country && <span className="csc-enrich-country">{msg.enrichData.country}</span>}
+                    </div>
+                  )}
+                  {msg.enrichData.description && !enrichEditing && (
+                    <div className="csc-enrich-description">{msg.enrichData.description}</div>
+                  )}
+                  {enrichEditing && (
+                    <div className="csc-enrich-edit-fields">
+                      <div className="csc-enrich-edit-row">
+                        <label className="csc-enrich-edit-label">Description</label>
+                        <input className="csc-enrich-edit-input" value={enrichEditing.description} onChange={(e) => setEnrichEditing(prev => ({ ...prev, description: e.target.value }))} />
+                      </div>
+                      <div className="csc-enrich-edit-row">
+                        <label className="csc-enrich-edit-label">Industry</label>
+                        <select className="csc-enrich-edit-select" value={enrichEditing.industry} onChange={(e) => setEnrichEditing(prev => ({ ...prev, industry: e.target.value }))}>
+                          <option value="">Select...</option>
+                          {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+                        </select>
+                      </div>
+                      <div className="csc-enrich-edit-row">
+                        <label className="csc-enrich-edit-label">Country</label>
+                        <input className="csc-enrich-edit-input" value={enrichEditing.country} onChange={(e) => setEnrichEditing(prev => ({ ...prev, country: e.target.value }))} />
+                      </div>
+                    </div>
+                  )}
+                  {!isComplete && (
+                    <div className="csc-enrich-actions">
+                      {enrichEditing ? (
+                        <button className="csc-enrich-confirm-btn" onClick={() => handleEnrichSave(enrichEditing)}>
+                          Save changes
+                        </button>
+                      ) : (
+                        <>
+                          <button className="csc-enrich-confirm-btn" onClick={handleEnrichConfirm}>
+                            Looks good!
+                          </button>
+                          <button className="csc-enrich-edit-btn" onClick={() => setEnrichEditing({
+                            description: msg.enrichData.description || '',
+                            industry: msg.enrichData.industry || '',
+                            country: msg.enrichData.country || '',
+                          })}>
+                            Edit details
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="noxtm-bot-msg-bubble">{msg.text}</div>
