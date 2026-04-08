@@ -714,3 +714,260 @@
     background: rgba(255, 255, 255, 0.92);
   }
 }
+
+
+/* ============================================
+   Plan Picker (embedded in setup flow)
+   ============================================ */
+
+.csc-glass-card-wide {
+  max-width: 860px;
+  transition: max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.csc-plan-picker {
+  padding: 28px 28px 32px;
+  overflow-y: auto;
+  flex: 1;
+  animation: cscPlanFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cscPlanFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.csc-plan-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.csc-plan-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.csc-plan-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 18px;
+  font-weight: 400;
+}
+
+/* Billing toggle */
+.csc-billing-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.csc-billing-btn {
+  padding: 7px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.csc-billing-btn.active {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.csc-save-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Plan cards grid */
+.csc-plan-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.csc-plan-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.csc-plan-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.csc-plan-popular {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.csc-plan-popular:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.csc-popular-tag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  padding: 3px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.csc-plan-card-top {
+  text-align: center;
+}
+
+.csc-plan-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 3px;
+}
+
+.csc-plan-desc {
+  font-size: 11.5px;
+  color: #9ca3af;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Price */
+.csc-plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.csc-plan-currency {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.csc-plan-amount {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.csc-plan-period {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* CTA button */
+.csc-plan-cta {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.csc-plan-cta:hover:not(:disabled) {
+  background: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.csc-plan-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.csc-plan-trial {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+}
+
+.csc-plan-trial:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+/* Features list */
+.csc-plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.csc-plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #4b5563;
+  font-weight: 400;
+}
+
+.csc-plan-features svg {
+  flex-shrink: 0;
+}
+
+/* Responsive: plan cards */
+@media (max-width: 720px) {
+  .csc-glass-card-wide {
+    max-width: 100%;
+  }
+
+  .csc-plan-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .csc-plan-picker {
+    padding: 20px 16px 24px;
+  }
+
+  .csc-plan-card {
+    padding: 18px 16px;
+  }
+}

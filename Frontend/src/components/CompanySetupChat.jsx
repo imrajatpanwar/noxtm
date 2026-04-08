@@ -1,9 +1,42 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import api from '../config/api';
 import './NoxtmBotSignup.css';
 import './CompanySetupChat.css';
 import setupBg from '../assets/background_setup.webp';
+
+// ─── Pricing Plans (embedded in setup flow) ───
+const PLANS = [
+  {
+    name: 'Starter',
+    subtitle: 'For solo entrepreneurs',
+    monthlyPrice: 1699,
+    yearlyPrice: 1359,
+    planKey: 'Starter',
+    hasTrial: true,
+    features: ['Dashboard management', '5 Team members', 'Business mail', '10 GB Storage', 'AI Analytics', '10+ integrations']
+  },
+  {
+    name: 'Pro +',
+    subtitle: 'For Small Businesses',
+    monthlyPrice: 2699,
+    yearlyPrice: 2159,
+    planKey: 'Pro+',
+    hasTrial: true,
+    popular: true,
+    features: ['Everything in Starter', '60 Team members', '10,000 Bulk emails', '50 GB Storage', 'Analytics Bot', 'Priority support']
+  },
+  {
+    name: 'Advance',
+    subtitle: 'For High-scale businesses',
+    monthlyPrice: 4699,
+    yearlyPrice: 3759,
+    planKey: 'Advance',
+    hasTrial: false,
+    features: ['Everything in Pro+', 'Unlimited Team', '50,000 Bulk emails', '75 GB Storage', 'Advanced bot', 'Custom branding']
+  }
+];
 
 const API_BASE = (() => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
@@ -69,8 +102,11 @@ function CompanySetupChat() {
   const [isListening, setIsListening] = useState(false);
   const [currentSlug, setCurrentSlug] = useState(SKILL_SLUG);
   const [enrichEditing, setEnrichEditing] = useState(null); // null | { description, industry, country }
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [billingType, setBillingType] = useState('monthly');
+  const [planLoading, setPlanLoading] = useState(false);
 
-  // Redirect if user already has company
+  // Redirect if user already has company — or show plan picker if no plan
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -79,7 +115,14 @@ function CompanySetupChat() {
         if (u.companyId) {
           const sub = u.subscription;
           const hasActive = sub && (sub.status === 'active' || (sub.status === 'trial' && sub.endDate && new Date(sub.endDate) > new Date()));
-          navigate(hasActive ? '/dashboard' : '/pricing');
+          if (hasActive) {
+            navigate('/dashboard');
+          } else {
+            // Company exists but no plan — show plan picker
+            setIsComplete(true);
+            setShowPlanPicker(true);
+            setInitialized(true);
+          }
         }
       } catch (e) {}
     }
@@ -242,12 +285,9 @@ function CompanySetupChat() {
         if (nextSkill) {
           setTimeout(() => startNextSkill(nextSkill), 1500);
         } else {
-          // No more skills — redirect
+          // No more skills — show plan picker inline instead of redirecting
           if (result?.success) {
-            setTimeout(() => {
-              setIsSliding(true);
-              setTimeout(() => navigate(data.onComplete?.redirect || '/pricing'), 900);
-            }, 1200);
+            setTimeout(() => setShowPlanPicker(true), 800);
           } else if (result && !result.success) {
             toast.error(result.error || 'Failed to create workspace');
           }
@@ -396,6 +436,34 @@ function CompanySetupChat() {
     setSessionId('css_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
   };
 
+  // ─── Plan Selection Handler ───
+  const handlePlanSelect = useCallback(async (plan) => {
+    setPlanLoading(true);
+    try {
+      if (plan.hasTrial) {
+        const response = await api.post('/subscription/start-trial', { plan: plan.planKey });
+        if (response.data.success) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          window.dispatchEvent(new Event('userUpdated'));
+          toast.success(`14-day free trial of ${plan.name} started!`);
+          setIsSliding(true);
+          setTimeout(() => navigate('/dashboard'), 900);
+        } else {
+          toast.error(response.data.message || 'Failed to start trial');
+        }
+      } else {
+        // Advance plan — go to payment checkout
+        setIsSliding(true);
+        setTimeout(() => navigate(`/checkout?plan=${encodeURIComponent(plan.planKey)}&billing=${billingType === 'yearly' ? 'Annual' : 'Monthly'}`), 900);
+      }
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Failed to process. Please try again.';
+      toast.error(msg);
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [billingType, navigate]);
+
   const showOptions = currentQuestion?.type === 'select' && currentQuestion?.options?.length > 0;
   const canSkip = currentQuestion && (currentQuestion.skippable || !currentQuestion.required);
   const canDefer = currentQuestion?.deferrable;
@@ -405,18 +473,65 @@ function CompanySetupChat() {
 
   return (
     <div className={`csc-page ${isSliding ? 'noxtm-bot-slide-out' : ''}`} style={{ backgroundImage: `url(${setupBg})` }}>
-      <div className="csc-glass-card">
+      <div className={`csc-glass-card ${showPlanPicker ? 'csc-glass-card-wide' : ''}`}>
         {/* Card Header */}
         <div className="csc-card-header">
           <span className="csc-brand">noxtm</span>
           <div className="csc-header-right">
-            <span className="csc-step-label">Company Setup</span>
-            {initialized && !isComplete && (
+            <span className="csc-step-label">{showPlanPicker ? 'Choose Plan' : 'Company Setup'}</span>
+            {initialized && !isComplete && !showPlanPicker && (
               <button className="csc-restart-btn" onClick={handleRestart}>Start over</button>
             )}
           </div>
         </div>
 
+        {/* ─── Plan Picker (shown after setup completes) ─── */}
+        {showPlanPicker ? (
+          <div className="csc-plan-picker">
+            <div className="csc-plan-header">
+              <h2 className="csc-plan-title">Choose your plan</h2>
+              <p className="csc-plan-subtitle">Start with a 14-day free trial, upgrade anytime</p>
+              <div className="csc-billing-toggle">
+                <button className={`csc-billing-btn ${billingType === 'monthly' ? 'active' : ''}`} onClick={() => setBillingType('monthly')}>Monthly</button>
+                <button className={`csc-billing-btn ${billingType === 'yearly' ? 'active' : ''}`} onClick={() => setBillingType('yearly')}>
+                  Yearly <span className="csc-save-badge">Save 20%</span>
+                </button>
+              </div>
+            </div>
+            <div className="csc-plan-cards">
+              {PLANS.map((plan) => (
+                <div key={plan.planKey} className={`csc-plan-card ${plan.popular ? 'csc-plan-popular' : ''}`}>
+                  {plan.popular && <div className="csc-popular-tag">Popular</div>}
+                  <div className="csc-plan-card-top">
+                    <h3 className="csc-plan-name">{plan.name}</h3>
+                    <p className="csc-plan-desc">{plan.subtitle}</p>
+                  </div>
+                  <div className="csc-plan-price">
+                    <span className="csc-plan-currency">&#8377;</span>
+                    <span className="csc-plan-amount">{billingType === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice}</span>
+                    <span className="csc-plan-period">/mo</span>
+                  </div>
+                  <button
+                    className={`csc-plan-cta ${plan.hasTrial ? 'csc-plan-trial' : ''}`}
+                    onClick={() => handlePlanSelect(plan)}
+                    disabled={planLoading}
+                  >
+                    {planLoading ? 'Processing...' : plan.hasTrial ? 'Start Free Trial' : 'Get Started'}
+                  </button>
+                  <ul className="csc-plan-features">
+                    {plan.features.map((f, i) => (
+                      <li key={i}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+        <>
         {progress.total > 0 && (
           <div className="csc-progress-bar-wrapper">
             <div className="csc-progress-bar">
@@ -614,6 +729,8 @@ function CompanySetupChat() {
             <SendIcon />
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -186,6 +186,10 @@ app.use('/api/zynthr', noxtmBotRoutes);
 const noxtmSkillsRoutes = require('./routes/noxtm-skills');
 app.use('/api/noxtm-skills', noxtmSkillsRoutes);
 
+// Noxtm Assistant (AI assistant with tool-use on Overview)
+const noxtmAssistantRoutes = require('./routes/noxtm-assistant');
+app.use('/api/noxtm-assistant', noxtmAssistantRoutes);
+
 // Billing routes
 const billingRoutes = require('./routes/billing');
 app.use('/api/billing', billingRoutes);
@@ -4612,6 +4616,10 @@ whatsappSessionManager.init(io, whatsappChatbotEngine);
 // Start scheduled message processor
 const scheduledMessageProcessor = require('./services/scheduledMessageProcessor');
 scheduledMessageProcessor.start();
+
+// Start assistant action processor (scheduled actions from AI assistant)
+const assistantActionProcessor = require('./services/assistantActionProcessor');
+assistantActionProcessor.start();
 
 // ===== EXTENSION AUTHENTICATION ROUTES =====
 // No authentication middleware - these routes handle their own auth
