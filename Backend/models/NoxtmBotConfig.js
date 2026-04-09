@@ -5,6 +5,10 @@ const noxtmBotConfigSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true },
   botGreeting: { type: String, default: "Hey! I'm Noxtm Bot, your setup assistant. Ready to get your workspace rolling?" },
   personality: { type: String, enum: ['friendly', 'professional', 'casual', 'formal'], default: 'friendly' },
+  // Bot Identity
+  botName: { type: String, default: 'Noxtm' },
+  botTitle: { type: String, default: 'AI Assistant' },
+  botIdentity: { type: String, default: '' },
   maxWordCount: { type: Number, default: 80 },
   responseLanguage: { type: String, default: 'English' },
   customInstructions: { type: String, default: '' },

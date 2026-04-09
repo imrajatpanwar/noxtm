@@ -164,10 +164,6 @@ function NoxtmAssistant() {
           </div>
           <div className="na-header-info">
             <span className="na-header-name">Noxtm</span>
-            <span className="na-header-status">
-              <span className="na-status-dot" />
-              Online
-            </span>
           </div>
         </div>
         {messages.length > 0 && (

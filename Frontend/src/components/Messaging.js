@@ -1158,9 +1158,6 @@ function Messaging() {
                           </div>
                           <div className="chat-header-text">
                             <h3 className="chat-header-name">{otherUser?.fullName || 'Unknown User'}</h3>
-                            <span className={`user-status ${online ? 'online' : 'offline'}`}>
-                              {online ? 'Online' : 'Offline'}
-                            </span>
                           </div>
                         </>
                       );

@@ -62,4 +62,17 @@ learnedMemorySchema.index({ userId: 1, active: 1 });
 
 const LearnedMemory = mongoose.model('LearnedMemory', learnedMemorySchema);
 
-module.exports = { CoreMemory, ContextMemory, LearnedMemory };
+// === Noxtm Bot Default Memory — admin-defined global bot instructions (one per company) ===
+const noxtmBotDefaultMemorySchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+  content: { type: String, required: true, maxlength: 2000 },
+  category: { type: String, enum: ['instruction', 'rule', 'personality', 'knowledge', 'other'], default: 'instruction' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
+
+noxtmBotDefaultMemorySchema.index({ companyId: 1, active: 1 });
+
+const NoxtmBotDefaultMemory = mongoose.model('NoxtmBotDefaultMemory', noxtmBotDefaultMemorySchema);
+
+module.exports = { CoreMemory, ContextMemory, LearnedMemory, NoxtmBotDefaultMemory };

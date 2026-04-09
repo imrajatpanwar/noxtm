@@ -41,7 +41,7 @@ async function callClaudeWithTools(systemPrompt, messages, tools, context, maxIt
       {
         headers: {
           'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2024-10-22',
+          'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json'
         },
         timeout: 60000

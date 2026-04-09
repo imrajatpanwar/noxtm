@@ -1059,6 +1059,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Public config endpoint — exposes only safe, non-secret values to the frontend
+app.get('/api/config', (req, res) => {
+  res.json({
+    apiUrl: process.env.FRONTEND_URL
+      ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}`
+      : `http://localhost:${process.env.PORT || 5001}`,
+    mailUrl: process.env.MAIL_URL || 'https://mail.noxtm.com',
+    environment: process.env.NODE_ENV || 'development',
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  });
+});
+
 // ===== BLOG MANAGEMENT API ROUTES =====
 
 // Get all categories

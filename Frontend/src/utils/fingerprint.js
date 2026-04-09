@@ -17,7 +17,7 @@ function getFingerprint() {
 // Get API base URL
 function getApiBase() {
   const isDev = process.env.NODE_ENV === 'development';
-  return process.env.REACT_APP_API_URL || (isDev ? 'http://localhost:5000' : '');
+  return process.env.REACT_APP_API_URL || (isDev ? 'http://localhost:5001' : '');
 }
 
 // Detect friendly page name from the current path

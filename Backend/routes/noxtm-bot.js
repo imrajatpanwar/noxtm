@@ -8,6 +8,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const EmailVerification = require('../models/EmailVerification');
 const NoxtmBotConfig = require('../models/NoxtmBotConfig');
+const { NoxtmBotDefaultMemory, LearnedMemory } = require('../models/NoxtmMemory');
 const { authenticateToken } = require('../middleware/auth');
 const { callClaude } = require('../utils/aiHelpers');
 
@@ -86,7 +87,7 @@ function matchPlan(text) {
 }
 
 // Build system prompt for Noxtm Bot
-function buildNoxtmBotPrompt(state, collected, activeSkill) {
+function buildNoxtmBotPrompt(state, collected, activeSkill, defaultMemories = [], botConfig = null) {
   let stateInstruction = '';
 
   switch (state) {
@@ -127,13 +128,27 @@ function buildNoxtmBotPrompt(state, collected, activeSkill) {
 
   const skillContext = activeSkill ? `\nCurrently using skill: ${activeSkill}` : '';
 
-  return `You are Noxtm Bot, the AI assistant for Noxtm — a modern workspace management platform.
+  // Inject admin default memories as global instructions
+  let defaultMemoryInstructions = '';
+  if (defaultMemories && defaultMemories.length > 0) {
+    defaultMemoryInstructions = '\n\nADMIN INSTRUCTIONS (you MUST follow these):\n' +
+      defaultMemories.map(m => `- [${m.category}] ${m.content}`).join('\n');
+  }
+
+  // Bot identity from config
+  const botName = botConfig?.botName || 'Noxtm Bot';
+  const botTitle = botConfig?.botTitle || 'AI Assistant';
+  const botIdentityDesc = botConfig?.botIdentity
+    ? `\nYour identity: ${botConfig.botIdentity}`
+    : '';
+
+  return `You are ${botName}, ${botTitle} for Noxtm — a modern workspace management platform.${botIdentityDesc}
 You are warm, friendly, concise (2-3 sentences MAX), and human-like.
 NEVER reveal you are an AI or a bot. You are a Noxtm team member.
 NEVER use markdown formatting (no **, no ##, no bullets).
 Keep responses under 35 words.
 Use the user's first name when you know it.
-${skillContext}
+${skillContext}${defaultMemoryInstructions}
 
 Current state: ${state}
 Collected data: ${JSON.stringify(collected)}
@@ -289,6 +304,16 @@ router.post('/chat', chatLimiter, async (req, res) => {
     const userMsg = (message || '').trim();
     const model = getModel(session);
 
+    // Fetch admin default memories for the bot prompt (non-blocking, empty array on failure)
+    let defaultMemories = [];
+    let botConfig = null;
+    try {
+      [defaultMemories, botConfig] = await Promise.all([
+        NoxtmBotDefaultMemory.find({ active: true }).sort({ createdAt: -1 }).limit(20).lean(),
+        NoxtmBotConfig.findOne({}).lean()
+      ]);
+    } catch (e) { /* ignore — non-critical */ }
+
     // Sanitize conversation history - ensure alternating roles for Claude API
     const sanitizedHistory = [];
     for (const msg of (conversationHistory || []).slice(-6)) {
@@ -313,7 +338,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
           session.activeSkill = 'signup';
           newState = STATES.COLLECT_NAME;
           const msgs = [
-            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_NAME, collected, 'signup') },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_NAME, collected, 'signup', defaultMemories, botConfig) },
             ...sanitizedHistory,
             { role: 'user', content: userMsg || 'I want to sign up with email' }
           ];
@@ -335,7 +360,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.fullName = userMsg.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
           newState = STATES.COLLECT_EMAIL;
           const msgs = [
-            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_EMAIL, collected, 'signup') },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_EMAIL, collected, 'signup', defaultMemories, botConfig) },
             ...sanitizedHistory.filter(m => m.role !== 'user' || m.content !== userMsg).slice(-4),
             { role: 'user', content: userMsg }
           ];
@@ -364,7 +389,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.email = email;
           newState = STATES.COLLECT_PASSWORD;
           const msgs = [
-            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_PASSWORD, collected, 'signup') },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COLLECT_PASSWORD, collected, 'signup', defaultMemories, botConfig) },
             ...sanitizedHistory.filter(m => m.role !== 'user' || m.content !== userMsg).slice(-4),
             { role: 'user', content: userMsg }
           ];
@@ -504,7 +529,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
               action = 'TRIAL_STARTED';
               actionData = { plan, trialDays: 14 };
               const msgs = [
-                { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_NAME, collected, 'signup') },
+                { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_NAME, collected, 'signup', defaultMemories, botConfig) },
                 { role: 'user', content: `I chose ${plan}` }
               ];
               reply = await callClaude(msgs, model, 35);
@@ -528,7 +553,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
           collected.companyName = userMsg;
           newState = STATES.COMPANY_EMAIL;
           const msgs = [
-            { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_EMAIL, collected, 'signup') },
+            { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPANY_EMAIL, collected, 'signup', defaultMemories, botConfig) },
             { role: 'user', content: userMsg }
           ];
           try {
@@ -600,7 +625,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
             actionData = { companyId: company._id.toString(), user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: company._id } };
 
             const msgs = [
-              { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPLETE, collected, 'signup') },
+              { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPLETE, collected, 'signup', defaultMemories, botConfig) },
               { role: 'user', content: 'Done!' }
             ];
             reply = await callClaude(msgs, model, 40);
@@ -724,6 +749,24 @@ router.put('/config', authenticateToken, async (req, res) => {
       { upsert: true, new: true, runValidators: true }
     );
 
+    // Sync identity fields to NoxtmChatConfig (used by the Noxtm Assistant in-dashboard chat)
+    if (updateData.botName || updateData.botTitle || updateData.botIdentity) {
+      try {
+        const { NoxtmChatConfig } = require('../models/NoxtmChat');
+        const syncData = {};
+        if (updateData.botName) syncData.botName = updateData.botName;
+        if (updateData.botTitle) syncData.botTitle = updateData.botTitle;
+        if (updateData.botIdentity !== undefined) syncData.botIdentity = updateData.botIdentity;
+        await NoxtmChatConfig.findOneAndUpdate(
+          { companyId: user.companyId },
+          syncData,
+          { upsert: false }
+        );
+      } catch (syncErr) {
+        console.warn('[NoxtmBot] Identity sync to ChatConfig failed:', syncErr.message);
+      }
+    }
+
     // Mask API key in response
     const configObj = config.toObject();
     if (configObj.customApiKey) {
@@ -734,6 +777,201 @@ router.put('/config', authenticateToken, async (req, res) => {
     res.json({ success: true, config: configObj });
   } catch (error) {
     console.error('[NoxtmBot] Config update error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ============ MEMORY MANAGEMENT ENDPOINTS ============
+
+// --- Admin Default Memories (global bot instructions) ---
+
+// GET /api/noxtm-bot/memories/default
+router.get('/memories/default', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    const memories = await NoxtmBotDefaultMemory.find({ companyId: user.companyId, active: true })
+      .sort({ createdAt: -1 })
+      .populate('createdBy', 'fullName email')
+      .lean();
+
+    res.json({ success: true, memories });
+  } catch (error) {
+    console.error('[NoxtmBot] Default memories fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/noxtm-bot/memories/default
+router.post('/memories/default', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    // Check if owner
+    const company = await Company.findById(user.companyId);
+    const member = company?.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can add memories' });
+    }
+
+    const { content, category } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, message: 'Content is required' });
+    }
+
+    const memory = await NoxtmBotDefaultMemory.create({
+      companyId: user.companyId,
+      content: content.trim(),
+      category: category || 'instruction',
+      createdBy: user._id,
+    });
+
+    const populated = await NoxtmBotDefaultMemory.findById(memory._id)
+      .populate('createdBy', 'fullName email')
+      .lean();
+
+    res.json({ success: true, memory: populated });
+  } catch (error) {
+    console.error('[NoxtmBot] Default memory create error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// PUT /api/noxtm-bot/memories/default/:id
+router.put('/memories/default/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const company = await Company.findById(user.companyId);
+    const member = company?.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can edit memories' });
+    }
+
+    const { content, category } = req.body;
+    const memory = await NoxtmBotDefaultMemory.findOneAndUpdate(
+      { _id: req.params.id, companyId: user.companyId },
+      { content: content?.trim(), category },
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'fullName email').lean();
+
+    if (!memory) return res.status(404).json({ success: false, message: 'Memory not found' });
+
+    res.json({ success: true, memory });
+  } catch (error) {
+    console.error('[NoxtmBot] Default memory update error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// DELETE /api/noxtm-bot/memories/default/:id
+router.delete('/memories/default/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const company = await Company.findById(user.companyId);
+    const member = company?.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can delete memories' });
+    }
+
+    const memory = await NoxtmBotDefaultMemory.findOneAndDelete({
+      _id: req.params.id,
+      companyId: user.companyId,
+    });
+
+    if (!memory) return res.status(404).json({ success: false, message: 'Memory not found' });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[NoxtmBot] Default memory delete error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// --- User Memories (per-user learned insights) ---
+
+// GET /api/noxtm-bot/memories/users — Admin view: all user memories grouped by user
+router.get('/memories/users', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    // Check if owner
+    const company = await Company.findById(user.companyId);
+    const member = company?.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can view user memories' });
+    }
+
+    // Fetch all learned memories for users in this company
+    const memories = await LearnedMemory.find({ companyId: user.companyId, active: true })
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+
+    // Get unique user IDs from memories
+    const userIds = [...new Set(memories.map(m => m.userId.toString()))];
+
+    // Fetch user info
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('fullName email')
+      .lean();
+
+    const userMap = {};
+    users.forEach(u => { userMap[u._id.toString()] = u; });
+
+    // Group memories by user
+    const grouped = {};
+    memories.forEach(m => {
+      const uid = m.userId.toString();
+      if (!grouped[uid]) {
+        const u = userMap[uid];
+        grouped[uid] = {
+          userId: uid,
+          userName: u?.fullName || 'Unknown User',
+          userEmail: u?.email || '',
+          memories: [],
+        };
+      }
+      grouped[uid].memories.push(m);
+    });
+
+    res.json({ success: true, userGroups: Object.values(grouped) });
+  } catch (error) {
+    console.error('[NoxtmBot] User memories fetch error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// DELETE /api/noxtm-bot/memories/users/:id — Admin deletes a specific user memory
+router.delete('/memories/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const company = await Company.findById(user.companyId);
+    const member = company?.members.find(m => m.user.toString() === user._id.toString());
+    if (!member || member.roleInCompany !== 'Owner') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can delete user memories' });
+    }
+
+    // Soft-delete: mark as inactive
+    const memory = await LearnedMemory.findOneAndUpdate(
+      { _id: req.params.id, companyId: user.companyId },
+      { active: false },
+      { new: true }
+    );
+
+    if (!memory) return res.status(404).json({ success: false, message: 'Memory not found' });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[NoxtmBot] User memory delete error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

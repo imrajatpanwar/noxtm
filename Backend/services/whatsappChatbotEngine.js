@@ -29,7 +29,7 @@ const PROVIDERS = {
     headerFn: (apiKey) => ({
       'x-api-key': apiKey,
       'Content-Type': 'application/json',
-      'anthropic-version': '2024-10-22'
+      'anthropic-version': '2023-06-01'
     })
   },
   groq: {

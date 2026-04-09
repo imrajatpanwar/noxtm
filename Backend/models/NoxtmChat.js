@@ -29,8 +29,8 @@ const noxtmChatConfigSchema = new mongoose.Schema({
   maxMessagesPerDay: { type: Number, default: 100 },
   allowedRoles: [{ type: String }], // empty = all roles allowed
   // Bot Appearance
-  botName: { type: String, default: 'Navraj Panwar' },
-  botTitle: { type: String, default: 'Founder' },
+  botName: { type: String, default: 'Noxtm' },
+  botTitle: { type: String, default: 'AI Assistant' },
   botProfilePicture: { type: String, default: '' }, // base64 encoded image
   showVerifiedBadge: { type: Boolean, default: true },
   // === Response Controls ===

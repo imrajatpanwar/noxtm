@@ -196,6 +196,18 @@ function NoxtmBotAdmin() {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
 
+  // Memory state
+  const [defaultMemories, setDefaultMemories] = useState([]);
+  const [userMemoryGroups, setUserMemoryGroups] = useState([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
+  const [newMemoryContent, setNewMemoryContent] = useState('');
+  const [newMemoryCategory, setNewMemoryCategory] = useState('instruction');
+  const [editingMemoryId, setEditingMemoryId] = useState(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [editingCategory, setEditingCategory] = useState('instruction');
+  const [expandedUser, setExpandedUser] = useState(null);
+  const [userMemorySearch, setUserMemorySearch] = useState('');
+
   const fetchConfig = useCallback(async () => {
     try {
       const res = await api.get('/noxtm-bot/config');
@@ -228,6 +240,35 @@ function NoxtmBotAdmin() {
   }, []);
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
+
+  // Fetch memories when memories tab is activated
+  useEffect(() => {
+    if (activeTab === 'memories') {
+      fetchDefaultMemories();
+      fetchUserMemories();
+    }
+  }, [activeTab]);
+
+  const fetchDefaultMemories = async () => {
+    setMemoriesLoading(true);
+    try {
+      const res = await api.get('/noxtm-bot/memories/default');
+      if (res.data.success) setDefaultMemories(res.data.memories || []);
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Default memories fetch error:', err);
+    } finally {
+      setMemoriesLoading(false);
+    }
+  };
+
+  const fetchUserMemories = async () => {
+    try {
+      const res = await api.get('/noxtm-bot/memories/users');
+      if (res.data.success) setUserMemoryGroups(res.data.userGroups || []);
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] User memories fetch error:', err);
+    }
+  };
 
   const saveConfig = async () => {
     setSaving(true);
@@ -290,6 +331,72 @@ function NoxtmBotAdmin() {
     setSaved(false);
   };
 
+  // === Memory CRUD functions ===
+  const addDefaultMemory = async () => {
+    if (!newMemoryContent.trim()) return;
+    try {
+      const res = await api.post('/noxtm-bot/memories/default', {
+        content: newMemoryContent.trim(),
+        category: newMemoryCategory,
+      });
+      if (res.data.success) {
+        setDefaultMemories(prev => [res.data.memory, ...prev]);
+        setNewMemoryContent('');
+        setNewMemoryCategory('instruction');
+      }
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Add memory error:', err);
+      alert(err.response?.data?.message || 'Failed to add memory');
+    }
+  };
+
+  const updateDefaultMemory = async (id) => {
+    if (!editingContent.trim()) return;
+    try {
+      const res = await api.put(`/noxtm-bot/memories/default/${id}`, {
+        content: editingContent.trim(),
+        category: editingCategory,
+      });
+      if (res.data.success) {
+        setDefaultMemories(prev => prev.map(m => m._id === id ? res.data.memory : m));
+        setEditingMemoryId(null);
+        setEditingContent('');
+      }
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Update memory error:', err);
+      alert(err.response?.data?.message || 'Failed to update memory');
+    }
+  };
+
+  const deleteDefaultMemory = async (id) => {
+    if (!window.confirm('Delete this memory?')) return;
+    try {
+      const res = await api.delete(`/noxtm-bot/memories/default/${id}`);
+      if (res.data.success) {
+        setDefaultMemories(prev => prev.filter(m => m._id !== id));
+      }
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Delete memory error:', err);
+    }
+  };
+
+  const deleteUserMemory = async (memoryId, userId) => {
+    if (!window.confirm('Delete this user memory?')) return;
+    try {
+      const res = await api.delete(`/noxtm-bot/memories/users/${memoryId}`);
+      if (res.data.success) {
+        setUserMemoryGroups(prev => prev.map(g => {
+          if (g.userId === userId) {
+            return { ...g, memories: g.memories.filter(m => m._id !== memoryId) };
+          }
+          return g;
+        }).filter(g => g.memories.length > 0));
+      }
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Delete user memory error:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div style={containerStyle}>
@@ -316,9 +423,9 @@ function NoxtmBotAdmin() {
 
       {/* Tabs */}
       <div style={tabBarStyle}>
-        {['settings', 'skills', 'advanced', 'analytics', 'api', 'plans'].map(tab => (
+        {['settings', 'skills', 'memories', 'advanced', 'analytics', 'api', 'plans'].map(tab => (
           <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
-            {tab === 'settings' ? 'Settings' : tab === 'skills' ? 'Skills' : tab === 'advanced' ? 'Advanced Skills' : tab === 'analytics' ? 'Analytics' : tab === 'api' ? 'API & Model' : 'Plans'}
+            {tab === 'settings' ? 'Settings' : tab === 'skills' ? 'Skills' : tab === 'memories' ? 'Memories' : tab === 'advanced' ? 'Advanced Skills' : tab === 'analytics' ? 'Analytics' : tab === 'api' ? 'API & Model' : 'Plans'}
           </button>
         ))}
       </div>
@@ -345,6 +452,46 @@ function NoxtmBotAdmin() {
                 onChange={e => updateField('botGreeting', e.target.value)}
                 placeholder="Enter the greeting message..."
               />
+            </div>
+
+            {/* Bot Identity Section */}
+            <div style={{ padding: '16px', borderRadius: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', marginBottom: '16px' }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: 600, color: '#111827' }}>Bot Identity</h4>
+              <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#9ca3af' }}>This is how the bot introduces itself when users ask "who are you?"</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div style={fieldGroup}>
+                  <label style={labelStyle}>Bot Name</label>
+                  <input
+                    style={inputStyle}
+                    value={config.botName || ''}
+                    onChange={e => updateField('botName', e.target.value)}
+                    placeholder="e.g., Noxtm Bot"
+                  />
+                </div>
+                <div style={fieldGroup}>
+                  <label style={labelStyle}>Bot Title</label>
+                  <input
+                    style={inputStyle}
+                    value={config.botTitle || ''}
+                    onChange={e => updateField('botTitle', e.target.value)}
+                    placeholder="e.g., AI Assistant"
+                  />
+                </div>
+              </div>
+
+              <div style={fieldGroup}>
+                <label style={labelStyle}>Bot Identity Description</label>
+                <textarea
+                  style={{ ...textareaStyle, minHeight: '60px' }}
+                  value={config.botIdentity || ''}
+                  onChange={e => updateField('botIdentity', e.target.value)}
+                  placeholder="e.g., I am Noxtm Bot, the AI assistant for your workspace. I help manage tasks, campaigns, and team communication."
+                />
+                <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
+                  This text is injected into the bot's system prompt. Leave blank to use default.
+                </span>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -629,6 +776,222 @@ function NoxtmBotAdmin() {
           <button style={btnPrimary} onClick={saveConfig} disabled={saving}>
             {saving ? 'Saving...' : 'Save Plan Settings'}
           </button>
+        </>
+      )}
+
+      {/* Memories Tab */}
+      {activeTab === 'memories' && (
+        <>
+          {/* Default Memories Section */}
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>Admin Default Memories</h3>
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 18px' }}>
+              Global instructions the bot must follow for all users. These act as permanent bot rules.
+            </p>
+
+            {memoriesLoading ? (
+              <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af', fontSize: '13px' }}>Loading...</div>
+            ) : (
+              <>
+                {defaultMemories.map(mem => (
+                  <div key={mem._id} style={{ padding: '14px 16px', borderRadius: '10px', border: '1px solid #e5e7eb', background: '#fafafa', marginBottom: '8px' }}>
+                    {editingMemoryId === mem._id ? (
+                      /* Edit Mode */
+                      <div>
+                        <textarea
+                          style={{ ...textareaStyle, marginBottom: '8px' }}
+                          value={editingContent}
+                          onChange={e => setEditingContent(e.target.value)}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <select
+                            style={{ ...selectStyle, width: '160px' }}
+                            value={editingCategory}
+                            onChange={e => setEditingCategory(e.target.value)}
+                          >
+                            <option value="instruction">Instruction</option>
+                            <option value="rule">Rule</option>
+                            <option value="personality">Personality</option>
+                            <option value="knowledge">Knowledge</option>
+                            <option value="other">Other</option>
+                          </select>
+                          <button
+                            style={{ ...btnPrimary, padding: '7px 16px', fontSize: '13px' }}
+                            onClick={() => updateDefaultMemory(mem._id)}
+                          >Save</button>
+                          <button
+                            style={{ ...btnOutline, padding: '7px 16px' }}
+                            onClick={() => setEditingMemoryId(null)}
+                          >Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* View Mode */
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '14px', color: '#111827', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{mem.content}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                              <span style={{
+                                fontSize: '10px', padding: '2px 10px', borderRadius: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
+                                background: mem.category === 'instruction' ? '#dbeafe' : mem.category === 'rule' ? '#fef3c7' : mem.category === 'personality' ? '#ede9fe' : mem.category === 'knowledge' ? '#d1fae5' : '#f3f4f6',
+                                color: mem.category === 'instruction' ? '#1e40af' : mem.category === 'rule' ? '#92400e' : mem.category === 'personality' ? '#5b21b6' : mem.category === 'knowledge' ? '#065f46' : '#4b5563',
+                              }}>{mem.category}</span>
+                              {mem.createdBy && (
+                                <span style={{ fontSize: '11px', color: '#9ca3af' }}>by {mem.createdBy.fullName}</span>
+                              )}
+                              <span style={{ fontSize: '11px', color: '#d1d5db' }}>{new Date(mem.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            <button
+                              style={{ ...btnOutline, padding: '5px 12px', fontSize: '12px' }}
+                              onClick={() => { setEditingMemoryId(mem._id); setEditingContent(mem.content); setEditingCategory(mem.category); }}
+                            >Edit</button>
+                            <button
+                              style={{ ...btnDanger, padding: '5px 12px', fontSize: '12px' }}
+                              onClick={() => deleteDefaultMemory(mem._id)}
+                            >Delete</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {defaultMemories.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af', fontSize: '13px', borderRadius: '10px', border: '1px dashed #e5e7eb' }}>
+                    No default memories yet. Add an instruction below for the bot to follow.
+                  </div>
+                )}
+
+                {/* Add form */}
+                <div style={{ marginTop: '16px', padding: '16px', borderRadius: '10px', background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                  <div style={fieldGroup}>
+                    <label style={labelStyle}>Memory / Instruction</label>
+                    <textarea
+                      style={textareaStyle}
+                      value={newMemoryContent}
+                      onChange={e => setNewMemoryContent(e.target.value)}
+                      placeholder="e.g., Always greet users in Hindi first, then switch to English if they reply in English"
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <select
+                      style={{ ...selectStyle, width: '160px' }}
+                      value={newMemoryCategory}
+                      onChange={e => setNewMemoryCategory(e.target.value)}
+                    >
+                      <option value="instruction">Instruction</option>
+                      <option value="rule">Rule</option>
+                      <option value="personality">Personality</option>
+                      <option value="knowledge">Knowledge</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <button style={btnOutline} onClick={addDefaultMemory} disabled={!newMemoryContent.trim()}>
+                      + Add Memory
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* User Memories Section */}
+          <div style={{ ...cardStyle, marginTop: '16px' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>User Memories</h3>
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px' }}>
+              Auto-learned memories from individual user conversations. Grouped by user.
+            </p>
+
+            {/* Search */}
+            <div style={{ marginBottom: '14px' }}>
+              <input
+                style={{ ...inputStyle, width: '260px' }}
+                placeholder="Search users..."
+                value={userMemorySearch}
+                onChange={e => setUserMemorySearch(e.target.value)}
+              />
+            </div>
+
+            {(() => {
+              const filtered = userMemoryGroups.filter(g => {
+                if (!userMemorySearch.trim()) return true;
+                const s = userMemorySearch.toLowerCase();
+                return g.userName.toLowerCase().includes(s) || g.userEmail.toLowerCase().includes(s);
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af', fontSize: '13px', borderRadius: '10px', border: '1px dashed #e5e7eb' }}>
+                    {userMemoryGroups.length === 0 ? 'No user memories yet. They are auto-learned from conversations.' : 'No users match your search.'}
+                  </div>
+                );
+              }
+
+              return filtered.map(group => (
+                <div key={group.userId} style={{ borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '8px', overflow: 'hidden' }}>
+                  {/* User header (accordion) */}
+                  <button
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                      background: expandedUser === group.userId ? '#f9fafb' : '#fff', border: 'none', cursor: 'pointer',
+                      textAlign: 'left', fontFamily: "'Switzer', sans-serif", transition: 'background 0.15s',
+                    }}
+                    onClick={() => setExpandedUser(expandedUser === group.userId ? null : group.userId)}
+                  >
+                    {/* Avatar */}
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%', background: '#111827', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px',
+                      fontWeight: 700, flexShrink: 0,
+                    }}>
+                      {group.userName?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{group.userName}</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af' }}>{group.userEmail}</div>
+                    </div>
+                    <span style={{
+                      fontSize: '11px', padding: '3px 10px', borderRadius: '12px', background: '#f3f4f6',
+                      color: '#6b7280', fontWeight: 600,
+                    }}>
+                      {group.memories.length} {group.memories.length === 1 ? 'memory' : 'memories'}
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedUser === group.userId ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+
+                  {/* Expanded memories */}
+                  {expandedUser === group.userId && (
+                    <div style={{ padding: '4px 16px 12px', background: '#fafafa' }}>
+                      {group.memories.map(mem => (
+                        <div key={mem._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{mem.content}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                              <span style={{
+                                fontSize: '10px', padding: '1px 8px', borderRadius: '4px', fontWeight: 600,
+                                background: '#f3f4f6', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px',
+                              }}>{mem.category}</span>
+                              <span style={{ fontSize: '10px', color: '#d1d5db' }}>{mem.source === 'conversation' ? 'Auto' : 'Manual'}</span>
+                              <span style={{ fontSize: '10px', color: '#d1d5db' }}>{new Date(mem.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <button
+                            style={{ ...btnDanger, padding: '4px 10px', fontSize: '11px', flexShrink: 0 }}
+                            onClick={() => deleteUserMemory(mem._id, group.userId)}
+                          >Delete</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
         </>
       )}
     </div>
