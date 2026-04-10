@@ -620,9 +620,20 @@ router.post('/chat', chatLimiter, async (req, res) => {
             user.companyId = company._id;
             await user.save();
 
+            // Issue a fresh JWT with companyId so the dashboard assistant works
+            const freshToken = jwt.sign(
+              { userId: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: company._id },
+              process.env.JWT_SECRET || 'noxtm-fallback-secret-key-change-in-production',
+              { expiresIn: '7d' }
+            );
+
             newState = STATES.COMPLETE;
             action = 'COMPLETE';
-            actionData = { companyId: company._id.toString(), user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: company._id } };
+            actionData = {
+              token: freshToken,
+              companyId: company._id.toString(),
+              user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role, companyId: company._id }
+            };
 
             const msgs = [
               { role: 'system', content: buildNoxtmBotPrompt(STATES.COMPLETE, collected, 'signup', defaultMemories, botConfig) },

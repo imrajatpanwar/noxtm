@@ -251,6 +251,10 @@ function NoxtmBotSignup({ onSignup }) {
         break;
 
       case 'COMPLETE':
+        if (actionData?.token) {
+          localStorage.setItem('token', actionData.token);
+          setAuthToken(actionData.token);
+        }
         if (actionData?.user) {
           localStorage.setItem('user', JSON.stringify(actionData.user));
           window.dispatchEvent(new Event('userUpdated'));
