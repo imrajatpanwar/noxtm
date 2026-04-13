@@ -11,6 +11,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Skeleton } from './ui/skeleton';
 import api from '../config/api';
 
 function CreateEmailModal({ isOpen, onClose, onSuccess }) {
@@ -174,9 +175,7 @@ function CreateEmailModal({ isOpen, onClose, onSuccess }) {
               Domain
             </Label>
             {loadingDomains ? (
-              <div className="flex items-center h-9 px-3 rounded-md border border-border bg-muted text-sm text-muted-foreground">
-                Loading verified domains...
-              </div>
+              <Skeleton className="h-9 w-full rounded-md" />
             ) : verifiedDomains.length > 0 ? (
               <div className="flex items-center h-9 px-3 rounded-md border border-border bg-muted text-sm font-medium text-foreground">
                 @{selectedDomain}

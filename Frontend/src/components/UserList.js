@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { MessagingContext } from '../contexts/MessagingContext';
+import { Skeleton } from './ui/skeleton';
 import './UserList.css';
 
 function UserList({ users, onUserClick, searchQuery, onSearchChange, loading }) {
@@ -56,9 +57,11 @@ function UserList({ users, onUserClick, searchQuery, onSearchChange, loading }) 
 
       <div className="user-list-section">
         {loading ? (
-          <div className="user-list-loading">
-            <div className="loading-spinner"></div>
-            <p>Loading users...</p>
+          <div className="user-list-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="user-list-empty">

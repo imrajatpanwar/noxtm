@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiMail, FiRefreshCw, FiCheckCircle, FiXCircle, FiClock, FiAlertCircle, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './EmailLogs.css';
 
 function EmailLogs() {
@@ -122,9 +123,11 @@ function EmailLogs() {
         <div className="logs-header">
           <h2>Email Logs</h2>
         </div>
-        <div className="logs-loading">
-          <FiRefreshCw className="loading-spinner" />
-          <p>Loading email logs...</p>
+        <div className="logs-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       </div>
     );

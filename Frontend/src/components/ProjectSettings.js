@@ -4,6 +4,7 @@ import {
     FiX, FiSave, FiLoader, FiChevronRight, FiInfo
 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import api from '../config/api';
 import './ProjectSettings.css';
 
@@ -168,9 +169,11 @@ const ProjectSettings = ({ onClose, onNavigateToMail }) => {
                         <h2><FiSettings /> Project Settings</h2>
                         <button className="ps-close-btn" onClick={onClose}><FiX /></button>
                     </div>
-                    <div className="ps-loading">
-                        <FiLoader className="ps-spinner" />
-                        <p>Loading settings...</p>
+                    <div className="ps-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <Skeleton className="tw-h-6 tw-w-40" />
+                        <Skeleton className="tw-h-4 tw-w-full" />
+                        <Skeleton className="tw-h-4 tw-w-full" />
+                        <Skeleton className="tw-h-4 tw-w-3/4" />
                     </div>
                 </div>
             </div>

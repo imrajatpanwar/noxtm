@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Skeleton } from './ui/skeleton';
 import './CampaignDashboard.css';
 
 function CampaignDashboard() {
@@ -123,7 +124,12 @@ function CampaignDashboard() {
   if (loading) {
     return (
       <div className="campaign-dashboard-container">
-        <div className="loading-state">Loading campaigns...</div>
+        <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Skeleton } from './components/ui/skeleton';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './config/api';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Toaster } from 'sonner';
+import { Toaster } from './components/ui/sonner';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import { ModuleProvider } from './contexts/ModuleContext';
@@ -35,6 +36,7 @@ import CareersPage from './components/CareersPage';
 import ApiReferencePage from './components/ApiReferencePage';
 import SecurityPage from './components/SecurityPage';
 import PaymentCheckout from './components/PaymentCheckout';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // API configuration is now handled in config/api.js
 
@@ -310,11 +312,12 @@ function App() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        fontSize: '1.2rem',
-        color: '#666',
-        gap: '1rem'
+        gap: '1.5rem',
+        padding: '2rem'
       }}>
-        <div>Loading...</div>
+        <Skeleton className="tw-h-10 tw-w-48" />
+        <Skeleton className="tw-h-4 tw-w-64" />
+        <Skeleton className="tw-h-4 tw-w-56" />
         {error && (
           <div style={{
             color: '#ef4444',
@@ -330,6 +333,7 @@ function App() {
   }
 
   return (
+    <GoogleOAuthProvider clientId="375084822664-hljdpq569rpmgs1kd7kp3b36vs7s6n8k.apps.googleusercontent.com">
     <RoleProvider>
       <ModuleProvider>
         <MessagingProvider>
@@ -338,11 +342,6 @@ function App() {
             <div className="App">
               <Toaster
                 position="top-right"
-                richColors
-                toastOptions={{
-                  style: { zIndex: 10000 },
-                  className: 'toast-notification'
-                }}
                 style={{ zIndex: 10000 }}
               />
               <ConditionalHeader user={user} onLogout={logout} />
@@ -511,6 +510,7 @@ function App() {
         </MessagingProvider>
       </ModuleProvider>
     </RoleProvider>
+    </GoogleOAuthProvider>
   );
 }
 

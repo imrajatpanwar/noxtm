@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FiPlus, FiSearch, FiCalendar, FiUsers, FiClock, FiCheckCircle, FiXCircle, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiVideo, FiPhone, FiMapPin, FiStar, FiFilter, FiRefreshCw, FiUserCheck, FiUserX, FiSend, FiChevronLeft, FiChevronRight, FiLink, FiMail, FiPhone as FiPhoneIcon, FiFileText, FiDownload, FiList, FiGrid, FiCopy, FiX, FiArrowUp, FiArrowDown, FiMoreVertical, FiRepeat, FiClipboard } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './InterviewManagement.css';
 
 const INTERVIEW_TYPES = [
@@ -626,9 +627,11 @@ function InterviewManagement() {
               <tbody>
                 {loading ? (
                   <tr><td colSpan="7">
-                    <div className="intv-loading">
-                      <div className="spinner"></div>
-                      <p>Loading interviews...</p>
+                    <div className="intv-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <Skeleton className="tw-h-6 tw-w-48" />
+                      <Skeleton className="tw-h-4 tw-w-full" />
+                      <Skeleton className="tw-h-4 tw-w-full" />
+                      <Skeleton className="tw-h-4 tw-w-3/4" />
                     </div>
                   </td></tr>
                 ) : filteredInterviews.length === 0 ? (

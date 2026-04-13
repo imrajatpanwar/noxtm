@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './ClientLeads.css';
 
 const STATUS_OPTIONS = ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'];
@@ -417,9 +418,11 @@ function ClientLeads() {
       {/* Contacts Table */}
       <div className="cl-table-wrapper">
         {loading ? (
-          <div className="cl-loading">
-            <div className="cl-spinner" />
-            <p>Loading contacts...</p>
+          <div className="cl-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
           </div>
         ) : contacts.length === 0 ? (
           <div className="cl-empty">

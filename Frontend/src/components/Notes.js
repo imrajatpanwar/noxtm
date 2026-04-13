@@ -6,6 +6,7 @@ import {
   FiUserPlus, FiUser, FiSend, FiXCircle, FiCheckCircle, FiInbox, FiEye, FiUsers
 } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './Notes.css';
 
 function Notes() {
@@ -391,7 +392,7 @@ function Notes() {
         {loading ? (
           <div className="notes-loading">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="notes-skeleton" />
+              <Skeleton key={i} className="tw-h-32 tw-w-full tw-rounded-lg" />
             ))}
           </div>
         ) : activeTab === 'my' ? (

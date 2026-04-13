@@ -5,6 +5,7 @@ import {
   FiActivity, FiClock
 } from 'react-icons/fi';
 import { getAdminAuditLog } from '../../services/adminApi';
+import { Skeleton } from '../ui/skeleton';
 
 const ACTION_TYPES = [
   { value: 'plan_change', label: 'Plan Change', color: 'admin-badge-primary' },
@@ -97,7 +98,12 @@ function AdminAuditLogComponent() {
       {/* Audit Log Table */}
       <div className="admin-table-container">
         {isLoading ? (
-          <div className="admin-loading">Loading audit log...</div>
+          <div className="admin-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
+          </div>
         ) : (
           <table className="admin-table">
             <thead>

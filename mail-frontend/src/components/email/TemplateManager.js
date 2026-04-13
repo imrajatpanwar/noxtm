@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiMail, FiUsers, FiFileText } from 'react-icons/fi';
 import api from '../../config/api';
 import TemplateEditor from './TemplateEditor';

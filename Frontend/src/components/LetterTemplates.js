@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiPlus, FiEdit2, FiTrash2, FiFileText, FiCopy, FiX, FiEye, FiPackage } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './LetterTemplates.css';
 
 /* ──────────────────────────────────────────────
@@ -323,9 +324,11 @@ function LetterTemplates() {
   if (loading) {
     return (
       <div className="lt">
-        <div className="lt-loading">
-          <div className="lt-loading-spinner"></div>
-          <p>Loading templates...</p>
+        <div className="lt-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       </div>
     );

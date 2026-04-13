@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const Lead = require('../models/Lead');
 const Project = require('../models/Project');
@@ -144,6 +145,18 @@ const toolDefinitions = [
         message: { type: 'string', description: 'Message content to send' }
       },
       required: ['message']
+    }
+  },
+  {
+    name: 'send_team_message',
+    description: 'Send a direct message to a team member in the Team Communication chat. Use when the user asks to message a colleague, send a team message, or communicate with a team member.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        recipient_name: { type: 'string', description: 'Name of the team member to message (will fuzzy match)' },
+        message: { type: 'string', description: 'Message content to send' }
+      },
+      required: ['recipient_name', 'message']
     }
   },
   {
@@ -684,6 +697,66 @@ const executors = {
       success: true,
       sentTo: contact.name || contact.phone,
       message: message.substring(0, 100) + (message.length > 100 ? '...' : '')
+    };
+  },
+
+  // ──────────────────────────────
+  // SEND TEAM MESSAGE
+  // ──────────────────────────────
+  send_team_message: async ({ companyId, userId, input }) => {
+    const { recipient_name, message } = input;
+    if (!recipient_name || !message) return { error: 'Recipient name and message are required' };
+
+    const members = await findMembersByName(companyId, [recipient_name]);
+    if (members.length === 0) return { error: `Team member "${recipient_name}" not found` };
+
+    const recipientId = members[0]._id;
+    const recipientName = members[0].fullName;
+    const Conversation = mongoose.model('Conversation');
+    const Message = mongoose.model('Message');
+
+    // Find or create direct conversation
+    let conversation = await Conversation.findOne({
+      companyId,
+      type: 'direct',
+      'participants.user': { $all: [userId, recipientId] }
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        companyId,
+        type: 'direct',
+        participants: [userId, recipientId].map(id => ({
+          user: id,
+          joinedAt: new Date(),
+          lastReadAt: new Date()
+        })),
+        createdBy: userId
+      });
+    }
+
+    // Create and save the message
+    const msg = await Message.create({
+      conversationId: conversation._id,
+      companyId,
+      sender: userId,
+      content: message.trim(),
+      type: 'text',
+      readBy: [{ user: userId, readAt: new Date() }]
+    });
+
+    // Update conversation's lastMessage
+    await Conversation.updateOne(
+      { _id: conversation._id },
+      { $set: { lastMessage: { content: message.trim(), sender: userId, timestamp: new Date() }, updatedAt: new Date() } }
+    );
+
+    return {
+      success: true,
+      recipientName,
+      conversationId: conversation._id.toString(),
+      messagePreview: message.substring(0, 100),
+      note: 'Message sent successfully in Team Communication'
     };
   },
 

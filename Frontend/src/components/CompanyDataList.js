@@ -4,6 +4,7 @@ import LinkedInIcon from './assets/LinkedIn_icon.svg';
 import { useRole } from '../contexts/RoleContext';
 import api from '../config/api';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import './CompanyDataList.css';
 
 const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9', '#10b981', '#14b8a6', '#f97316'];
@@ -101,6 +102,10 @@ function CompanyDataList() {
   const [editingCompany, setEditingCompany] = useState(null);
   const [editFormData, setEditFormData] = useState({});
 
+  // View-all / edit-all permissions (Admin/Owner or delegated)
+  const [perms, setPerms] = useState({ canViewAll: false, canEditAll: false });
+  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'all'
+
   const isOwner = currentUser?.roleInCompany === 'Owner' || currentUser?.role === 'Admin';
 
   const currentUserPermission = (() => {
@@ -109,6 +114,16 @@ function CompanyDataList() {
     return perm?.permission || null;
   })();
   const canEdit = currentUserPermission === 'edit';
+
+  // Per-row edit/delete gate: editAll bypasses ownership; otherwise row creator only
+  const canEditRow = useCallback((company) => {
+    if (perms.canEditAll) return true;
+    if (isOwner || canEdit) {
+      const ownerId = company?.createdBy?._id || company?.createdBy;
+      return !ownerId || ownerId === currentUser?._id;
+    }
+    return false;
+  }, [perms.canEditAll, isOwner, canEdit, currentUser?._id]);
 
   const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -140,6 +155,7 @@ function CompanyDataList() {
       const params = {};
       if (searchQuery) params.search = searchQuery;
       if (labelFilter) params.labelId = labelFilter;
+      if (viewMode === 'all' && perms.canViewAll) params.scope = 'all';
       const response = await api.get('/company-data', { params });
       setCompanies(response.data);
     } catch (error) {
@@ -148,9 +164,27 @@ function CompanyDataList() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, labelFilter]);
+  }, [searchQuery, labelFilter, viewMode, perms.canViewAll]);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+
+  // Fetch view-all / edit-all permissions once on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await api.get('/company-data/permissions');
+        if (cancelled) return;
+        setPerms({
+          canViewAll: !!response.data?.canViewAll,
+          canEditAll: !!response.data?.canEditAll,
+        });
+      } catch (error) {
+        // Silent default to false
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const fetchLabels = useCallback(async () => {
     try {
@@ -461,6 +495,28 @@ function CompanyDataList() {
           <FiSearch className="cd-search-icon" />
           <input type="text" placeholder="Search companies by name or industry..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
+        {perms.canViewAll && (
+          <div className="cd-view-toggle" role="tablist" aria-label="View mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'mine'}
+              className={`cd-view-toggle-btn${viewMode === 'mine' ? ' cd-view-toggle-btn-active' : ''}`}
+              onClick={() => setViewMode('mine')}
+            >
+              My Records
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'all'}
+              className={`cd-view-toggle-btn${viewMode === 'all' ? ' cd-view-toggle-btn-active' : ''}`}
+              onClick={() => setViewMode('all')}
+            >
+              All Records
+            </button>
+          </div>
+        )}
         <button className="cd-btn-outline cd-filter-trigger" onClick={() => setShowFilterDrawer(true)}>
           <FiSliders size={16} /> Filter
           {activeFilterCount > 0 && <span className="cd-filter-count-badge">{activeFilterCount}</span>}
@@ -552,9 +608,9 @@ function CompanyDataList() {
       {loading ? (
         <div className="cd-loading">
           {[1, 2, 3].map(i => (
-            <div key={i} className="cd-skeleton-card">
-              <div className="cd-skeleton-line cd-skeleton-title" />
-              <div className="cd-skeleton-line cd-skeleton-text" />
+            <div key={i} className="cd-skeleton-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Skeleton className="tw-h-5 tw-w-2/5" />
+              <Skeleton className="tw-h-4 tw-w-full" />
             </div>
           ))}
         </div>
@@ -593,7 +649,14 @@ function CompanyDataList() {
                     {expandedId === company._id ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
                   </div>
                   <div className="cd-card-info">
-                    <h3 className="cd-card-name">{company.companyName}</h3>
+                    <h3 className="cd-card-name">
+                      {company.companyName}
+                      {viewMode === 'all' && company.createdBy && (company.createdBy._id || company.createdBy) !== currentUser?._id && (
+                        <span className="cd-created-by-badge" title="Created by another user">
+                          Created by: {company.createdBy.fullName || company.createdBy.name || company.createdBy.email || 'Unknown'}
+                        </span>
+                      )}
+                    </h3>
                     <div className="cd-card-meta">
                       {company.industry && <span className="cd-card-industry">{company.industry}</span>}
                       {company.website && <span className="cd-card-website"><FiGlobe size={12} /> {company.website.replace(/^https?:\/\//, '')}</span>}
@@ -665,7 +728,7 @@ function CompanyDataList() {
                     </div>
                   )}
                   <div className="cd-card-actions" onClick={(e) => e.stopPropagation()}>
-                    {(isOwner || canEdit) && (
+                    {canEditRow(company) && (
                       <div className="cd-kebab-wrapper" ref={kebabOpenId === company._id ? kebabRef : null}>
                         <button className="cd-btn-icon" onClick={() => setKebabOpenId(kebabOpenId === company._id ? null : company._id)} title="More options">
                           <FiMoreVertical size={16} />
@@ -720,11 +783,11 @@ function CompanyDataList() {
                                           background: lbl.color + '20', color: lbl.color, border: `1px solid ${lbl.color}40`
                                         }}>
                                           {lbl.name}
-                                          {(isOwner || canEdit) && <FiX size={10} style={{ cursor: 'pointer' }} onClick={() => handleToggleContactLabel(company._id, idx, lbl._id, true)} />}
+                                          {canEditRow(company) && <FiX size={10} style={{ cursor: 'pointer' }} onClick={() => handleToggleContactLabel(company._id, idx, lbl._id, true)} />}
                                         </span>
                                       ) : null;
                                     })}
-                                    {(isOwner || canEdit) && (
+                                    {canEditRow(company) && (
                                       <div style={{ position: 'relative', display: 'inline-block' }}>
                                         <button className="cd-btn-icon" style={{ width: 22, height: 22, fontSize: 10 }}
                                           onClick={() => {

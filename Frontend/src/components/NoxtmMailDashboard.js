@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiMail, FiSend, FiInbox, FiAlertTriangle, FiUsers, FiGlobe, FiFileText, FiActivity } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './NoxtmMailDashboard.css';
 
 function NoxtmMailDashboard() {
@@ -44,7 +45,12 @@ function NoxtmMailDashboard() {
     return (
       <div className="noxtm-mail-dashboard">
         <h1>Noxtm Mail Dashboard</h1>
-        <div className="loading-message">Loading statistics...</div>
+        <div className="loading-message" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }

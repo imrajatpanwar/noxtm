@@ -7,6 +7,7 @@ import {
   FiChevronRight, FiRefreshCw, FiChevronLeft, FiBarChart2,
   FiPercent, FiSettings, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './EmployeeDetails.css';
 
 function EmployeeDetails() {
@@ -215,9 +216,11 @@ function EmployeeDetails() {
   if (loading) {
     return (
       <div className="emp">
-        <div className="emp-loading">
-          <div className="emp-spinner"></div>
-          <p>Loading employees...</p>
+        <div className="emp-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       </div>
     );
@@ -375,7 +378,12 @@ function EmployeeDetails() {
                   <button className="emp-detail-close" onClick={() => { setSelectedEmployee(null); setEmployeeDetail(null); }}><FiX size={14} /></button>
                 </div>
                 {detailLoading ? (
-                  <div className="emp-detail-loading"><div className="emp-spinner"></div></div>
+                  <div className="emp-detail-loading" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <Skeleton className="tw-h-16 tw-w-16 tw-rounded-full" />
+                    <Skeleton className="tw-h-5 tw-w-40" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
+                  </div>
                 ) : employeeDetail ? (
                   <>
                     <div className="emp-detail-hero">
@@ -533,9 +541,11 @@ function EmployeeDetails() {
           )}
 
           {attLoading ? (
-            <div className="emp-loading" style={{ minHeight: '200px' }}>
-              <div className="emp-spinner"></div>
-              <p>Loading attendance...</p>
+            <div className="emp-loading" style={{ minHeight: '200px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="tw-h-6 tw-w-40" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-3/4" />
             </div>
           ) : (
             <>

@@ -1,0 +1,522 @@
+/* ============================================================
+   Google Drive Manager — GoogleDriveManager.css
+   ============================================================ */
+
+.gdm-root {
+  padding: 28px 32px;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100%;
+  background: #f9fafb;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.gdm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.gdm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gdm-header-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.gdm-drive-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.gdm-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.gdm-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 2px 0 0;
+}
+
+.gdm-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gdm-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 100px;
+  padding: 6px 14px 6px 8px;
+}
+
+.gdm-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.gdm-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.gdm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.gdm-btn-connect {
+  background: #111827;
+  color: #fff;
+}
+
+.gdm-btn-connect:hover {
+  background: #1f2937;
+  transform: translateY(-1px);
+}
+
+.gdm-btn-disconnect {
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+.gdm-btn-disconnect:hover {
+  background: #fecaca;
+}
+
+.gdm-btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.gdm-btn-ghost:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.gdm-btn-sm {
+  padding: 7px 16px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+/* ── Error Banner ────────────────────────────────────────── */
+.gdm-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #991b1b;
+}
+
+.gdm-error button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #991b1b;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Drop Zone ───────────────────────────────────────────── */
+.gdm-dropzone {
+  background: #fff;
+  border: 2px dashed #d1d5db;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+
+.gdm-dropzone--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.gdm-dropzone--locked {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.gdm-dropzone:hover:not(.gdm-dropzone--locked) {
+  border-color: #6b7280;
+  background: #f9fafb;
+}
+
+.gdm-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.gdm-dropzone-icon {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
+
+.gdm-dropzone--active .gdm-dropzone-icon {
+  color: #2563eb;
+}
+
+.gdm-dropzone-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 6px;
+}
+
+.gdm-dropzone-hint {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Spinner */
+.gdm-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: gdm-spin 0.75s linear infinite;
+}
+
+@keyframes gdm-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Progress */
+.gdm-progress-list {
+  width: 100%;
+  max-width: 480px;
+  margin: 20px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gdm-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.gdm-progress-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #374151;
+  max-width: 200px;
+}
+
+.gdm-progress-bar-wrap {
+  flex: 2;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.gdm-progress-bar {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 100px;
+  transition: width 0.2s ease;
+}
+
+.gdm-progress-pct {
+  width: 36px;
+  text-align: right;
+  color: #6b7280;
+}
+
+/* ── Section ─────────────────────────────────────────────── */
+.gdm-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.gdm-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+/* ── File Grid ───────────────────────────────────────────── */
+.gdm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.gdm-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.gdm-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.gdm-card:hover .gdm-card-actions {
+  opacity: 1;
+}
+
+.gdm-card-skeleton {
+  height: 180px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: gdm-shimmer 1.4s infinite;
+  cursor: default;
+}
+
+@keyframes gdm-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.gdm-card-thumb {
+  height: 130px;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.gdm-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gdm-thumb-icon {
+  font-size: 40px;
+}
+
+.gdm-card-info {
+  padding: 10px 12px;
+  flex: 1;
+}
+
+.gdm-card-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #111827;
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gdm-card-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.gdm-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.gdm-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  color: #374151;
+  text-decoration: none;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+
+.gdm-action-btn:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.gdm-action-delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+/* ── Empty ───────────────────────────────────────────────── */
+.gdm-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: #9ca3af;
+  font-size: 14px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Modal ───────────────────────────────────────────────── */
+.gdm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 24px;
+}
+
+.gdm-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gdm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.gdm-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+
+.gdm-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.12s;
+}
+
+.gdm-modal-close:hover {
+  color: #111827;
+}
+
+.gdm-modal-body {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+}
+
+.gdm-modal-preview-img {
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.gdm-modal-no-preview {
+  font-size: 32px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 40px;
+}
+
+.gdm-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid #f3f4f6;
+  gap: 12px;
+}
+
+.gdm-modal-meta {
+  font-size: 12px;
+  color: #9ca3af;
+}

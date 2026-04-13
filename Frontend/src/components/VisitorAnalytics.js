@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import api from '../config/api';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import './VisitorAnalytics.css';
 
 function VisitorAnalytics() {
@@ -112,9 +113,11 @@ function VisitorAnalytics() {
   if (loading) {
     return (
       <div className="va-container">
-        <div className="va-loading">
-          <div className="va-spinner" />
-          <p>Loading visitor analytics...</p>
+        <div className="va-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       </div>
     );

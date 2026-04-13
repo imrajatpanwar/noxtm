@@ -5,6 +5,7 @@ import {
   FiCreditCard, FiFilter, FiAlertCircle, FiTrendingUp
 } from 'react-icons/fi';
 import { getAdminUsers, updateUserSubscription, getAdminStats } from '../../services/adminApi';
+import { Skeleton } from '../ui/skeleton';
 
 const PLANS = ['None', 'Trial', 'Starter', 'Pro+', 'Advance', 'Noxtm', 'Enterprise'];
 const PLAN_STATUS = ['active', 'inactive', 'trial', 'expired', 'cancelled', 'suspended', 'pending'];
@@ -213,7 +214,12 @@ function AdminPlanManagement() {
       {/* Table */}
       <div className="admin-table-container">
         {isLoading ? (
-          <div className="admin-loading">Loading...</div>
+          <div className="admin-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
+          </div>
         ) : (
           <table className="admin-table">
             <thead>

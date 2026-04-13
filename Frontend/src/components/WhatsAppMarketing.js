@@ -3,6 +3,7 @@ import { MessagingContext } from '../contexts/MessagingContext';
 import { WhatsAppProvider, useWhatsApp } from '../contexts/WhatsAppContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import {
   FiMessageSquare, FiUsers, FiSmartphone, FiZap, FiSend, FiSearch, FiPlus, FiSettings,
   FiTrash2, FiRefreshCw, FiWifi, FiWifiOff, FiStar, FiX, FiClock, FiEdit2,
@@ -89,7 +90,7 @@ function DashboardTab() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  if (!dashboard) return <div className="wa-loading"><div className="wa-spinner" /><span>Loading dashboard...</span></div>;
+  if (!dashboard) return <div className="wa-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton className="tw-h-8 tw-w-48" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-3/4" /></div>;
 
   const stats = [
     { label: 'Connected', value: dashboard.accounts?.filter(a => a.status === 'connected').length || 0, sub: `of ${dashboard.accounts?.length || 0} accounts`, icon: FiWifi, color: '#25d366' },
@@ -269,7 +270,7 @@ function AccountsTab() {
                   </div>
                 </>
               ) : (
-                <div className="wa-loading"><div className="wa-spinner" /><p>Generating QR code...</p></div>
+                <div className="wa-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton className="tw-h-8 tw-w-48" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-3/4" /></div>
               )}
             </div>
           </div>

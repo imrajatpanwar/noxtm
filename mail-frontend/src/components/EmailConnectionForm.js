@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Mail, Lock, AlertCircle, Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import api from '../config/api';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 function EmailConnectionForm({ onSuccess, onCancel }) {
   const [email, setEmail] = useState('');
@@ -122,7 +123,7 @@ function EmailConnectionForm({ onSuccess, onCancel }) {
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Skeleton className="h-4 w-4 rounded-full" />
                 Connecting...
               </>
             ) : (

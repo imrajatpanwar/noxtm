@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiAlertCircle, FiCheck } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './ProfileSettings.css';
 
 function ProfileSettings({ user: initialUser, onLogout }) {
@@ -185,7 +186,12 @@ function ProfileSettings({ user: initialUser, onLogout }) {
   if (loading) {
     return (
       <div className="profile-settings">
-        <div className="loading-state">Loading profile...</div>
+        <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }

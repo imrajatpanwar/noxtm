@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import TemplateEditor from './TemplateEditor';
+import { Skeleton } from '../ui/skeleton';
 import './TemplateManager.css';
 
 const TemplateManager = () => {
@@ -95,7 +96,12 @@ const TemplateManager = () => {
   if (loading) {
     return (
       <div className="template-manager">
-        <div className="template-loading">Loading templates...</div>
+        <div className="template-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }

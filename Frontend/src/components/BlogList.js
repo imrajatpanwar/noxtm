@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './BlogList.css';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 
 function BlogList({ onEdit, onCreateNew }) {
   const [blogs, setBlogs] = useState([]);
@@ -154,7 +155,12 @@ function BlogList({ onEdit, onCreateNew }) {
       </div>
 
       {loading ? (
-        <div className="loading">Loading blogs...</div>
+        <div className="loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       ) : (
         <>
           <div className="blogs-grid">

@@ -4,6 +4,7 @@ import noTradeShowImage from './image/no-tradeshow.svg';
 import uploadIcon from './image/upload_icon.svg';
 import defaultAvatar from './image/default-avatar.svg';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import {
   FiPlus, FiX, FiMapPin,
   FiSearch, FiInfo, FiTrash2,
@@ -309,7 +310,7 @@ function TrendingServices({ onNavigate }) {
 
       {/* Services List */}
       {loading ? (
-        <div className="gts-load"><div className="gts-spin" /><p>Loading companies data...</p></div>
+        <div className="gts-load" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton className="tw-h-8 tw-w-48" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-3/4" /></div>
       ) : filtered.length > 0 ? (
         <div className="gts-list">
           {filtered.map(s => (

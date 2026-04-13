@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { FiPlus, FiTrash2, FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiLoader, FiUpload, FiDownload, FiRefreshCw, FiGlobe, FiFileText, FiUsers, FiSend, FiSearch, FiChevronRight, FiMapPin, FiCalendar, FiMail } from 'react-icons/fi';
 import api from '../../config/api';
+import { Skeleton } from '../ui/skeleton';
 import './MailLists.css';
 
 // Source type display config
@@ -134,8 +135,11 @@ function MailLists() {
   if (loading) {
     return (
       <div className="mail-lists-container">
-        <div className="mail-lists-loading">
-          <FiLoader className="spinner" /> Loading mail lists...
+        <div className="mail-lists-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
       </div>
     );
@@ -644,8 +648,11 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
                 </div>
 
                 {tradeShowsLoading ? (
-                  <div className="ts-loading">
-                    <FiLoader className="spinner" /> Loading trade shows...
+                  <div className="ts-loading" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <Skeleton className="h-6 w-40" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
                   </div>
                 ) : filteredShows.length === 0 ? (
                   <div className="ts-empty">
@@ -699,8 +706,11 @@ function CreateMailListModal({ onClose, onSuccess, installedModules = [] }) {
                 </div>
 
                 {exhibitorsLoading ? (
-                  <div className="ts-loading">
-                    <FiLoader className="spinner" /> Loading exhibitors...
+                  <div className="ts-loading" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <Skeleton className="h-6 w-40" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
                   </div>
                 ) : (
                   <>
@@ -1126,9 +1136,11 @@ function MailListDetailModal({ list, onClose, onUpdate, tradeShowMap = {} }) {
         {/* Contacts Table */}
         <div className="dm-contacts-section">
           {loading ? (
-            <div className="dm-loading">
-              <FiLoader className="spinner" size={24} />
-              <span>Loading contacts...</span>
+            <div className="dm-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="dm-empty">

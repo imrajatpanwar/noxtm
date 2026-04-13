@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiGlobe, FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './EmailManagement.css';
 
 function EmailDomains() {
@@ -22,7 +23,7 @@ function EmailDomains() {
     }
   };
 
-  if (loading) return <div className="email-management-page"><h1>Loading...</h1></div>;
+  if (loading) return <div className="email-management-page" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton className="tw-h-8 tw-w-48" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-3/4" /></div>;
 
   return (
     <div className="email-management-page">

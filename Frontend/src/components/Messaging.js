@@ -7,6 +7,7 @@ import ConversationList from './ConversationList';
 import api from '../config/api';
 import { MdSend } from 'react-icons/md';
 import { FiMoreVertical } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './Messaging.css';
 // Group icon PNG imports
 import groupIcon1 from './image/group-icons/group_icon (1).png';
@@ -1186,9 +1187,28 @@ function Messaging() {
             {/* Messages Area */}
             <div className="messaging-body">
               {messagesLoading ? (
-                <div className="messages-loading">
-                  <div className="loading-spinner"></div>
-                  <p>Loading messages...</p>
+                <div className="messages-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <Skeleton className="tw-h-8 tw-w-8 tw-rounded-full tw-flex-shrink-0" />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <Skeleton className="tw-h-4 tw-w-24" />
+                      <Skeleton className="tw-h-4 tw-w-full" />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <Skeleton className="tw-h-8 tw-w-8 tw-rounded-full tw-flex-shrink-0" />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <Skeleton className="tw-h-4 tw-w-20" />
+                      <Skeleton className="tw-h-4 tw-w-3/4" />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <Skeleton className="tw-h-8 tw-w-8 tw-rounded-full tw-flex-shrink-0" />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <Skeleton className="tw-h-4 tw-w-28" />
+                      <Skeleton className="tw-h-4 tw-w-2/3" />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <MessageList

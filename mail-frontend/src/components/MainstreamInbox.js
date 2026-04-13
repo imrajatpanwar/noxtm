@@ -15,7 +15,8 @@ import {
   MdInsertEmoticon, MdMoreHoriz, MdOpenInFull
 } from 'react-icons/md';
 import { Search, Settings, UserPlus, LogOut, ExternalLink } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Skeleton } from './ui/skeleton';
+import { toast } from 'sonner';
 import api from '../config/api';
 import { getMainAppUrl } from '../config/authConfig';
 import CreateEmailModal from './CreateEmailModal';
@@ -725,7 +726,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
       toast.error('No emails selected');
       return;
     }
-    toast('Archive functionality coming soon', { icon: '📦' });
+    toast.info('Archive functionality coming soon');
   };
 
   const getEmailPreview = (email) => {
@@ -1230,9 +1231,11 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
                 uploadSuccess={avatarUploadState.success}
               />
             ) : loading && emails.length === 0 ? (
-              <div className="loading-state">
-                <div className="spinner"></div>
-                <p>Loading emails...</p>
+              <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
               </div>
             ) : error ? (
               <div className="error-state">
@@ -1243,9 +1246,11 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
               <div className="empty-state">
                 {accountsLoading ? (
                   // Show loading state while fetching accounts - prevents form flash
-                  <div className="loading-state">
-                    <div className="spinner"></div>
-                    <p>Loading accounts...</p>
+                  <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
                   </div>
                 ) : accountsError ? (
                   // Show error with retry button when account fetch failed

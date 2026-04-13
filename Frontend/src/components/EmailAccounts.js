@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiUsers, FiPlus, FiTrash2, FiKey, FiMail, FiRefreshCw, FiServer, FiCloud, FiX, FiCheck, FiAlertCircle, FiCopy, FiEye, FiEyeOff, FiGlobe, FiUser } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './EmailManagement.css';
 
 function EmailAccounts() {
@@ -224,7 +225,12 @@ function EmailAccounts() {
     return (
       <div className="email-management-page">
         <h1><FiUsers /> Email Accounts</h1>
-        <div className="loading-message">Loading accounts...</div>
+        <div className="loading-message" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }
@@ -311,7 +317,12 @@ function EmailAccounts() {
           )}
 
           {loadingCompanyAccounts ? (
-            <div className="loading-message" style={{ padding: '40px' }}>Loading company accounts...</div>
+            <div className="loading-message" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="tw-h-8 tw-w-48" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-3/4" />
+            </div>
           ) : (
             <div className="table-container">
               <table className="data-table">

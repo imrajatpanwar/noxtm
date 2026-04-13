@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import api from '../../config/api';
 import { getGravatarUrl, hasGravatar, openGravatarSetup } from '../../utils/gravatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';

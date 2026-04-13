@@ -820,11 +820,13 @@ router.post('/memories/default', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
 
-    // Check if owner
+    // Only workspace Owner or platform Admin may manage default memories
     const company = await Company.findById(user.companyId);
-    const member = company?.members.find(m => m.user.toString() === user._id.toString());
-    if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can add memories' });
+    const member = company?.members?.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company?.owner && company.owner.toString() === user._id.toString());
+    if (!isOwner && user.role !== 'Admin') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner or admin can add memories' });
     }
 
     const { content, category } = req.body;
@@ -857,9 +859,11 @@ router.put('/memories/default/:id', authenticateToken, async (req, res) => {
     if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const company = await Company.findById(user.companyId);
-    const member = company?.members.find(m => m.user.toString() === user._id.toString());
-    if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can edit memories' });
+    const member = company?.members?.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company?.owner && company.owner.toString() === user._id.toString());
+    if (!isOwner && user.role !== 'Admin') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner or admin can edit memories' });
     }
 
     const { content, category } = req.body;
@@ -885,9 +889,11 @@ router.delete('/memories/default/:id', authenticateToken, async (req, res) => {
     if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const company = await Company.findById(user.companyId);
-    const member = company?.members.find(m => m.user.toString() === user._id.toString());
-    if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can delete memories' });
+    const member = company?.members?.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company?.owner && company.owner.toString() === user._id.toString());
+    if (!isOwner && user.role !== 'Admin') {
+      return res.status(403).json({ success: false, message: 'Only workspace owner or admin can delete memories' });
     }
 
     const memory = await NoxtmBotDefaultMemory.findOneAndDelete({
@@ -906,81 +912,144 @@ router.delete('/memories/default/:id', authenticateToken, async (req, res) => {
 
 // --- User Memories (per-user learned insights) ---
 
-// GET /api/noxtm-bot/memories/users — Admin view: all user memories grouped by user
+// GET /api/noxtm-bot/memories/users — Admin/Owner view: all user memories grouped by user
+// Non-admin users still see their own memories (grouped under a single group).
 router.get('/memories/users', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user || !user.companyId) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    // Check if owner
+    // Determine if requester can see every user's memories
     const company = await Company.findById(user.companyId);
-    const member = company?.members.find(m => m.user.toString() === user._id.toString());
-    if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can view user memories' });
+    const member = company?.members?.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company?.owner && company.owner.toString() === user._id.toString());
+    const canViewAll = isOwner || user.role === 'Admin';
+
+    // Build the set of userIds whose memories we are allowed to return
+    let allowedUserIds;
+    if (canViewAll) {
+      // Every user in this workspace (covers legacy memories that may lack companyId)
+      const workspaceUsers = await User.find({ companyId: user.companyId })
+        .select('_id fullName email profileImage')
+        .lean();
+      allowedUserIds = workspaceUsers.map(u => u._id);
+      // Index users by id for later enrichment
+      var userMap = {};
+      workspaceUsers.forEach(u => { userMap[u._id.toString()] = u; });
+    } else {
+      allowedUserIds = [user._id];
+      var userMap = {
+        [user._id.toString()]: {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          profileImage: user.profileImage,
+        },
+      };
     }
 
-    // Fetch all learned memories for users in this company
-    const memories = await LearnedMemory.find({ companyId: user.companyId, active: true })
+    // Match memories by userId (works even for rows missing companyId) OR by companyId match as a safety net
+    const memories = await LearnedMemory.find({
+      active: true,
+      $or: [
+        { userId: { $in: allowedUserIds } },
+        { companyId: user.companyId, userId: { $in: allowedUserIds } },
+      ],
+    })
       .sort({ createdAt: -1 })
-      .limit(500)
+      .limit(1000)
       .lean();
-
-    // Get unique user IDs from memories
-    const userIds = [...new Set(memories.map(m => m.userId.toString()))];
-
-    // Fetch user info
-    const users = await User.find({ _id: { $in: userIds } })
-      .select('fullName email')
-      .lean();
-
-    const userMap = {};
-    users.forEach(u => { userMap[u._id.toString()] = u; });
 
     // Group memories by user
     const grouped = {};
     memories.forEach(m => {
-      const uid = m.userId.toString();
+      const uid = m.userId?.toString();
+      if (!uid) return;
       if (!grouped[uid]) {
         const u = userMap[uid];
         grouped[uid] = {
           userId: uid,
           userName: u?.fullName || 'Unknown User',
           userEmail: u?.email || '',
+          userAvatar: u?.profileImage || '',
+          user: u ? { _id: u._id, fullName: u.fullName, email: u.email, profileImage: u.profileImage } : null,
           memories: [],
         };
       }
       grouped[uid].memories.push(m);
     });
 
-    res.json({ success: true, userGroups: Object.values(grouped) });
+    // For admin/owner view, also include workspace users that have no memories yet
+    // so the UI can render an empty group. Skip this for non-admin callers.
+    if (canViewAll) {
+      Object.keys(userMap).forEach(uid => {
+        if (!grouped[uid]) {
+          const u = userMap[uid];
+          grouped[uid] = {
+            userId: uid,
+            userName: u?.fullName || 'Unknown User',
+            userEmail: u?.email || '',
+            userAvatar: u?.profileImage || '',
+            user: u ? { _id: u._id, fullName: u.fullName, email: u.email, profileImage: u.profileImage } : null,
+            memories: [],
+          };
+        }
+      });
+    }
+
+    // Sort groups: ones with memories first (desc by count), then alphabetical
+    const userGroups = Object.values(grouped).sort((a, b) => {
+      if (b.memories.length !== a.memories.length) return b.memories.length - a.memories.length;
+      return (a.userName || '').localeCompare(b.userName || '');
+    });
+
+    res.json({ success: true, userGroups, canViewAll });
   } catch (error) {
     console.error('[NoxtmBot] User memories fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// DELETE /api/noxtm-bot/memories/users/:id — Admin deletes a specific user memory
+// DELETE /api/noxtm-bot/memories/users/:id — Admin/Owner deletes a specific user memory
+// Non-admin callers can still delete memories that belong to themselves.
 router.delete('/memories/users/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user || !user.companyId) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const company = await Company.findById(user.companyId);
-    const member = company?.members.find(m => m.user.toString() === user._id.toString());
-    if (!member || member.roleInCompany !== 'Owner') {
-      return res.status(403).json({ success: false, message: 'Only workspace owner can delete user memories' });
+    const member = company?.members?.find(m => m.user && m.user.toString() === user._id.toString());
+    const isOwner = (member && member.roleInCompany === 'Owner') ||
+      (company?.owner && company.owner.toString() === user._id.toString());
+    const canManageAll = isOwner || user.role === 'Admin';
+
+    // Build workspace user ids once (used to scope non-admin-safe lookups)
+    const workspaceUserIds = await User.find({ companyId: user.companyId }).distinct('_id');
+
+    // Find the memory first so we can verify scope and ownership
+    const existing = await LearnedMemory.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ success: false, message: 'Memory not found' });
+
+    // Verify memory belongs to a user in this workspace
+    const belongsToWorkspace = workspaceUserIds.some(uid => uid.toString() === existing.userId?.toString());
+    if (!belongsToWorkspace) {
+      return res.status(404).json({ success: false, message: 'Memory not found' });
+    }
+
+    // Non-admin users can only delete their own memories
+    if (!canManageAll && existing.userId?.toString() !== user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own memories' });
     }
 
     // Soft-delete: mark as inactive
-    const memory = await LearnedMemory.findOneAndUpdate(
-      { _id: req.params.id, companyId: user.companyId },
+    const memory = await LearnedMemory.findByIdAndUpdate(
+      req.params.id,
       { active: false },
       { new: true }
     );
 
-    if (!memory) return res.status(404).json({ success: false, message: 'Memory not found' });
-
-    res.json({ success: true });
+    res.json({ success: true, memory });
   } catch (error) {
     console.error('[NoxtmBot] User memory delete error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

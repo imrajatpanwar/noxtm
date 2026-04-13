@@ -11,6 +11,7 @@ import { ReactComponent as OperaLogo } from './image/opera.svg';
 import blogImage1 from './image/Blog1.jpg';
 import blogImage2 from './image/Blog2.jpg';
 import blogImage3 from './image/Blog3.jpg';
+import { Skeleton } from './ui/skeleton';
 import { ReactComponent as LinkArrow } from './image/link_arrow_white.svg';
 // Mountain chair images
 import mountainChairBg from './image/Mountain_chair_bg.webp';
@@ -454,8 +455,11 @@ function Home({ user }) {
 
               <div className="blog-journal-grid">
                 {loading ? (
-                  <div className="blog-loading">
-                    <p>Loading latest insights...</p>
+                  <div className="blog-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="tw-h-8 tw-w-48" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
                   </div>
                 ) : (
                   featuredBlogs.map((blog, index) => renderBlogCard(blog, index))

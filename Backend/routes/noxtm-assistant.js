@@ -4,7 +4,7 @@ const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const { NoxtmChatMessage, NoxtmChatConfig } = require('../models/NoxtmChat');
 const CompanyMemory = require('../models/CompanyMemory');
-const { CoreMemory, LearnedMemory } = require('../models/NoxtmMemory');
+const { CoreMemory, LearnedMemory, NoxtmBotDefaultMemory } = require('../models/NoxtmMemory');
 const { toolDefinitions, executeTool } = require('../utils/assistantTools');
 const { aggregateUserContext, sanitizeUserMessage, getUserMemory, buildSystemPrompt } = require('../utils/aiHelpers');
 const { authenticateToken } = require('../middleware/auth');
@@ -91,9 +91,22 @@ async function callClaudeWithTools(systemPrompt, messages, tools, context, maxIt
 // BUILD ASSISTANT SYSTEM PROMPT
 // ═══════════════════════════════════════════
 
-function buildAssistantSystemPrompt(contextData, memory, botConfig, companyMemories) {
+function buildAssistantSystemPrompt(contextData, memory, botConfig, companyMemories, defaultMemories = []) {
   // Start with the existing system prompt builder
   let prompt = buildSystemPrompt(contextData, memory, null, botConfig);
+
+  // === Admin Default Memories — authoritative, must be followed ===
+  // These are manually curated by the workspace owner/admin via NoxtmBotAdmin → Memories.
+  // They override normal behavior and must be framed as binding instructions.
+  if (Array.isArray(defaultMemories) && defaultMemories.length > 0) {
+    prompt += '\n\n## ADMIN DEFAULT INSTRUCTIONS — HIGHEST PRIORITY\n';
+    prompt += 'These are authoritative instructions set by the workspace admin. You MUST follow them exactly. ';
+    prompt += 'If they conflict with any other guidance above, these take precedence.\n';
+    defaultMemories.forEach((m, idx) => {
+      const cat = m.category ? `[${m.category}] ` : '';
+      prompt += `${idx + 1}. ${cat}${m.content}\n`;
+    });
+  }
 
   // Add assistant-specific instructions
   prompt += `
@@ -172,8 +185,8 @@ router.post('/chat', authenticateToken, assistantLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Message too long or empty' });
     }
 
-    // Parallel: fetch context, memory, config, history, company memories
-    const [contextData, userMemory, botConfig, recentMessages, companyMemories] = await Promise.all([
+    // Parallel: fetch context, memory, config, history, company memories, admin default memories
+    const [contextData, userMemory, botConfig, recentMessages, companyMemories, defaultMemories] = await Promise.all([
       aggregateUserContext(userId, companyId),
       getUserMemory(userId),
       NoxtmChatConfig.findOne({ companyId }).lean(),
@@ -184,6 +197,11 @@ router.post('/chat', authenticateToken, assistantLimiter, async (req, res) => {
       CompanyMemory.find({ companyId, active: true })
         .sort({ createdAt: -1 })
         .limit(30)
+        .lean(),
+      // Admin-curated default memories for this workspace — always injected into every chat
+      NoxtmBotDefaultMemory.find({ companyId, active: true })
+        .sort({ createdAt: -1 })
+        .limit(50)
         .lean()
     ]);
 
@@ -200,8 +218,8 @@ router.post('/chat', authenticateToken, assistantLimiter, async (req, res) => {
     // Add current user message
     history.push({ role: 'user', content: sanitized });
 
-    // Build system prompt
-    const systemPrompt = buildAssistantSystemPrompt(contextData, userMemory, botConfig, companyMemories);
+    // Build system prompt (admin default memories take precedence)
+    const systemPrompt = buildAssistantSystemPrompt(contextData, userMemory, botConfig, companyMemories, defaultMemories);
 
     // Execute Claude with tool-use loop
     const result = await callClaudeWithTools(

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Skeleton } from '../ui/skeleton';
 import './TeamInbox.css';
 
 const TeamInbox = () => {
@@ -100,7 +101,12 @@ const TeamInbox = () => {
   if (loading) {
     return (
       <div className="team-inbox">
-        <div className="loading">Loading team accounts...</div>
+        <div className="loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       </div>
     );
   }
@@ -199,7 +205,12 @@ const TeamInbox = () => {
               {/* Email List */}
               <div className="emails-list">
                 {loadingEmails ? (
-                  <div className="loading">Loading emails...</div>
+                  <div className="loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="tw-h-8 tw-w-48" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
+                  </div>
                 ) : emails.length === 0 ? (
                   <div className="no-emails">
                     <p>No emails in this inbox</p>

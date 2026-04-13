@@ -1,16 +1,23 @@
-/* Dashboard Container */
+/* Dashboard Container — direct child of SidebarProvider wrapper.
+   flex:1 so it grows to fill the wrapper's full width. */
 .dashboard-container {
   display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   height: calc(100vh - 56px);
   height: calc(100dvh - 56px);
   background-color: #F5F5F5;
   overflow: hidden;
 }
 
-/* Main Content */
+/* Main Content — flex child that auto-fills the space freed when the
+   sidebar collapses. No fixed margin-left; the sidebar sits in the flex
+   row next to it, so reflow is automatic. */
 .dashboard-main {
-  flex: 1;
-  margin-left: 280px;
+  flex: 1 1 0;
+  min-width: 0;
   background-color: #F5F5F5;
   overflow-y: auto;
   overflow-x: hidden;
@@ -128,19 +135,10 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
-  .dashboard-main {
-    margin-left: 240px;
-  }
-}
-
 @media (max-width: 768px) {
-  .dashboard-container {
-    flex-direction: column;
-  }
-
+  /* On mobile the sidebar overlays via its own transform,
+     so main content fills the full width. */
   .dashboard-main {
-    margin-left: 0;
     height: 100%;
   }
 
@@ -208,7 +206,10 @@
 .att-float-timer {
   position: fixed;
   bottom: 24px;
-  left: 304px;
+  /* Offset from the current sidebar width so the timer sits just right of it.
+     --sidebar-width is set on [data-sidebar-wrapper] by SidebarProvider and
+     flips between expanded/collapsed values via the data-state CSS below. */
+  left: calc(var(--sidebar-current-width, 260px) + 24px);
   z-index: 900;
   background: #0f172a;
   color: #ffffff;

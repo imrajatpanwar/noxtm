@@ -3,6 +3,7 @@ import { FiSearch, FiLinkedin, FiInstagram, FiFacebook, FiGlobe, FiPlus } from '
 import { FaXTwitter } from 'react-icons/fa6';
 import { toast } from 'sonner';
 // import api from '../config/api'; // Will be used when API endpoints are ready
+import { Skeleton } from './ui/skeleton';
 import './LeadsMetrics.css';
 
 function LeadsMetrics() {
@@ -322,9 +323,11 @@ function LeadsMetrics() {
 
       {/* Leads List */}
       {isLoading ? (
-        <div className="ld-loading">
-          <div className="ld-spinner"></div>
-          <p>Loading leads...</p>
+        <div className="ld-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       ) : filteredLeads.length > 0 ? (
         <div className="ld-list">

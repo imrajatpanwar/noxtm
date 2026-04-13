@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../config/api';
 import { getGravatarUrl, hasGravatar, openGravatarSetup } from '../../utils/gravatar';
+import { Skeleton } from '../ui/skeleton';
 import './ProfileSettings.css';
 
 const buildFallbackAvatar = (name, email) => {
@@ -549,7 +550,11 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
         </div>
         <div className="mbox-storage-card">
           {storageLoading ? (
-            <div className="mbox-loading">Loading storage information...</div>
+            <div className="mbox-loading" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
           ) : storageUsage ? (
             <>
               <div className="mbox-storage-stats">
@@ -629,7 +634,10 @@ const ProfileSettings = ({ account, user, onAvatarUpload, uploading, uploadError
 
         <div className="mbox-gravatar-status">
           {gravatarChecking ? (
-            <div className="mbox-loading">Checking Gravatar status...</div>
+            <div className="mbox-loading" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-full" />
+            </div>
           ) : (
             <>
               <div className="mbox-gravatar-preview">

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { MAIL_LOGIN_URL, getMainAppUrl } from './authConfig';
 
 // Global flag to prevent redirect during token extraction/authentication

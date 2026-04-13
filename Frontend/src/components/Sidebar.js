@@ -1,23 +1,44 @@
 import React, { useState, useMemo, useEffect, useContext } from 'react';
-import { FiSearch, FiGrid, FiTrendingUp, FiUsers, FiBarChart2, FiTarget, FiFolder, FiPackage, FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight, FiMessageCircle, FiUser, FiUserCheck, FiDollarSign, FiShield, FiVideo, FiCamera, FiLinkedin, FiYoutube, FiTwitter, FiMessageSquare, FiGlobe, FiExternalLink, FiKey } from 'react-icons/fi';
+import {
+  FiGrid, FiTrendingUp, FiUsers, FiTarget, FiFolder, FiPackage,
+  FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight,
+  FiMessageCircle, FiUserCheck, FiDollarSign, FiShield, FiLinkedin, FiGlobe, FiKey, FiUploadCloud
+} from 'react-icons/fi';
+import splitViewIcon from '../assets/split_view.svg';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { useModules } from '../contexts/ModuleContext';
+import {
+  Sidebar as UISidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  useSidebar,
+} from './ui/sidebar';
 import './Sidebar.css';
 import api from '../config/api';
 
 function Sidebar({ activeSection, onSectionChange }) {
   const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
   const { socket } = useContext(MessagingContext);
-  const { isModuleInstalled } = useModules();
-  const [emailMarketingExpanded, setEmailMarketingExpanded] = useState(false);
+  // Module installation context retained for future per-module gating
+  useModules();
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === 'collapsed';
+
   const [hrManagementExpanded, setHrManagementExpanded] = useState(false);
   const [financeManagementExpanded, setFinanceManagementExpanded] = useState(false);
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
   const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
   // Get current user from RoleContext (always up-to-date)
@@ -38,11 +59,23 @@ function Sidebar({ activeSection, onSectionChange }) {
     }
   };
 
-  // Initial fetch and periodic refresh
+  // Fetch business name from company details
   useEffect(() => {
+    const fetchBusinessName = async () => {
+      try {
+        const response = await api.get('/company/details');
+        if (response.data?.success && response.data?.company?.companyName) {
+          setBusinessName(response.data.company.companyName);
+        }
+      } catch (error) {
+        // ignore — user may not have a company yet
+      }
+    };
     if (currentUser) {
       fetchTotalUnreadCount();
+      fetchBusinessName();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   // Listen for socket events to update unread count in real-time
@@ -51,23 +84,16 @@ function Sidebar({ activeSection, onSectionChange }) {
 
     const handleUnreadCountUpdate = (data) => {
       console.log('📊 Sidebar received unread-count-update:', data);
-      // Always update unread count when backend sends update
       fetchTotalUnreadCount();
     };
 
     const handleNewMessage = (data) => {
       console.log('📩 Sidebar received new-message:', data);
-      // Instantly update unread count when new message arrives
-      // This works even if user is not on Message page
       const currentUserId = currentUser?._id || currentUser?.id;
       const isOwnMessage = data.message?.sender?._id === currentUserId;
 
-      // Only increment if it's not the current user's own message
       if (!isOwnMessage) {
-        // Increment badge count immediately for instant feedback
         setMessageUnreadCount(prev => prev + 1);
-
-        // Then fetch accurate count from backend
         setTimeout(() => {
           fetchTotalUnreadCount();
         }, 100);
@@ -86,7 +112,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Reset unread count when user opens the Message section
   useEffect(() => {
     if (activeSection === 'message') {
-      // Give it a small delay to let the Messaging component mark messages as read
       const timer = setTimeout(() => {
         fetchTotalUnreadCount();
       }, 500);
@@ -97,7 +122,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Listen for instant updates when conversations are marked as read
   useEffect(() => {
     const handleMarkedAsRead = () => {
-      // Instantly refresh unread count when a conversation is marked as read
       fetchTotalUnreadCount();
     };
 
@@ -201,8 +225,8 @@ function Sidebar({ activeSection, onSectionChange }) {
         'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
         'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
-        'Workspace Settings': false, // Team Members don't get workspace settings
-        'Profile': true // Profile is available to all users
+        'Workspace Settings': false,
+        'Profile': true
       };
     }
 
@@ -218,8 +242,8 @@ function Sidebar({ activeSection, onSectionChange }) {
       'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
       'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
-      'Workspace Settings': true, // Workspace settings should be accessible to specific roles
-      'Profile': true // Profile is available to all users
+      'Workspace Settings': true,
+      'Profile': true
     };
   }, [hasPermission, MODULES, isSOLOHQUser, isCompanyOwner, currentUser?.role]);
 
@@ -231,684 +255,635 @@ function Sidebar({ activeSection, onSectionChange }) {
   // Force re-render when permissions change to prevent glitches
   useEffect(() => {
     // This effect will trigger when permissionUpdateTrigger changes
-    // causing the component to re-render with updated permissions
   }, [permissionUpdateTrigger]);
 
-  const toggleEmailMarketing = () => {
-    setEmailMarketingExpanded(!emailMarketingExpanded);
-  };
+  const toggleHrManagement = () => setHrManagementExpanded(!hrManagementExpanded);
+  const toggleFinanceManagement = () => setFinanceManagementExpanded(!financeManagementExpanded);
+  const toggleInternalPolicies = () => setInternalPoliciesExpanded(!internalPoliciesExpanded);
+  const toggleSettingsConfig = () => setSettingsConfigExpanded(!settingsConfigExpanded);
+  const toggleLeadManagement = () => setLeadManagementExpanded(!leadManagementExpanded);
+  const toggleSocialMedia = () => setSocialMediaExpanded(!socialMediaExpanded);
 
-  const toggleHrManagement = () => {
-    setHrManagementExpanded(!hrManagementExpanded);
-  };
 
-  const toggleFinanceManagement = () => {
-    setFinanceManagementExpanded(!financeManagementExpanded);
-  };
 
-  const toggleInternalPolicies = () => {
-    setInternalPoliciesExpanded(!internalPoliciesExpanded);
-  };
 
-  const toggleSettingsConfig = () => {
-    setSettingsConfigExpanded(!settingsConfigExpanded);
-  };
-
-  const toggleLeadManagement = () => {
-    setLeadManagementExpanded(!leadManagementExpanded);
-  };
-
-  const toggleSocialMedia = () => {
-    setSocialMediaExpanded(!socialMediaExpanded);
-  };
-
-  // All sidebar items for search functionality
-  const allSidebarItems = [
-    // Dashboard
-    { name: 'Overview', section: 'overview', category: 'Dashboard' },
-    { name: 'Task Manager', section: 'task-manager', category: 'Dashboard' },
-    { name: 'Notes', section: 'notes', category: 'Dashboard' },
-
-    // Data Center
-    { name: 'Company Data', section: 'company-data', category: 'Data Center' },
-    { name: 'Contacts', section: 'client-leads', category: 'Data Center' },
-
-    // Lead Management
-    { name: 'Leads Flow', section: 'leads-flow', category: 'Lead Management' },
-    { name: 'Leads Metrics', section: 'leads-metrics', category: 'Lead Management' },
-
-    // Digital Media Management
-    { name: 'Meta Ads', section: 'meta-ads', category: 'Digital Media Management' },
-    { name: 'Content Calendar', section: 'content-calendar', category: 'Digital Media Management' },
-    { name: 'LinkedIn', section: 'linkedin', category: 'Digital Media Management' },
-    { name: 'Credentials', section: 'sm-credentials', category: 'Digital Media Management' },
-
-    // Projects
-    { name: 'Client / Projects', section: 'our-projects', category: 'Projects' },
-    { name: 'Products', section: 'products', category: 'Projects' },
-
-    // Team Communication
-    { name: 'Message', section: 'message', category: 'Team Communication' },
-
-    // Marketing
-    { name: 'Email Marketing', section: 'email-marketing', category: 'Marketing' },
-    { name: 'Campaign Setup', section: 'campaign-setup', category: 'Marketing' },
-    { name: 'Create Email Template', section: 'email-template', category: 'Marketing' },
-    { name: 'Analytics & Reporting', section: 'email-analytics', category: 'Marketing' },
-    { name: 'Whatsapp', section: 'whatsapp-marketing', category: 'Marketing' },
-
-    // HR Management
-    { name: 'HR Management', section: 'hr-management-sub', category: 'HR Management' },
-    { name: 'HR Overview', section: 'hr-overview', category: 'HR Management' },
-    { name: 'Interview Management', section: 'interview-management', category: 'HR Management' },
-    { name: 'Letter Templates', section: 'letter-templates', category: 'HR Management' },
-    { name: 'Employees', section: 'employees', category: 'HR Management' },
-    { name: 'Employee Details', section: 'employee-details', category: 'HR Management' },
-    { name: 'Holiday Calendar', section: 'holiday-calendar', category: 'HR Management' },
-    { name: 'Incentives', section: 'incentives', category: 'HR Management' },
-
-    // Finance Management
-    { name: 'Invoice Management', section: 'invoice-management', category: 'Finance Management' },
-    { name: 'Billing & Payments', section: 'billing-payments', category: 'Finance Management' },
-    { name: 'Payment Records', section: 'payment-records', category: 'Finance Management' },
-    { name: 'Expense Management', section: 'expense-management', category: 'Finance Management' },
-
-    // Internal Policies
-    { name: 'Company Policies', section: 'company-policies', category: 'Internal Policies' },
-    { name: 'Company Handbook', section: 'company-handbook', category: 'Internal Policies' },
-
-    // Settings & Configuration
-    { name: 'Noxtm Bot Setup', section: 'noxtm-bot-admin', category: 'Settings & Configuration' },
-    { name: 'Manage Integrations', section: 'manage-integrations', category: 'Settings & Configuration' },
-    { name: 'Users & Roles', section: 'users-roles', category: 'Settings & Configuration' },
-    { name: 'Credentials', section: 'credentials', category: 'Settings & Configuration' },
-    { name: 'Visitor Analytics', section: 'visitor-analytics', category: 'Settings & Configuration' },
-
-    // Profile
-    // Workspace Settings (Separate Section) - Profile Settings integrated here
-    { name: 'Workspace Settings', section: 'workspace-settings', category: 'Workspace Settings' },
-  ];
-
-  // Filter items based on search query and permissions
-  const filteredItems = searchQuery.trim() === "" ? [] : allSidebarItems.filter(item => {
-    if (!hasPermissionForSection(item.category)) {
-      return false;
-    }
-    return item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleSearchItemClick = (section) => {
-    onSectionChange(section);
-    setSearchQuery(''); // Clear search after selection
-  };
-
-  // Keyboard shortcut handler (Cmd+K / Ctrl+K)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        document.querySelector('.search-input')?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Detect if user is on Mac
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
   return (
-    <div className="dashboard-sidebar">
-      {/* Search */}
-      <div className="sidebar-search" onClick={() => document.querySelector('.search-input')?.focus()}>
-        <FiSearch className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="search-input"
-          value={searchQuery}
-          onChange={handleSearchChange}
-        />
-        {!searchQuery && <kbd className="search-shortcut">{isMac ? '⌘' : 'Ctrl'} K</kbd>}
-      </div>
-
-      {/* Search Results */}
-      {searchQuery.trim() !== '' && (
-        <div className="search-results">
-          {filteredItems.length > 0 ? (
-            <>
-              <div className="search-results-header">
-                Search Results ({filteredItems.length})
-              </div>
-              {filteredItems.map((item, index) => (
-                <div
-                  key={index}
-                  className={`search-result-item ${activeSection === item.section ? 'active' : ''}`}
-                  onClick={() => handleSearchItemClick(item.section)}
-                >
-                  <div className="search-result-name">{item.name}</div>
-                  <div className="search-result-category">{item.category}</div>
-                </div>
-              ))}
-            </>
+    <UISidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="sidebar-header-row">
+          {!isCollapsed ? (
+            <div className="sidebar-business-name">
+              <span className="sidebar-business-name-text">
+                {businessName || currentUser?.companyName || 'Workspace'}
+              </span>
+            </div>
           ) : (
-            <div className="no-search-results">
-              No results found for "{searchQuery}"
-            </div>
+            <div className="sidebar-business-name-collapsed" />
           )}
+          <SidebarTrigger>
+            <img
+              src={splitViewIcon}
+              alt="Toggle sidebar"
+              className="sidebar-split-view-icon"
+            />
+          </SidebarTrigger>
         </div>
-      )}
+      </SidebarHeader>
 
-      {/* Always show regular menu, hide it when search has results */}
-      {(!searchQuery.trim() || !filteredItems.length) && (
-        <>
-          {/* Dashboard Section */}
-          {hasPermissionForSection('Dashboard') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">DASHBOARD</h4>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'overview' ? 'active' : ''}`}
-                onClick={() => onSectionChange('overview')}
-              >
-                <FiGrid className="sidebar-icon" />
-                <span>Overview</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'task-manager' ? 'active' : ''}`}
-                onClick={() => onSectionChange('task-manager')}
-              >
-                <FiTarget className="sidebar-icon" />
-                <span>Task Manager</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'notes' ? 'active' : ''}`}
-                onClick={() => onSectionChange('notes')}
-              >
-                <FiFileText className="sidebar-icon" />
-                <span>Notes</span>
-              </div>
-            </div>
-          )}
+      <SidebarContent>
+        {/* Regular menu */}
+        {(
+          <>
+            {/* Dashboard Section */}
+            {hasPermissionForSection('Dashboard') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>DASHBOARD</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'overview'}
+                        tooltip="Overview"
+                        onClick={() => onSectionChange('overview')}
+                      >
+                        <FiGrid className="sidebar-icon" />
+                        <span>Overview</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'task-manager'}
+                        tooltip="Task Manager"
+                        onClick={() => onSectionChange('task-manager')}
+                      >
+                        <FiTarget className="sidebar-icon" />
+                        <span>Task Manager</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'notes'}
+                        tooltip="Notes"
+                        onClick={() => onSectionChange('notes')}
+                      >
+                        <FiFileText className="sidebar-icon" />
+                        <span>Notes</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-          {/* Data Center Section */}
-          {hasPermissionForSection('Data Center') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">DATA CENTER</h4>
+            {/* Data Center Section */}
+            {hasPermissionForSection('Data Center') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>DATA CENTER</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'company-data'}
+                        tooltip="Company Data"
+                        onClick={() => onSectionChange('company-data')}
+                      >
+                        <FiPackage className="sidebar-icon" />
+                        <span>Company Data</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
 
-              {/* Company Data */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'company-data' ? 'active' : ''}`}
-                  onClick={() => onSectionChange('company-data')}
-                >
-                  <FiPackage className="sidebar-icon" />
-                  <span>Company Data</span>
-                </div>
-              </div>
+                    {/* Lead Management (expandable) */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'lead-management'}
+                        tooltip="Lead Management"
+                        onClick={toggleLeadManagement}
+                      >
+                        <FiTarget className="sidebar-icon" />
+                        <span>Lead Management</span>
+                        {leadManagementExpanded ?
+                          <FiChevronDown className="sidebar-chevron" /> :
+                          <FiChevronRight className="sidebar-chevron" />
+                        }
+                      </SidebarMenuButton>
 
-              {/* Lead Management Section */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'lead-management' ? 'active' : ''}`}
-                  onClick={toggleLeadManagement}
-                >
-                  <FiTarget className="sidebar-icon" />
-                  <span>Lead Management</span>
-                  {leadManagementExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
+                      {leadManagementExpanded && !isCollapsed && (
+                        <div className="sidebar-submenu">
+                          <SidebarMenuButton
+                            isActive={activeSection === 'leads-flow'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('leads-flow')}
+                          >
+                            <FiTrendingUp className="sidebar-icon" />
+                            <span>Leads Flow</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'leads-metrics'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('leads-metrics')}
+                          >
+                            <FiFolder className="sidebar-icon" />
+                            <span>Leads Metrics</span>
+                          </SidebarMenuButton>
+                        </div>
+                      )}
+                    </SidebarMenuItem>
 
-                {leadManagementExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'leads-flow' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('leads-flow')}
-                    >
-                      <FiTrendingUp className="sidebar-icon" />
-                      <span>Leads Flow</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'leads-metrics' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('leads-metrics')}
-                    >
-                      <FiFolder className="sidebar-icon" />
-                      <span>Leads Metrics</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+                    {/* Contacts */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'client-leads'}
+                        tooltip="Contacts"
+                        onClick={() => onSectionChange('client-leads')}
+                      >
+                        <FiUserCheck className="sidebar-icon" />
+                        <span>Contacts</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
 
-              {/* Contacts */}
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'client-leads' ? 'active' : ''}`}
-                onClick={() => onSectionChange('client-leads')}
-              >
-                <FiUserCheck className="sidebar-icon" />
-                <span>Contacts</span>
-              </div>
+                    {/* Client Management */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'client-management'}
+                        tooltip="Client Management"
+                        onClick={() => onSectionChange('client-management')}
+                      >
+                        <FiUsers className="sidebar-icon" />
+                        <span>Client Management</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-              {/* Client Management Section */}
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'client-management' ? 'active' : ''}`}
-                  onClick={() => onSectionChange('client-management')}
-                >
-                  <FiUsers className="sidebar-icon" />
-                  <span>Client Management</span>
-                </div>
-              </div>
-            </div>
-          )}
+            {/* Projects Section */}
+            {hasPermissionForSection('Projects') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>PROJECTS</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'our-projects'}
+                        tooltip="Client / Projects"
+                        onClick={() => onSectionChange('our-projects')}
+                      >
+                        <FiFolder className="sidebar-icon" />
+                        <span>Client / Projects</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'products'}
+                        tooltip="Products"
+                        onClick={() => onSectionChange('products')}
+                      >
+                        <FiPackage className="sidebar-icon" />
+                        <span>Products</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-          {/* Projects Section */}
-          {hasPermissionForSection('Projects') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">PROJECTS</h4>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'our-projects' ? 'active' : ''}`}
-                onClick={() => onSectionChange('our-projects')}
-              >
-                <FiFolder className="sidebar-icon" />
-                <span>Client / Projects</span>
-              </div>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'products' ? 'active' : ''}`}
-                onClick={() => onSectionChange('products')}
-              >
-                <FiPackage className="sidebar-icon" />
-                <span>Products</span>
-              </div>
-            </div>
-          )}
-
-          {/* Team Communication Section */}
-          {hasPermissionForSection('Team Communication') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">TEAM COMMUNICATION</h4>
-              {!isSOLOHQUser && (
-                <>
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'message' ? 'active' : ''}`}
-                    onClick={() => {
-                      onSectionChange('message');
-                    }}
-                  >
-                    <FiMessageCircle className="sidebar-icon" />
-                    <span>Message</span>
-                    {messageUnreadCount > 0 && (
-                      <span className="sidebar-message-badge">{messageUnreadCount > 99 ? '99+' : messageUnreadCount}</span>
+            {/* Team Communication Section */}
+            {hasPermissionForSection('Team Communication') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>TEAM COMMUNICATION</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {!isSOLOHQUser && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          isActive={activeSection === 'message'}
+                          tooltip="Message"
+                          onClick={() => onSectionChange('message')}
+                        >
+                          <FiMessageCircle className="sidebar-icon" />
+                          <span>Message</span>
+                          {messageUnreadCount > 0 && (
+                            <span className="sidebar-message-badge">
+                              {messageUnreadCount > 99 ? '99+' : messageUnreadCount}
+                            </span>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     )}
-                  </div>
-                </>
-              )}
 
-
-              {/* Open Mail App - Redirects to mail app with auth token in same tab */}
-              <a
-                href={process.env.REACT_APP_MAIL_URL || "https://mail.noxtm.com"}
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Get token from localStorage
-                  const token = localStorage.getItem('token');
-
-                  if (!token) {
-                    alert('Authentication token not found. Please refresh the page and try again.');
-                    return;
-                  }
-
-                  // Pass token as URL parameter so mail app can use it immediately
-                  const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
-                  const mailUrl = `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`;
-
-                  console.log('[MAIL] Opening mail app in same tab');
-                  console.log('[MAIL] Token being passed:', token.substring(0, 20) + '...');
-
-                  // Open in same tab
-                  window.location.href = mailUrl;
-                }}
-                className="Dash-noxtm-sidebar-item"
-                style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
-              >
-                <FiMail className="sidebar-icon" />
-                <span>Open Mail App</span>
-              </a>
-
-
-            </div>
-          )}
-
-          {/* Digital Media Management Section */}
-          {hasPermissionForSection('Digital Media Management') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">DIGITAL MEDIA MANAGEMENT</h4>
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'social-media' ? 'active' : ''}`}
-                  onClick={toggleSocialMedia}
-                >
-                  <FiGlobe className="sidebar-icon" />
-                  <span>Social Media</span>
-                  {socialMediaExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {socialMediaExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'meta-ads' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('meta-ads')}
-                    >
-                      <FiTarget className="sidebar-icon" />
-                      <span>Meta Ads</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'content-calendar' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('content-calendar')}
-                    >
-                      <FiGrid className="sidebar-icon" />
-                      <span>Content Calendar</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'linkedin' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('linkedin')}
-                    >
-                      <FiLinkedin className="sidebar-icon" />
-                      <span>LinkedIn</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'sm-credentials' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('sm-credentials')}
-                    >
-                      <FiKey className="sidebar-icon" />
-                      <span>Credentials</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Marketing Section */}
-          {hasPermissionForSection('Marketing') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">MARKETING</h4>
-
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'whatsapp-marketing' ? 'active' : ''}`}
-                onClick={() => onSectionChange('whatsapp-marketing')}
-              >
-                <FiMessageCircle className="sidebar-icon" />
-                <span>Whatsapp</span>
-              </div>
-            </div>
-          )}
-
-
-          {/* HR Management Section */}
-          {hasPermissionForSection('HR Management') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">HR MANAGEMENT</h4>
-
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'hr-management' ? 'active' : ''}`}
-                  onClick={toggleHrManagement}
-                >
-                  <FiUserCheck className="sidebar-icon" />
-                  <span>HR Management</span>
-                  {hrManagementExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {hrManagementExpanded && (
-                  <div className="sidebar-submenu">
-                    {/* HR Overview - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'hr-overview' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('hr-overview')}
-                    >
-                      <span>HR Overview</span>
-                    </div>
-
-                    {/* Interview Management - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'interview-management' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('interview-management')}
-                    >
-                      <span>Interview Management</span>
-                    </div>
-
-                    {/* Letter Templates - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'letter-templates' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('letter-templates')}
-                    >
-                      <span>Letter Templates</span>
-                    </div>
-
-                    {/* Employee Details - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'employee-details' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('employee-details')}
-                    >
-                      <span>Employee Details</span>
-                    </div>
-
-                    {/* Holiday Calendar - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'holiday-calendar' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('holiday-calendar')}
-                    >
-                      <span>Holiday Calendar</span>
-                    </div>
-
-                    {/* Incentives - Direct link */}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'incentives' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('incentives')}
-                    >
-                      <span>Incentives</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Finance Management Section */}
-          {hasPermissionForSection('Finance Management') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">FINANCE MANAGEMENT</h4>
-
-              {isSOLOHQUser ? (
-                // SOLOHQ users see only specific items directly (no expandable menu)
-                <>
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'invoice-management' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('invoice-management')}
-                  >
-                    <FiFileText className="sidebar-icon" />
-                    <span>Invoice Management</span>
-                  </div>
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'billing-payments' ? 'active' : ''}`}
-                    onClick={() => onSectionChange('billing-payments')}
-                  >
-                    <FiDollarSign className="sidebar-icon" />
-                    <span>Billing & Payments</span>
-                  </div>
-                </>
-              ) : (
-                // Other users see the full expandable menu
-                <div className="sidebar-item-container">
-                  <div
-                    className={`Dash-noxtm-sidebar-item ${activeSection === 'finance-management' ? 'active' : ''}`}
-                    onClick={toggleFinanceManagement}
-                  >
-                    <FiDollarSign className="sidebar-icon" />
-                    <span>Finance Management</span>
-                    {financeManagementExpanded ?
-                      <FiChevronDown className="sidebar-chevron" /> :
-                      <FiChevronRight className="sidebar-chevron" />
-                    }
-                  </div>
-
-                  {financeManagementExpanded && (
-                    <div className="sidebar-submenu">
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'invoice-management' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('invoice-management')}
+                    {/* Open Mail App */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Open Mail App"
+                        onClick={() => {
+                          const token = localStorage.getItem('token');
+                          if (!token) {
+                            alert('Authentication token not found. Please refresh the page and try again.');
+                            return;
+                          }
+                          const mailBaseUrl = process.env.REACT_APP_MAIL_URL || 'https://mail.noxtm.com';
+                          const mailUrl = `${mailBaseUrl}?auth_token=${encodeURIComponent(token)}`;
+                          console.log('[MAIL] Opening mail app in same tab');
+                          console.log('[MAIL] Token being passed:', token.substring(0, 20) + '...');
+                          window.location.href = mailUrl;
+                        }}
                       >
-                        <span>Invoice Management</span>
-                      </div>
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'billing-payments' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('billing-payments')}
+                        <FiMail className="sidebar-icon" />
+                        <span>Open Mail App</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Digital Media Management Section */}
+            {hasPermissionForSection('Digital Media Management') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>DIGITAL MEDIA MANAGEMENT</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'social-media'}
+                        tooltip="Social Media"
+                        onClick={toggleSocialMedia}
                       >
-                        <span>Billing & Payments</span>
-                      </div>
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'payment-records' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('payment-records')}
+                        <FiGlobe className="sidebar-icon" />
+                        <span>Social Media</span>
+                        {socialMediaExpanded ?
+                          <FiChevronDown className="sidebar-chevron" /> :
+                          <FiChevronRight className="sidebar-chevron" />
+                        }
+                      </SidebarMenuButton>
+
+                      {socialMediaExpanded && !isCollapsed && (
+                        <div className="sidebar-submenu">
+                          <SidebarMenuButton
+                            isActive={activeSection === 'meta-ads'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('meta-ads')}
+                          >
+                            <FiTarget className="sidebar-icon" />
+                            <span>Meta Ads</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'content-calendar'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('content-calendar')}
+                          >
+                            <FiGrid className="sidebar-icon" />
+                            <span>Content Calendar</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'linkedin'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('linkedin')}
+                          >
+                            <FiLinkedin className="sidebar-icon" />
+                            <span>LinkedIn</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'sm-credentials'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('sm-credentials')}
+                          >
+                            <FiKey className="sidebar-icon" />
+                            <span>Credentials</span>
+                          </SidebarMenuButton>
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+
+                    {/* Upload Files — Google Drive */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'drive-assets'}
+                        tooltip="Upload Files"
+                        onClick={() => onSectionChange('drive-assets')}
                       >
-                        <span>Payment Records</span>
-                      </div>
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'expense-management' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('expense-management')}
+                        <FiUploadCloud className="sidebar-icon" />
+                        <span>Upload Files</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Marketing Section */}
+            {hasPermissionForSection('Marketing') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>MARKETING</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'whatsapp-marketing'}
+                        tooltip="Whatsapp"
+                        onClick={() => onSectionChange('whatsapp-marketing')}
                       >
-                        <span>Expense Management</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                        <FiMessageCircle className="sidebar-icon" />
+                        <span>Whatsapp</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-          {/* Internal Policies Section */}
-          {hasPermissionForSection('Internal Policies') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">INTERNAL POLICIES</h4>
-
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'internal-policies' ? 'active' : ''}`}
-                  onClick={toggleInternalPolicies}
-                >
-                  <FiShield className="sidebar-icon" />
-                  <span>Internal Policies</span>
-                  {internalPoliciesExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {internalPoliciesExpanded && (
-                  <div className="sidebar-submenu">
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'company-policies' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('company-policies')}
-                    >
-                      <span>Company Policies</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'company-handbook' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('company-handbook')}
-                    >
-                      <span>Company Handbook</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Settings & Configuration Section */}
-          {hasPermissionForSection('Settings & Configuration') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">SETTINGS & CONFIGURATION</h4>
-
-              <div className="sidebar-item-container">
-                <div
-                  className={`Dash-noxtm-sidebar-item ${activeSection === 'settings-configuration' ? 'active' : ''}`}
-                  onClick={toggleSettingsConfig}
-                >
-                  <FiSettings className="sidebar-icon" />
-                  <span>Settings & Configuration</span>
-                  {settingsConfigExpanded ?
-                    <FiChevronDown className="sidebar-chevron" /> :
-                    <FiChevronRight className="sidebar-chevron" />
-                  }
-                </div>
-
-                {settingsConfigExpanded && (
-                  <div className="sidebar-submenu">
-                    {currentUser?.role === 'Admin' && (
-                      <div
-                        className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'noxtm-bot-admin' ? 'active' : ''}`}
-                        onClick={() => onSectionChange('noxtm-bot-admin')}
+            {/* HR Management Section */}
+            {hasPermissionForSection('HR Management') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>HR MANAGEMENT</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'hr-management'}
+                        tooltip="HR Management"
+                        onClick={toggleHrManagement}
                       >
-                        <span>Noxtm Bot Management</span>
-                      </div>
+                        <FiUserCheck className="sidebar-icon" />
+                        <span>HR Management</span>
+                        {hrManagementExpanded ?
+                          <FiChevronDown className="sidebar-chevron" /> :
+                          <FiChevronRight className="sidebar-chevron" />
+                        }
+                      </SidebarMenuButton>
+
+                      {hrManagementExpanded && !isCollapsed && (
+                        <div className="sidebar-submenu">
+                          <SidebarMenuButton
+                            isActive={activeSection === 'hr-overview'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('hr-overview')}
+                          >
+                            <span>HR Overview</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'interview-management'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('interview-management')}
+                          >
+                            <span>Interview Management</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'letter-templates'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('letter-templates')}
+                          >
+                            <span>Letter Templates</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'employee-details'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('employee-details')}
+                          >
+                            <span>Employee Details</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'holiday-calendar'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('holiday-calendar')}
+                          >
+                            <span>Holiday Calendar</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'incentives'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('incentives')}
+                          >
+                            <span>Incentives</span>
+                          </SidebarMenuButton>
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Finance Management Section */}
+            {hasPermissionForSection('Finance Management') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>FINANCE MANAGEMENT</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {isSOLOHQUser ? (
+                      <>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'invoice-management'}
+                            tooltip="Invoice Management"
+                            onClick={() => onSectionChange('invoice-management')}
+                          >
+                            <FiFileText className="sidebar-icon" />
+                            <span>Invoice Management</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'billing-payments'}
+                            tooltip="Billing & Payments"
+                            onClick={() => onSectionChange('billing-payments')}
+                          >
+                            <FiDollarSign className="sidebar-icon" />
+                            <span>Billing & Payments</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      </>
+                    ) : (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          isActive={activeSection === 'finance-management'}
+                          tooltip="Finance Management"
+                          onClick={toggleFinanceManagement}
+                        >
+                          <FiDollarSign className="sidebar-icon" />
+                          <span>Finance Management</span>
+                          {financeManagementExpanded ?
+                            <FiChevronDown className="sidebar-chevron" /> :
+                            <FiChevronRight className="sidebar-chevron" />
+                          }
+                        </SidebarMenuButton>
+
+                        {financeManagementExpanded && !isCollapsed && (
+                          <div className="sidebar-submenu">
+                            <SidebarMenuButton
+                              isActive={activeSection === 'invoice-management'}
+                              className="sidebar-subitem"
+                              onClick={() => onSectionChange('invoice-management')}
+                            >
+                              <span>Invoice Management</span>
+                            </SidebarMenuButton>
+                            <SidebarMenuButton
+                              isActive={activeSection === 'billing-payments'}
+                              className="sidebar-subitem"
+                              onClick={() => onSectionChange('billing-payments')}
+                            >
+                              <span>Billing & Payments</span>
+                            </SidebarMenuButton>
+                            <SidebarMenuButton
+                              isActive={activeSection === 'payment-records'}
+                              className="sidebar-subitem"
+                              onClick={() => onSectionChange('payment-records')}
+                            >
+                              <span>Payment Records</span>
+                            </SidebarMenuButton>
+                            <SidebarMenuButton
+                              isActive={activeSection === 'expense-management'}
+                              className="sidebar-subitem"
+                              onClick={() => onSectionChange('expense-management')}
+                            >
+                              <span>Expense Management</span>
+                            </SidebarMenuButton>
+                          </div>
+                        )}
+                      </SidebarMenuItem>
                     )}
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'manage-integrations' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('manage-integrations')}
-                    >
-                      <span>Manage Integrations</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'users-roles' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('users-roles')}
-                    >
-                      <span>Users & Roles</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'credentials' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('credentials')}
-                    >
-                      <span>Credentials</span>
-                    </div>
-                    <div
-                      className={`Dash-noxtm-sidebar-item sidebar-subitem ${activeSection === 'visitor-analytics' ? 'active' : ''}`}
-                      onClick={() => onSectionChange('visitor-analytics')}
-                    >
-                      <span>Visitor Analytics</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-          {/* Workspace Settings Section - Now includes Profile */}
-          {hasPermissionForSection('Workspace Settings') && (
-            <div className="sidebar-section">
-              <h4 className="Dash-noxtm-sidebar-section-title">WORKSPACE</h4>
-              <div
-                className={`Dash-noxtm-sidebar-item ${activeSection === 'workspace-settings' ? 'active' : ''}`}
-                onClick={() => onSectionChange('workspace-settings')}
-              >
-                <FiSettings className="sidebar-icon" />
-                <span>Workspace Settings</span>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            {/* Internal Policies Section */}
+            {hasPermissionForSection('Internal Policies') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>INTERNAL POLICIES</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'internal-policies'}
+                        tooltip="Internal Policies"
+                        onClick={toggleInternalPolicies}
+                      >
+                        <FiShield className="sidebar-icon" />
+                        <span>Internal Policies</span>
+                        {internalPoliciesExpanded ?
+                          <FiChevronDown className="sidebar-chevron" /> :
+                          <FiChevronRight className="sidebar-chevron" />
+                        }
+                      </SidebarMenuButton>
+
+                      {internalPoliciesExpanded && !isCollapsed && (
+                        <div className="sidebar-submenu">
+                          <SidebarMenuButton
+                            isActive={activeSection === 'company-policies'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('company-policies')}
+                          >
+                            <span>Company Policies</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'company-handbook'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('company-handbook')}
+                          >
+                            <span>Company Handbook</span>
+                          </SidebarMenuButton>
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Settings & Configuration Section */}
+            {hasPermissionForSection('Settings & Configuration') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>SETTINGS & CONFIGURATION</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'settings-configuration'}
+                        tooltip="Settings & Configuration"
+                        onClick={toggleSettingsConfig}
+                      >
+                        <FiSettings className="sidebar-icon" />
+                        <span>Settings & Configuration</span>
+                        {settingsConfigExpanded ?
+                          <FiChevronDown className="sidebar-chevron" /> :
+                          <FiChevronRight className="sidebar-chevron" />
+                        }
+                      </SidebarMenuButton>
+
+                      {settingsConfigExpanded && !isCollapsed && (
+                        <div className="sidebar-submenu">
+                          {currentUser?.role === 'Admin' && (
+                            <SidebarMenuButton
+                              isActive={activeSection === 'noxtm-bot-admin'}
+                              className="sidebar-subitem"
+                              onClick={() => onSectionChange('noxtm-bot-admin')}
+                            >
+                              <span>Noxtm Bot Management</span>
+                            </SidebarMenuButton>
+                          )}
+                          <SidebarMenuButton
+                            isActive={activeSection === 'manage-integrations'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('manage-integrations')}
+                          >
+                            <span>Manage Integrations</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'users-roles'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('users-roles')}
+                          >
+                            <span>Users & Roles</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'credentials'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('credentials')}
+                          >
+                            <span>Credentials</span>
+                          </SidebarMenuButton>
+                          <SidebarMenuButton
+                            isActive={activeSection === 'visitor-analytics'}
+                            className="sidebar-subitem"
+                            onClick={() => onSectionChange('visitor-analytics')}
+                          >
+                            <span>Visitor Analytics</span>
+                          </SidebarMenuButton>
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Workspace Settings Section */}
+            {hasPermissionForSection('Workspace Settings') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>WORKSPACE</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'workspace-settings'}
+                        tooltip="Workspace Settings"
+                        onClick={() => onSectionChange('workspace-settings')}
+                      >
+                        <FiSettings className="sidebar-icon" />
+                        <span>Workspace Settings</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </>
+        )}
+      </SidebarContent>
+    </UISidebar>
   );
 }
 

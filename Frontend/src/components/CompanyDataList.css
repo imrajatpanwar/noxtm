@@ -2049,3 +2049,61 @@
   text-align: center;
   margin: 0;
 }
+
+/* View mode toggle (My Records / All Records) */
+.cd-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.cd-view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  background: transparent;
+  color: #71717a;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.cd-view-toggle-btn:hover {
+  color: #27272a;
+}
+
+.cd-view-toggle-btn-active {
+  background: #fff;
+  color: #09090b;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.06);
+}
+
+.cd-view-toggle-btn-active:hover {
+  color: #09090b;
+}
+
+/* "Created by" badge for records owned by others */
+.cd-created-by-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #f4f4f5;
+  color: #71717a;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
+  white-space: nowrap;
+}

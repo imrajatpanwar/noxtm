@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import { updateCurrentPage } from '../utils/fingerprint';
+import { Skeleton } from './ui/skeleton';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import TaskManager from './TaskManager';
@@ -49,13 +50,55 @@ import SocialMediaCalendar from './SocialMediaCalendar';
 import SocialMediaCredentials from './SocialMediaCredentials';
 import VisitorAnalytics from './VisitorAnalytics';
 import NoxtmBotAdmin from './NoxtmBotAdmin';
+import NoxtmAssistant from './NoxtmAssistant';
+import GoogleDriveManager from './GoogleDriveManager';
+import { SidebarProvider, SidebarInset } from './ui/sidebar';
 import './Dashboard.css';
+
+const ASSISTANT_MIN_WIDTH = 280;
+const ASSISTANT_MAX_WIDTH = 720;
+const ASSISTANT_DEFAULT_WIDTH = 340;
 
 function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const { currentUser } = useRole();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [assistantWidth, setAssistantWidth] = useState(() => {
+    const saved = parseInt(localStorage.getItem('noxtm-assistant-width'), 10);
+    return Number.isFinite(saved) && saved >= ASSISTANT_MIN_WIDTH && saved <= ASSISTANT_MAX_WIDTH
+      ? saved
+      : ASSISTANT_DEFAULT_WIDTH;
+  });
+  const [isResizingAssistant, setIsResizingAssistant] = useState(false);
+
+  useEffect(() => {
+    if (!isResizingAssistant) return undefined;
+    const handleMove = (e) => {
+      const next = Math.min(
+        ASSISTANT_MAX_WIDTH,
+        Math.max(ASSISTANT_MIN_WIDTH, window.innerWidth - e.clientX)
+      );
+      setAssistantWidth(next);
+    };
+    const handleUp = () => {
+      setIsResizingAssistant(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [isResizingAssistant]);
+
+  useEffect(() => {
+    localStorage.setItem('noxtm-assistant-width', String(assistantWidth));
+  }, [assistantWidth]);
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedTradeShow, setSelectedTradeShow] = useState(null);
@@ -310,6 +353,8 @@ function Dashboard({ user, onLogout }) {
         return <VisitorAnalytics />;
       case 'noxtm-bot-admin':
         return <NoxtmBotAdmin />;
+      case 'drive-assets':
+        return <GoogleDriveManager />;
       default:
         return (
           <div className="dashboard-card">
@@ -322,42 +367,85 @@ function Dashboard({ user, onLogout }) {
 
   if (loading) {
     return (
-      <div className="dashboard-container">
-        <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
-        <div className="dashboard-main">
-          <div className="dashboard-content">
-            <div className="dashboard-content-wrapper">
-              <h1>Dashboard</h1>
-              <p>Loading...</p>
+      <SidebarProvider>
+        <div className="dashboard-container">
+          <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
+          <SidebarInset>
+            <div className="dashboard-content">
+              <div className="dashboard-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+                <Skeleton className="tw-h-8 tw-w-48" />
+                <Skeleton className="tw-h-4 tw-w-full" />
+                <Skeleton className="tw-h-4 tw-w-full" />
+                <Skeleton className="tw-h-4 tw-w-3/4" />
+              </div>
             </div>
-          </div>
+          </SidebarInset>
         </div>
-      </div>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="dashboard-container">
-      <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
+    <SidebarProvider>
+      <div className="dashboard-container">
+        <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
-      {/* Main Content */}
-      <div className="dashboard-main">
-        <div className="dashboard-content">
-          {activeSection === 'message' ? (
-            renderContent()
-          ) : (
-            <div className="dashboard-content-wrapper">
-              {renderContent()}
+        {/* Main Content — SidebarInset is a flex-1 <main> that auto-fills
+            the space freed when the sidebar collapses. Inside it, a horizontal
+            flex row places the section content on the left and the always-on
+            <NoxtmAssistant /> panel on the right, so the assistant renders on
+            every section (not just Overview). */}
+        <SidebarInset>
+          <div className="dashboard-inset-row" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, width: '100%' }}>
+            <div className="dashboard-content" style={{ flex: 1, minWidth: 0 }}>
+              {activeSection === 'message' ? (
+                renderContent()
+              ) : (
+                <div className="dashboard-content-wrapper">
+                  {renderContent()}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+            {/* Persistent Noxtm Assistant — visible on every section, user-resizable */}
+            <aside
+              className="dashboard-assistant-pane"
+              style={{ width: assistantWidth, flexShrink: 0, height: '100%', position: 'relative' }}
+            >
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize assistant panel"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsResizingAssistant(true);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: -3,
+                  width: 6,
+                  height: '100%',
+                  cursor: 'col-resize',
+                  zIndex: 10,
+                  background: isResizingAssistant ? 'rgba(59, 130, 246, 0.35)' : 'transparent',
+                  transition: 'background 120ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isResizingAssistant) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.18)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isResizingAssistant) e.currentTarget.style.background = 'transparent';
+                }}
+              />
+              <NoxtmAssistant />
+            </aside>
+          </div>
+        </SidebarInset>
+
+        {/* Mail Poller - silent background component for email notifications */}
+        <MailPoller />
       </div>
-
-      {/* Mail Poller - silent background component for email notifications */}
-      <MailPoller />
-
-
-    </div>
+    </SidebarProvider>
   );
 }
 

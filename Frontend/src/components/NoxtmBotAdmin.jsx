@@ -205,8 +205,17 @@ function NoxtmBotAdmin() {
   const [editingMemoryId, setEditingMemoryId] = useState(null);
   const [editingContent, setEditingContent] = useState('');
   const [editingCategory, setEditingCategory] = useState('instruction');
-  const [expandedUser, setExpandedUser] = useState(null);
+  const [expandedUsers, setExpandedUsers] = useState(() => new Set());
   const [userMemorySearch, setUserMemorySearch] = useState('');
+
+  const toggleExpandedUser = (userId) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -264,7 +273,27 @@ function NoxtmBotAdmin() {
   const fetchUserMemories = async () => {
     try {
       const res = await api.get('/noxtm-bot/memories/users');
-      if (res.data.success) setUserMemoryGroups(res.data.userGroups || []);
+      if (res.data.success) {
+        // Normalize backend response to a single internal shape. Tolerates:
+        //   { userGroups: [{userId,userName,userEmail,memories}] }  (legacy)
+        //   { userGroups: [{ user: {_id,name,email,avatar}, memories }] }  (new)
+        //   { users: [...] } or a plain array at res.data
+        const raw = res.data.userGroups
+          || res.data.users
+          || (Array.isArray(res.data) ? res.data : [])
+          || [];
+        const normalized = raw.map(g => {
+          const user = g.user || {};
+          return {
+            userId: g.userId || user._id || user.id || '',
+            userName: g.userName || user.name || user.fullName || 'Unknown user',
+            userEmail: g.userEmail || user.email || '',
+            userAvatar: g.userAvatar || user.avatar || '',
+            memories: Array.isArray(g.memories) ? g.memories : [],
+          };
+        });
+        setUserMemoryGroups(normalized);
+      }
     } catch (err) {
       console.error('[NoxtmBotAdmin] User memories fetch error:', err);
     }
@@ -385,15 +414,17 @@ function NoxtmBotAdmin() {
     try {
       const res = await api.delete(`/noxtm-bot/memories/users/${memoryId}`);
       if (res.data.success) {
-        setUserMemoryGroups(prev => prev.map(g => {
-          if (g.userId === userId) {
-            return { ...g, memories: g.memories.filter(m => m._id !== memoryId) };
-          }
-          return g;
-        }).filter(g => g.memories.length > 0));
+        setUserMemoryGroups(prev => prev
+          .map(g => (
+            g.userId === userId
+              ? { ...g, memories: g.memories.filter(m => m._id !== memoryId) }
+              : g
+          ))
+          .filter(g => g.memories.length > 0));
       }
     } catch (err) {
       console.error('[NoxtmBotAdmin] Delete user memory error:', err);
+      alert(err.response?.data?.message || 'Failed to delete memory');
     }
   };
 
@@ -421,13 +452,36 @@ function NoxtmBotAdmin() {
         <p style={subtitleStyle}>Configure your AI assistant's behavior, skills, API, and model</p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — first four are the primary group, the rest are secondary */}
       <div style={tabBarStyle}>
-        {['settings', 'skills', 'memories', 'advanced', 'analytics', 'api', 'plans'].map(tab => (
-          <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
-            {tab === 'settings' ? 'Settings' : tab === 'skills' ? 'Skills' : tab === 'memories' ? 'Memories' : tab === 'advanced' ? 'Advanced Skills' : tab === 'analytics' ? 'Analytics' : tab === 'api' ? 'API & Model' : 'Plans'}
-          </button>
-        ))}
+        {['settings', 'skills', 'memories', 'advanced', 'analytics', 'api', 'plans'].map((tab, idx) => {
+          const label = tab === 'settings' ? 'Settings'
+            : tab === 'skills' ? 'Skills'
+            : tab === 'memories' ? 'Memories'
+            : tab === 'advanced' ? 'Advanced Skills'
+            : tab === 'analytics' ? 'Analytics'
+            : tab === 'api' ? 'API & Model'
+            : 'Plans';
+          return (
+            <React.Fragment key={tab}>
+              {/* Visual divider between primary (first four) and secondary tabs */}
+              {idx === 4 && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: '1px',
+                    alignSelf: 'stretch',
+                    background: '#d4d4d8',
+                    margin: '4px 6px',
+                  }}
+                />
+              )}
+              <button style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
+                {label}
+              </button>
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Settings Tab */}
@@ -782,6 +836,21 @@ function NoxtmBotAdmin() {
       {/* Memories Tab */}
       {activeTab === 'memories' && (
         <>
+          {/* Inline help note explaining the two memory types */}
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: '10px',
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            marginBottom: '16px',
+            fontSize: '12px',
+            color: '#6b7280',
+            lineHeight: '1.6',
+          }}>
+            <div><strong style={{ color: '#111827' }}>Default Memories</strong> — instructions ALL users' bots will follow.</div>
+            <div><strong style={{ color: '#111827' }}>User Memories</strong> — auto-learned per-user context (admins see all users).</div>
+          </div>
+
           {/* Default Memories Section */}
           <div style={cardStyle}>
             <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>Admin Default Memories</h3>
@@ -919,7 +988,13 @@ function NoxtmBotAdmin() {
               const filtered = userMemoryGroups.filter(g => {
                 if (!userMemorySearch.trim()) return true;
                 const s = userMemorySearch.toLowerCase();
-                return g.userName.toLowerCase().includes(s) || g.userEmail.toLowerCase().includes(s);
+                const name = (g.userName || '').toLowerCase();
+                const email = (g.userEmail || '').toLowerCase();
+                // Also match if the search term appears in any memory content
+                const contentMatch = (g.memories || []).some(m =>
+                  (m.content || '').toLowerCase().includes(s)
+                );
+                return name.includes(s) || email.includes(s) || contentMatch;
               });
 
               if (filtered.length === 0) {
@@ -930,66 +1005,77 @@ function NoxtmBotAdmin() {
                 );
               }
 
-              return filtered.map(group => (
-                <div key={group.userId} style={{ borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '8px', overflow: 'hidden' }}>
-                  {/* User header (accordion) */}
-                  <button
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-                      background: expandedUser === group.userId ? '#f9fafb' : '#fff', border: 'none', cursor: 'pointer',
-                      textAlign: 'left', fontFamily: "'Switzer', sans-serif", transition: 'background 0.15s',
-                    }}
-                    onClick={() => setExpandedUser(expandedUser === group.userId ? null : group.userId)}
-                  >
-                    {/* Avatar */}
-                    <div style={{
-                      width: '32px', height: '32px', borderRadius: '50%', background: '#111827', color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px',
-                      fontWeight: 700, flexShrink: 0,
-                    }}>
-                      {group.userName?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{group.userName}</div>
-                      <div style={{ fontSize: '12px', color: '#9ca3af' }}>{group.userEmail}</div>
-                    </div>
-                    <span style={{
-                      fontSize: '11px', padding: '3px 10px', borderRadius: '12px', background: '#f3f4f6',
-                      color: '#6b7280', fontWeight: 600,
-                    }}>
-                      {group.memories.length} {group.memories.length === 1 ? 'memory' : 'memories'}
-                    </span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedUser === group.userId ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-
-                  {/* Expanded memories */}
-                  {expandedUser === group.userId && (
-                    <div style={{ padding: '4px 16px 12px', background: '#fafafa' }}>
-                      {group.memories.map(mem => (
-                        <div key={mem._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{mem.content}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                              <span style={{
-                                fontSize: '10px', padding: '1px 8px', borderRadius: '4px', fontWeight: 600,
-                                background: '#f3f4f6', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px',
-                              }}>{mem.category}</span>
-                              <span style={{ fontSize: '10px', color: '#d1d5db' }}>{mem.source === 'conversation' ? 'Auto' : 'Manual'}</span>
-                              <span style={{ fontSize: '10px', color: '#d1d5db' }}>{new Date(mem.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                          <button
-                            style={{ ...btnDanger, padding: '4px 10px', fontSize: '11px', flexShrink: 0 }}
-                            onClick={() => deleteUserMemory(mem._id, group.userId)}
-                          >Delete</button>
+              return filtered.map(group => {
+                const isOpen = expandedUsers.has(group.userId);
+                return (
+                  <div key={group.userId || group.userEmail} style={{ borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '8px', overflow: 'hidden' }}>
+                    {/* User header (accordion) */}
+                    <button
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                        background: isOpen ? '#f9fafb' : '#fff', border: 'none', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: "'Switzer', sans-serif", transition: 'background 0.15s',
+                      }}
+                      onClick={() => toggleExpandedUser(group.userId)}
+                    >
+                      {/* Avatar */}
+                      {group.userAvatar ? (
+                        <img
+                          src={group.userAvatar}
+                          alt={group.userName}
+                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '32px', height: '32px', borderRadius: '50%', background: '#111827', color: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px',
+                          fontWeight: 700, flexShrink: 0,
+                        }}>
+                          {group.userName?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ));
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{group.userName}</div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af' }}>{group.userEmail}</div>
+                      </div>
+                      <span style={{
+                        fontSize: '11px', padding: '3px 10px', borderRadius: '12px', background: '#f3f4f6',
+                        color: '#6b7280', fontWeight: 600,
+                      }}>
+                        {group.memories.length} {group.memories.length === 1 ? 'memory' : 'memories'}
+                      </span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+
+                    {/* Expanded memories */}
+                    {isOpen && (
+                      <div style={{ padding: '4px 16px 12px', background: '#fafafa' }}>
+                        {group.memories.map(mem => (
+                          <div key={mem._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{mem.content}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <span style={{
+                                  fontSize: '10px', padding: '1px 8px', borderRadius: '4px', fontWeight: 600,
+                                  background: '#f3f4f6', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px',
+                                }}>{mem.category}</span>
+                                <span style={{ fontSize: '10px', color: '#d1d5db' }}>{mem.source === 'conversation' ? 'Auto' : 'Manual'}</span>
+                                <span style={{ fontSize: '10px', color: '#d1d5db' }}>{new Date(mem.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <button
+                              style={{ ...btnDanger, padding: '4px 10px', fontSize: '11px', flexShrink: 0 }}
+                              onClick={() => deleteUserMemory(mem._id, group.userId)}
+                            >Delete</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
             })()}
           </div>
         </>

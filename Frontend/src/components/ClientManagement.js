@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import api from '../config/api';
 import QuoteGenerator from './QuoteGenerator';
+import { Skeleton } from './ui/skeleton';
 import './ClientManagement.css';
 
 const ClientManagement = () => {
@@ -231,9 +232,11 @@ const ClientManagement = () => {
       {/* Clients List */}
       <div className="cm-clients-list">
         {loading ? (
-          <div className="cm-loading">
-            <div className="cm-spinner" />
-            <p>Loading clients...</p>
+          <div className="cm-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
           </div>
         ) : filteredClients.length === 0 ? (
           <div className="cm-no-data">

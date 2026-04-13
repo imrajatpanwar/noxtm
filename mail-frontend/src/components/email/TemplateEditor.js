@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import api from '../../config/api';
 import './TemplateEditor.css';
 

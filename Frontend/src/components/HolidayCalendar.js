@@ -5,6 +5,7 @@ import {
   FiPlus, FiEdit2, FiTrash2, FiCalendar, FiChevronLeft, FiChevronRight,
   FiX, FiCheck, FiClock, FiAlertCircle, FiFileText
 } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './HolidayCalendar.css';
 
 const TODAY = new Date();
@@ -227,7 +228,12 @@ function HolidayCalendar() {
                 <span className="hcal-count-badge">{holidays.length}</span>
               </div>
               {loadingHol ? (
-                <div className="hcal-loading">Loading...</div>
+                <div className="hcal-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <Skeleton className="tw-h-8 tw-w-48" />
+                  <Skeleton className="tw-h-4 tw-w-full" />
+                  <Skeleton className="tw-h-4 tw-w-full" />
+                  <Skeleton className="tw-h-4 tw-w-3/4" />
+                </div>
               ) : holidays.length === 0 ? (
                 <div className="hcal-empty-msg"><FiCalendar /><span>No holidays this month</span></div>
               ) : (
@@ -335,7 +341,12 @@ function HolidayCalendar() {
           </div>
 
           {loadingLeaves ? (
-            <div className="hcal-loading">Loading…</div>
+            <div className="hcal-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="tw-h-8 tw-w-48" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-3/4" />
+            </div>
           ) : (
             <>
               <div className="hcal-section">

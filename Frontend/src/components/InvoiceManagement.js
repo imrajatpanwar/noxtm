@@ -7,6 +7,7 @@ import {
   FiPercent, FiFilter
 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import './InvoiceManagement.css';
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', CAD: 'C$' };
@@ -373,7 +374,12 @@ const InvoiceManagement = () => {
       {/* Table */}
       <div className="inv-table-wrap">
         {loading ? (
-          <div className="inv-loading"><div className="inv-spinner" /> Loading invoices...</div>
+          <div className="inv-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Skeleton className="tw-h-6 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
+          </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="inv-empty">
             <FiFileText />

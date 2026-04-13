@@ -6,6 +6,7 @@ import { useModules } from '../contexts/ModuleContext';
 import api from '../config/api';
 import exhibitosLogo from './assets/exhibitos.svg';
 import botgitLogo from './assets/botgit-logo.svg';
+import { Skeleton } from './ui/skeleton';
 import './WorkspaceSettings.css';
 
 const EMPTY_PERMISSIONS = Object.keys(PERMISSION_LABELS).reduce((acc, key) => {
@@ -1293,9 +1294,11 @@ function WorkspaceSettings({ user, onLogout }) {
           </div>
 
           {loadingMembers ? (
-            <div className="members-loading">
-              <div className="loading-spinner"></div>
-              <span>Loading members...</span>
+            <div className="members-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="tw-h-8 tw-w-48" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-3/4" />
             </div>
           ) : !user?.companyId ? (
             <div className="members-empty-state">
@@ -1826,7 +1829,12 @@ function WorkspaceSettings({ user, onLogout }) {
     if (loadingProfile) {
       return (
         <div className="workspace-tab-content">
-          <div className="loading-members">Loading profile...</div>
+          <div className="loading-members" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
+          </div>
         </div>
       );
     }

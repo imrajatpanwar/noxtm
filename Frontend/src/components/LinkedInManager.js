@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { toast } from 'sonner';
 import { FiSettings, FiMessageSquare, FiZap, FiClock, FiTrendingUp, FiRefreshCw } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './LinkedInManager.css';
 
 function LinkedInManager() {
@@ -98,9 +99,11 @@ function LinkedInManager() {
     if (loading) {
         return (
             <div className="lim-container">
-                <div className="lim-loading">
-                    <div className="lim-spinner"></div>
-                    <p>Loading AI Commenter settings...</p>
+                <div className="lim-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="tw-h-8 tw-w-48" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
                 </div>
             </div>
         );

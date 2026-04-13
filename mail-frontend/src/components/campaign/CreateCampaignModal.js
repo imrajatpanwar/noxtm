@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { FiX, FiList, FiUsers, FiUpload, FiCheck, FiPlus } from 'react-icons/fi';
 import api from '../../config/api';
 import './CreateCampaignModal.css';

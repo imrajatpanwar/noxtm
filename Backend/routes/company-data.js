@@ -8,6 +8,46 @@ const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
+// ============ PERMISSION HELPER ============
+// Resolves whether the current user can view/edit every company-data record in their
+// workspace, or only the ones they created. For now the rule is simply:
+//   - Platform role "Admin"                        => full access
+//   - Workspace roleInCompany "Owner" (or company.owner) => full access
+//   - Everyone else                                => only their own records
+// NOTE: Finer-grained permissions (e.g. a dedicated workspacePermissions.companyData.viewAll
+// / editAll flag on Company or User) can be layered on top of this helper later without
+// changing any callers. The route handlers only ever consume the returned booleans.
+async function resolveCompanyDataPermissions(userDoc) {
+  if (!userDoc) return { canViewAll: false, canEditAll: false, company: null };
+
+  // Platform admins always see everything
+  if (userDoc.role === 'Admin') {
+    const company = userDoc.companyId ? await Company.findById(userDoc.companyId) : null;
+    return { canViewAll: true, canEditAll: true, company };
+  }
+
+  if (!userDoc.companyId) {
+    return { canViewAll: false, canEditAll: false, company: null };
+  }
+
+  const company = await Company.findById(userDoc.companyId);
+  if (!company) return { canViewAll: false, canEditAll: false, company: null };
+
+  const member = company.members?.find(
+    m => m.user && m.user.toString() === userDoc._id.toString()
+  );
+  const isOwner = (member && member.roleInCompany === 'Owner') ||
+    (company.owner && company.owner.toString() === userDoc._id.toString());
+
+  // Placeholder: when workspace-level companyData permissions are added to the Company
+  // or User schema, OR them into these flags here. Example:
+  //   const hasViewAll = isOwner || company.workspacePermissions?.companyData?.viewAll?.includes(userDoc._id.toString());
+  const canViewAll = isOwner;
+  const canEditAll = isOwner;
+
+  return { canViewAll, canEditAll, company };
+}
+
 // ============ EXTENSION ACCESS SETTINGS ============
 // NOTE: These must be defined BEFORE the /:id routes to avoid Express matching "access-settings" as an :id param
 
@@ -160,6 +200,22 @@ router.put('/company-data/data-access/:userId', auth, async (req, res) => {
 
 // ============ COMPANY DATA CRUD ============
 
+// Permissions probe — tells the frontend whether the current user can view/edit every
+// record in the workspace or only their own. Single source of truth so the UI doesn't
+// duplicate permission logic.
+router.get('/company-data/permissions', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { canViewAll, canEditAll } = await resolveCompanyDataPermissions(user);
+    res.json({ canViewAll, canEditAll });
+  } catch (error) {
+    console.error('Error resolving company-data permissions:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all company data entries for the user's workspace
 // Owner/Admin sees all companies; other users see only companies they extracted
 router.get('/company-data', auth, async (req, res) => {
@@ -170,15 +226,11 @@ router.get('/company-data', auth, async (req, res) => {
     const { search, industry, labelId } = req.query;
     const query = { companyId: user.companyId };
 
-    // Non-owner users can only see companies they created
-    const company = await Company.findById(user.companyId);
-    if (company) {
-      const member = company.members.find(m => m.user && m.user.toString() === user._id.toString());
-      const isOwner = (member && member.roleInCompany === 'Owner') ||
-        (company.owner && company.owner.toString() === user._id.toString());
-      if (!isOwner && user.role !== 'Admin') {
-        query.createdBy = user._id;
-      }
+    // Use centralized permission resolver — canViewAll means the user sees every record
+    // in their workspace; otherwise restrict to records they created themselves.
+    const { canViewAll } = await resolveCompanyDataPermissions(user);
+    if (!canViewAll) {
+      query.createdBy = user._id;
     }
 
     if (industry) query.industry = industry;
@@ -214,10 +266,12 @@ router.get('/company-data/:id', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const company = await CompanyData.findOne({
-      _id: req.params.id,
-      companyId: user.companyId
-    }).populate('createdBy', 'fullName email');
+    const { canViewAll } = await resolveCompanyDataPermissions(user);
+
+    const filter = { _id: req.params.id, companyId: user.companyId };
+    if (!canViewAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter).populate('createdBy', 'fullName email');
 
     if (!company) return res.status(404).json({ message: 'Company not found' });
 
@@ -299,12 +353,14 @@ router.put('/company-data/:id', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const company = await CompanyData.findOne({
-      _id: req.params.id,
-      companyId: user.companyId
-    });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
 
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const filter = { _id: req.params.id, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter);
+
+    if (!company) return res.status(404).json({ message: 'Company not found or not editable' });
 
     const {
       companyName, companyEmail, companyPhone, address,
@@ -335,12 +391,14 @@ router.delete('/company-data/:id', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const company = await CompanyData.findOneAndDelete({
-      _id: req.params.id,
-      companyId: user.companyId
-    });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
 
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const filter = { _id: req.params.id, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOneAndDelete(filter);
+
+    if (!company) return res.status(404).json({ message: 'Company not found or not deletable' });
 
     res.json({ message: 'Company deleted successfully' });
   } catch (error) {
@@ -358,8 +416,12 @@ router.patch('/company-data/:id/bulk-labels', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const company = await CompanyData.findOne({ _id: req.params.id, companyId: user.companyId });
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
+    const filter = { _id: req.params.id, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter);
+    if (!company) return res.status(404).json({ message: 'Company not found or not editable' });
 
     company.contacts.forEach(contact => {
       if (!contact.labels) contact.labels = [];
@@ -390,7 +452,11 @@ router.get('/company-data-contacts', auth, async (req, res) => {
 
     const { status, search, important, labelId } = req.query;
 
-    const companies = await CompanyData.find({ companyId: user.companyId })
+    const { canViewAll } = await resolveCompanyDataPermissions(user);
+    const listFilter = { companyId: user.companyId };
+    if (!canViewAll) listFilter.createdBy = user._id;
+
+    const companies = await CompanyData.find(listFilter)
       .sort({ createdAt: -1 });
 
     const allLabels = await ContactLabel.find({ companyId: user.companyId }).lean();
@@ -459,8 +525,12 @@ router.patch('/company-data-contacts/:companyDataId/:contactIndex/status', auth,
     const { status, followUp } = req.body;
     const idx = parseInt(contactIndex);
 
-    const company = await CompanyData.findOne({ _id: companyDataId, companyId: user.companyId });
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
+    const filter = { _id: companyDataId, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter);
+    if (!company) return res.status(404).json({ message: 'Company not found or not editable' });
     if (!company.contacts || idx >= company.contacts.length) {
       return res.status(404).json({ message: 'Contact not found' });
     }
@@ -505,8 +575,12 @@ router.patch('/company-data-contacts/:companyDataId/:contactIndex/important', au
     const { companyDataId, contactIndex } = req.params;
     const idx = parseInt(contactIndex);
 
-    const company = await CompanyData.findOne({ _id: companyDataId, companyId: user.companyId });
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
+    const filter = { _id: companyDataId, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter);
+    if (!company) return res.status(404).json({ message: 'Company not found or not editable' });
     if (!company.contacts || idx >= company.contacts.length) {
       return res.status(404).json({ message: 'Contact not found' });
     }
@@ -531,8 +605,12 @@ router.patch('/company-data-contacts/:companyDataId/:contactIndex/labels', auth,
     const { labelId, action } = req.body;
     const idx = parseInt(contactIndex);
 
-    const company = await CompanyData.findOne({ _id: companyDataId, companyId: user.companyId });
-    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const { canEditAll } = await resolveCompanyDataPermissions(user);
+    const filter = { _id: companyDataId, companyId: user.companyId };
+    if (!canEditAll) filter.createdBy = user._id;
+
+    const company = await CompanyData.findOne(filter);
+    if (!company) return res.status(404).json({ message: 'Company not found or not editable' });
     if (!company.contacts || idx >= company.contacts.length) {
       return res.status(404).json({ message: 'Contact not found' });
     }
@@ -570,8 +648,12 @@ router.get('/company-data-phone-lists', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const { canViewAll } = await resolveCompanyDataPermissions(user);
+    const listFilter = { companyId: user.companyId };
+    if (!canViewAll) listFilter.createdBy = user._id;
+
     const allLabels = await ContactLabel.find({ companyId: user.companyId }).lean();
-    const companies = await CompanyData.find({ companyId: user.companyId }).lean();
+    const companies = await CompanyData.find(listFilter).lean();
 
     const phoneLists = allLabels.map(label => {
       const phones = [];

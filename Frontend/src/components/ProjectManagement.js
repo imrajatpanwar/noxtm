@@ -7,6 +7,7 @@ import {
     FiSettings
 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { Skeleton } from './ui/skeleton';
 import './ProjectManagement.css';
 import ProjectSettings from './ProjectSettings';
 import api from '../config/api';
@@ -459,9 +460,11 @@ const ProjectManagement = () => {
     if (loading) {
         return (
             <div className="pm-container">
-                <div className="pm-loading">
-                    <div className="pm-spinner"></div>
-                    <p>Loading projects...</p>
+                <div className="pm-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="tw-h-8 tw-w-48" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
                 </div>
             </div>
         );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiPlus, FiEdit2, FiTrash2, FiAward, FiX, FiDollarSign, FiCheck, FiXCircle, FiClock } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './Incentives.css';
 
 function Incentives() {
@@ -138,7 +139,7 @@ function Incentives() {
 
   if (loading) {
     return (
-      <div className="inc"><div className="inc-loading"><div className="inc-loading-spinner"></div><p>Loading incentives...</p></div></div>
+      <div className="inc"><div className="inc-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton className="tw-h-8 tw-w-48" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-full" /><Skeleton className="tw-h-4 tw-w-3/4" /></div></div>
     );
   }
 

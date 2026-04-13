@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './JoinCompany.css';
 
 function JoinCompany({ onSignup }) {
@@ -194,9 +195,11 @@ function JoinCompany({ onSignup }) {
     return (
       <div className="jc-container">
         <div className="jc-card">
-          <div className="jc-loading-state">
-            <div className="jc-spinner"></div>
-            <p>Verifying invitation...</p>
+          <div className="jc-loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Skeleton className="tw-h-8 tw-w-48" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-full" />
+            <Skeleton className="tw-h-4 tw-w-3/4" />
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiGlobe, FiCheckCircle, FiXCircle, FiRefreshCw, FiCopy, FiAlertCircle } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
 import './DnsConfiguration.css';
 
 function DnsConfiguration() {
@@ -54,9 +55,11 @@ function DnsConfiguration() {
         <div className="dns-header">
           <h2>DNS Configuration</h2>
         </div>
-        <div className="dns-loading">
-          <FiRefreshCw className="loading-spinner" />
-          <p>Checking DNS configuration...</p>
+        <div className="dns-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield, FiUsers, FiGlobe, FiCopy } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './SocialMediaCredentials.css';
 import CredentialsImage from '../assets/Credentials_image.png';
 
@@ -227,9 +228,11 @@ function SocialMediaCredentials() {
     if (loading) {
         return (
             <div className="sm-credentials">
-                <div className="sm-cred-loading">
-                    <div className="sm-cred-loading-spinner" />
-                    Loading credentials...
+                <div className="sm-cred-loading" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <Skeleton className="tw-h-8 tw-w-48" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-full" />
+                    <Skeleton className="tw-h-4 tw-w-3/4" />
                 </div>
             </div>
         );

@@ -6,6 +6,7 @@ import {
   FiLock, FiSettings, FiDollarSign, FiMonitor, FiBookOpen
 } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './CompanyPolicies.css';
 
 const CATEGORIES = [
@@ -324,7 +325,12 @@ function CompanyPolicies() {
 
       {/* Content */}
       {loading ? (
-        <div className="cp-empty"><p>Loading policies...</p></div>
+        <div className="cp-empty" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       ) : policies.length === 0 ? (
         <div className="cp-empty">
           <div className="cp-empty-ic"><FiShield size={44} /></div>

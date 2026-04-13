@@ -5,6 +5,7 @@ import {
   FiUsers, FiHeart, FiDollarSign, FiSettings, FiShield, FiTarget
 } from 'react-icons/fi';
 import api from '../config/api';
+import { Skeleton } from './ui/skeleton';
 import './CompanyHandbook.css';
 
 const ICON_MAP = {
@@ -301,7 +302,12 @@ function CompanyHandbook() {
 
       {/* Sections grid */}
       {loading ? (
-        <div className="hb-empty"><p>Loading handbook...</p></div>
+        <div className="hb-empty" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Skeleton className="tw-h-8 tw-w-48" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-full" />
+          <Skeleton className="tw-h-4 tw-w-3/4" />
+        </div>
       ) : filteredSections.length === 0 ? (
         <div className="hb-empty">
           <div className="hb-empty-ic"><FiBookOpen size={44} /></div>

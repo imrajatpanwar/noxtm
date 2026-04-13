@@ -6,6 +6,7 @@ import ProfileSettings from './mailbox/ProfileSettings';
 import TeamInbox from './email/TeamInbox';
 import DomainManagement from './email/DomainManagement';
 import CreateTeamAccount from './email/CreateTeamAccount';
+import { Skeleton } from './ui/skeleton';
 import './MainstreamInbox.css';
 
 function MainstreamInbox() {
@@ -414,9 +415,11 @@ function MainstreamInbox() {
               <p>Select a hosted mailbox on the right to update its display avatar and review connection details.</p>
             </div>
           ) : loading && emails.length === 0 ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Loading emails...</p>
+            <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Skeleton className="tw-h-8 tw-w-48" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-full" />
+              <Skeleton className="tw-h-4 tw-w-3/4" />
             </div>
           ) : error ? (
             <div className="error-state">
@@ -462,9 +465,11 @@ function MainstreamInbox() {
         <div className="email-detail">
           {activeTab === 'settings' ? (
             profileLoading ? (
-              <div className="loading-state">
-                <div className="spinner"></div>
-                <p>Loading settings...</p>
+              <div className="loading-state" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Skeleton className="tw-h-8 tw-w-48" />
+                <Skeleton className="tw-h-4 tw-w-full" />
+                <Skeleton className="tw-h-4 tw-w-full" />
+                <Skeleton className="tw-h-4 tw-w-3/4" />
               </div>
             ) : (
               <ProfileSettings
