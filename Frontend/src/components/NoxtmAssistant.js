@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import api from '../config/api';
 import splitViewIcon from '../assets/split_view.svg';
 import './NoxtmAssistant.css';
@@ -106,6 +107,21 @@ function NoxtmAssistant({ onCollapse }) {
         content: res.data.message,
         time: new Date().toISOString()
       }]);
+
+      // Show success toasts for any actions the bot performed
+      const TOAST_LABELS = {
+        create_task: 'Task created by Noxtm Bot',
+        create_whatsapp_campaign: 'WhatsApp Campaign created by Noxtm Bot',
+        schedule_action: 'Action scheduled by Noxtm Bot',
+        save_memory: 'Memory saved by Noxtm Bot',
+        send_team_message: 'Message sent by Noxtm Bot',
+        send_whatsapp_message: 'WhatsApp message sent by Noxtm Bot',
+      };
+      (res.data.actionsPerformed || []).forEach(action => {
+        const label = TOAST_LABELS[action.type] || `${action.label} done by Noxtm Bot`;
+        const detail = action.title ? `: "${action.title}"` : '';
+        toast.success(`${label}${detail}`);
+      });
 
       // Refresh scheduled actions after each message (in case a new one was created)
       try {

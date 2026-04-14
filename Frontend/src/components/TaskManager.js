@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiX, FiMessageSquare, FiClock, FiCheck, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight, FiSearch, FiExternalLink, FiMoreHorizontal } from 'react-icons/fi';
+import { toast } from 'sonner';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import './TaskManager.css';
@@ -329,6 +330,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
                 assignees,
                 dueDate: dueDate || null
             });
+            toast.success('Task created!');
             onTaskCreated();
             onClose();
             // Reset form
@@ -339,6 +341,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
             setDueDate('');
         } catch (error) {
             console.error('Error creating task:', error);
+            toast.error('Failed to create task');
         } finally {
             setIsSubmitting(false);
         }

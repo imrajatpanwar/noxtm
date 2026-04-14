@@ -25,6 +25,7 @@ async function callClaudeWithTools(systemPrompt, messages, tools, context, maxIt
   let currentMessages = [...messages];
   let iteration = 0;
   let totalTokens = 0;
+  const toolsExecuted = []; // track all tool calls + results
 
   while (iteration < maxIterations) {
     iteration++;
@@ -67,6 +68,7 @@ async function callClaudeWithTools(systemPrompt, messages, tools, context, maxIt
             tool_use_id: block.id,
             content: JSON.stringify(result)
           });
+          toolsExecuted.push({ name: block.name, input: block.input, result });
         }
       }
 
@@ -79,11 +81,11 @@ async function callClaudeWithTools(systemPrompt, messages, tools, context, maxIt
     const textBlocks = content.filter(b => b.type === 'text');
     const finalText = textBlocks.map(b => b.text).join('\n');
 
-    return { text: finalText, tokensUsed: totalTokens, iterations: iteration };
+    return { text: finalText, tokensUsed: totalTokens, iterations: iteration, toolsExecuted };
   }
 
   // Max iterations reached
-  return { text: 'I ran into some complexity processing that request. Could you try rephrasing?', tokensUsed: totalTokens, iterations: iteration };
+  return { text: 'I ran into some complexity processing that request. Could you try rephrasing?', tokensUsed: totalTokens, iterations: iteration, toolsExecuted };
 }
 
 
@@ -275,9 +277,16 @@ router.post('/chat', authenticateToken, assistantLimiter, async (req, res) => {
       })
     ]);
 
+    // Build actionsPerformed for frontend toast notifications
+    const CREATE_TOOLS = { create_task: 'Task', create_whatsapp_campaign: 'WhatsApp Campaign', schedule_action: 'Scheduled Action', save_memory: 'Memory', send_team_message: 'Message', send_whatsapp_message: 'WhatsApp Message' };
+    const actionsPerformed = (result.toolsExecuted || [])
+      .filter(t => CREATE_TOOLS[t.name] && t.result?.success !== false)
+      .map(t => ({ type: t.name, label: CREATE_TOOLS[t.name], title: t.input?.title || t.input?.message || t.input?.key || '' }));
+
     res.json({
       message: result.text,
-      tokensUsed: result.tokensUsed
+      tokensUsed: result.tokensUsed,
+      actionsPerformed
     });
 
   } catch (error) {
