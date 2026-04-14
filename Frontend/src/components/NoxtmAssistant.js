@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../config/api';
+import splitViewIcon from '../assets/split_view.svg';
 import './NoxtmAssistant.css';
 
 // ─── Icons ───
@@ -36,7 +37,7 @@ const QUICK_SUGGESTIONS = [
   'Campaign stats',
 ];
 
-function NoxtmAssistant() {
+function NoxtmAssistant({ onCollapse }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -159,9 +160,9 @@ function NoxtmAssistant() {
       {/* Header */}
       <div className="na-header">
         <div className="na-header-left">
-          <div className="na-avatar">
-            <SparkleIcon />
-          </div>
+          <button className="na-collapse-btn" onClick={onCollapse} title="Collapse assistant">
+            <img src={splitViewIcon} alt="Collapse" className="na-split-icon" />
+          </button>
           <div className="na-header-info">
             <span className="na-header-name">Noxtm</span>
           </div>

@@ -36,21 +36,27 @@
   gap: 10px;
 }
 
-.na-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #111827, #374151);
+.na-collapse-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  cursor: pointer;
   flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
+.na-collapse-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
 
-.na-avatar svg {
-  width: 16px;
-  height: 16px;
+.na-split-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+  display: block;
 }
 
 .na-header-info {

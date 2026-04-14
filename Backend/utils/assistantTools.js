@@ -136,7 +136,7 @@ const toolDefinitions = [
   },
   {
     name: 'send_whatsapp_message',
-    description: 'Send a WhatsApp message to a contact immediately. Use when user asks to send a WhatsApp message right now.',
+    description: 'Send a WhatsApp message to an EXTERNAL contact (client, lead, vendor) via WhatsApp. ONLY use this when the user explicitly says "WhatsApp" or the recipient is clearly an external contact — NOT a team member or colleague. For team members always use send_team_message instead.',
     input_schema: {
       type: 'object',
       properties: {
@@ -149,7 +149,7 @@ const toolDefinitions = [
   },
   {
     name: 'send_team_message',
-    description: 'Send a direct message to a team member in the Team Communication chat. Use when the user asks to message a colleague, send a team message, or communicate with a team member.',
+    description: 'DEFAULT tool to send a message to any team member or colleague via Team Communication (internal chat). Use this whenever the user says "message", "tell", "say", "notify", "ping", or "send" to a teammate, colleague, or team member — even if they just say a person\'s name. ALWAYS prefer this over WhatsApp for internal team communication.',
     input_schema: {
       type: 'object',
       properties: {
@@ -177,28 +177,28 @@ const toolDefinitions = [
   },
   {
     name: 'schedule_action',
-    description: 'Schedule a future action like sending a message, creating a task, or setting a reminder. Use when user says things like "at 5pm message X", "tomorrow create a task", "remind me at 3pm".',
+    description: 'Schedule a future action like sending a message, creating a task, setting a reminder, or asking for a task update. Use when user says things like "at 5pm message X", "tomorrow create a task", "remind me at 3pm", "after 1 hour ask for update", "check back in 2 hours". For ask_update: auto-generate a follow-up message asking the recipient for progress on the assigned task. If no time is specified for an update check, infer based on task type (quick tasks = 1 hour, normal = end of day, complex = next morning).',
     input_schema: {
       type: 'object',
       properties: {
         action_type: {
           type: 'string',
-          enum: ['send_whatsapp', 'send_team_message', 'create_task', 'reminder'],
-          description: 'Type of action to schedule'
+          enum: ['send_whatsapp', 'send_team_message', 'create_task', 'reminder', 'ask_update'],
+          description: 'Type of action to schedule. Use ask_update to schedule a follow-up message that asks the team member for a progress update on their assigned task.'
         },
         scheduled_time: {
           type: 'string',
-          description: 'When to execute, in ISO format. Convert natural language to ISO (e.g., "5pm today" -> appropriate ISO string)'
+          description: 'When to execute, in ISO format. Convert natural language to ISO (e.g., "5pm today", "after 1 hour", "next morning 9am" -> appropriate ISO string)'
         },
         description: {
           type: 'string',
           description: 'Human-readable description of what will happen'
         },
-        // For messages
-        recipient_name: { type: 'string', description: 'Name of person to message' },
-        message: { type: 'string', description: 'Message content (auto-generate if user gives intent)' },
-        // For tasks
-        task_title: { type: 'string' },
+        // For messages and ask_update
+        recipient_name: { type: 'string', description: 'Name of team member to message or ask for update' },
+        message: { type: 'string', description: 'Message content. For ask_update, auto-generate a friendly follow-up like "Hey [name], how\'s the progress on [task]? Any blockers?" if not provided.' },
+        // For ask_update context
+        task_title: { type: 'string', description: 'Title of the task to ask about (for ask_update context)' },
         task_assignee_names: { type: 'array', items: { type: 'string' } },
         task_priority: { type: 'string', enum: ['Low', 'Medium', 'High', 'Urgent'] }
       },
@@ -853,13 +853,21 @@ const executors = {
       if (account) payload.whatsappAccountId = account._id;
     }
 
-    if (action_type === 'send_team_message' && recipient_name) {
+    if ((action_type === 'send_team_message' || action_type === 'ask_update') && recipient_name) {
       const members = await findMembersByName(companyId, [recipient_name]);
       if (members.length > 0) {
         payload.recipientUserId = members[0]._id;
         payload.recipientName = members[0].fullName;
       } else {
         payload.recipientName = recipient_name;
+      }
+
+      // For ask_update, auto-generate a follow-up message if none provided
+      if (action_type === 'ask_update') {
+        const firstName = payload.recipientName?.split(' ')[0] || payload.recipientName;
+        const taskRef = task_title ? ` on "${task_title}"` : '';
+        payload.message = message || `Hey ${firstName}, just checking in${taskRef} — how's the progress? Any blockers I should know about?`;
+        payload.taskTitle = task_title;
       }
     }
 

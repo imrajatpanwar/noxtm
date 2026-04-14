@@ -351,3 +351,32 @@
     bottom: 16px;
   }
 }
+/* Assistant toggle tab — full height, shown only when collapsed */
+.assistant-toggle-tab {
+  width: 35px;
+  height: 100vh;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-right: none;
+  border-top-color: #ffffff;
+  border-radius: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s;
+  z-index: 20;
+}
+.assistant-toggle-tab:hover {
+  background: #f9fafb;
+}
+.assistant-toggle-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+  display: block;
+  transform: scaleX(-1);
+}

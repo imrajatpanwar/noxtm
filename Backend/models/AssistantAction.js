@@ -17,7 +17,7 @@ const assistantActionSchema = new mongoose.Schema({
   // Action type determines what gets executed
   actionType: {
     type: String,
-    enum: ['send_whatsapp', 'send_team_message', 'create_task', 'reminder'],
+    enum: ['send_whatsapp', 'send_team_message', 'create_task', 'reminder', 'ask_update'],
     required: true
   },
   // Flexible payload for different action types
@@ -36,6 +36,9 @@ const assistantActionSchema = new mongoose.Schema({
     taskAssignees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     taskPriority: { type: String, enum: ['Low', 'Medium', 'High', 'Urgent'] },
     taskDueDate: Date,
+    // For ask_update
+    taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
+    taskTitle: String,
     // Common
     message: String
   },

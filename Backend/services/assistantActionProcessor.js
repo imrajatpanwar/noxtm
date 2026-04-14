@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AssistantAction = require('../models/AssistantAction');
 const Task = require('../models/Task');
 
@@ -88,10 +89,50 @@ async function executeAction(action) {
       break;
     }
 
-    case 'send_team_message': {
-      // Create a messaging notification/message via the internal system
-      // For now, log it — can integrate with Socket.IO or messaging routes later
-      console.log(`[AssistantActions] Team message to ${payload.recipientName}: ${payload.message}`);
+    case 'send_team_message':
+    case 'ask_update': {
+      if (!payload.recipientUserId || !payload.message) {
+        throw new Error('Missing recipient or message for team message');
+      }
+
+      const Conversation = mongoose.model('Conversation');
+      const Message = mongoose.model('Message');
+
+      // Find or create a direct conversation between bot sender and recipient
+      let conversation = await Conversation.findOne({
+        companyId,
+        type: 'direct',
+        'participants.user': { $all: [createdBy, payload.recipientUserId] }
+      });
+
+      if (!conversation) {
+        conversation = await Conversation.create({
+          companyId,
+          type: 'direct',
+          participants: [createdBy, payload.recipientUserId].map(id => ({
+            user: id,
+            joinedAt: new Date(),
+            lastReadAt: new Date()
+          })),
+          createdBy
+        });
+      }
+
+      await Message.create({
+        conversationId: conversation._id,
+        companyId,
+        sender: createdBy,
+        content: payload.message.trim(),
+        type: 'text',
+        readBy: [{ user: createdBy, readAt: new Date() }]
+      });
+
+      await Conversation.updateOne(
+        { _id: conversation._id },
+        { $set: { lastMessage: { content: payload.message.trim(), sender: createdBy, timestamp: new Date() }, updatedAt: new Date() } }
+      );
+
+      console.log(`[AssistantActions] ${actionType} sent to ${payload.recipientName}: ${payload.message}`);
       break;
     }
 
