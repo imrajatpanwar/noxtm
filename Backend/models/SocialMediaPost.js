@@ -142,6 +142,15 @@ const socialMediaPostSchema = new mongoose.Schema({
         type: String,
         trim: true
     }],
+    postType: {
+        type: String,
+        enum: ['Static Post', 'Carousel', 'Reel'],
+        default: 'Static Post'
+    },
+    referenceLinks: [{
+        type: String,
+        trim: true
+    }],
     notes: {
         type: String,
         default: '',

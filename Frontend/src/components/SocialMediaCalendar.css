@@ -1884,3 +1884,15 @@
     border-color: #1a1a1a;
 }
 .smc-ref-detail-btn--dl:hover { background: #333; border-color: #333; }
+
+/* Reference links in detail view */
+.smc-ref-link {
+    font-size: 13px;
+    color: #2563eb;
+    text-decoration: none;
+    word-break: break-all;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.smc-ref-link:hover { text-decoration: underline; }

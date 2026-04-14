@@ -175,7 +175,7 @@ function SocialMediaCalendar() {
         if (!postForm.postDate) return toast.error('Date is required');
         setIsSubmittingPost(true);
         try {
-            const payload = { ...postForm, labels: postForm.labels ? postForm.labels.split(',').map(l => l.trim()).filter(Boolean) : [], socialMediaAccount: postForm.socialMediaAccount || null };
+            const payload = { ...postForm, labels: postForm.labels ? postForm.labels.split(',').map(l => l.trim()).filter(Boolean) : [], referenceLinks: postForm.referenceLinks ? postForm.referenceLinks.split('\n').map(l => l.trim()).filter(Boolean) : [], socialMediaAccount: null };
             if (editingPost) { await api.put(`/social-media-calendar/posts/${editingPost._id}`, payload); toast.success('Post updated'); }
             else { await api.post('/social-media-calendar/posts', payload); toast.success(postForm.isRecurring ? 'Recurring posts created' : 'Post created'); }
             setShowPostModal(false); setEditingPost(null); setPostForm(defaultPostForm()); fetchPosts();
@@ -274,13 +274,13 @@ function SocialMediaCalendar() {
     const openPostModal = (date) => {
         setPostForm(defaultPostForm()); setEditingPost(null);
         if (date) setPostForm(prev => ({ ...prev, postDate: formatDateStr(date) }));
-        if (selectedAccount !== 'all') { const a = accounts.find(a => a._id === selectedAccount); if (a) setPostForm(prev => ({ ...prev, socialMediaAccount: selectedAccount, platform: a.platform })); }
+        if (selectedAccount !== 'all') { const a = accounts.find(a => a._id === selectedAccount); if (a) setPostForm(prev => ({ ...prev, platform: a.platform })); }
         setShowPostModal(true);
     };
 
     const openEditPost = (post) => {
         setEditingPost(post);
-        setPostForm({ title: post.title, content: post.content || '', postDate: new Date(post.postDate).toISOString().split('T')[0], postTime: post.postTime || '10:00', platform: post.platform, socialMediaAccount: post.socialMediaAccount?._id || '', labels: (post.labels || []).join(', '), notes: post.notes || '', status: post.status, priority: post.priority || 'Medium', isRecurring: false, recurringPattern: '', referenceImages: post.referenceImages || [] });
+        setPostForm({ title: post.title, content: post.content || '', postDate: new Date(post.postDate).toISOString().split('T')[0], postTime: post.postTime || '10:00', platform: post.platform, postType: post.postType || 'Static Post', labels: (post.labels || []).join(', '), referenceLinks: (post.referenceLinks || []).join('\n'), status: post.status, priority: post.priority || 'Medium', isRecurring: false, recurringPattern: '', referenceImages: post.referenceImages || [] });
         setShowPostModal(true);
     };
 
@@ -484,8 +484,8 @@ function SocialMediaCalendar() {
                         <div className="smc-modal-body">
                             <div className="smc-form-group"><label>Title *</label><input value={postForm.title} onChange={e => setPostForm({ ...postForm, title: e.target.value })} placeholder="Post title..." /></div>
                             <div className="smc-form-group">
-                                <label>Content / Caption</label>
-                                <textarea value={postForm.content} onChange={e => setPostForm({ ...postForm, content: e.target.value })} placeholder="Write your caption..." rows={3} />
+                                <label>Content</label>
+                                <textarea value={postForm.content} onChange={e => setPostForm({ ...postForm, content: e.target.value })} placeholder="Write your content..." rows={3} />
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                         {currentAccountHashtags.length > 0 && (
@@ -512,7 +512,7 @@ function SocialMediaCalendar() {
                             </div>
                             <div className="smc-form-row">
                                 <div className="smc-form-group"><label>Platform</label><select value={postForm.platform} onChange={e => setPostForm({ ...postForm, platform: e.target.value })}>{PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                                <div className="smc-form-group"><label>Account</label><select value={postForm.socialMediaAccount} onChange={e => setPostForm({ ...postForm, socialMediaAccount: e.target.value })}><option value="">No Account</option>{accounts.map(a => <option key={a._id} value={a._id}>{a.name} ({a.platform}){a.assignedTo?.length > 0 ? ` → ${a.assignedTo.map(u => u.fullName).join(', ')}` : ''}</option>)}</select></div>
+                                <div className="smc-form-group"><label>Post Type</label><select value={postForm.postType} onChange={e => setPostForm({ ...postForm, postType: e.target.value })}><option value="Static Post">Static Post</option><option value="Carousel">Carousel</option><option value="Reel">Reel</option></select></div>
                             </div>
                             <div className="smc-form-row">
                                 <div className="smc-form-group"><label>Priority</label><select value={postForm.priority} onChange={e => setPostForm({ ...postForm, priority: e.target.value })}>{PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
@@ -529,7 +529,7 @@ function SocialMediaCalendar() {
                                 </div>
                             )}
                             <div className="smc-form-group"><label>Labels (comma separated)</label><input value={postForm.labels} onChange={e => setPostForm({ ...postForm, labels: e.target.value })} placeholder="e.g. Product Launch, Sale" /></div>
-                            <div className="smc-form-group"><label>Notes</label><textarea value={postForm.notes} onChange={e => setPostForm({ ...postForm, notes: e.target.value })} placeholder="Internal notes..." rows={2} /></div>
+                            <div className="smc-form-group"><label><FiExternalLink size={12} style={{ marginRight: 4 }} />Reference Links</label><textarea value={postForm.referenceLinks} onChange={e => setPostForm({ ...postForm, referenceLinks: e.target.value })} placeholder="Add URLs (one per line)..." rows={2} /></div>
                             {/* Reference Images */}
                             <div className="smc-form-group">
                                 <label><FiImage size={12} style={{ marginRight: 4 }} />Reference Images</label>
@@ -571,24 +571,6 @@ function SocialMediaCalendar() {
                                     </div>
                                 )}
                             </div>
-                            {/* Account Assignees Info */}
-                            {postForm.socialMediaAccount && (() => {
-                                const a = accounts.find(ac => ac._id === postForm.socialMediaAccount);
-                                if (!a?.assignedTo?.length) return null;
-                                return (
-                                    <div style={{ padding: '10px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-                                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginBottom: 8 }}>Team Members</div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                            {a.assignedTo.map((u, i) => (
-                                                <div key={u._id || i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <div className="smc-assignee-avatar smc-assignee-avatar-sm">{getInitials(u.fullName)}</div>
-                                                    <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{u.fullName}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
                         </div>
                         <div className="smc-modal-footer">
                             <button className="smc-btn-secondary" onClick={() => setShowPostModal(false)}>Cancel</button>
@@ -629,14 +611,14 @@ function SocialMediaCalendar() {
                         </div>
                         <div className="smc-modal-body">
                             {detailTab === 'details' && (<>
-                                {showPostDetail.content && <div className="smc-detail-field"><div className="smc-detail-label">Caption</div><div className="smc-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{showPostDetail.content}</div></div>}
+                                {showPostDetail.content && <div className="smc-detail-field"><div className="smc-detail-label">Content</div><div className="smc-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{showPostDetail.content}</div></div>}
                                 <div className="smc-detail-row">
                                     <div className="smc-detail-field"><div className="smc-detail-label">Date</div><div className="smc-detail-value">{new Date(showPostDetail.postDate).toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
                                     <div className="smc-detail-field"><div className="smc-detail-label">Time</div><div className="smc-detail-value">{showPostDetail.postTime || '—'}</div></div>
                                 </div>
                                 <div className="smc-detail-row">
                                     <div className="smc-detail-field"><div className="smc-detail-label">Platform</div><div className="smc-detail-value">{showPostDetail.platform}</div></div>
-                                    <div className="smc-detail-field"><div className="smc-detail-label">Account</div><div className="smc-detail-value">{showPostDetail.socialMediaAccount ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: showPostDetail.socialMediaAccount.color, display: 'inline-block' }} />{showPostDetail.socialMediaAccount.name}</span> : <span className="text-muted">None</span>}</div></div>
+                                    <div className="smc-detail-field"><div className="smc-detail-label">Post Type</div><div className="smc-detail-value">{showPostDetail.postType || 'Static Post'}</div></div>
                                 </div>
                                 {/* Account-based assignees */}
                                 {showPostDetail.socialMediaAccount?.assignedTo?.length > 0 && (
@@ -653,7 +635,16 @@ function SocialMediaCalendar() {
                                     </div>
                                 )}
                                 {showPostDetail.labels?.length > 0 && <div className="smc-detail-field"><div className="smc-detail-label">Labels</div><div className="smc-labels">{showPostDetail.labels.map((l, i) => <span key={i} className="smc-label-tag">{l}</span>)}</div></div>}
-                                {showPostDetail.notes && <div className="smc-detail-field"><div className="smc-detail-label">Notes</div><div className="smc-detail-value" style={{ whiteSpace: 'pre-wrap', color: '#6b7280' }}>{showPostDetail.notes}</div></div>}
+                                {showPostDetail.referenceLinks?.length > 0 && (
+                                    <div className="smc-detail-field">
+                                        <div className="smc-detail-label"><FiExternalLink size={11} style={{ marginRight: 4 }} />Reference Links</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {showPostDetail.referenceLinks.map((link, i) => (
+                                                <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="smc-ref-link">{link}</a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="smc-detail-field"><div className="smc-detail-label">Created By</div><div className="smc-detail-value">{showPostDetail.createdBy?.fullName || 'Unknown'}</div></div>
                             </>)}
                             {detailTab === 'media' && (<>

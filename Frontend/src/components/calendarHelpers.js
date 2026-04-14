@@ -53,5 +53,5 @@ export const getPostsForDay = (posts, date, statusFilter, searchQuery) => {
     return filtered;
 };
 
-export const defaultPostForm = () => ({ title: '', content: '', postDate: '', postTime: '10:00', platform: 'Instagram', socialMediaAccount: '', labels: '', notes: '', status: 'Draft', priority: 'Medium', isRecurring: false, recurringPattern: '', referenceImages: [] });
+export const defaultPostForm = () => ({ title: '', content: '', postDate: '', postTime: '10:00', platform: 'Instagram', postType: 'Static Post', labels: '', referenceLinks: '', status: 'Draft', priority: 'Medium', isRecurring: false, recurringPattern: '', referenceImages: [] });
 export const defaultAccountForm = () => ({ name: '', platform: 'Instagram', handle: '', color: '#1a1a1a', assignedTo: [] });
