@@ -1324,59 +1324,84 @@ function WorkspaceSettings({ user, onLogout }) {
             </div>
           ) : (
             <div className="members-grid">
-              {companyMembers.map(member => (
-                <div key={member._id} className="member-card">
-                  <div className="member-card-header">
-                    <div className="member-avatar-lg">
-                      {member.profileImage ? (
-                        <img src={member.profileImage} alt={member.fullName} />
-                      ) : (
-                        getInitials(member.fullName)
-                      )}
-                      <span className={`member-status-dot ${member.status?.toLowerCase() || 'active'}`}></span>
+              {companyMembers.map(member => {
+                const statusMap = {
+                  'active': 'active',
+                  'in review': 'pending',
+                  'inactive': 'inactive',
+                  'terminated': 'inactive',
+                };
+                const statusClass = statusMap[member.status?.toLowerCase()] || 'inactive';
+                const statusLabel = member.status || 'Unknown';
+                const joinedDate = member.joinedAt
+                  ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : member.createdAt
+                    ? new Date(member.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    : null;
+                const isOwner = member._id === companyDetails?.owner?._id;
+                return (
+                  <div key={member._id} className="member-card">
+                    {isOwner && (
+                      <div className="member-card-owner-badge">
+                        <span>Owner</span>
+                      </div>
+                    )}
+                    <div className="member-card-header">
+                      <div className="member-avatar-lg">
+                        {member.profileImage ? (
+                          <img src={member.profileImage} alt={member.fullName} />
+                        ) : (
+                          getInitials(member.fullName)
+                        )}
+                        <span className={`member-status-dot ${statusClass}`}></span>
+                      </div>
+                      <div className="member-card-info">
+                        <h4 className="member-card-name">{member.fullName || 'Unknown'}</h4>
+                        <p className="member-card-email">{member.email || 'No email'}</p>
+                        <span className={`member-status-badge member-status-badge--${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
                     </div>
-                    <div className="member-card-info">
-                      <h4 className="member-card-name">{member.fullName || 'Unknown'}</h4>
-                      <p className="member-card-email">{member.email || 'No email'}</p>
-                    </div>
-                  </div>
-                  <div className="member-card-meta">
-                    <div className="member-meta-item">
-                      <FiBriefcase className="meta-icon" />
-                      <span>{member.roleInCompany === 'Owner' ? 'Owner' : (member.jobTitle || 'Member')}</span>
-                    </div>
-                    {member.department && (
+                    <div className="member-card-meta">
                       <div className="member-meta-item">
-                        <FiDatabase className="meta-icon" />
-                        <span>{member.department}</span>
+                        <FiBriefcase className="meta-icon" />
+                        <span>{isOwner ? 'Owner' : (member.jobTitle || 'Member')}</span>
+                      </div>
+                      {member.department && (
+                        <div className="member-meta-item">
+                          <FiDatabase className="meta-icon" />
+                          <span>{member.department}</span>
+                        </div>
+                      )}
+                      {joinedDate && (
+                        <div className="member-meta-item">
+                          <FiCalendar className="meta-icon" />
+                          <span>Joined {joinedDate}</span>
+                        </div>
+                      )}
+                    </div>
+                    {canInviteMembers() && !isOwner && (
+                      <div className="member-card-actions">
+                        <button
+                          className="btn-icon-action"
+                          onClick={() => handleEditMemberPermissions(member)}
+                          title="Edit permissions"
+                        >
+                          <FiShield />
+                        </button>
+                        <button
+                          className="btn-icon-action btn-icon-danger"
+                          onClick={() => handleRemoveMember(member._id, member.fullName)}
+                          title="Remove member"
+                        >
+                          <FiTrash2 />
+                        </button>
                       </div>
                     )}
                   </div>
-                  {canInviteMembers() && member._id !== companyDetails?.owner?._id && (
-                    <div className="member-card-actions">
-                      <button
-                        className="btn-icon-action"
-                        onClick={() => handleEditMemberPermissions(member)}
-                        title="Edit permissions"
-                      >
-                        <FiShield />
-                      </button>
-                      <button
-                        className="btn-icon-action btn-icon-danger"
-                        onClick={() => handleRemoveMember(member._id, member.fullName)}
-                        title="Remove member"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  )}
-                  {member._id === companyDetails?.owner?._id && (
-                    <div className="member-card-owner-badge">
-                      <span>Owner</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

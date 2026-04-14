@@ -40,6 +40,7 @@ noxtmBotConfigSchema.pre('save', function(next) {
   const builtInSkills = [
     { name: 'Signup & Onboarding', description: 'Guide users through account creation, email verification, plan selection, and company setup', enabled: true, isBuiltIn: true },
     { name: 'API Management', description: 'Help users understand and manage API keys, usage, and integrations', enabled: true, isBuiltIn: true },
+    { name: 'Chat Assistant', description: 'Professional conversational assistant for workspace support and general queries. No emojis, formal tone, direct answers.', enabled: true, isBuiltIn: true },
   ];
 
   if (!this.skills || this.skills.length === 0) {

@@ -39,6 +39,17 @@ const postActivitySchema = new mongoose.Schema({
     }
 }, { _id: true });
 
+// Reference image schema (Google Drive links)
+const referenceImageSchema = new mongoose.Schema({
+    driveFileId: { type: String, required: true },
+    name: { type: String, required: true },
+    thumbnailLink: { type: String, default: '' },
+    webViewLink: { type: String, default: '' },
+    mimeType: { type: String, default: '' },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    addedAt: { type: Date, default: Date.now }
+}, { _id: true });
+
 // Media file schema
 const mediaFileSchema = new mongoose.Schema({
     url: {
@@ -126,6 +137,7 @@ const socialMediaPostSchema = new mongoose.Schema({
         default: null
     },
     mediaFiles: [mediaFileSchema],
+    referenceImages: [referenceImageSchema],
     labels: [{
         type: String,
         trim: true

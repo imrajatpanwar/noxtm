@@ -12,6 +12,7 @@ export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const PLATFORM_LIMITS = { Instagram: 2200, LinkedIn: 3000, YouTube: 5000, X: 280, Facebook: 63206, Reddit: 40000, Other: 99999 };
 
 export const statusClass = (s) => s.toLowerCase().replace(/\s+/g, '-');
+export const truncateWords = (text, max = 4) => { const w = (text || '').split(' '); return w.length > max ? w.slice(0, max).join(' ') + '…' : text; };
 export const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
 export const formatTime = (date) => new Date(date).toLocaleString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 export const formatDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -52,5 +53,5 @@ export const getPostsForDay = (posts, date, statusFilter, searchQuery) => {
     return filtered;
 };
 
-export const defaultPostForm = () => ({ title: '', content: '', postDate: '', postTime: '10:00', platform: 'Instagram', socialMediaAccount: '', labels: '', notes: '', status: 'Draft', priority: 'Medium', isRecurring: false, recurringPattern: '' });
-export const defaultAccountForm = () => ({ name: '', platform: 'Instagram', handle: '', color: '#1a1a1a', assignedTo: '' });
+export const defaultPostForm = () => ({ title: '', content: '', postDate: '', postTime: '10:00', platform: 'Instagram', socialMediaAccount: '', labels: '', notes: '', status: 'Draft', priority: 'Medium', isRecurring: false, recurringPattern: '', referenceImages: [] });
+export const defaultAccountForm = () => ({ name: '', platform: 'Instagram', handle: '', color: '#1a1a1a', assignedTo: [] });

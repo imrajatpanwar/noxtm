@@ -158,7 +158,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       };
     }
 
-    // For Company Owners, grant access to all sections (workspace creator)
+    // For Company Owners, grant access to all sections except Settings & Configuration (Admin-only)
     if (isCompanyOwner) {
       return {
         'Dashboard': true,
@@ -170,7 +170,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'HR Management': true,
         'Finance Management': true,
         'Internal Policies': true,
-        'Settings & Configuration': true,
+        'Settings & Configuration': false,
         'Workspace Settings': true,
         'Profile': true
       };
@@ -224,7 +224,7 @@ function Sidebar({ activeSection, onSectionChange }) {
         'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
         'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
         'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
-        'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
+        'Settings & Configuration': false,
         'Workspace Settings': false,
         'Profile': true
       };
@@ -241,7 +241,7 @@ function Sidebar({ activeSection, onSectionChange }) {
       'HR Management': hasPermission(MODULES.HR_MANAGEMENT),
       'Finance Management': hasPermission(MODULES.FINANCE_MANAGEMENT),
       'Internal Policies': hasPermission(MODULES.INTERNAL_POLICIES),
-      'Settings & Configuration': hasPermission(MODULES.SETTINGS_CONFIG),
+      'Settings & Configuration': false,
       'Workspace Settings': true,
       'Profile': true
     };
@@ -521,14 +521,6 @@ function Sidebar({ activeSection, onSectionChange }) {
 
                       {socialMediaExpanded && !isCollapsed && (
                         <div className="sidebar-submenu">
-                          <SidebarMenuButton
-                            isActive={activeSection === 'meta-ads'}
-                            className="sidebar-subitem"
-                            onClick={() => onSectionChange('meta-ads')}
-                          >
-                            <FiTarget className="sidebar-icon" />
-                            <span>Meta Ads</span>
-                          </SidebarMenuButton>
                           <SidebarMenuButton
                             isActive={activeSection === 'content-calendar'}
                             className="sidebar-subitem"

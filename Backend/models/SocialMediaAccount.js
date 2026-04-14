@@ -33,11 +33,10 @@ const socialMediaAccountSchema = new mongoose.Schema({
         type: String,
         default: '#6366f1'
     },
-    assignedTo: {
+    assignedTo: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
-    },
+        ref: 'User'
+    }],
     hashtagGroups: [hashtagGroupSchema],
     defaultLabels: [{
         type: String,
@@ -64,6 +63,6 @@ const socialMediaAccountSchema = new mongoose.Schema({
 // Indexes
 socialMediaAccountSchema.index({ companyId: 1, isActive: 1 });
 socialMediaAccountSchema.index({ companyId: 1, platform: 1 });
-socialMediaAccountSchema.index({ assignedTo: 1 });
+socialMediaAccountSchema.index({ 'assignedTo': 1 });
 
 module.exports = mongoose.model('SocialMediaAccount', socialMediaAccountSchema);

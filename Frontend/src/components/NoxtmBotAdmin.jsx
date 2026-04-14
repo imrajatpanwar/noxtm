@@ -200,6 +200,8 @@ function NoxtmBotAdmin() {
   const [defaultMemories, setDefaultMemories] = useState([]);
   const [userMemoryGroups, setUserMemoryGroups] = useState([]);
   const [memoriesLoading, setMemoriesLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState(null);
   const [newMemoryContent, setNewMemoryContent] = useState('');
   const [newMemoryCategory, setNewMemoryCategory] = useState('instruction');
   const [editingMemoryId, setEditingMemoryId] = useState(null);
@@ -239,9 +241,9 @@ function NoxtmBotAdmin() {
         skills: [
           { name: 'Signup & Onboarding', description: 'Guide users through account creation, email verification, plan selection, and company setup', enabled: true, isBuiltIn: true },
           { name: 'API Management', description: 'Help users understand and manage API keys, usage, and integrations', enabled: true, isBuiltIn: true },
+          { name: 'Chat Assistant', description: 'Professional conversational assistant for workspace support and general queries. No emojis, formal tone, direct answers.', enabled: true, isBuiltIn: true },
         ],
         showGoogleSignup: true,
-        enabledPlans: ['Starter', 'Pro+', 'Advance'],
       });
     } finally {
       setLoading(false);
@@ -250,11 +252,15 @@ function NoxtmBotAdmin() {
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
-  // Fetch memories when memories tab is activated
+  // Fetch memories when memories or users tab is activated
   useEffect(() => {
     if (activeTab === 'memories') {
       fetchDefaultMemories();
       fetchUserMemories();
+    }
+    if (activeTab === 'users') {
+      setUsersLoading(true);
+      fetchUserMemories().finally(() => setUsersLoading(false));
     }
   }, [activeTab]);
 
@@ -351,15 +357,6 @@ function NoxtmBotAdmin() {
     setSaved(false);
   };
 
-  const togglePlan = (plan) => {
-    setConfig(prev => {
-      const current = prev.enabledPlans || [];
-      const updated = current.includes(plan) ? current.filter(p => p !== plan) : [...current, plan];
-      return { ...prev, enabledPlans: updated };
-    });
-    setSaved(false);
-  };
-
   // === Memory CRUD functions ===
   const addDefaultMemory = async () => {
     if (!newMemoryContent.trim()) return;
@@ -428,6 +425,24 @@ function NoxtmBotAdmin() {
     }
   };
 
+  const resetUserMemories = async (userId, userName) => {
+    if (!window.confirm(`Reset all memories for ${userName}? This cannot be undone.`)) return;
+    setResettingUserId(userId);
+    try {
+      const res = await api.delete(`/noxtm-bot/memories/users/reset/${userId}`);
+      if (res.data.success) {
+        setUserMemoryGroups(prev =>
+          prev.map(g => g.userId === userId ? { ...g, memories: [] } : g)
+        );
+      }
+    } catch (err) {
+      console.error('[NoxtmBotAdmin] Reset user memories error:', err);
+      alert(err.response?.data?.message || 'Failed to reset memories');
+    } finally {
+      setResettingUserId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div style={containerStyle}>
@@ -452,20 +467,20 @@ function NoxtmBotAdmin() {
         <p style={subtitleStyle}>Configure your AI assistant's behavior, skills, API, and model</p>
       </div>
 
-      {/* Tabs — first four are the primary group, the rest are secondary */}
+      {/* Tabs — first five are the primary group, the rest are secondary */}
       <div style={tabBarStyle}>
-        {['settings', 'skills', 'memories', 'advanced', 'analytics', 'api', 'plans'].map((tab, idx) => {
+        {['settings', 'skills', 'memories', 'advanced', 'users', 'analytics', 'api'].map((tab, idx) => {
           const label = tab === 'settings' ? 'Settings'
             : tab === 'skills' ? 'Skills'
             : tab === 'memories' ? 'Memories'
             : tab === 'advanced' ? 'Advanced Skills'
+            : tab === 'users' ? 'Users'
             : tab === 'analytics' ? 'Analytics'
-            : tab === 'api' ? 'API & Model'
-            : 'Plans';
+            : 'API & Model';
           return (
             <React.Fragment key={tab}>
-              {/* Visual divider between primary (first four) and secondary tabs */}
-              {idx === 4 && (
+              {/* Visual divider between primary (first five) and secondary tabs */}
+              {idx === 5 && (
                 <span
                   aria-hidden="true"
                   style={{
@@ -690,6 +705,143 @@ function NoxtmBotAdmin() {
         </div>
       )}
 
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#111827' }}>Bot Users</h3>
+            <span style={{ fontSize: '12px', color: '#9ca3af' }}>{userMemoryGroups.length} user{userMemoryGroups.length !== 1 ? 's' : ''}</span>
+          </div>
+          <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px' }}>
+            All workspace users and their bot memories. Use Reset to clear a user's learned memories.
+          </p>
+
+          {/* Search */}
+          <div style={{ marginBottom: '14px' }}>
+            <input
+              style={{ ...inputStyle, width: '260px' }}
+              placeholder="Search users..."
+              value={userMemorySearch}
+              onChange={e => setUserMemorySearch(e.target.value)}
+            />
+          </div>
+
+          {usersLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af', fontSize: '13px' }}>Loading users...</div>
+          ) : (() => {
+            const filtered = userMemoryGroups.filter(g => {
+              if (!userMemorySearch.trim()) return true;
+              const s = userMemorySearch.toLowerCase();
+              return (g.userName || '').toLowerCase().includes(s) || (g.userEmail || '').toLowerCase().includes(s);
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af', fontSize: '13px', borderRadius: '10px', border: '1px dashed #e5e7eb' }}>
+                  {userMemoryGroups.length === 0 ? 'No users have interacted with the bot yet.' : 'No users match your search.'}
+                </div>
+              );
+            }
+
+            return filtered.map(group => {
+              const isOpen = expandedUsers.has(group.userId);
+              const isResetting = resettingUserId === group.userId;
+              return (
+                <div key={group.userId || group.userEmail} style={{ borderRadius: '10px', border: '1px solid #e5e7eb', marginBottom: '8px', overflow: 'hidden' }}>
+                  {/* User header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: isOpen ? '#f9fafb' : '#fff' }}>
+                    {/* Avatar */}
+                    {group.userAvatar ? (
+                      <img
+                        src={group.userAvatar}
+                        alt={group.userName}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '36px', height: '36px', borderRadius: '50%', background: '#111827', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px',
+                        fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {group.userName?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                    )}
+                    {/* Name + email */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{group.userName}</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.userEmail}</div>
+                    </div>
+                    {/* Memory count badge */}
+                    <span style={{
+                      fontSize: '11px', padding: '3px 10px', borderRadius: '12px',
+                      background: group.memories.length > 0 ? '#f0fdf4' : '#f3f4f6',
+                      color: group.memories.length > 0 ? '#16a34a' : '#9ca3af',
+                      fontWeight: 600, flexShrink: 0,
+                    }}>
+                      {group.memories.length} {group.memories.length === 1 ? 'memory' : 'memories'}
+                    </span>
+                    {/* Reset button */}
+                    <button
+                      style={{
+                        ...btnDanger,
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        opacity: group.memories.length === 0 ? 0.4 : 1,
+                        cursor: group.memories.length === 0 ? 'default' : 'pointer',
+                        flexShrink: 0,
+                      }}
+                      disabled={group.memories.length === 0 || isResetting}
+                      onClick={() => resetUserMemories(group.userId, group.userName)}
+                    >
+                      {isResetting ? 'Resetting...' : 'Reset'}
+                    </button>
+                    {/* Expand toggle */}
+                    <button
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
+                      onClick={() => toggleExpandedUser(group.userId)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', display: 'block' }}>
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Expanded memories */}
+                  {isOpen && (
+                    <div style={{ padding: '4px 16px 12px', background: '#fafafa', borderTop: '1px solid #f3f4f6' }}>
+                      {group.memories.length === 0 ? (
+                        <div style={{ padding: '16px 0', fontSize: '13px', color: '#9ca3af', textAlign: 'center' }}>No memories for this user.</div>
+                      ) : (
+                        group.memories.map(mem => (
+                          <div key={mem._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{mem.content}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <span style={{
+                                  fontSize: '10px', padding: '1px 8px', borderRadius: '4px', fontWeight: 600,
+                                  background: '#f3f4f6', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px',
+                                }}>{mem.category}</span>
+                                <span style={{ fontSize: '10px', color: '#d1d5db' }}>{mem.source === 'conversation' ? 'Auto' : 'Manual'}</span>
+                                <span style={{ fontSize: '10px', color: '#d1d5db' }}>{new Date(mem.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <button
+                              style={{ ...btnDanger, padding: '4px 10px', fontSize: '11px', flexShrink: 0 }}
+                              onClick={() => deleteUserMemory(mem._id, group.userId)}
+                            >Delete</button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
+
       {/* Analytics Tab */}
       {activeTab === 'analytics' && (
         <div style={cardStyle}>
@@ -797,38 +949,6 @@ function NoxtmBotAdmin() {
 
           <button style={btnPrimary} onClick={saveConfig} disabled={saving}>
             {saving ? 'Saving...' : 'Save API Settings'}
-          </button>
-        </>
-      )}
-
-      {/* Plans Tab */}
-      {activeTab === 'plans' && (
-        <>
-          <div style={cardStyle}>
-            <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>Enabled Plans</h3>
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 20px' }}>
-              Choose which plans Noxtm Bot offers during signup.
-            </p>
-
-            {['Starter', 'Pro+', 'Advance'].map(plan => (
-              <div key={plan} style={{ ...skillRow, cursor: 'pointer' }} onClick={() => togglePlan(plan)}>
-                <button style={toggleStyle((config.enabledPlans || []).includes(plan))} onClick={(e) => { e.stopPropagation(); togglePlan(plan); }}>
-                  <span style={toggleDot((config.enabledPlans || []).includes(plan))} />
-                </button>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{plan}</div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                    {plan === 'Starter' && '₹1,699/mo · 5 members · 10 GB'}
-                    {plan === 'Pro+' && '₹2,699/mo · 60 members · 50 GB'}
-                    {plan === 'Advance' && '₹4,699/mo · Unlimited · 75 GB'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button style={btnPrimary} onClick={saveConfig} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Plan Settings'}
           </button>
         </>
       )}

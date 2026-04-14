@@ -52,6 +52,8 @@ import VisitorAnalytics from './VisitorAnalytics';
 import NoxtmBotAdmin from './NoxtmBotAdmin';
 import NoxtmAssistant from './NoxtmAssistant';
 import GoogleDriveManager from './GoogleDriveManager';
+import SocialMediaUploads from './SocialMediaUploads';
+import splitViewIcon from '../assets/split_view.svg';
 import { SidebarProvider, SidebarInset } from './ui/sidebar';
 import './Dashboard.css';
 
@@ -71,6 +73,17 @@ function Dashboard({ user, onLogout }) {
       : ASSISTANT_DEFAULT_WIDTH;
   });
   const [isResizingAssistant, setIsResizingAssistant] = useState(false);
+  const [isAssistantCollapsed, setIsAssistantCollapsed] = useState(() => {
+    return localStorage.getItem('noxtm-assistant-collapsed') === 'true';
+  });
+
+  const toggleAssistant = () => {
+    setIsAssistantCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('noxtm-assistant-collapsed', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!isResizingAssistant) return undefined;
@@ -406,39 +419,54 @@ function Dashboard({ user, onLogout }) {
                 </div>
               )}
             </div>
-            {/* Persistent Noxtm Assistant — visible on every section, user-resizable */}
-            <aside
-              className="dashboard-assistant-pane"
-              style={{ width: assistantWidth, flexShrink: 0, height: '100%', position: 'relative' }}
-            >
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize assistant panel"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsResizingAssistant(true);
-                }}
+            {/* Noxtm Assistant — collapsible like sidebar, always has toggle tab */}
+            <div style={{ display: 'flex', height: '100%', flexShrink: 0, position: 'relative' }}>
+              {/* Toggle tab — only shown when assistant is collapsed */}
+              {isAssistantCollapsed && (
+                <button
+                  onClick={toggleAssistant}
+                  title="Open Noxtm Assistant"
+                  className="assistant-toggle-tab"
+                >
+                  <img src={splitViewIcon} alt="Open assistant" className="assistant-toggle-icon" />
+                </button>
+              )}
+
+              {/* Sliding panel */}
+              <aside
+                className="dashboard-assistant-pane"
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: -3,
-                  width: 6,
+                  width: isAssistantCollapsed ? 0 : assistantWidth,
+                  overflow: 'hidden',
                   height: '100%',
-                  cursor: 'col-resize',
-                  zIndex: 10,
-                  background: isResizingAssistant ? 'rgba(59, 130, 246, 0.35)' : 'transparent',
-                  transition: 'background 120ms ease',
+                  position: 'relative',
+                  transition: isResizingAssistant ? 'none' : 'width 0.28s cubic-bezier(0.16,1,0.3,1)',
                 }}
-                onMouseEnter={(e) => {
-                  if (!isResizingAssistant) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.18)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isResizingAssistant) e.currentTarget.style.background = 'transparent';
-                }}
-              />
-              <NoxtmAssistant />
-            </aside>
+              >
+                {/* Resize handle */}
+                {!isAssistantCollapsed && (
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    onMouseDown={(e) => { e.preventDefault(); setIsResizingAssistant(true); }}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: 4,
+                      height: '100%',
+                      cursor: 'col-resize',
+                      zIndex: 10,
+                      background: isResizingAssistant ? 'rgba(59,130,246,0.35)' : 'transparent',
+                      transition: 'background 120ms ease',
+                    }}
+                    onMouseEnter={(e) => { if (!isResizingAssistant) e.currentTarget.style.background = 'rgba(59,130,246,0.18)'; }}
+                    onMouseLeave={(e) => { if (!isResizingAssistant) e.currentTarget.style.background = 'transparent'; }}
+                  />
+                )}
+                <NoxtmAssistant onCollapse={toggleAssistant} />
+              </aside>
+            </div>
           </div>
         </SidebarInset>
 

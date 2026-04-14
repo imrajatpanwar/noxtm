@@ -125,7 +125,7 @@ router.post('/accounts', async (req, res) => {
             platform,
             handle: handle || '',
             color: color || '#6366f1',
-            assignedTo: assignedTo || null,
+            assignedTo: Array.isArray(assignedTo) ? assignedTo.filter(Boolean) : (assignedTo ? [assignedTo] : []),
             defaultLabels: defaultLabels || [],
             companyId: req.companyId,
             createdBy: req.userId
@@ -163,7 +163,7 @@ router.put('/accounts/:id', async (req, res) => {
         if (handle !== undefined) account.handle = handle;
         if (color) account.color = color;
         if (isActive !== undefined) account.isActive = isActive;
-        if (assignedTo !== undefined) account.assignedTo = assignedTo || null;
+        if (assignedTo !== undefined) account.assignedTo = Array.isArray(assignedTo) ? assignedTo.filter(Boolean) : (assignedTo ? [assignedTo] : []);
         if (defaultLabels !== undefined) account.defaultLabels = defaultLabels;
 
         await account.save();
@@ -193,7 +193,7 @@ router.put('/accounts/:id/assign', async (req, res) => {
             return res.status(404).json({ message: 'Account not found' });
         }
 
-        account.assignedTo = assignedTo || null;
+        account.assignedTo = Array.isArray(assignedTo) ? assignedTo.filter(Boolean) : (assignedTo ? [assignedTo] : []);
         await account.save();
 
         const populatedAccount = await SocialMediaAccount.findById(account._id)
@@ -386,7 +386,7 @@ router.get('/posts/:id', async (req, res) => {
 // POST /api/social-media-calendar/posts - Create new post
 router.post('/posts', async (req, res) => {
     try {
-        const { title, content, postDate, postTime, platform, socialMediaAccount, labels, notes, status, priority, isRecurring, recurringPattern, templateId } = req.body;
+        const { title, content, postDate, postTime, platform, socialMediaAccount, labels, notes, status, priority, isRecurring, recurringPattern, templateId, referenceImages } = req.body;
 
         if (!title || !title.trim()) {
             return res.status(400).json({ message: 'Title is required' });
@@ -412,6 +412,7 @@ router.post('/posts', async (req, res) => {
             templateId: templateId || null,
             labels: labels || [],
             notes: notes || '',
+            referenceImages: Array.isArray(referenceImages) ? referenceImages.map(img => ({ ...img, addedBy: req.userId })) : [],
             createdBy: req.userId,
             companyId: req.companyId,
             activity: [{
@@ -478,7 +479,7 @@ router.post('/posts', async (req, res) => {
 // PUT /api/social-media-calendar/posts/:id - Update post
 router.put('/posts/:id', async (req, res) => {
     try {
-        const { title, content, postDate, postTime, platform, socialMediaAccount, labels, notes, priority } = req.body;
+        const { title, content, postDate, postTime, platform, socialMediaAccount, labels, notes, priority, referenceImages } = req.body;
 
         const post = await SocialMediaPost.findOne({
             _id: req.params.id,
@@ -506,6 +507,7 @@ router.put('/posts/:id', async (req, res) => {
         if (labels) post.labels = labels;
         if (notes !== undefined) post.notes = notes;
         if (priority) post.priority = priority;
+        if (Array.isArray(referenceImages)) post.referenceImages = referenceImages.map(img => ({ ...img, addedBy: img.addedBy || req.userId }));
 
         if (changes.length > 0) {
             post.activity.push({
@@ -911,6 +913,95 @@ router.get('/team', async (req, res) => {
     } catch (error) {
         console.error('Error fetching team members:', error);
         res.status(500).json({ message: 'Failed to fetch team members' });
+    }
+});
+
+// ==========================================
+// MEDIA FILES ENDPOINT (access-filtered)
+// ==========================================
+
+// GET /api/social-media-calendar/media-files
+// Owners/Admins see all company files.
+// Members see only files from posts linked to accounts they're assigned to.
+router.get('/media-files', async (req, res) => {
+    try {
+        const Company = require('../models/Company');
+        const company = await Company.findById(req.companyId).select('owner members');
+
+        const isOwner = company?.owner?.toString() === req.userId.toString();
+        const companyMember = company?.members?.find(
+            m => m.user?.toString() === req.userId.toString()
+        );
+        const isAdmin = companyMember?.roleInCompany === 'Admin';
+
+        let postQuery = { companyId: req.companyId };
+
+        if (!isOwner && !isAdmin) {
+            const assignedAccounts = await SocialMediaAccount.find({
+                companyId: req.companyId,
+                assignedTo: req.userId,
+            }).select('_id');
+
+            const accountIds = assignedAccounts.map(a => a._id);
+            if (accountIds.length === 0) {
+                return res.json({ files: [], total: 0 });
+            }
+            postQuery.socialMediaAccount = { $in: accountIds };
+        }
+
+        const posts = await SocialMediaPost.find(postQuery)
+            .populate('socialMediaAccount', 'name platform color')
+            .populate('mediaFiles.uploadedBy', 'fullName profileImage')
+            .select('title mediaFiles referenceImages socialMediaAccount postDate');
+
+        const files = [];
+
+        for (const post of posts) {
+            const accountInfo = post.socialMediaAccount
+                ? { _id: post.socialMediaAccount._id, name: post.socialMediaAccount.name, platform: post.socialMediaAccount.platform, color: post.socialMediaAccount.color }
+                : null;
+
+            for (const f of post.mediaFiles) {
+                files.push({
+                    _id: f._id,
+                    type: 'upload',
+                    url: f.url,
+                    filename: f.originalName || f.filename,
+                    mimeType: f.mimeType,
+                    size: f.size,
+                    uploadedBy: f.uploadedBy,
+                    uploadedAt: f.uploadedAt,
+                    postId: post._id,
+                    postTitle: post.title,
+                    account: accountInfo,
+                    postDate: post.postDate,
+                });
+            }
+
+            for (const r of post.referenceImages) {
+                files.push({
+                    _id: r._id || r.driveFileId,
+                    type: 'reference',
+                    driveFileId: r.driveFileId,
+                    url: r.thumbnailLink,
+                    webViewLink: r.webViewLink,
+                    filename: r.name,
+                    mimeType: r.mimeType,
+                    uploadedAt: r.addedAt,
+                    postId: post._id,
+                    postTitle: post.title,
+                    account: accountInfo,
+                    postDate: post.postDate,
+                });
+            }
+        }
+
+        files.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+
+        res.json({ files, total: files.length });
+    } catch (error) {
+        console.error('Error fetching media files:', error);
+        res.status(500).json({ message: 'Failed to fetch media files' });
     }
 });
 

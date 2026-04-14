@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import axios from 'axios';
+import { Progress } from './ui/progress';
+import SocialMediaUploads from './SocialMediaUploads';
 import './GoogleDriveManager.css';
 
 const CLIENT_ID = '375084822664-hljdpq569rpmgs1kd7kp3b36vs7s6n8k.apps.googleusercontent.com';
@@ -12,6 +14,7 @@ const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const FOLDER_NAME = 'Noxtm Assets';
 
 export default function GoogleDriveManager() {
+  const [activeTab, setActiveTab] = useState('drive'); // 'drive' | 'calendar'
   const [accessToken, setAccessToken] = useState(null);
   const [user, setUser] = useState(null);
   const [files, setFiles] = useState([]);
@@ -87,7 +90,7 @@ export default function GoogleDriveManager() {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           q: `'${fId}' in parents and trashed=false`,
-          fields: 'files(id,name,mimeType,size,thumbnailLink,webViewLink,iconLink,createdTime)',
+          fields: 'files(id,name,mimeType,size,thumbnailLink,webViewLink,webContentLink,iconLink,createdTime)',
           orderBy: 'createdTime desc',
           pageSize: 50,
         },
@@ -226,6 +229,37 @@ export default function GoogleDriveManager() {
         </div>
       </div>
 
+      {/* Tab switcher */}
+      <div className="gdm-tabs">
+        <button
+          className={`gdm-tab${activeTab === 'drive' ? ' gdm-tab--active' : ''}`}
+          onClick={() => setActiveTab('drive')}
+        >
+          <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" width="14" height="14" style={{ flexShrink: 0 }}>
+            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+          </svg>
+          Google Drive
+        </button>
+        <button
+          className={`gdm-tab${activeTab === 'calendar' ? ' gdm-tab--active' : ''}`}
+          onClick={() => setActiveTab('calendar')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Content Calendar Files
+        </button>
+      </div>
+
+      {activeTab === 'calendar' && <SocialMediaUploads embedded />}
+
+      {activeTab === 'drive' && <>
+
       {error && (
         <div className="gdm-error">
           <span>⚠️ {error}</span>
@@ -276,16 +310,16 @@ export default function GoogleDriveManager() {
           )}
         </div>
 
-        {/* Upload progress pills */}
+        {/* Upload progress — shadcn Progress bars */}
         {Object.entries(uploadProgress).length > 0 && (
           <div className="gdm-progress-list">
             {Object.entries(uploadProgress).map(([name, pct]) => (
               <div key={name} className="gdm-progress-item">
-                <span className="gdm-progress-name">{name}</span>
-                <div className="gdm-progress-bar-wrap">
-                  <div className="gdm-progress-bar" style={{ width: `${pct}%` }} />
+                <div className="gdm-progress-meta">
+                  <span className="gdm-progress-name">{name}</span>
+                  <span className="gdm-progress-pct">{pct}%</span>
                 </div>
-                <span className="gdm-progress-pct">{pct}%</span>
+                <Progress value={pct} className="gdm-shadcn-progress" />
               </div>
             ))}
           </div>
@@ -332,6 +366,13 @@ export default function GoogleDriveManager() {
                 </div>
                 <div className="gdm-card-actions" onClick={(e) => e.stopPropagation()}>
                   <a href={file.webViewLink} target="_blank" rel="noreferrer" className="gdm-action-btn" title="Open in Drive">↗</a>
+                  <a
+                    href={`https://drive.google.com/uc?export=download&id=${file.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="gdm-action-btn"
+                    title="Download"
+                  >⬇</a>
                   <button className="gdm-action-btn gdm-action-delete" title="Delete" onClick={() => deleteFile(file.id, file.name)}>✕</button>
                 </div>
               </div>
@@ -359,11 +400,21 @@ export default function GoogleDriveManager() {
             </div>
             <div className="gdm-modal-footer">
               <span className="gdm-modal-meta">{formatBytes(previewFile.size)} · {formatDate(previewFile.createdTime)}</span>
-              <a href={previewFile.webViewLink} target="_blank" rel="noreferrer" className="gdm-btn gdm-btn-connect">Open in Drive ↗</a>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a
+                  href={`https://drive.google.com/uc?export=download&id=${previewFile.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="gdm-btn gdm-btn-ghost"
+                >⬇ Download</a>
+                <a href={previewFile.webViewLink} target="_blank" rel="noreferrer" className="gdm-btn gdm-btn-connect">Open in Drive ↗</a>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      </> /* end activeTab === 'drive' */}
     </div>
   );
 }

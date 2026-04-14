@@ -62,6 +62,44 @@
   gap: 12px;
 }
 
+/* ── Tabs ──────────────────────────────────────────────────── */
+.gdm-tabs {
+  display: flex;
+  gap: 2px;
+  background: #f4f4f5;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+.gdm-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Switzer', sans-serif;
+}
+
+.gdm-tab:hover {
+  color: #111827;
+}
+
+.gdm-tab--active {
+  background: #fff;
+  color: #111827;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+}
+
 .gdm-user-pill {
   display: flex;
   align-items: center;
@@ -247,39 +285,33 @@
 
 .gdm-progress-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 5px;
   font-size: 12px;
 }
 
+.gdm-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .gdm-progress-name {
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: #374151;
-  max-width: 200px;
-}
-
-.gdm-progress-bar-wrap {
-  flex: 2;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 100px;
-  overflow: hidden;
-}
-
-.gdm-progress-bar {
-  height: 100%;
-  background: #2563eb;
-  border-radius: 100px;
-  transition: width 0.2s ease;
+  max-width: 300px;
 }
 
 .gdm-progress-pct {
-  width: 36px;
-  text-align: right;
-  color: #6b7280;
+  font-weight: 600;
+  color: #111827;
+  flex-shrink: 0;
+}
+
+.gdm-shadcn-progress {
+  height: 6px !important;
 }
 
 /* ── Section ─────────────────────────────────────────────── */
