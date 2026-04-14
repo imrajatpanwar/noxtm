@@ -1,4 +1,4 @@
-﻿/* ===== Social Media Calendar â€” Premium B&W Design ===== */
+/* ===== Social Media Calendar â€” Premium B&W Design ===== */
 .smc-container {
     font-family: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
     max-width: 100%;
@@ -1011,10 +1011,292 @@
     flex-shrink: 0;
 }
 
+.smc-assignee-avatar-sm {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+}
+
 .smc-assignee-name {
     font-size: 13px;
     font-weight: 500;
     color: #1a1a1a;
+}
+
+/* Member picker grid */
+.smc-member-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 4px;
+    background: #fafafa;
+}
+
+.smc-member-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+    color: #374151;
+}
+
+.smc-member-option:hover {
+    background: #f3f4f6;
+}
+
+.smc-member-option--selected {
+    background: #f0fdf4;
+}
+
+.smc-member-option-name {
+    flex: 1;
+}
+
+.smc-member-check {
+    font-size: 12px;
+    color: #16a34a;
+    font-weight: 700;
+}
+
+/* ── New Assignee Selector (dotted + avatar stack + inline dropdown) ── */
+.smc-assignee-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.smc-assignee-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Each assigned avatar wrapper */
+.smc-av-wrap {
+    position: relative;
+}
+
+/* shadcn Avatar override — 34px circle */
+.smc-av-circle {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    outline: 1px solid #e5e7eb;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: 'Switzer', sans-serif;
+}
+
+
+
+/* × remove button on avatar */
+.smc-av-remove {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 1.5px solid #fff;
+    color: #fff;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 2;
+}
+
+.smc-av-wrap:hover .smc-av-remove {
+    display: flex;
+}
+
+/* Dotted circle + button */
+.smc-add-av-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px dashed #9ca3af;
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+
+.smc-add-av-btn:hover,
+.smc-add-av-btn.open {
+    border-color: #1a1a1a;
+    color: #1a1a1a;
+    background: #f3f4f6;
+}
+
+/* Inline member list (replaces floating dropdown — avoids overflow clip) */
+.smc-assignee-dropdown {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+/* Dropdown item */
+.smc-assignee-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s;
+    user-select: none;
+}
+
+.smc-assignee-opt:hover {
+    background: #f3f4f6;
+}
+
+.smc-assignee-opt--sel {
+    background: #f0fdf4;
+}
+
+.smc-assignee-opt-name {
+    flex: 1;
+    font-size: 13px;
+    color: #1a1a1a;
+    font-family: 'Switzer', sans-serif;
+    font-weight: 500;
+}
+
+.smc-assignee-opt-check {
+    font-size: 13px;
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.smc-assignee-empty {
+    font-size: 12px;
+    color: #9ca3af;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+/* Small avatar for dropdown items */
+.smc-av-sm {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    background: #374151;
+    color: #fff;
+    font-family: 'Switzer', sans-serif;
+}
+
+.smc-av-sm .smc-av-fallback {
+    font-size: 10px;
+    font-weight: 700;
+    background: #374151;
+    color: #fff;
+    font-family: 'Switzer', sans-serif;
+}
+
+/* Avatar chip (selected users display) */
+.smc-avatar-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.smc-avatar-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 3px 8px 3px 4px;
+    font-size: 12px;
+    color: #374151;
+}
+
+.smc-avatar-chip-name {
+    font-weight: 500;
+}
+
+.smc-avatar-chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    margin-left: 2px;
+}
+
+.smc-avatar-chip-remove:hover {
+    color: #ef4444;
+}
+
+/* Mini avatar stack in account dropdown */
+.smc-avatar-stack-mini {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.smc-avatar-mini {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    margin-left: -6px;
+    flex-shrink: 0;
+}
+
+.smc-avatar-mini-more {
+    background: #e5e7eb;
+    color: #6b7280;
+    font-size: 7px;
 }
 
 /* Labels */
@@ -1358,3 +1640,247 @@
     }
 }
 
+/* ── Reference Images ─────────────────────────────────────────── */
+.smc-google-signin-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    font-family: 'Switzer', sans-serif;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+}
+.smc-google-signin-btn:hover {
+    border-color: #9ca3af;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.smc-ref-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fafafa;
+}
+.smc-ref-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.smc-ref-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.smc-ref-username {
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.smc-ref-signout {
+    font-size: 11px;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Switzer', sans-serif;
+}
+.smc-ref-signout:hover { color: #dc2626; background: #fef2f2; }
+
+.smc-ref-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Switzer', sans-serif;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.15s;
+}
+.smc-ref-upload-btn:hover:not(:disabled) { background: #333; }
+.smc-ref-upload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.smc-ref-progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.smc-ref-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.smc-ref-progress-name {
+    font-size: 11px;
+    color: #374151;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
+}
+.smc-ref-progress-meta span:last-child { font-size: 11px; color: #9ca3af; }
+
+.smc-ref-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.smc-ref-thumb {
+    position: relative;
+    width: 72px;
+    flex-shrink: 0;
+}
+.smc-ref-thumb img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    display: block;
+}
+.smc-ref-thumb-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+}
+.smc-ref-thumb-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+}
+.smc-ref-thumb-remove:hover { background: #dc2626; }
+.smc-ref-thumb-link {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+.smc-ref-thumb-link:hover { background: #2563eb; }
+.smc-ref-thumb-name {
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+
+/* Reference Images — detail modal grid */
+.smc-ref-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.smc-ref-detail-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fafafa;
+}
+.smc-ref-detail-thumb {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
+}
+.smc-ref-detail-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.smc-ref-detail-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.smc-ref-detail-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.smc-ref-detail-actions {
+    display: flex;
+    gap: 8px;
+}
+.smc-ref-detail-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #374151;
+    text-decoration: none;
+    background: #fff;
+    transition: background 0.12s, border-color 0.12s;
+    font-family: 'Switzer', sans-serif;
+}
+.smc-ref-detail-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+.smc-ref-detail-btn--dl {
+    background: #1a1a1a;
+    color: #fff;
+    border-color: #1a1a1a;
+}
+.smc-ref-detail-btn--dl:hover { background: #333; border-color: #333; }

@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock, FiExternalLink } from 'react-icons/fi';
+import { useGoogleLogin, googleLogout } from '@react-oauth/google';
+import axios from 'axios';
 import { toast } from 'sonner';
 import api from '../config/api';
-import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm } from './calendarHelpers';
+import { Progress } from './ui/progress';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm, truncateWords } from './calendarHelpers';
 import './SocialMediaCalendar.css';
 
 function SocialMediaCalendar() {
@@ -32,8 +36,17 @@ function SocialMediaCalendar() {
     const [draggedPost, setDraggedPost] = useState(null);
     const [selectedPosts, setSelectedPosts] = useState([]);
     const [templateForm, setTemplateForm] = useState({ name: '', content: '', platform: 'Instagram', labels: '', hashtags: '', notes: '' });
+    const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+    const [driveToken, setDriveToken] = useState(null);
+    const [driveUser, setDriveUser] = useState(null);
+    const [refFolderId, setRefFolderId] = useState(null);
+    const [refUploading, setRefUploading] = useState(false);
+    const [refUploadProgress, setRefUploadProgress] = useState({});
+    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
     const fileInputRef = useRef(null);
+    const refFileInputRef = useRef(null);
     const accountDropdownRef = useRef(null);
+    const assigneeDropdownRef = useRef(null);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -41,6 +54,7 @@ function SocialMediaCalendar() {
     useEffect(() => {
         const h = (e) => {
             if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) setShowAccountDropdown(false);
+            if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(e.target)) setShowAssigneeDropdown(false);
             if (contextMenu) setContextMenu(null);
         };
         document.addEventListener('mousedown', h);
@@ -60,6 +74,70 @@ function SocialMediaCalendar() {
         return () => window.removeEventListener('keydown', h);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // ── Google Drive for reference images ──────────────────────────────────
+    const driveLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setDriveToken(tokenResponse.access_token);
+            try {
+                const profile = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } });
+                setDriveUser(profile.data);
+            } catch (e) { /* ignore */ }
+        },
+        onError: () => toast.error('Google sign-in failed'),
+        scope: 'https://www.googleapis.com/auth/drive.file',
+    });
+
+    const disconnectDrive = () => { googleLogout(); setDriveToken(null); setDriveUser(null); setRefFolderId(null); };
+
+    const ensureRefFolder = useCallback(async (token) => {
+        if (refFolderId) return refFolderId;
+        const FOLDER = 'Noxtm Calendar';
+        const search = await axios.get('https://www.googleapis.com/drive/v3/files', {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { q: `name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`, fields: 'files(id,name)' }
+        });
+        if (search.data.files?.length > 0) { setRefFolderId(search.data.files[0].id); return search.data.files[0].id; }
+        const created = await axios.post('https://www.googleapis.com/drive/v3/files',
+            { name: FOLDER, mimeType: 'application/vnd.google-apps.folder' },
+            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        );
+        setRefFolderId(created.data.id);
+        return created.data.id;
+    }, [refFolderId]);
+
+    const handleRefImageUpload = async (fileList) => {
+        if (!driveToken || !fileList.length) return;
+        setRefUploading(true);
+        try {
+            const fId = await ensureRefFolder(driveToken);
+            const uploaded = [];
+            for (const file of Array.from(fileList)) {
+                setRefUploadProgress(p => ({ ...p, [file.name]: 0 }));
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify({ name: file.name, parents: [fId] })], { type: 'application/json' }));
+                form.append('file', file);
+                const res = await axios.post(
+                    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,thumbnailLink,webViewLink,mimeType',
+                    form,
+                    { headers: { Authorization: `Bearer ${driveToken}` }, onUploadProgress: (evt) => { const pct = Math.round((evt.loaded / evt.total) * 100); setRefUploadProgress(p => ({ ...p, [file.name]: pct })); } }
+                );
+                uploaded.push({ driveFileId: res.data.id, name: res.data.name, thumbnailLink: res.data.thumbnailLink || '', webViewLink: res.data.webViewLink || '', mimeType: res.data.mimeType || file.type });
+                setRefUploadProgress(p => { const n = { ...p }; delete n[file.name]; return n; });
+            }
+            setPostForm(prev => ({ ...prev, referenceImages: [...prev.referenceImages, ...uploaded] }));
+            toast.success(`${uploaded.length} reference image${uploaded.length > 1 ? 's' : ''} added`);
+        } catch (e) {
+            toast.error('Upload to Google Drive failed');
+        } finally {
+            setRefUploading(false);
+        }
+    };
+
+    const removeRefImage = (driveFileId) => {
+        setPostForm(prev => ({ ...prev, referenceImages: prev.referenceImages.filter(img => img.driveFileId !== driveFileId) }));
+    };
+    // ─────────────────────────────────────────────────────────────────────────
 
     const fetchPosts = useCallback(async () => {
         try {
@@ -92,14 +170,17 @@ function SocialMediaCalendar() {
 
     // CRUD handlers
     const handleCreatePost = async () => {
+        if (isSubmittingPost) return;
         if (!postForm.title.trim()) return toast.error('Title is required');
         if (!postForm.postDate) return toast.error('Date is required');
+        setIsSubmittingPost(true);
         try {
             const payload = { ...postForm, labels: postForm.labels ? postForm.labels.split(',').map(l => l.trim()).filter(Boolean) : [], socialMediaAccount: postForm.socialMediaAccount || null };
             if (editingPost) { await api.put(`/social-media-calendar/posts/${editingPost._id}`, payload); toast.success('Post updated'); }
             else { await api.post('/social-media-calendar/posts', payload); toast.success(postForm.isRecurring ? 'Recurring posts created' : 'Post created'); }
             setShowPostModal(false); setEditingPost(null); setPostForm(defaultPostForm()); fetchPosts();
         } catch (err) { toast.error(err.response?.data?.message || 'Failed to save post'); }
+        finally { setIsSubmittingPost(false); }
     };
 
     const handleDeletePost = async (id) => {
@@ -199,7 +280,7 @@ function SocialMediaCalendar() {
 
     const openEditPost = (post) => {
         setEditingPost(post);
-        setPostForm({ title: post.title, content: post.content || '', postDate: new Date(post.postDate).toISOString().split('T')[0], postTime: post.postTime || '10:00', platform: post.platform, socialMediaAccount: post.socialMediaAccount?._id || '', labels: (post.labels || []).join(', '), notes: post.notes || '', status: post.status, priority: post.priority || 'Medium', isRecurring: false, recurringPattern: '' });
+        setPostForm({ title: post.title, content: post.content || '', postDate: new Date(post.postDate).toISOString().split('T')[0], postTime: post.postTime || '10:00', platform: post.platform, socialMediaAccount: post.socialMediaAccount?._id || '', labels: (post.labels || []).join(', '), notes: post.notes || '', status: post.status, priority: post.priority || 'Medium', isRecurring: false, recurringPattern: '', referenceImages: post.referenceImages || [] });
         setShowPostModal(true);
     };
 
@@ -256,7 +337,16 @@ function SocialMediaCalendar() {
                                     <div key={a._id} className={`smc-dropdown-item ${selectedAccount === a._id ? 'active' : ''}`} onClick={() => { setSelectedAccount(a._id); setShowAccountDropdown(false); }}>
                                         <span className="acct-dot" style={{ background: a.color, width: 8, height: 8, borderRadius: '50%', display: 'inline-block' }} />
                                         <span style={{ flex: 1 }}>{a.name}</span>
-                                        {a.assignedTo && <span style={{ fontSize: 11, color: '#9ca3af' }}>{a.assignedTo.fullName}</span>}
+                                        {a.assignedTo?.length > 0 && (
+                                            <div className="smc-avatar-stack-mini">
+                                                {a.assignedTo.slice(0, 3).map((u, i) => (
+                                                    <div key={u._id || i} className="smc-avatar-mini" title={u.fullName} style={{ zIndex: 3 - i }}>
+                                                        {getInitials(u.fullName)}
+                                                    </div>
+                                                ))}
+                                                {a.assignedTo.length > 3 && <div className="smc-avatar-mini smc-avatar-mini-more">+{a.assignedTo.length - 3}</div>}
+                                            </div>
+                                        )}
                                         <span className="acct-platform">{a.platform}</span>
                                         <button className="acct-delete" onClick={e => { e.stopPropagation(); handleDeleteAccount(a._id); }}><FiTrash2 size={12} /></button>
                                     </div>
@@ -319,7 +409,7 @@ function SocialMediaCalendar() {
                                                 onContextMenu={e => handleContextMenu(e, post)} draggable onDragStart={e => handleDragStart(e, post)} onDragEnd={handleDragEnd}
                                                 title={`${post.title} — ${post.status} (${post.priority})`}>
                                                 <span className="chip-dot" style={{ background: post.socialMediaAccount?.color || '#1a1a1a' }} />
-                                                <span className="chip-title">{post.title}</span>
+                                                <span className="chip-title">{truncateWords(post.title)}</span>
                                                 {post.priority === 'High' && <span style={{ color: '#dc2626', fontSize: 9 }}>●</span>}
                                                 <span className="chip-platform">{post.platform?.slice(0, 2)}</span>
                                             </div>
@@ -346,11 +436,11 @@ function SocialMediaCalendar() {
                                     {dayPosts.map(post => (
                                         <div key={post._id} className="smc-week-post" onClick={e => { e.stopPropagation(); openPostDetail(post); }} onContextMenu={e => handleContextMenu(e, post)} draggable onDragStart={e => handleDragStart(e, post)} onDragEnd={handleDragEnd}>
                                             <span className="wp-dot" style={{ background: post.socialMediaAccount?.color || '#1a1a1a' }} />
-                                            <span className="wp-title">{post.title}</span>
+                                            <span className="wp-title">{truncateWords(post.title)}</span>
                                             <span className="wp-time">{post.postTime}</span>
                                             {post.priority === 'High' && <span style={{ color: '#dc2626', fontSize: 10, fontWeight: 600 }}>HIGH</span>}
                                             <span className="wp-status" style={{ color: STATUS_COLORS[post.status], border: `1px solid ${STATUS_COLORS[post.status]}30`, borderRadius: 4, padding: '2px 6px' }}>{post.status}</span>
-                                            {post.socialMediaAccount?.assignedTo && <span style={{ fontSize: 11, color: '#9ca3af' }}>→ {post.socialMediaAccount.assignedTo.fullName}</span>}
+                                            {post.socialMediaAccount?.assignedTo?.length > 0 && <span style={{ fontSize: 11, color: '#9ca3af' }}>→ {post.socialMediaAccount.assignedTo.map(u => u.fullName).join(', ')}</span>}
                                         </div>
                                     ))}
                                     {dayPosts.length === 0 && <span style={{ color: '#d1d5db', fontSize: 12 }}>No posts</span>}
@@ -422,7 +512,7 @@ function SocialMediaCalendar() {
                             </div>
                             <div className="smc-form-row">
                                 <div className="smc-form-group"><label>Platform</label><select value={postForm.platform} onChange={e => setPostForm({ ...postForm, platform: e.target.value })}>{PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                                <div className="smc-form-group"><label>Account</label><select value={postForm.socialMediaAccount} onChange={e => setPostForm({ ...postForm, socialMediaAccount: e.target.value })}><option value="">No Account</option>{accounts.map(a => <option key={a._id} value={a._id}>{a.name} ({a.platform}){a.assignedTo ? ` → ${a.assignedTo.fullName}` : ''}</option>)}</select></div>
+                                <div className="smc-form-group"><label>Account</label><select value={postForm.socialMediaAccount} onChange={e => setPostForm({ ...postForm, socialMediaAccount: e.target.value })}><option value="">No Account</option>{accounts.map(a => <option key={a._id} value={a._id}>{a.name} ({a.platform}){a.assignedTo?.length > 0 ? ` → ${a.assignedTo.map(u => u.fullName).join(', ')}` : ''}</option>)}</select></div>
                             </div>
                             <div className="smc-form-row">
                                 <div className="smc-form-group"><label>Priority</label><select value={postForm.priority} onChange={e => setPostForm({ ...postForm, priority: e.target.value })}>{PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
@@ -440,19 +530,69 @@ function SocialMediaCalendar() {
                             )}
                             <div className="smc-form-group"><label>Labels (comma separated)</label><input value={postForm.labels} onChange={e => setPostForm({ ...postForm, labels: e.target.value })} placeholder="e.g. Product Launch, Sale" /></div>
                             <div className="smc-form-group"><label>Notes</label><textarea value={postForm.notes} onChange={e => setPostForm({ ...postForm, notes: e.target.value })} placeholder="Internal notes..." rows={2} /></div>
-                            {/* Account Assignee Info */}
-                            {postForm.socialMediaAccount && (() => {
-                                const a = accounts.find(ac => ac._id === postForm.socialMediaAccount); return a?.assignedTo ? (
-                                    <div style={{ padding: '10px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div className="smc-assignee-avatar">{getInitials(a.assignedTo.fullName)}</div>
-                                        <div><div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600 }}>Account Manager</div><div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{a.assignedTo.fullName}</div></div>
+                            {/* Reference Images */}
+                            <div className="smc-form-group">
+                                <label><FiImage size={12} style={{ marginRight: 4 }} />Reference Images</label>
+                                {!driveToken ? (
+                                    <button type="button" className="smc-google-signin-btn" onClick={() => driveLogin()}>
+                                        <svg viewBox="0 0 48 48" width="16" height="16" style={{ flexShrink: 0 }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                                        Sign in with Google to upload reference images
+                                    </button>
+                                ) : (
+                                    <div className="smc-ref-section">
+                                        <div className="smc-ref-header">
+                                            {driveUser?.picture && <img src={driveUser.picture} alt="" className="smc-ref-avatar" />}
+                                            <span className="smc-ref-username">{driveUser?.name || driveUser?.email}</span>
+                                            <button type="button" className="smc-ref-signout" onClick={disconnectDrive}>Sign out</button>
+                                        </div>
+                                        <button type="button" className="smc-ref-upload-btn" onClick={() => refFileInputRef.current?.click()} disabled={refUploading}>
+                                            <FiUpload size={13} /> {refUploading ? 'Uploading...' : 'Upload images'}
+                                        </button>
+                                        <input ref={refFileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { if (e.target.files.length) handleRefImageUpload(e.target.files); e.target.value = ''; }} />
+                                        {Object.entries(refUploadProgress).map(([name, pct]) => (
+                                            <div key={name} className="smc-ref-progress-item">
+                                                <div className="smc-ref-progress-meta"><span className="smc-ref-progress-name">{name}</span><span>{pct}%</span></div>
+                                                <Progress value={pct} />
+                                            </div>
+                                        ))}
+                                        {postForm.referenceImages.length > 0 && (
+                                            <div className="smc-ref-thumbs">
+                                                {postForm.referenceImages.map(img => (
+                                                    <div key={img.driveFileId} className="smc-ref-thumb">
+                                                        {img.thumbnailLink
+                                                            ? <img src={img.thumbnailLink} alt={img.name} />
+                                                            : <div className="smc-ref-thumb-placeholder"><FiImage size={18} /></div>}
+                                                        <button type="button" className="smc-ref-thumb-remove" onClick={() => removeRefImage(img.driveFileId)}><FiX size={10} /></button>
+                                                        <div className="smc-ref-thumb-name">{img.name}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                ) : null;
+                                )}
+                            </div>
+                            {/* Account Assignees Info */}
+                            {postForm.socialMediaAccount && (() => {
+                                const a = accounts.find(ac => ac._id === postForm.socialMediaAccount);
+                                if (!a?.assignedTo?.length) return null;
+                                return (
+                                    <div style={{ padding: '10px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, marginBottom: 8 }}>Team Members</div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                            {a.assignedTo.map((u, i) => (
+                                                <div key={u._id || i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <div className="smc-assignee-avatar smc-assignee-avatar-sm">{getInitials(u.fullName)}</div>
+                                                    <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{u.fullName}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
                             })()}
                         </div>
                         <div className="smc-modal-footer">
                             <button className="smc-btn-secondary" onClick={() => setShowPostModal(false)}>Cancel</button>
-                            <button className="smc-btn-primary" onClick={handleCreatePost}>{editingPost ? 'Update' : postForm.isRecurring ? 'Create Recurring' : 'Create Post'}</button>
+                            <button className="smc-btn-primary" onClick={handleCreatePost} disabled={isSubmittingPost}>{isSubmittingPost ? 'Saving...' : editingPost ? 'Update' : postForm.isRecurring ? 'Create Recurring' : 'Create Post'}</button>
                         </div>
                     </div>
                 </div>
@@ -483,7 +623,7 @@ function SocialMediaCalendar() {
                         </div>
                         <div className="smc-tabs">
                             <button className={`smc-tab ${detailTab === 'details' ? 'active' : ''}`} onClick={() => setDetailTab('details')}><FiCalendar size={13} /> Details</button>
-                            <button className={`smc-tab ${detailTab === 'media' ? 'active' : ''}`} onClick={() => setDetailTab('media')}><FiImage size={13} /> Media ({showPostDetail.mediaFiles?.length || 0})</button>
+                            <button className={`smc-tab ${detailTab === 'media' ? 'active' : ''}`} onClick={() => setDetailTab('media')}><FiImage size={13} /> Reference Images ({showPostDetail.referenceImages?.length || 0})</button>
                             <button className={`smc-tab ${detailTab === 'comments' ? 'active' : ''}`} onClick={() => setDetailTab('comments')}><FiMessageCircle size={13} /> Comments ({showPostDetail.comments?.length || 0})</button>
                             <button className={`smc-tab ${detailTab === 'activity' ? 'active' : ''}`} onClick={() => setDetailTab('activity')}><FiActivity size={13} /> Activity</button>
                         </div>
@@ -498,38 +638,55 @@ function SocialMediaCalendar() {
                                     <div className="smc-detail-field"><div className="smc-detail-label">Platform</div><div className="smc-detail-value">{showPostDetail.platform}</div></div>
                                     <div className="smc-detail-field"><div className="smc-detail-label">Account</div><div className="smc-detail-value">{showPostDetail.socialMediaAccount ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: showPostDetail.socialMediaAccount.color, display: 'inline-block' }} />{showPostDetail.socialMediaAccount.name}</span> : <span className="text-muted">None</span>}</div></div>
                                 </div>
-                                {/* Account-based assignee */}
-                                <div className="smc-detail-field">
-                                    <div className="smc-detail-label">Account Manager</div>
-                                    {showPostDetail.socialMediaAccount?.assignedTo ? (
-                                        <div className="smc-assignee-info"><div className="smc-assignee-avatar">{getInitials(showPostDetail.socialMediaAccount.assignedTo.fullName)}</div><span className="smc-assignee-name">{showPostDetail.socialMediaAccount.assignedTo.fullName}</span></div>
-                                    ) : <div className="smc-detail-value text-muted">No account manager assigned</div>}
-                                </div>
+                                {/* Account-based assignees */}
+                                {showPostDetail.socialMediaAccount?.assignedTo?.length > 0 && (
+                                    <div className="smc-detail-field">
+                                        <div className="smc-detail-label">Team Members</div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                            {showPostDetail.socialMediaAccount.assignedTo.map((u, i) => (
+                                                <div key={u._id || i} className="smc-assignee-info">
+                                                    <div className="smc-assignee-avatar">{getInitials(u.fullName)}</div>
+                                                    <span className="smc-assignee-name">{u.fullName}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {showPostDetail.labels?.length > 0 && <div className="smc-detail-field"><div className="smc-detail-label">Labels</div><div className="smc-labels">{showPostDetail.labels.map((l, i) => <span key={i} className="smc-label-tag">{l}</span>)}</div></div>}
                                 {showPostDetail.notes && <div className="smc-detail-field"><div className="smc-detail-label">Notes</div><div className="smc-detail-value" style={{ whiteSpace: 'pre-wrap', color: '#6b7280' }}>{showPostDetail.notes}</div></div>}
                                 <div className="smc-detail-field"><div className="smc-detail-label">Created By</div><div className="smc-detail-value">{showPostDetail.createdBy?.fullName || 'Unknown'}</div></div>
                             </>)}
                             {detailTab === 'media' && (<>
-                                <div style={{ padding: '12px 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
-                                    <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>Any team member can upload graphic posts here (JPG, PNG, MP4)</div>
-                                    <div className="smc-upload-area" onClick={() => fileInputRef.current?.click()}>
-                                        <div className="upload-icon"><FiUpload size={28} /></div>
-                                        <p><span>Click to upload</span> or drag & drop</p>
-                                        <p className="smc-upload-hint">Images & videos up to 25MB</p>
-                                    </div>
-                                </div>
-                                <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} onChange={e => { if (e.target.files.length) handleFileUpload(showPostDetail._id, e.target.files); e.target.value = ''; }} />
-                                {showPostDetail.mediaFiles?.length > 0 ? (
-                                    <div className="smc-media-grid">
-                                        {showPostDetail.mediaFiles.map(file => (
-                                            <div key={file._id} className="smc-media-item">
-                                                {file.mimeType?.startsWith('video') ? <video src={file.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <img src={file.url} alt={file.originalName} />}
-                                                <button className="remove-media" onClick={() => handleRemoveMedia(showPostDetail._id, file._id)}>×</button>
-                                                {file.uploadedBy && <div style={{ position: 'absolute', bottom: 4, left: 4, fontSize: 9, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>{file.uploadedBy.fullName || 'User'}</div>}
+                                {showPostDetail.referenceImages?.length > 0 ? (
+                                    <div className="smc-ref-detail-grid">
+                                        {showPostDetail.referenceImages.map(img => (
+                                            <div key={img._id || img.driveFileId} className="smc-ref-detail-card">
+                                                <div className="smc-ref-detail-thumb">
+                                                    {img.thumbnailLink
+                                                        ? <img src={img.thumbnailLink} alt={img.name} />
+                                                        : <div className="smc-ref-thumb-placeholder"><FiImage size={22} /></div>}
+                                                </div>
+                                                <div className="smc-ref-detail-info">
+                                                    <span className="smc-ref-detail-name">{img.name}</span>
+                                                    <div className="smc-ref-detail-actions">
+                                                        {img.webViewLink && (
+                                                            <a href={img.webViewLink} target="_blank" rel="noopener noreferrer" className="smc-ref-detail-btn">
+                                                                <FiExternalLink size={12} /> View
+                                                            </a>
+                                                        )}
+                                                        {img.driveFileId && (
+                                                            <a href={`https://drive.google.com/uc?export=download&id=${img.driveFileId}`} target="_blank" rel="noopener noreferrer" className="smc-ref-detail-btn smc-ref-detail-btn--dl">
+                                                                <FiDownload size={12} /> Download
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
-                                ) : <p className="smc-empty">No media files yet — upload graphics here</p>}
+                                ) : (
+                                    <p className="smc-empty">No reference images attached to this post</p>
+                                )}
                             </>)}
                             {detailTab === 'comments' && (<>
                                 <div className="smc-comments-list">
@@ -560,7 +717,64 @@ function SocialMediaCalendar() {
                             <div className="smc-form-group"><label>Account Name *</label><input value={accountForm.name} onChange={e => setAccountForm({ ...accountForm, name: e.target.value })} placeholder="e.g. Company Instagram" /></div>
                             <div className="smc-form-group"><label>Platform</label><select value={accountForm.platform} onChange={e => setAccountForm({ ...accountForm, platform: e.target.value })}>{PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
                             <div className="smc-form-group"><label>Handle / URL</label><input value={accountForm.handle} onChange={e => setAccountForm({ ...accountForm, handle: e.target.value })} placeholder="@your_handle" /></div>
-                            <div className="smc-form-group"><label>Assign Team Member</label><select value={accountForm.assignedTo} onChange={e => setAccountForm({ ...accountForm, assignedTo: e.target.value })}><option value="">Unassigned</option>{teamMembers.map(m => <option key={m._id} value={m._id}>{m.fullName}</option>)}</select></div>
+                            <div className="smc-form-group">
+                                <label>Assign Team Members</label>
+                                <div className="smc-assignee-selector" ref={assigneeDropdownRef}>
+                                    <div className="smc-assignee-row">
+                                        {/* Stacked assigned avatars */}
+                                        {accountForm.assignedTo.map(id => {
+                                            const m = teamMembers.find(tm => tm._id === id);
+                                            if (!m) return null;
+                                            return (
+                                                <div key={id} className="smc-av-wrap" title={m.fullName}>
+                                                    <div className="smc-av-circle smc-av-fallback">{getInitials(m.fullName)}</div>
+                                                    <button
+                                                        type="button"
+                                                        className="smc-av-remove"
+                                                        onClick={() => setAccountForm(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(x => x !== id) }))}
+                                                    >×</button>
+                                                </div>
+                                            );
+                                        })}
+                                        {/* Dotted + circle */}
+                                        <button
+                                            type="button"
+                                            className={`smc-add-av-btn${showAssigneeDropdown ? ' open' : ''}`}
+                                            onClick={() => setShowAssigneeDropdown(v => !v)}
+                                            title="Add team member"
+                                        >
+                                            <FiPlus size={14} />
+                                        </button>
+                                    </div>
+                                    {/* Dropdown */}
+                                    {showAssigneeDropdown && (
+                                        <div className="smc-assignee-dropdown">
+                                            {teamMembers.length === 0 && (
+                                                <div className="smc-assignee-empty">No team members found</div>
+                                            )}
+                                            {teamMembers.map(m => {
+                                                const selected = accountForm.assignedTo.includes(m._id);
+                                                return (
+                                                    <div
+                                                        key={m._id}
+                                                        className={`smc-assignee-opt${selected ? ' smc-assignee-opt--sel' : ''}`}
+                                                        onClick={() => setAccountForm(prev => ({
+                                                            ...prev,
+                                                            assignedTo: selected
+                                                                ? prev.assignedTo.filter(x => x !== m._id)
+                                                                : [...prev.assignedTo, m._id]
+                                                        }))}
+                                                    >
+                                                        <div className="smc-av-sm smc-av-fallback">{getInitials(m.fullName)}</div>
+                                                        <span className="smc-assignee-opt-name">{m.fullName}</span>
+                                                        {selected && <span className="smc-assignee-opt-check">✓</span>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                             <div className="smc-form-group"><label>Color</label><div className="smc-color-picker">{ACCOUNT_COLORS.map(c => <div key={c} className={`smc-color-swatch ${accountForm.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setAccountForm({ ...accountForm, color: c })} />)}</div></div>
                         </div>
                         <div className="smc-modal-footer"><button className="smc-btn-secondary" onClick={() => setShowAccountModal(false)}>Cancel</button><button className="smc-btn-primary" onClick={handleCreateAccount}>Create Account</button></div>
