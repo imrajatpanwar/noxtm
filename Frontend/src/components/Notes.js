@@ -214,11 +214,6 @@ function Notes() {
         assignedUserIds = [typeof note.assignedTo === 'string' ? note.assignedTo : note.assignedTo._id];
       }
     }
-    // Include botgit if note has bot access
-    if (note.botgitAccess) {
-      assignedUserIds = ['botgit', ...assignedUserIds];
-    }
-    
     setEditorData({
       title: note.title,
       content: note.content,
@@ -260,15 +255,10 @@ function Notes() {
     }
   };
 
-  // Botgit virtual identity for AI bot assignment
-  const BOTGIT_IDENTITY = { _id: 'botgit', fullName: 'botgit', email: 'AI Bot · WhatsApp', isBotgit: true };
-
   // User assignment helpers
   const getSelectedUsers = () => {
     if (!editorData.assignedTo || editorData.assignedTo.length === 0) return [];
     return editorData.assignedTo.map(userId => {
-      // Handle botgit special identity
-      if (userId === 'botgit') return BOTGIT_IDENTITY;
       // Check if user data is already in selectedNote (populated)
       if (selectedNote?.assignedTo && Array.isArray(selectedNote.assignedTo)) {
         const foundUser = selectedNote.assignedTo.find(u => (u._id || u) === userId);
@@ -290,13 +280,10 @@ function Notes() {
     setEditorData(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(id => id !== userId) }));
   };
 
-  const filteredUsersRaw = companyUsers.filter(u =>
+  const filteredUsers = companyUsers.filter(u =>
     u.fullName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
-  // Prepend botgit identity if it matches search
-  const botgitMatch = !userSearchQuery || 'botgit'.includes(userSearchQuery.toLowerCase()) || 'ai bot'.includes(userSearchQuery.toLowerCase());
-  const filteredUsers = botgitMatch ? [BOTGIT_IDENTITY, ...filteredUsersRaw] : filteredUsersRaw;
 
   // Format date
   const formatDate = (dateStr) => {
@@ -545,9 +532,9 @@ function Notes() {
                   {editorData.assignedTo && editorData.assignedTo.length > 0 && (
                     <div className="notes-assign-selected-list">
                       {getSelectedUsers().map(user => (
-                        <div key={user._id} className={`notes-assign-selected-badge ${user.isBotgit ? 'botgit-badge' : ''}`}>
-                          <div className={`notes-assign-avatar ${user.isBotgit ? 'botgit-avatar' : ''}`}>
-                            {user.isBotgit ? <span style={{ fontSize: '10px' }}>🤖</span> : <FiUser />}
+                        <div key={user._id} className="notes-assign-selected-badge">
+                          <div className="notes-assign-avatar">
+                            <FiUser />
                           </div>
                           <span>{user.fullName}</span>
                           <button onClick={() => removeAssignedUser(user._id)}>
@@ -588,7 +575,7 @@ function Notes() {
                             return (
                               <button
                                 key={user._id}
-                                className={`notes-assign-option ${isSelected ? 'selected' : ''} ${user.isBotgit ? 'botgit-option' : ''}`}
+                                className={`notes-assign-option ${isSelected ? 'selected' : ''}`}
                                 onClick={() => {
                                   if (isSelected) {
                                     removeAssignedUser(user._id);
@@ -597,8 +584,8 @@ function Notes() {
                                   }
                                 }}
                               >
-                                <div className={`notes-assign-avatar ${user.isBotgit ? 'botgit-avatar' : ''}`}>
-                                  {user.isBotgit ? <span style={{ fontSize: '11px' }}>🤖</span> : <FiUser />}
+                                <div className="notes-assign-avatar">
+                                  <FiUser />
                                 </div>
                                 <div className="notes-assign-info">
                                   <span className="notes-assign-name">{user.fullName}</span>
@@ -688,7 +675,6 @@ function Notes() {
 function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, onPin, onArchive, formatDate, truncate }) {
   const assignedUsers = note.assignedTo && Array.isArray(note.assignedTo) ? note.assignedTo : (note.assignedTo ? [note.assignedTo] : []);
   const hasAssignments = assignedUsers.length > 0 && note.assignments && note.assignments.length > 0;
-  const hasBotgit = note.botgitAccess;
   const isAssigned = note.isAssignedToMe;
 
   const getInitial = (name) => {
@@ -712,17 +698,8 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
           )}
           {note.title}
         </h3>
-        {(hasAssignments || hasBotgit) && (
+        {hasAssignments && (
           <div className="note-card-avatars">
-            {hasBotgit && (
-              <div 
-                className="note-card-avatar botgit-card-avatar" 
-                title="botgit - AI Bot"
-                style={{ zIndex: 11 }}
-              >
-                🤖
-              </div>
-            )}
             {assignedUsers.slice(0, 3).map((user, idx) => {
               const status = getStatusForUser(user._id || user);
               const userName = user.fullName || user.name || 'User';

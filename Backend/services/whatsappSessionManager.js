@@ -4,6 +4,7 @@ const fs = require('fs');
 const WhatsAppAccount = require('../models/WhatsAppAccount');
 const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
+const WhatsAppLead = require('../models/WhatsAppLead');
 
 // In-memory session store: accountId -> { socket, retryCount }
 const sessions = new Map();
@@ -476,6 +477,19 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     status: 'delivered',
     timestamp: new Date(msg.messageTimestamp * 1000 || Date.now())
   });
+
+  // Mark WhatsAppLead as active when they reply (fire-and-forget)
+  const leadPhone = jid.split('@')[0].replace(/[^0-9]/g, '');
+  WhatsAppLead.updateOne(
+    { companyId, phone: leadPhone },
+    {
+      $set: {
+        status: 'active',
+        repliedAt: new Date(),
+        'campaigns.$[].replied': true
+      }
+    }
+  ).catch(() => {}); // silent — lead may not exist
 
   // Emit to frontend for live chat
   emitToCompany(companyId, 'whatsapp:new-message', {

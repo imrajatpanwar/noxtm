@@ -1,6 +1,7 @@
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppAccount = require('../models/WhatsAppAccount');
+const WhatsAppLead = require('../models/WhatsAppLead');
 const sessionManager = require('./whatsappSessionManager');
 
 // Track running campaigns: campaignId -> { paused: bool, aborted: bool }
@@ -247,6 +248,25 @@ async function processCampaign(campaignId) {
       recipient.sentAt = new Date();
       if (result?.messageId) {
         recipient.messageId = result.messageId;
+      }
+
+      // Upsert WhatsAppLead for this recipient
+      const cleanPhone = (recipient.phone || jid.split('@')[0]).replace(/[^0-9]/g, '');
+      try {
+        await WhatsAppLead.updateOne(
+          { companyId: campaign.companyId, phone: cleanPhone },
+          {
+            $setOnInsert: { name: recipient.name || '', whatsappId: jid, contactId: recipient.contactId || undefined },
+            $set: { lastCampaignAt: new Date(), lastCampaignId: campaign._id }
+          },
+          { upsert: true }
+        );
+        await WhatsAppLead.updateOne(
+          { companyId: campaign.companyId, phone: cleanPhone, 'campaigns.campaignId': { $ne: campaign._id } },
+          { $push: { campaigns: { campaignId: campaign._id, campaignName: campaign.name, sentAt: new Date(), replied: false } } }
+        );
+      } catch (leadErr) {
+        console.error('[WhatsAppLead] upsert error:', leadErr.message);
       }
 
       campaign.dailySentCount++;

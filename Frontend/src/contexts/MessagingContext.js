@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import { toast } from 'sonner';
 import notificationSound from '../components/assets/notification.mp3';
 import { showMessageToast } from '../components/CustomToast';
 
@@ -409,6 +410,15 @@ export function MessagingProvider({ children }) {
         window.dispatchEvent(new CustomEvent('messaging:messageReaction', {
           detail: data
         }));
+      });
+
+      // Calendar post notifications
+      newSocket.on('calendar:post-created', (data) => {
+        const { creatorName, accountName, platform } = data;
+        toast.info(`${creatorName} created a calendar post for ${accountName} (${platform})`, {
+          duration: 6000,
+          position: 'top-right',
+        });
       });
 
     };

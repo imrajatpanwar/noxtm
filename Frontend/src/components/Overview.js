@@ -1,4 +1,6 @@
 import React from 'react';
+import OverviewAreaChart from './OverviewAreaChart';
+import LeadsRadarChart from './LeadsRadarChart';
 import './Overview.css';
 
 function Overview({ user, dashboardData, error }) {
@@ -10,10 +12,12 @@ function Overview({ user, dashboardData, error }) {
         </div>
       )}
 
-      <div className="overview-grid">
-        {/* Left: Dashboard content (stats, graphs, tasks) */}
-        <div className="overview-left">
-          {/* Existing overview content renders here — revenue graph, stats panel, etc. */}
+      <div className="overview-charts-row">
+        <div className="overview-chart-area">
+          <OverviewAreaChart />
+        </div>
+        <div className="overview-chart-radar">
+          <LeadsRadarChart />
         </div>
       </div>
     </div>

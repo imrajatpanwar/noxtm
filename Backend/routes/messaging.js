@@ -7,6 +7,8 @@ const { invitationEmailLimiter } = require('../middleware/emailRateLimit');
 const { sendAndLogEmail } = require('../middleware/emailLogger');
 const { validateEmail } = require('../middleware/emailValidator');
 
+const socketStore = require('../utils/socketStore');
+
 // Initialize routes with dependencies from server.js
 function initializeRoutes(dependencies) {
   const router = express.Router();
@@ -56,6 +58,7 @@ function initializeRoutes(dependencies) {
         const userIdStr = userId.toString();
         console.log(`👤 User ${userIdStr} is online`);
         onlineUsers.set(userIdStr, socket.id);
+        socketStore.setUserOnline(userIdStr, socket.id);
 
         // Broadcast to all connected clients (including sender)
         io.emit('user-status-changed', {
@@ -138,6 +141,7 @@ function initializeRoutes(dependencies) {
         for (const [userId, socketId] of onlineUsers.entries()) {
           if (socketId === socket.id) {
             onlineUsers.delete(userId);
+            socketStore.setUserOffline(userId);
             console.log(`👤 User ${userId} going offline`);
             // Broadcast to all connected clients
             io.emit('user-status-changed', {

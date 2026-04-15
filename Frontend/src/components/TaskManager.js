@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiX, FiMessageSquare, FiClock, FiCheck, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight, FiSearch, FiExternalLink, FiMoreHorizontal } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiPlus, FiX, FiMessageSquare, FiClock, FiCheck, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight, FiSearch, FiExternalLink, FiMoreHorizontal, FiBold, FiItalic, FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Separator } from './ui/separator';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import './TaskManager.css';
 
 // Helper function to format relative time
@@ -308,6 +312,13 @@ const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId, compan
 };
 
 // Create Task Modal
+const PRIORITY_CONFIG = {
+    Low:    { color: '#16a34a', bg: '#dcfce7', dot: '#16a34a' },
+    Medium: { color: '#d97706', bg: '#fef9c3', dot: '#d97706' },
+    High:   { color: '#dc2626', bg: '#fee2e2', dot: '#dc2626' },
+    Urgent: { color: '#7c3aed', bg: '#f5f3ff', dot: '#7c3aed' },
+};
+
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -315,32 +326,77 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     const [assignees, setAssignees] = useState([]);
     const [dueDate, setDueDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showDropdown, setShowDropdown] = useState(false);
+    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+    const [textFormat, setTextFormat] = useState([]);
+
+    // @mention calendar accounts
+    const [calAccounts, setCalAccounts] = useState([]);
+    const [mentionQuery, setMentionQuery] = useState(null);
+    const [mentionStart, setMentionStart] = useState(0);
+    const descTextareaRef = useRef(null);
+    const assigneeRef = useRef(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        api.get('/social-media-calendar/accounts').then(res => {
+            setCalAccounts(res.data?.accounts || res.data || []);
+        }).catch(() => {});
+    }, [isOpen]);
+
+    // Close assignee dropdown on outside click
+    useEffect(() => {
+        if (!showAssigneeDropdown) return;
+        const handler = (e) => {
+            if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
+                setShowAssigneeDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showAssigneeDropdown]);
+
+    const handleDescChange = (e) => {
+        const val = e.target.value;
+        setDescription(val);
+        const cursor = e.target.selectionStart;
+        const before = val.slice(0, cursor);
+        const atIdx = before.lastIndexOf('@');
+        if (atIdx !== -1 && !before.slice(atIdx + 1).includes(' ')) {
+            setMentionQuery(before.slice(atIdx + 1));
+            setMentionStart(atIdx);
+        } else {
+            setMentionQuery(null);
+        }
+    };
+
+    const insertMention = (accountName) => {
+        const ta = descTextareaRef.current;
+        if (!ta) return;
+        const before = description.slice(0, mentionStart);
+        const after = description.slice(ta.selectionStart);
+        const newVal = `${before}@${accountName} ${after}`;
+        setDescription(newVal);
+        setMentionQuery(null);
+        ta.focus();
+        const newCursor = before.length + accountName.length + 2;
+        setTimeout(() => ta.setSelectionRange(newCursor, newCursor), 0);
+    };
+
+    const filteredAccounts = mentionQuery !== null
+        ? calAccounts.filter(a => a.name?.toLowerCase().includes(mentionQuery.toLowerCase()))
+        : [];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim()) return;
-
         setIsSubmitting(true);
         try {
-            await api.post('/tasks', {
-                title: title.trim(),
-                description,
-                priority,
-                assignees,
-                dueDate: dueDate || null
-            });
+            await api.post('/tasks', { title: title.trim(), description, priority, assignees, dueDate: dueDate || null });
             toast.success('Task created!');
             onTaskCreated();
             onClose();
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setPriority('Medium');
-            setAssignees([]);
-            setDueDate('');
-        } catch (error) {
-            console.error('Error creating task:', error);
+            setTitle(''); setDescription(''); setPriority('Medium'); setAssignees([]); setDueDate(''); setTextFormat([]);
+        } catch {
             toast.error('Failed to create task');
         } finally {
             setIsSubmitting(false);
@@ -348,128 +404,179 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     };
 
     const toggleAssignee = (userId) => {
-        setAssignees(prev =>
-            prev.includes(userId)
-                ? prev.filter(id => id !== userId)
-                : [...prev, userId]
-        );
+        setAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
     };
 
-    const removeAssignee = (userId, e) => {
-        e.stopPropagation();
-        setAssignees(prev => prev.filter(id => id !== userId));
-    };
-
-    const getSelectedUsers = () => {
-        return companyUsers.filter(user => assignees.includes(user._id));
-    };
+    const selectedUsers = companyUsers.filter(u => assignees.includes(u._id));
 
     if (!isOpen) return null;
 
     return (
-        <div className="noxtm-overlay" onClick={onClose}>
-            <div className="create-task-modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>Create New Task</h2>
-                    <button className="close-btn" onClick={onClose}>
-                        <FiX size={18} />
+        <div className="ctm-overlay" onClick={onClose}>
+            <div className="ctm-modal" onClick={e => e.stopPropagation()}>
+
+                {/* Header */}
+                <div className="ctm-header">
+                    <span className="ctm-header-title">New Task</span>
+                    <button type="button" className="ctm-close-btn" onClick={onClose}>
+                        <FiX size={14} />
                     </button>
                 </div>
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>Title *</label>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div className="ctm-body">
+
+                        {/* Title */}
                         <input
+                            className="ctm-title-input"
                             type="text"
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Enter task title"
-                            required
+                            onChange={e => setTitle(e.target.value)}
+                            placeholder="Task title…"
                             autoFocus
+                            required
                         />
-                    </div>
-                    <div className="form-group">
-                        <label>Description</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Add a description..."
-                            rows={2}
-                        />
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Priority</label>
-                            <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Urgent">Urgent</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Due Date</label>
-                            <input
-                                type="date"
-                                value={dueDate}
-                                onChange={(e) => setDueDate(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label>Assign to</label>
-                        <div className="assignee-dropdown">
-                            <div className="selected-assignees">
-                                {getSelectedUsers().map(user => (
-                                    <div
-                                        key={user._id}
-                                        className="selected-assignee-chip"
-                                        title={user.fullName}
-                                    >
-                                        <UserAvatar user={user} size={36} />
-                                        <span
-                                            className="remove-assignee"
-                                            onClick={(e) => removeAssignee(user._id, e)}
-                                        >
-                                            <FiX />
-                                        </span>
-                                    </div>
-                                ))}
-                                {companyUsers.length > 0 && (
+
+                        {/* Description */}
+                        <div>
+                            <div className="ctm-label">Description</div>
+                            <div className="ctm-desc-card">
+                                {/* Toolbar */}
+                                <div className="ctm-toolbar">
                                     <button
                                         type="button"
-                                        className="add-assignee-btn"
-                                        onClick={() => setShowDropdown(!showDropdown)}
+                                        className={`ctm-fmt-btn${textFormat.includes('bold') ? ' active' : ''}`}
+                                        onClick={() => setTextFormat(f => f.includes('bold') ? f.filter(x => x !== 'bold') : [...f, 'bold'])}
+                                        title="Bold"
                                     >
-                                        <FiPlus size={16} />
+                                        <FiBold size={13} />
                                     </button>
+                                    <button
+                                        type="button"
+                                        className={`ctm-fmt-btn${textFormat.includes('italic') ? ' active' : ''}`}
+                                        onClick={() => setTextFormat(f => f.includes('italic') ? f.filter(x => x !== 'italic') : [...f, 'italic'])}
+                                        title="Italic"
+                                    >
+                                        <FiItalic size={13} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`ctm-fmt-btn${textFormat.includes('list') ? ' active' : ''}`}
+                                        onClick={() => setTextFormat(f => f.includes('list') ? f.filter(x => x !== 'list') : [...f, 'list'])}
+                                        title="List"
+                                    >
+                                        <FiList size={13} />
+                                    </button>
+                                    <div className="ctm-toolbar-sep" />
+                                    <span className="ctm-hint">Type <strong>@</strong> to mention a calendar account</span>
+                                </div>
+
+                                <textarea
+                                    ref={descTextareaRef}
+                                    className="ctm-textarea"
+                                    value={description}
+                                    onChange={handleDescChange}
+                                    onKeyDown={e => { if (e.key === 'Escape') setMentionQuery(null); }}
+                                    onBlur={() => setTimeout(() => setMentionQuery(null), 150)}
+                                    placeholder="Add details, links or references…"
+                                    rows={4}
+                                    style={{
+                                        fontWeight: textFormat.includes('bold') ? 600 : 400,
+                                        fontStyle: textFormat.includes('italic') ? 'italic' : 'normal',
+                                    }}
+                                />
+
+                                {/* @mention dropdown — above */}
+                                {mentionQuery !== null && filteredAccounts.length > 0 && (
+                                    <div className="ctm-mention-drop">
+                                        <div className="ctm-mention-label">Calendar Accounts</div>
+                                        {filteredAccounts.map(acc => (
+                                            <div key={acc._id} className="ctm-mention-item" onMouseDown={() => insertMention(acc.name)}>
+                                                <div className="ctm-mention-icon" style={{ background: acc.color || '#6366f1' }}>
+                                                    {acc.name?.[0]?.toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="ctm-mention-name">{acc.name}</div>
+                                                    <div className="ctm-mention-sub">{acc.platform}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
-                            {showDropdown && (
-                                <div className="assignee-dropdown-menu">
-                                    {companyUsers.map(user => (
-                                        <div
-                                            key={user._id}
-                                            className={`assignee-option ${assignees.includes(user._id) ? 'selected' : ''}`}
-                                            onClick={() => toggleAssignee(user._id)}
+                        </div>
+
+                        {/* Priority + Due Date */}
+                        <div className="ctm-row">
+                            <div>
+                                <div className="ctm-label">Priority</div>
+                                <div className="ctm-priority-group">
+                                    {Object.entries(PRIORITY_CONFIG).map(([p]) => (
+                                        <button
+                                            key={p}
+                                            type="button"
+                                            className={`ctm-priority-pill${priority === p ? ` active-${p.toLowerCase()}` : ''}`}
+                                            onClick={() => setPriority(p)}
                                         >
+                                            <span className="ctm-priority-dot" />
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="ctm-label">Due Date</div>
+                                <input
+                                    type="date"
+                                    className="ctm-date-input"
+                                    value={dueDate}
+                                    onChange={e => setDueDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Assignees */}
+                        <div className="ctm-assignee-area" ref={assigneeRef}>
+                            <div className="ctm-label">Assign to</div>
+                            <div className="ctm-chips">
+                                {selectedUsers.map(user => (
+                                    <div key={user._id} className="ctm-chip">
+                                        <UserAvatar user={user} size={20} />
+                                        <span>{user.fullName || user.email}</span>
+                                        <button type="button" className="ctm-chip-remove" onClick={() => toggleAssignee(user._id)}>
+                                            <FiX size={11} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button type="button" className="ctm-add-btn" onClick={() => setShowAssigneeDropdown(p => !p)}>
+                                    <FiPlus size={12} /> Add
+                                </button>
+                            </div>
+
+                            {/* Dropdown — opens above */}
+                            {showAssigneeDropdown && (
+                                <div className="ctm-assignee-drop">
+                                    <div className="ctm-drop-label">Team Members</div>
+                                    {companyUsers.map(user => (
+                                        <div key={user._id} className="ctm-assignee-item" onClick={() => toggleAssignee(user._id)}>
                                             <UserAvatar user={user} size={28} />
-                                            <span>{user.fullName || user.name || user.email}</span>
-                                            {assignees.includes(user._id) && <FiCheck size={16} />}
+                                            <span className="ctm-assignee-item-name">{user.fullName || user.name || user.email}</span>
+                                            {assignees.includes(user._id) && <FiCheck size={14} className="ctm-check" />}
                                         </div>
                                     ))}
                                     {companyUsers.length === 0 && (
-                                        <div className="no-users">No team members available</div>
+                                        <div className="ctm-no-members">No team members</div>
                                     )}
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="modal-footer">
-                        <button type="button" className="cancel-btn" onClick={onClose}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="submit-btn" disabled={!title.trim() || isSubmitting}>
-                            {isSubmitting ? 'Creating...' : 'Create Task'}
+
+                    {/* Footer */}
+                    <div className="ctm-footer">
+                        <button type="button" className="ctm-btn-cancel" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="ctm-btn-create" disabled={!title.trim() || isSubmitting}>
+                            {isSubmitting ? 'Creating…' : 'Create Task'}
                         </button>
                     </div>
                 </form>

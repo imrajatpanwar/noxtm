@@ -1113,7 +1113,7 @@
   border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
-  overflow: hidden;
+  overflow: visible;
   animation: cd-panel-in 0.18s ease-out;
 }
 
@@ -1128,6 +1128,8 @@
   justify-content: space-between;
   padding: 16px 18px 12px;
   border-bottom: 1px solid #f4f4f5;
+  border-radius: 14px 14px 0 0;
+  background: #fff;
 }
 
 .cd-share-title {
@@ -1284,16 +1286,23 @@
 
 .cd-perm-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  bottom: calc(100% + 4px);
   right: 0;
   width: 140px;
   background: #fff;
   border: 1px solid #e4e4e7;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  z-index: 200;
+  z-index: 300;
   padding: 4px;
   animation: cd-panel-in 0.1s ease-out;
+}
+
+.cd-perm-dropdown-fixed {
+  position: fixed;
+  bottom: unset;
+  transform: translateY(-100%);
+  z-index: 9999;
 }
 
 .cd-perm-option {
@@ -1330,6 +1339,25 @@
 
 .cd-perm-option-danger:hover {
   background: #fef2f2;
+}
+
+.cd-perm-option-global {
+  color: #7c3aed;
+}
+
+.cd-perm-option-global:hover {
+  background: #f5f3ff;
+}
+
+.cd-perm-option-global.cd-perm-option-active {
+  color: #7c3aed;
+  background: #ede9fe;
+}
+
+.cd-perm-separator {
+  height: 1px;
+  background: #e4e4e7;
+  margin: 3px 4px;
 }
 
 /* ========== Edit Form ========== */

@@ -36,6 +36,7 @@ import CareersPage from './components/CareersPage';
 import ApiReferencePage from './components/ApiReferencePage';
 import SecurityPage from './components/SecurityPage';
 import PaymentCheckout from './components/PaymentCheckout';
+import SharedCalendarView from './components/SharedCalendarView';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // API configuration is now handled in config/api.js
@@ -498,6 +499,7 @@ function App() {
                 />
                 <Route path="/blog" element={<PublicBlogList />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/shared-calendar/:token" element={<SharedCalendarView />} />
                 <Route path="/legal/*" element={<Legal />} />
                 <Route path="/invite/:token" element={<JoinCompany />} />
                 <Route path="/extension-login" element={<ExtensionLogin />} />

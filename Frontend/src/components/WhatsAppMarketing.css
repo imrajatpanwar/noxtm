@@ -3050,3 +3050,39 @@
 .wa-sched-add button:hover:not(:disabled) {
   background: #1da851;
 }
+/* Lead status bar */
+.wa-lead-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+}
+.wa-lead-status-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+.wa-lead-status-btn {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Switzer', -apple-system, sans-serif;
+  color: #6b7280;
+}
+.wa-lead-status-btn:hover { background: #f3f4f6; }
+.wa-lead-status-btn.active { border-color: transparent; }
+.wa-lead-active.active   { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
+.wa-lead-dead.active     { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.wa-lead-followup.active { background: #fef9c3; color: #ca8a04; border-color: #fde68a; }
+.wa-lead-converted.active{ background: #dbeafe; color: #2563eb; border-color: #bfdbfe; }

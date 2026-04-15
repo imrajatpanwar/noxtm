@@ -1,31 +1,46 @@
 /* Overview Layout */
 .overview-wrapper {
-    padding: 0;
+    padding: 24px;
     max-width: 100%;
     margin: 0;
-    height: calc(100vh - 80px);
-    overflow: hidden;
+    box-sizing: border-box;
+    min-height: 100%;
 }
 
-.overview-grid {
+.overview-charts-row {
     display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 0;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
     align-items: stretch;
-    height: 100%;
 }
 
-.overview-left {
-    min-height: auto;
-    padding: 24px;
-    overflow-y: auto;
+.overview-chart-area {
+    min-width: 0;
 }
 
-.overview-right {
-    min-height: auto;
-    max-width: 340px;
-    height: 100%;
+.overview-chart-radar {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
+
+.overview-chart-radar > * {
+    flex: 1;
+}
+
+@media (max-width: 960px) {
+    .overview-charts-row {
+        grid-template-columns: 1fr;
+    }
+    .overview-chart-radar {
+        min-height: 340px;
+    }
+}
+
+/* Legacy selectors */
+.overview-grid { display: grid; grid-template-columns: 1fr 340px; gap: 0; height: 100%; }
+.overview-left { padding: 24px; overflow-y: auto; }
+.overview-right { max-width: 340px; height: 100%; }
 
 /* Revenue Graph Card */
 .revenue-graph-card {

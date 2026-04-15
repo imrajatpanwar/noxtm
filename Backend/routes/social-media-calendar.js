@@ -9,6 +9,7 @@ const SocialMediaAccount = require('../models/SocialMediaAccount');
 const ContentTemplate = require('../models/ContentTemplate');
 const SocialMediaCredential = require('../models/SocialMediaCredential');
 const User = require('../models/User');
+const socketStore = require('../utils/socketStore');
 
 // JWT authentication middleware
 const jwt = require('jsonwebtoken');
@@ -55,7 +56,33 @@ const requireCompanyAccess = async (req, res, next) => {
     }
 };
 
-// Apply authentication to all routes
+// ==========================================
+// PUBLIC SHARE ROUTE — no auth required
+// Must be defined BEFORE router.use(auth)
+// ==========================================
+
+router.get('/public/:token', async (req, res) => {
+    try {
+        const SharedCalendarLink = require('../models/SharedCalendarLink');
+        const link = await SharedCalendarLink.findOne({ token: req.params.token, active: true });
+        if (!link) return res.status(404).json({ message: 'Invalid or expired link' });
+
+        const [posts, accounts] = await Promise.all([
+            SocialMediaPost.find({ companyId: link.companyId })
+                .sort({ postDate: 1, postTime: 1 })
+                .select('title content postDate postTime platform postType status priority labels referenceLinks socialMediaAccount'),
+            SocialMediaAccount.find({ companyId: link.companyId })
+                .select('name platform handle color')
+        ]);
+
+        res.json({ posts, accounts });
+    } catch (error) {
+        console.error('[SharedCalendar] Public fetch error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Apply authentication to all routes below
 router.use(authenticateToken);
 router.use(requireCompanyAccess);
 
@@ -468,6 +495,28 @@ router.post('/posts', async (req, res) => {
                 populate: { path: 'assignedTo', select: 'fullName email profileImage' }
             })
             .populate('createdBy', 'fullName email profileImage');
+
+        // Notify other users assigned to this account
+        try {
+            if (populatedPost.socialMediaAccount) {
+                const account = populatedPost.socialMediaAccount;
+                const creator = populatedPost.createdBy;
+                const assignedUsers = (account.assignedTo || [])
+                    .map(u => (u._id || u).toString())
+                    .filter(uid => uid !== req.userId.toString());
+
+                if (assignedUsers.length > 0) {
+                    socketStore.emitToUsers(assignedUsers, 'calendar:post-created', {
+                        postId: populatedPost._id,
+                        title: populatedPost.title,
+                        accountName: account.name,
+                        platform: account.platform,
+                        creatorName: creator?.fullName || creator?.email || 'Someone',
+                        postDate: populatedPost.postDate,
+                    });
+                }
+            }
+        } catch (_) { /* non-critical */ }
 
         res.status(201).json(populatedPost);
     } catch (error) {
@@ -1218,6 +1267,71 @@ router.delete('/credentials/:id/share/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error revoking access:', error);
         res.status(500).json({ message: 'Failed to revoke access' });
+    }
+});
+
+// ==========================================
+// SHARE LINK MANAGEMENT (auth required)
+// ==========================================
+
+// GET /api/social-media-calendar/share — get current share link status
+router.get('/share', async (req, res) => {
+    try {
+        const SharedCalendarLink = require('../models/SharedCalendarLink');
+        const link = await SharedCalendarLink.findOne({ companyId: req.companyId, active: true });
+        if (!link) return res.json({ active: false, token: null });
+        res.json({ active: true, token: link.token });
+    } catch (error) {
+        console.error('[SharedCalendar] Get share error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// POST /api/social-media-calendar/share — create/activate share link
+router.post('/share', async (req, res) => {
+    try {
+        const SharedCalendarLink = require('../models/SharedCalendarLink');
+        let link = await SharedCalendarLink.findOne({ companyId: req.companyId, active: true });
+        if (!link) {
+            link = await SharedCalendarLink.create({ companyId: req.companyId, createdBy: req.userId, active: true });
+        }
+        res.json({ active: true, token: link.token });
+    } catch (error) {
+        console.error('[SharedCalendar] Create share error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// PUT /api/social-media-calendar/share/regenerate — new token, deactivate old
+router.put('/share/regenerate', async (req, res) => {
+    try {
+        const SharedCalendarLink = require('../models/SharedCalendarLink');
+        const crypto = require('crypto');
+        // Deactivate all existing links for this company
+        await SharedCalendarLink.updateMany({ companyId: req.companyId }, { active: false });
+        // Create fresh link
+        const link = await SharedCalendarLink.create({
+            companyId: req.companyId,
+            createdBy: req.userId,
+            active: true,
+            token: crypto.randomBytes(24).toString('hex')
+        });
+        res.json({ active: true, token: link.token });
+    } catch (error) {
+        console.error('[SharedCalendar] Regenerate share error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DELETE /api/social-media-calendar/share — deactivate share link
+router.delete('/share', async (req, res) => {
+    try {
+        const SharedCalendarLink = require('../models/SharedCalendarLink');
+        await SharedCalendarLink.updateMany({ companyId: req.companyId }, { active: false });
+        res.json({ active: false, token: null });
+    } catch (error) {
+        console.error('[SharedCalendar] Delete share error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

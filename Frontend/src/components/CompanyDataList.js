@@ -20,41 +20,69 @@ function getAvatarColor(name) {
 // ---- Permission dropdown (Figma-style "can view ▾") ----
 function PermissionSelect({ value, onChange, disabled }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const triggerRef = useRef(null);
+  const dropRef = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        dropRef.current && !dropRef.current.contains(e.target)
+      ) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.top - 4, right: window.innerWidth - rect.right });
+    }
+    setOpen(v => !v);
+  };
 
   if (disabled) {
     return <span className="cd-perm-label cd-perm-owner">owner</span>;
   }
 
-  const options = [
-    { value: 'view', label: 'can view' },
-    { value: 'edit', label: 'can edit' },
-    { value: 'remove', label: 'Remove access', danger: true },
-  ];
+  const PERM_LABELS = { view: 'can view', edit: 'can edit', view_all: 'can view all', edit_all: 'can edit all' };
 
   return (
-    <div className="cd-perm-select" ref={ref}>
-      <button className="cd-perm-trigger" onClick={() => setOpen(!open)}>
-        {value === 'edit' ? 'can edit' : 'can view'}
+    <div className="cd-perm-select">
+      <button className="cd-perm-trigger" ref={triggerRef} onClick={handleOpen}>
+        {PERM_LABELS[value] || 'can view'}
         <FiChevronDown size={12} />
       </button>
       {open && (
-        <div className="cd-perm-dropdown">
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              className={`cd-perm-option ${opt.danger ? 'cd-perm-option-danger' : ''} ${opt.value === value ? 'cd-perm-option-active' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div
+          ref={dropRef}
+          className="cd-perm-dropdown cd-perm-dropdown-fixed"
+          style={{ top: dropPos.top, right: dropPos.right }}
+        >
+          <button
+            className={`cd-perm-option ${value === 'view' ? 'cd-perm-option-active' : ''}`}
+            onClick={() => { onChange('view'); setOpen(false); }}
+          >can view</button>
+          <button
+            className={`cd-perm-option ${value === 'edit' ? 'cd-perm-option-active' : ''}`}
+            onClick={() => { onChange('edit'); setOpen(false); }}
+          >can edit</button>
+          <div className="cd-perm-separator" />
+          <button
+            className={`cd-perm-option cd-perm-option-global ${value === 'view_all' ? 'cd-perm-option-active' : ''}`}
+            onClick={() => { onChange('view_all'); setOpen(false); }}
+          >can view all</button>
+          <button
+            className={`cd-perm-option cd-perm-option-global ${value === 'edit_all' ? 'cd-perm-option-active' : ''}`}
+            onClick={() => { onChange('edit_all'); setOpen(false); }}
+          >can edit all</button>
+          <div className="cd-perm-separator" />
+          <button
+            className="cd-perm-option cd-perm-option-danger"
+            onClick={() => { onChange('remove'); setOpen(false); }}
+          >Remove access</button>
         </div>
       )}
     </div>

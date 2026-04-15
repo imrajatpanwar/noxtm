@@ -39,11 +39,15 @@ async function resolveCompanyDataPermissions(userDoc) {
   const isOwner = (member && member.roleInCompany === 'Owner') ||
     (company.owner && company.owner.toString() === userDoc._id.toString());
 
-  // Placeholder: when workspace-level companyData permissions are added to the Company
-  // or User schema, OR them into these flags here. Example:
-  //   const hasViewAll = isOwner || company.workspacePermissions?.companyData?.viewAll?.includes(userDoc._id.toString());
-  const canViewAll = isOwner;
-  const canEditAll = isOwner;
+  // Check delegated view_all / edit_all permissions granted by owner
+  const delegatedPerm = (company.dataAccessPermissions || []).find(
+    p => p.user && p.user.toString() === userDoc._id.toString()
+  );
+  const hasViewAll = isOwner || delegatedPerm?.permission === 'view_all' || delegatedPerm?.permission === 'edit_all';
+  const hasEditAll = isOwner || delegatedPerm?.permission === 'edit_all';
+
+  const canViewAll = hasViewAll;
+  const canEditAll = hasEditAll;
 
   return { canViewAll, canEditAll, company };
 }
@@ -158,14 +162,14 @@ router.put('/company-data/data-access/:userId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only the workspace owner can manage data access' });
     }
 
-    const { permission } = req.body; // 'view' | 'edit' | 'remove'
+    const { permission } = req.body; // 'view' | 'edit' | 'view_all' | 'edit_all' | 'remove'
     const targetUserId = req.params.userId;
 
     if (permission === 'remove') {
       company.dataAccessPermissions = (company.dataAccessPermissions || []).filter(
         p => p.user.toString() !== targetUserId
       );
-    } else if (['view', 'edit'].includes(permission)) {
+    } else if (['view', 'edit', 'view_all', 'edit_all'].includes(permission)) {
       const existing = (company.dataAccessPermissions || []).find(
         p => p.user.toString() === targetUserId
       );

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock, FiExternalLink } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock, FiExternalLink, FiShare2, FiLink, FiRefreshCw, FiLock } from 'react-icons/fi';
 import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import axios from 'axios';
 import { toast } from 'sonner';
 import api from '../config/api';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from './ui/dialog';
 import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm, truncateWords } from './calendarHelpers';
 import { useRole } from '../contexts/RoleContext';
 import './SocialMediaCalendar.css';
@@ -49,6 +50,10 @@ function SocialMediaCalendar() {
     const [showEditAccountModal, setShowEditAccountModal] = useState(false);
     const [editAccountForm, setEditAccountForm] = useState(defaultAccountForm());
     const [showEditAssigneeDropdown, setShowEditAssigneeDropdown] = useState(false);
+    // Share calendar
+    const [showShareDialog, setShowShareDialog] = useState(false);
+    const [shareToken, setShareToken] = useState(null);
+    const [shareLoading, setShareLoading] = useState(false);
     const fileInputRef = useRef(null);
     const refFileInputRef = useRef(null);
     const accountDropdownRef = useRef(null);
@@ -289,6 +294,47 @@ function SocialMediaCalendar() {
 
     const handleExportCSV = () => { window.open(`${api.defaults.baseURL}/social-media-calendar/posts/export?month=${month}&year=${year}${selectedAccount !== 'all' ? `&accountId=${selectedAccount}` : ''}`, '_blank'); };
 
+    // ── Share calendar ────────────────────────────────────────────────────────
+    const openShareDialog = async () => {
+        setShowShareDialog(true);
+        try {
+            const res = await api.get('/social-media-calendar/share');
+            setShareToken(res.data.active ? res.data.token : null);
+        } catch { /* silent */ }
+    };
+
+    const handleCreateShareLink = async () => {
+        setShareLoading(true);
+        try {
+            const res = await api.post('/social-media-calendar/share');
+            setShareToken(res.data.token);
+            toast.success('Share link created');
+        } catch { toast.error('Failed to create link'); }
+        finally { setShareLoading(false); }
+    };
+
+    const handleRegenerateShareLink = async () => {
+        setShareLoading(true);
+        try {
+            const res = await api.put('/social-media-calendar/share/regenerate');
+            setShareToken(res.data.token);
+            toast.success('Link regenerated — old link is now invalid');
+        } catch { toast.error('Failed to regenerate link'); }
+        finally { setShareLoading(false); }
+    };
+
+    const handleRemoveShareAccess = async () => {
+        setShareLoading(true);
+        try {
+            await api.delete('/social-media-calendar/share');
+            setShareToken(null);
+            toast.success('Share access removed');
+        } catch { toast.error('Failed to remove access'); }
+        finally { setShareLoading(false); }
+    };
+
+    const shareUrl = shareToken ? `${window.location.origin}/shared-calendar/${shareToken}` : null;
+
     // Drag and drop
     const handleDragStart = (e, post) => { setDraggedPost(post); e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); };
     const handleDragEnd = (e) => { e.target.classList.remove('dragging'); setDraggedPost(null); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); };
@@ -391,6 +437,7 @@ function SocialMediaCalendar() {
                         )}
                     </div>
                     <button className="smc-btn-icon" onClick={handleExportCSV} title="Export CSV"><FiDownload size={14} /></button>
+                    <button className="smc-btn-icon smc-share-btn" onClick={openShareDialog} title="Share calendar"><FiShare2 size={14} /></button>
                     <button className="smc-btn-primary" onClick={() => openPostModal()}><FiPlus size={14} /> New Post</button>
                 </div>
             </div>
@@ -870,7 +917,7 @@ function SocialMediaCalendar() {
                         </div>
                         <div className="smc-modal-footer">
                             <button className="smc-btn-secondary" onClick={() => setShowEditAccountModal(false)}>Cancel</button>
-                            <button className="smc-btn-primary" onClick={handleUpdateAccount}>Save Changes</button>
+                            <button className="smc-btn-primary" onMouseDown={() => setShowEditAssigneeDropdown(false)} onClick={handleUpdateAccount}>Save Changes</button>
                         </div>
                     </div>
                 </div>
@@ -891,6 +938,52 @@ function SocialMediaCalendar() {
                     </div>
                 </div>
             )}
+
+            {/* Share Calendar Dialog */}
+            <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Share Calendar</DialogTitle>
+                        <DialogDescription>
+                            Generate a public link so anyone can view this calendar — no login required.
+                        </DialogDescription>
+                        <DialogClose />
+                    </DialogHeader>
+                    <DialogBody>
+                        {shareToken ? (
+                            <div className="smc-share-active">
+                                <div className="smc-share-status">
+                                    <div className="smc-share-dot" />
+                                    <span>Link active — anyone with this URL can view</span>
+                                </div>
+                                <div className="smc-share-link-row">
+                                    <input readOnly value={shareUrl} className="smc-share-link-input" onClick={e => e.target.select()} />
+                                    <button className="smc-share-copy-btn" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Link copied!'); }} title="Copy link">
+                                        <FiCopy size={14} />
+                                    </button>
+                                </div>
+                                <div className="smc-share-actions">
+                                    <button className="smc-share-action-btn" onClick={handleRegenerateShareLink} disabled={shareLoading}>
+                                        <FiRefreshCw size={13} /> Change link
+                                    </button>
+                                    <button className="smc-share-action-btn smc-share-action-danger" onClick={handleRemoveShareAccess} disabled={shareLoading}>
+                                        <FiLock size={13} /> Remove access
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="smc-share-empty">
+                                <div className="smc-share-empty-icon"><FiLink size={28} /></div>
+                                <p className="smc-share-empty-title">No active share link</p>
+                                <p className="smc-share-empty-desc">Generate a link to let anyone view this calendar without logging in.</p>
+                                <button className="smc-btn-primary smc-share-generate-btn" onClick={handleCreateShareLink} disabled={shareLoading}>
+                                    <FiShare2 size={14} /> {shareLoading ? 'Generating…' : 'Generate share link'}
+                                </button>
+                            </div>
+                        )}
+                    </DialogBody>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

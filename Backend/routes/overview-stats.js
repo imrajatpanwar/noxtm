@@ -19,6 +19,7 @@ const LeaveApplication = require('../models/LeaveApplication');
 const Attendance = require('../models/Attendance');
 const Company = require('../models/Company');
 const TargetedCompany = require('../models/TargetedCompany');
+const CompanyData = require('../models/CompanyData');
 
 const toObjectId = (id) => id ? new mongoose.Types.ObjectId(id) : null;
 
@@ -255,6 +256,57 @@ router.get('/', async (req, res) => {
 
     } catch (error) {
         console.error('Overview stats error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+/**
+ * GET /api/overview-stats/chart?range=90d|30d|7d
+ * Returns daily counts of company data entries + projects created
+ * for the area chart in the Overview dashboard.
+ */
+router.get('/chart', async (req, res) => {
+    try {
+        const companyId = req.user.companyId;
+        if (!companyId) return res.json({ data: [] });
+
+        const rangeParam = req.query.range || '90d';
+        const days = rangeParam === '7d' ? 7 : rangeParam === '30d' ? 30 : 90;
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        startDate.setHours(0, 0, 0, 0);
+
+        const cid = toObjectId(companyId);
+
+        // Aggregate daily counts
+        const [companyDailyRaw, projectDailyRaw] = await Promise.all([
+            CompanyData.aggregate([
+                { $match: { companyId: cid, createdAt: { $gte: startDate } } },
+                { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } }
+            ]),
+            Project.aggregate([
+                { $match: { companyId: cid, createdAt: { $gte: startDate } } },
+                { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } }
+            ])
+        ]);
+
+        // Build lookup maps
+        const companyMap = Object.fromEntries(companyDailyRaw.map(d => [d._id, d.count]));
+        const projectMap = Object.fromEntries(projectDailyRaw.map(d => [d._id, d.count]));
+
+        // Build complete date array (every day in range)
+        const data = [];
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().slice(0, 10);
+            data.push({ date: key, companies: companyMap[key] || 0, projects: projectMap[key] || 0 });
+        }
+
+        res.json({ data });
+    } catch (error) {
+        console.error('Chart data error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

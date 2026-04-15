@@ -56,6 +56,9 @@ const io = new Server(server, {
   httpCompression: false        // Disable HTTP compression for speed
 });
 
+// Wire shared socket store so any route can emit to specific users
+const socketStore = require('./utils/socketStore');
+socketStore.setIo(io);
 
 const PORT = process.env.PORT || 5000;
 
@@ -138,9 +141,9 @@ app.use('/api/invoices', invoicesRoutes);
 const leadsRoutes = require('./routes/leads');
 app.use('/api/leads', leadsRoutes);
 
-// Lead Campaigns routes
-const leadCampaignsRoutes = require('./routes/lead-campaigns');
-app.use('/api/lead-campaigns', leadCampaignsRoutes);
+// WhatsApp Leads Flow routes
+const whatsappLeadsRoutes = require('./routes/whatsapp-leads');
+app.use('/api/whatsapp-leads', whatsappLeadsRoutes);
 
 // Exhibitors routes
 const exhibitorsRoutes = require('./routes/exhibitors');

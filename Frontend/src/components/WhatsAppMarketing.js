@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import api from '../config/api';
 import { MessagingContext } from '../contexts/MessagingContext';
 import { WhatsAppProvider, useWhatsApp } from '../contexts/WhatsAppContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -484,6 +485,7 @@ function ChatsTab() {
   const [schedInput, setSchedInput] = useState('');
   const [schedDate, setSchedDate] = useState('');
   const [schedReason, setSchedReason] = useState('');
+  const [contactLead, setContactLead] = useState(null); // WhatsAppLead for selected contact
   const messagesEndRef = useRef(null);
 
   const connectedAccounts = accounts.filter(a => a.status === 'connected');
@@ -504,6 +506,28 @@ function ChatsTab() {
   useEffect(() => {
     if (selectedContact) fetchMessages(selectedContact._id);
   }, [selectedContact, fetchMessages]);
+
+  // Fetch WhatsAppLead status for selected contact
+  useEffect(() => {
+    if (!selectedContact?.phoneNumber) { setContactLead(null); return; }
+    api.get('/whatsapp-leads/by-phone', { params: { phone: selectedContact.phoneNumber } })
+      .then(res => setContactLead(res.data.lead || null))
+      .catch(() => setContactLead(null));
+  }, [selectedContact]);
+
+  const handleLeadStatusChange = useCallback(async (newStatus) => {
+    if (!selectedContact?.phoneNumber) return;
+    try {
+      const res = await api.put('/whatsapp-leads/by-phone/status', {
+        phone: selectedContact.phoneNumber,
+        status: newStatus
+      });
+      setContactLead(res.data.lead || { ...contactLead, status: newStatus });
+      toast.success(`Lead marked as ${newStatus}`);
+    } catch {
+      toast.error('Failed to update lead status');
+    }
+  }, [selectedContact, contactLead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -701,6 +725,22 @@ function ChatsTab() {
                 <FiBookmark size={16} />
               </button>
             </div>
+
+            {/* Lead status bar — only shown if this contact is a campaign lead */}
+            {contactLead && (
+              <div className="wa-lead-status-bar">
+                <span className="wa-lead-status-label">Lead:</span>
+                {['active', 'dead', 'followup', 'converted'].map(s => (
+                  <button
+                    key={s}
+                    className={`wa-lead-status-btn ${contactLead.status === s ? 'active' : ''} wa-lead-${s}`}
+                    onClick={() => handleLeadStatusChange(s)}
+                  >
+                    {s === 'followup' ? 'Follow-up' : s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="wa-messages-area">
               {contactMessages.length === 0 && (

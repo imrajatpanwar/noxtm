@@ -41,7 +41,6 @@ import ExhibitorsList from './ExhibitorsList';
 import TrendingServices from './TrendingServices';
 import TargetedCompanyList from './TargetedCompanyList';
 import CompanyDataList from './CompanyDataList';
-import LeadsMetrics from './LeadsMetrics';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
 import MailPoller from './MailPoller';
@@ -285,7 +284,7 @@ function Dashboard({ user, onLogout }) {
       case 'client-leads':
         return <ClientLeads />;
       case 'leads-metrics':
-        return <LeadsMetrics />;
+        return <div />;
       case 'company-data':
         return <CompanyDataList />;
       case 'global-trade-show':
