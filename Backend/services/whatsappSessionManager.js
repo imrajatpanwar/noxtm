@@ -663,7 +663,9 @@ async function sendMessage(accountId, jid, content, options = {}) {
 
   switch (type) {
     case 'image':
-      messageContent = { image: { url: options.mediaUrl }, caption: content || undefined };
+      messageContent = options.mediaBuffer
+        ? { image: options.mediaBuffer, caption: content || undefined }
+        : { image: { url: options.mediaUrl }, caption: content || undefined };
       break;
     case 'video':
       messageContent = { video: { url: options.mediaUrl }, caption: content || undefined };

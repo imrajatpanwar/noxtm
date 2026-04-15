@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppContact = require('../models/WhatsAppContact');
 const WhatsAppAccount = require('../models/WhatsAppAccount');
@@ -231,9 +233,20 @@ async function processCampaign(campaignId) {
       const sendOptions = {};
       if (campaign.mediaUrl) {
         sendOptions.type = campaign.mediaType || 'image';
-        sendOptions.mediaUrl = campaign.mediaUrl;
         sendOptions.filename = campaign.mediaFilename;
         sendOptions.caption = messageContent;
+
+        // Resolve local uploads path to absolute file path (Baileys needs full URL or buffer)
+        if (campaign.mediaUrl.startsWith('/uploads/')) {
+          const absPath = path.join(__dirname, '..', campaign.mediaUrl);
+          if (fs.existsSync(absPath)) {
+            sendOptions.mediaBuffer = fs.readFileSync(absPath);
+          } else {
+            sendOptions.mediaUrl = campaign.mediaUrl;
+          }
+        } else {
+          sendOptions.mediaUrl = campaign.mediaUrl;
+        }
       }
 
       const result = await sessionManager.sendMessage(

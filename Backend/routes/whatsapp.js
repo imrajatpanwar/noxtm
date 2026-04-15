@@ -718,6 +718,17 @@ function initializeRoutes({ io }) {
         });
       }
 
+      // If templateId provided and no explicit mediaUrl, pull headerImage from template
+      let resolvedMediaUrl = mediaUrl || '';
+      let resolvedMediaType = mediaType || '';
+      if (templateId && !resolvedMediaUrl) {
+        const tpl = await WhatsAppTemplate.findById(templateId).lean();
+        if (tpl?.headerImage) {
+          resolvedMediaUrl = tpl.headerImage;
+          resolvedMediaType = 'image';
+        }
+      }
+
       const campaign = await WhatsAppCampaign.create({
         companyId: req.user.companyId,
         accountId,
@@ -725,8 +736,8 @@ function initializeRoutes({ io }) {
         name,
         description,
         message,
-        mediaUrl,
-        mediaType,
+        mediaUrl: resolvedMediaUrl || undefined,
+        mediaType: resolvedMediaType || undefined,
         mediaFilename,
         recipients: recipientsList,
         targetTags: targetTags || [],
