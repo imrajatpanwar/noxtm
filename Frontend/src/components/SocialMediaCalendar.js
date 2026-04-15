@@ -48,10 +48,12 @@ function SocialMediaCalendar() {
     const [editingAccount, setEditingAccount] = useState(null);
     const [showEditAccountModal, setShowEditAccountModal] = useState(false);
     const [editAccountForm, setEditAccountForm] = useState(defaultAccountForm());
+    const [showEditAssigneeDropdown, setShowEditAssigneeDropdown] = useState(false);
     const fileInputRef = useRef(null);
     const refFileInputRef = useRef(null);
     const accountDropdownRef = useRef(null);
     const assigneeDropdownRef = useRef(null);
+    const editAssigneeDropdownRef = useRef(null);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -60,6 +62,7 @@ function SocialMediaCalendar() {
         const h = (e) => {
             if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) setShowAccountDropdown(false);
             if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(e.target)) setShowAssigneeDropdown(false);
+            if (editAssigneeDropdownRef.current && !editAssigneeDropdownRef.current.contains(e.target)) setShowEditAssigneeDropdown(false);
             if (contextMenu) setContextMenu(null);
         };
         document.addEventListener('mousedown', h);
@@ -243,6 +246,7 @@ function SocialMediaCalendar() {
         setEditingAccount(a);
         setEditAccountForm({ name: a.name, platform: a.platform, handle: a.handle || '', color: a.color || '#1a1a1a', assignedTo: Array.isArray(a.assignedTo) ? a.assignedTo.map(u => u._id || u) : [] });
         setShowAccountDropdown(false);
+        setShowEditAssigneeDropdown(false);
         setShowEditAccountModal(true);
     };
 
@@ -793,7 +797,13 @@ function SocialMediaCalendar() {
                                     )}
                                 </div>
                             </div>
-                            <div className="smc-form-group"><label>Color</label><div className="smc-color-picker">{ACCOUNT_COLORS.map(c => <div key={c} className={`smc-color-swatch ${accountForm.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setAccountForm({ ...accountForm, color: c })} />)}</div></div>
+                            <div className="smc-form-group">
+                                <label>Color</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <input type="color" value={accountForm.color} onChange={e => setAccountForm({ ...accountForm, color: e.target.value })} style={{ width: 40, height: 36, border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                                    <span style={{ fontSize: 13, color: '#6b7280', fontFamily: 'monospace' }}>{accountForm.color}</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="smc-modal-footer"><button className="smc-btn-secondary" onClick={() => setShowAccountModal(false)}>Cancel</button><button className="smc-btn-primary" onClick={handleCreateAccount}>Create Account</button></div>
                     </div>
@@ -812,7 +822,47 @@ function SocialMediaCalendar() {
                             <div className="smc-form-group"><label>Account Name *</label><input value={editAccountForm.name} onChange={e => setEditAccountForm({ ...editAccountForm, name: e.target.value })} placeholder="e.g. Company Instagram" /></div>
                             <div className="smc-form-group"><label>Platform</label><select value={editAccountForm.platform} onChange={e => setEditAccountForm({ ...editAccountForm, platform: e.target.value })}>{PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
                             <div className="smc-form-group"><label>Handle / URL</label><input value={editAccountForm.handle} onChange={e => setEditAccountForm({ ...editAccountForm, handle: e.target.value })} placeholder="@your_handle" /></div>
-                            <div className="smc-form-group"><label>Color</label><div className="smc-color-picker">{ACCOUNT_COLORS.map(c => <div key={c} className={`smc-color-swatch ${editAccountForm.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setEditAccountForm({ ...editAccountForm, color: c })} />)}</div></div>
+                            <div className="smc-form-group">
+                                <label>Assign Team Members</label>
+                                <div className="smc-assignee-selector" ref={editAssigneeDropdownRef}>
+                                    <div className="smc-assignee-row">
+                                        {editAccountForm.assignedTo.map(id => {
+                                            const m = teamMembers.find(tm => tm._id === id);
+                                            if (!m) return null;
+                                            return (
+                                                <div key={id} className="smc-av-wrap" title={m.fullName}>
+                                                    <div className="smc-av-circle smc-av-fallback">{getInitials(m.fullName)}</div>
+                                                    <button type="button" className="smc-av-remove" onClick={() => setEditAccountForm(prev => ({ ...prev, assignedTo: prev.assignedTo.filter(x => x !== id) }))}>×</button>
+                                                </div>
+                                            );
+                                        })}
+                                        <button type="button" className={`smc-add-av-btn${showEditAssigneeDropdown ? ' open' : ''}`} onClick={() => setShowEditAssigneeDropdown(v => !v)} title="Add team member"><FiPlus size={14} /></button>
+                                    </div>
+                                    {showEditAssigneeDropdown && (
+                                        <div className="smc-assignee-dropdown">
+                                            {teamMembers.length === 0 && <div className="smc-assignee-empty">No team members found</div>}
+                                            {teamMembers.map(m => {
+                                                const selected = editAccountForm.assignedTo.includes(m._id);
+                                                return (
+                                                    <div key={m._id} className={`smc-assignee-opt${selected ? ' smc-assignee-opt--sel' : ''}`}
+                                                        onClick={() => setEditAccountForm(prev => ({ ...prev, assignedTo: selected ? prev.assignedTo.filter(x => x !== m._id) : [...prev.assignedTo, m._id] }))}>
+                                                        <div className="smc-av-sm smc-av-fallback">{getInitials(m.fullName)}</div>
+                                                        <span className="smc-assignee-opt-name">{m.fullName}</span>
+                                                        {selected && <span className="smc-assignee-opt-check">✓</span>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="smc-form-group">
+                                <label>Color</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <input type="color" value={editAccountForm.color} onChange={e => setEditAccountForm({ ...editAccountForm, color: e.target.value })} style={{ width: 40, height: 36, border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                                    <span style={{ fontSize: 13, color: '#6b7280', fontFamily: 'monospace' }}>{editAccountForm.color}</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="smc-modal-footer">
                             <button className="smc-btn-secondary" onClick={() => setShowEditAccountModal(false)}>Cancel</button>
