@@ -7,9 +7,11 @@ import api from '../config/api';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm, truncateWords } from './calendarHelpers';
+import { useRole } from '../contexts/RoleContext';
 import './SocialMediaCalendar.css';
 
 function SocialMediaCalendar() {
+    const { currentUser } = useRole();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [posts, setPosts] = useState([]);
     const [accounts, setAccounts] = useState([]);
@@ -43,6 +45,9 @@ function SocialMediaCalendar() {
     const [refUploading, setRefUploading] = useState(false);
     const [refUploadProgress, setRefUploadProgress] = useState({});
     const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+    const [editingAccount, setEditingAccount] = useState(null);
+    const [showEditAccountModal, setShowEditAccountModal] = useState(false);
+    const [editAccountForm, setEditAccountForm] = useState(defaultAccountForm());
     const fileInputRef = useRef(null);
     const refFileInputRef = useRef(null);
     const accountDropdownRef = useRef(null);
@@ -233,6 +238,25 @@ function SocialMediaCalendar() {
         try { await api.delete(`/social-media-calendar/accounts/${id}`); toast.success('Deleted'); if (selectedAccount === id) setSelectedAccount('all'); fetchAccounts(); fetchPosts(); } catch { toast.error('Failed'); }
     };
 
+    const openEditAccount = (a, e) => {
+        e.stopPropagation();
+        setEditingAccount(a);
+        setEditAccountForm({ name: a.name, platform: a.platform, handle: a.handle || '', color: a.color || '#1a1a1a', assignedTo: (a.assignedTo || []).map(u => u._id || u) });
+        setShowAccountDropdown(false);
+        setShowEditAccountModal(true);
+    };
+
+    const handleUpdateAccount = async () => {
+        if (!editAccountForm.name.trim()) return toast.error('Name required');
+        try {
+            await api.put(`/social-media-calendar/accounts/${editingAccount._id}`, editAccountForm);
+            toast.success('Account updated');
+            setShowEditAccountModal(false);
+            setEditingAccount(null);
+            fetchAccounts();
+        } catch { toast.error('Failed to update'); }
+    };
+
     const handleAssignAccount = async (accountId, userId) => {
         try { await api.put(`/social-media-calendar/accounts/${accountId}/assign`, { assignedTo: userId || null }); toast.success('Account assigned'); fetchAccounts(); fetchPosts(); } catch { toast.error('Failed'); }
     };
@@ -348,6 +372,9 @@ function SocialMediaCalendar() {
                                             </div>
                                         )}
                                         <span className="acct-platform">{a.platform}</span>
+                                        {(a.createdBy?._id === currentUser?._id || a.createdBy === currentUser?._id || currentUser?.role === 'Admin') && (
+                                            <button className="acct-edit" onClick={e => openEditAccount(a, e)} title="Edit"><FiEdit3 size={12} /></button>
+                                        )}
                                         <button className="acct-delete" onClick={e => { e.stopPropagation(); handleDeleteAccount(a._id); }}><FiTrash2 size={12} /></button>
                                     </div>
                                 ))}
@@ -769,6 +796,28 @@ function SocialMediaCalendar() {
                             <div className="smc-form-group"><label>Color</label><div className="smc-color-picker">{ACCOUNT_COLORS.map(c => <div key={c} className={`smc-color-swatch ${accountForm.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setAccountForm({ ...accountForm, color: c })} />)}</div></div>
                         </div>
                         <div className="smc-modal-footer"><button className="smc-btn-secondary" onClick={() => setShowAccountModal(false)}>Cancel</button><button className="smc-btn-primary" onClick={handleCreateAccount}>Create Account</button></div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Account Modal */}
+            {showEditAccountModal && editingAccount && (
+                <div className="smc-modal-overlay" onClick={() => setShowEditAccountModal(false)}>
+                    <div className="smc-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+                        <div className="smc-modal-header">
+                            <h3>Edit Account</h3>
+                            <button className="smc-modal-close" onClick={() => setShowEditAccountModal(false)}><FiX size={18} /></button>
+                        </div>
+                        <div className="smc-modal-body">
+                            <div className="smc-form-group"><label>Account Name *</label><input value={editAccountForm.name} onChange={e => setEditAccountForm({ ...editAccountForm, name: e.target.value })} placeholder="e.g. Company Instagram" /></div>
+                            <div className="smc-form-group"><label>Platform</label><select value={editAccountForm.platform} onChange={e => setEditAccountForm({ ...editAccountForm, platform: e.target.value })}>{PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+                            <div className="smc-form-group"><label>Handle / URL</label><input value={editAccountForm.handle} onChange={e => setEditAccountForm({ ...editAccountForm, handle: e.target.value })} placeholder="@your_handle" /></div>
+                            <div className="smc-form-group"><label>Color</label><div className="smc-color-picker">{ACCOUNT_COLORS.map(c => <div key={c} className={`smc-color-swatch ${editAccountForm.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setEditAccountForm({ ...editAccountForm, color: c })} />)}</div></div>
+                        </div>
+                        <div className="smc-modal-footer">
+                            <button className="smc-btn-secondary" onClick={() => setShowEditAccountModal(false)}>Cancel</button>
+                            <button className="smc-btn-primary" onClick={handleUpdateAccount}>Save Changes</button>
+                        </div>
                     </div>
                 </div>
             )}

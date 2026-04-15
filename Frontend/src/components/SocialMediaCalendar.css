@@ -246,6 +246,25 @@
     margin-left: auto;
 }
 
+.acct-edit {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 2px;
+    display: none;
+    opacity: 0;
+}
+
+.acct-edit:hover {
+    color: #2563eb;
+}
+
+.smc-dropdown-item:hover .acct-edit {
+    display: flex;
+    opacity: 1;
+}
+
 .acct-delete {
     background: none;
     border: none;
