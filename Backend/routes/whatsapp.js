@@ -1,5 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { authenticateToken } = require('../middleware/auth');
 const { whatsappMessageLimiter, whatsappAccountLimiter, whatsappCampaignLimiter, whatsappApiLimiter } = require('../middleware/whatsappRateLimit');
 
@@ -987,6 +990,41 @@ function initializeRoutes({ io }) {
   // MESSAGE TEMPLATES
   // =====================================================
 
+  // Multer for template header images
+  const waTemplateStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, '..', 'uploads', 'whatsapp-templates');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `tpl-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`);
+    }
+  });
+  const waTemplateUpload = multer({
+    storage: waTemplateStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
+      else cb(new Error('Only image files allowed'), false);
+    }
+  });
+
+  /**
+   * POST /api/whatsapp/templates/upload-image
+   * Upload a header image for a template
+   */
+  router.post('/templates/upload-image', waTemplateUpload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: 'No image provided' });
+      const url = `/uploads/whatsapp-templates/${req.file.filename}`;
+      res.json({ success: true, url });
+    } catch (error) {
+      console.error('[WA Templates] Image upload error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   /**
    * GET /api/whatsapp/templates
    * List all message templates for the company
@@ -1015,7 +1053,7 @@ function initializeRoutes({ io }) {
    */
   router.post('/templates', async (req, res) => {
     try {
-      const { name, category, language, body, variables } = req.body;
+      const { name, category, language, body, variables, headerImage } = req.body;
 
       if (!name || !body) {
         return res.status(400).json({ success: false, message: 'name and body are required' });
@@ -1027,6 +1065,7 @@ function initializeRoutes({ io }) {
         name,
         category: category || 'marketing',
         language: language || 'en',
+        headerImage: headerImage || '',
         body,
         variables: variables || []
       });
@@ -1052,7 +1091,7 @@ function initializeRoutes({ io }) {
       if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
 
       const fields = ['name', 'category', 'language', 'headerType', 'headerContent',
-        'body', 'footerText', 'buttons', 'variables', 'isActive'];
+        'headerImage', 'body', 'footerText', 'buttons', 'variables', 'isActive'];
 
       fields.forEach(field => {
         if (req.body[field] !== undefined) template[field] = req.body[field];

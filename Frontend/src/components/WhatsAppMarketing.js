@@ -923,9 +923,11 @@ function TemplatesTab() {
   const [showModal, setShowModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [showPreview, setShowPreview] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const headerImageRef = useRef(null);
   const [form, setForm] = useState({
     name: '', category: 'marketing', language: 'en',
-    body: ''
+    body: '', headerImage: ''
   });
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
@@ -933,9 +935,29 @@ function TemplatesTab() {
   const resetForm = () => {
     setForm({
       name: '', category: 'marketing', language: 'en',
-      body: ''
+      body: '', headerImage: ''
     });
     setEditingTemplate(null);
+  };
+
+  const handleHeaderImageUpload = async (file) => {
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await api.post('/whatsapp/templates/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        setForm(prev => ({ ...prev, headerImage: res.data.url }));
+        toast.success('Image uploaded');
+      }
+    } catch (e) {
+      toast.error('Image upload failed');
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const handleEdit = (tpl) => {
@@ -944,7 +966,8 @@ function TemplatesTab() {
       name: tpl.name,
       category: tpl.category || 'marketing',
       language: tpl.language || 'en',
-      body: tpl.body || ''
+      body: tpl.body || '',
+      headerImage: tpl.headerImage || ''
     });
     setShowModal(true);
   };
@@ -978,6 +1001,8 @@ function TemplatesTab() {
     }
   };
 
+  const apiBase = process.env.REACT_APP_API_URL || '';
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this template?')) {
       try { await deleteTemplate(id); toast.success('Template deleted'); } catch (e) { toast.error(e.message); }
@@ -1004,6 +1029,15 @@ function TemplatesTab() {
         </div>
         <div className="wa-tpl-phone-body">
           <div className="wa-tpl-phone-bubble">
+            {tpl.headerImage && (
+              <div className="wa-tpl-phone-img-wrap">
+                <img
+                  src={tpl.headerImage.startsWith('http') ? tpl.headerImage : `${apiBase}${tpl.headerImage}`}
+                  alt="Header"
+                  className="wa-tpl-phone-img"
+                />
+              </div>
+            )}
             <div className="wa-tpl-phone-text">{tpl.body || 'Your message body here...'}</div>
             <div className="wa-tpl-phone-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
@@ -1046,6 +1080,32 @@ function TemplatesTab() {
                       <option value="transactional">Transactional</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="wa-form-group">
+                  <label><FiImage size={12} style={{ marginRight: 4 }} />Header Image <span className="wa-hint">Optional · max 5MB</span></label>
+                  <input
+                    ref={headerImageRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files[0]) handleHeaderImageUpload(e.target.files[0]); e.target.value = ''; }}
+                  />
+                  {form.headerImage ? (
+                    <div className="wa-tpl-img-preview">
+                      <img src={form.headerImage.startsWith('http') ? form.headerImage : `${apiBase}${form.headerImage}`} alt="Header" />
+                      <button type="button" className="wa-tpl-img-remove" onClick={() => setForm(prev => ({ ...prev, headerImage: '' }))}><FiX size={12} /></button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wa-tpl-img-upload-btn"
+                      onClick={() => headerImageRef.current?.click()}
+                      disabled={imageUploading}
+                    >
+                      <FiImage size={14} /> {imageUploading ? 'Uploading…' : 'Upload image'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="wa-form-group">

@@ -33,6 +33,12 @@ const whatsAppTemplateSchema = new mongoose.Schema({
         trim: true
     },
 
+    // Optional header image URL (server-hosted)
+    headerImage: {
+        type: String,
+        default: ''
+    },
+
     // Body (supports {{1}}, {{name}} etc.)
     body: {
         type: String,
