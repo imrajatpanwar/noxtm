@@ -41,8 +41,7 @@ const postActivitySchema = new mongoose.Schema({
 
 // Reference image schema (Google Drive links)
 const referenceImageSchema = new mongoose.Schema({
-    url: { type: String, default: '' },           // server-hosted URL
-    driveFileId: { type: String, default: '' },   // legacy Google Drive (optional)
+    driveFileId: { type: String, required: true },
     name: { type: String, required: true },
     thumbnailLink: { type: String, default: '' },
     webViewLink: { type: String, default: '' },

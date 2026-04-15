@@ -790,30 +790,6 @@ router.post('/posts/:id/upload', smUpload.array('files', 10), async (req, res) =
     }
 });
 
-// POST /api/social-media-calendar/reference-images/upload - Upload reference images (server-hosted)
-router.post('/reference-images/upload', smUpload.array('files', 10), async (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: 'No files uploaded' });
-        }
-        const uploaded = req.files.map(file => ({
-            url: `/uploads/social-media/${file.filename}`,
-            name: file.originalname,
-            mimeType: file.mimetype,
-            driveFileId: '',
-            thumbnailLink: '',
-            webViewLink: ''
-        }));
-        res.json({ uploaded });
-    } catch (error) {
-        console.error('Reference image upload error:', error);
-        if (req.files) {
-            req.files.forEach(f => { try { fs.unlinkSync(f.path); } catch (e) { } });
-        }
-        res.status(500).json({ message: 'Failed to upload reference images' });
-    }
-});
-
 // DELETE /api/social-media-calendar/posts/:id/media/:mediaId - Remove a media file
 router.delete('/posts/:id/media/:mediaId', async (req, res) => {
     try {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiChevronLeft, FiChevronRight, FiPlus, FiX, FiUpload, FiSend, FiTrash2, FiEdit3, FiCalendar, FiMessageCircle, FiActivity, FiChevronDown, FiImage, FiSearch, FiGrid, FiList, FiCopy, FiDownload, FiHash, FiRepeat, FiBookmark, FiCheckSquare, FiClock, FiExternalLink, FiShare2, FiLink, FiRefreshCw, FiLock } from 'react-icons/fi';
+import { useGoogleLogin, googleLogout } from '@react-oauth/google';
 import axios from 'axios';
 import { toast } from 'sonner';
 import api from '../config/api';
@@ -39,6 +40,9 @@ function SocialMediaCalendar() {
     const [selectedPosts, setSelectedPosts] = useState([]);
     const [templateForm, setTemplateForm] = useState({ name: '', content: '', platform: 'Instagram', labels: '', hashtags: '', notes: '' });
     const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+    const [driveToken, setDriveToken] = useState(null);
+    const [driveUser, setDriveUser] = useState(null);
+    const [refFolderId, setRefFolderId] = useState(null);
     const [refUploading, setRefUploading] = useState(false);
     const [refUploadProgress, setRefUploadProgress] = useState({});
     const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
@@ -84,55 +88,114 @@ function SocialMediaCalendar() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ── Reference image upload (server-hosted) ──────────────────────────────
+    // ── Google Drive for reference images ──────────────────────────────────
+    const driveLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setDriveToken(tokenResponse.access_token);
+            try {
+                const profile = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } });
+                setDriveUser(profile.data);
+            } catch (e) { /* ignore */ }
+        },
+        onError: () => toast.error('Google sign-in failed'),
+        scope: 'https://www.googleapis.com/auth/drive.file',
+    });
+
+    const disconnectDrive = () => { googleLogout(); setDriveToken(null); setDriveUser(null); setRefFolderId(null); };
+
+    const ensureRefFolder = useCallback(async (token) => {
+        if (refFolderId) return refFolderId;
+        const FOLDER = 'Noxtm Calendar';
+        const search = await axios.get('https://www.googleapis.com/drive/v3/files', {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { q: `name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`, fields: 'files(id,name)' }
+        });
+        if (search.data.files?.length > 0) { setRefFolderId(search.data.files[0].id); return search.data.files[0].id; }
+        const created = await axios.post('https://www.googleapis.com/drive/v3/files',
+            { name: FOLDER, mimeType: 'application/vnd.google-apps.folder' },
+            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        );
+        setRefFolderId(created.data.id);
+        return created.data.id;
+    }, [refFolderId]);
+
     const handleRefImageUpload = async (fileList) => {
-        if (!fileList.length) return;
+        if (!driveToken || !fileList.length) return;
         setRefUploading(true);
 
-        // Show local previews immediately
         const files = Array.from(fileList);
+
+        // Show local previews immediately so user sees something right away
         const localPreviews = files.map(file => ({
             _localId: `local-${Date.now()}-${Math.random()}`,
-            url: URL.createObjectURL(file),
-            name: file.name,
-            mimeType: file.type,
             driveFileId: '',
+            name: file.name,
+            localPreviewUrl: URL.createObjectURL(file),
             thumbnailLink: '',
             webViewLink: '',
+            mimeType: file.type,
             uploading: true
         }));
         setPostForm(prev => ({ ...prev, referenceImages: [...prev.referenceImages, ...localPreviews] }));
 
         try {
-            const form = new FormData();
-            files.forEach(file => form.append('files', file));
+            const fId = await ensureRefFolder(driveToken);
+            const results = [];
 
-            const res = await api.post('/social-media-calendar/reference-images/upload', form, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                onUploadProgress: (evt) => {
-                    const pct = Math.round((evt.loaded / evt.total) * 100);
-                    setRefUploadProgress(() => ({ overall: pct }));
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const preview = localPreviews[i];
+                setRefUploadProgress(p => ({ ...p, [file.name]: 0 }));
+                try {
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify({ name: file.name, parents: [fId] })], { type: 'application/json' }));
+                    form.append('file', file);
+                    const res = await axios.post(
+                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,thumbnailLink,webViewLink,mimeType',
+                        form,
+                        {
+                            headers: { Authorization: `Bearer ${driveToken}` },
+                            onUploadProgress: (evt) => {
+                                const pct = Math.round((evt.loaded / evt.total) * 100);
+                                setRefUploadProgress(p => ({ ...p, [file.name]: pct }));
+                            }
+                        }
+                    );
+                    results.push({
+                        _localId: preview._localId,
+                        driveFileId: res.data.id,
+                        name: res.data.name,
+                        // Use local preview URL for display — Drive thumbnailLink needs Google auth cookie
+                        localPreviewUrl: preview.localPreviewUrl,
+                        thumbnailLink: res.data.thumbnailLink || '',
+                        webViewLink: res.data.webViewLink || '',
+                        mimeType: res.data.mimeType || file.type,
+                        uploading: false
+                    });
+                } catch (fileErr) {
+                    console.error('Drive upload failed for', file.name, fileErr.response?.data || fileErr.message);
+                    const errMsg = fileErr.response?.data?.error?.message || fileErr.message;
+                    toast.error(`Failed to upload "${file.name}": ${errMsg}`);
+                    results.push({ ...preview, uploading: false, failed: true });
                 }
-            });
+                setRefUploadProgress(p => { const n = { ...p }; delete n[file.name]; return n; });
+            }
 
-            const serverUploaded = res.data.uploaded;
-            // Replace local previews with server results (preserve local URL for display)
+            // Replace local placeholders with final results
             setPostForm(prev => ({
                 ...prev,
                 referenceImages: [
                     ...prev.referenceImages.filter(img => !localPreviews.find(lp => lp._localId === img._localId)),
-                    ...serverUploaded.map((srv, i) => ({
-                        ...srv,
-                        url: srv.url,
-                        _localUrl: localPreviews[i]?.url || ''
-                    }))
+                    ...results
                 ]
             }));
-            setRefUploadProgress({});
-            toast.success(`${serverUploaded.length} reference image${serverUploaded.length !== 1 ? 's' : ''} added`);
+
+            const successCount = results.filter(r => !r.failed).length;
+            if (successCount > 0) toast.success(`${successCount} reference image${successCount !== 1 ? 's' : ''} uploaded to Drive`);
         } catch (e) {
-            console.error('Reference image upload failed:', e.response?.data || e.message);
-            // Keep local previews, mark failed
+            console.error('Drive reference upload error:', e.response?.data || e.message);
+            const errMsg = e.response?.data?.error?.message || e.message;
+            toast.error(`Upload failed: ${errMsg}`);
             setPostForm(prev => ({
                 ...prev,
                 referenceImages: prev.referenceImages.map(img =>
@@ -141,8 +204,6 @@ function SocialMediaCalendar() {
                         : img
                 )
             }));
-            setRefUploadProgress({});
-            toast.error('Reference image upload failed');
         } finally {
             setRefUploading(false);
         }
@@ -152,7 +213,7 @@ function SocialMediaCalendar() {
         setPostForm(prev => ({
             ...prev,
             referenceImages: prev.referenceImages.filter(img =>
-                (img._id || img._localId || img.url) !== id
+                (img._id || img._localId || img.driveFileId) !== id
             )
         }));
     };
@@ -621,36 +682,49 @@ function SocialMediaCalendar() {
                             {/* Reference Images */}
                             <div className="smc-form-group">
                                 <label><FiImage size={12} style={{ marginRight: 4 }} />Reference Images</label>
-                                <div className="smc-ref-section">
-                                    <button type="button" className="smc-ref-upload-btn" onClick={() => refFileInputRef.current?.click()} disabled={refUploading}>
-                                        <FiUpload size={13} /> {refUploading ? 'Uploading...' : 'Upload images'}
+                                {!driveToken ? (
+                                    <button type="button" className="smc-google-signin-btn" onClick={() => driveLogin()}>
+                                        <svg viewBox="0 0 48 48" width="16" height="16" style={{ flexShrink: 0 }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                                        Sign in with Google to upload reference images
                                     </button>
-                                    <input ref={refFileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: 'none' }} onChange={e => { if (e.target.files.length) handleRefImageUpload(e.target.files); e.target.value = ''; }} />
-                                    {refUploadProgress.overall !== undefined && (
-                                        <div className="smc-ref-progress-item">
-                                            <div className="smc-ref-progress-meta"><span className="smc-ref-progress-name">Uploading...</span><span>{refUploadProgress.overall}%</span></div>
-                                            <Progress value={refUploadProgress.overall} />
+                                ) : (
+                                    <div className="smc-ref-section">
+                                        <div className="smc-ref-header">
+                                            {driveUser?.picture && <img src={driveUser.picture} alt="" className="smc-ref-avatar" />}
+                                            <span className="smc-ref-username">{driveUser?.name || driveUser?.email}</span>
+                                            <button type="button" className="smc-ref-signout" onClick={disconnectDrive}>Sign out</button>
                                         </div>
-                                    )}
-                                    {postForm.referenceImages.length > 0 && (
-                                        <div className="smc-ref-thumbs">
-                                            {postForm.referenceImages.map((img, idx) => {
-                                                const imgKey = img._id || img._localId || img.url || idx;
-                                                const imgSrc = img._localUrl || img.url || img.thumbnailLink || '';
-                                                const removeId = img._id || img._localId || img.url;
-                                                return (
-                                                    <div key={imgKey} className={`smc-ref-thumb${img.uploading ? ' smc-ref-thumb--uploading' : ''}${img.failed ? ' smc-ref-thumb--failed' : ''}`}>
-                                                        {imgSrc
-                                                            ? <img src={imgSrc} alt={img.name} />
-                                                            : <div className="smc-ref-thumb-placeholder"><FiImage size={18} /></div>}
-                                                        <button type="button" className="smc-ref-thumb-remove" onClick={() => removeRefImage(removeId)}><FiX size={10} /></button>
-                                                        <div className="smc-ref-thumb-name">{img.name}</div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
+                                        <button type="button" className="smc-ref-upload-btn" onClick={() => refFileInputRef.current?.click()} disabled={refUploading}>
+                                            <FiUpload size={13} /> {refUploading ? 'Uploading...' : 'Upload images'}
+                                        </button>
+                                        <input ref={refFileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => { if (e.target.files.length) handleRefImageUpload(e.target.files); e.target.value = ''; }} />
+                                        {Object.entries(refUploadProgress).map(([name, pct]) => (
+                                            <div key={name} className="smc-ref-progress-item">
+                                                <div className="smc-ref-progress-meta"><span className="smc-ref-progress-name">{name}</span><span>{pct}%</span></div>
+                                                <Progress value={pct} />
+                                            </div>
+                                        ))}
+                                        {postForm.referenceImages.length > 0 && (
+                                            <div className="smc-ref-thumbs">
+                                                {postForm.referenceImages.map((img, idx) => {
+                                                    const imgKey = img._id || img._localId || img.driveFileId || idx;
+                                                    // Use local blob URL for preview (Drive thumbnailLink needs Google auth cookie to display)
+                                                    const imgSrc = img.localPreviewUrl || img.thumbnailLink || '';
+                                                    const removeId = img._id || img._localId || img.driveFileId;
+                                                    return (
+                                                        <div key={imgKey} className={`smc-ref-thumb${img.uploading ? ' smc-ref-thumb--uploading' : ''}${img.failed ? ' smc-ref-thumb--failed' : ''}`}>
+                                                            {imgSrc
+                                                                ? <img src={imgSrc} alt={img.name} />
+                                                                : <div className="smc-ref-thumb-placeholder"><FiImage size={18} /></div>}
+                                                            <button type="button" className="smc-ref-thumb-remove" onClick={() => removeRefImage(removeId)}><FiX size={10} /></button>
+                                                            <div className="smc-ref-thumb-name">{img.name}</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="smc-modal-footer">
@@ -734,20 +808,20 @@ function SocialMediaCalendar() {
                                         {showPostDetail.referenceImages.map(img => (
                                             <div key={img._id || img.driveFileId} className="smc-ref-detail-card">
                                                 <div className="smc-ref-detail-thumb">
-                                                    {(img.url || img.thumbnailLink)
-                                                        ? <img src={img.url || img.thumbnailLink} alt={img.name} />
+                                                    {img.thumbnailLink
+                                                        ? <img src={img.thumbnailLink} alt={img.name} />
                                                         : <div className="smc-ref-thumb-placeholder"><FiImage size={22} /></div>}
                                                 </div>
                                                 <div className="smc-ref-detail-info">
                                                     <span className="smc-ref-detail-name">{img.name}</span>
                                                     <div className="smc-ref-detail-actions">
-                                                        {img.url && (
-                                                            <a href={img.url} target="_blank" rel="noopener noreferrer" className="smc-ref-detail-btn">
+                                                        {img.webViewLink && (
+                                                            <a href={img.webViewLink} target="_blank" rel="noopener noreferrer" className="smc-ref-detail-btn">
                                                                 <FiExternalLink size={12} /> View
                                                             </a>
                                                         )}
-                                                        {img.url && (
-                                                            <a href={img.url} download={img.name} className="smc-ref-detail-btn smc-ref-detail-btn--dl">
+                                                        {img.driveFileId && (
+                                                            <a href={`https://drive.google.com/uc?export=download&id=${img.driveFileId}`} target="_blank" rel="noopener noreferrer" className="smc-ref-detail-btn smc-ref-detail-btn--dl">
                                                                 <FiDownload size={12} /> Download
                                                             </a>
                                                         )}
