@@ -1846,6 +1846,13 @@
     white-space: nowrap;
     text-align: center;
 }
+.smc-ref-thumb--uploading {
+    opacity: 0.6;
+}
+.smc-ref-thumb--failed {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
 
 
 /* Reference Images — detail modal grid */
