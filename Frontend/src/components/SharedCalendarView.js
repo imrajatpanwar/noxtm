@@ -99,7 +99,7 @@ function SharedCalendarView() {
                         {/* Days grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
                             {monthDays.map((day, idx) => {
-                                const dayPosts = getPostsForDay(posts, day.date);
+                                const dayPosts = getPostsForDay(posts, day.date, 'all', '');
                                 const todayDay = isToday(day.date);
                                 return (
                                     <div key={idx} style={{ minHeight: 100, borderRight: idx % 7 !== 6 ? '1px solid #f3f4f6' : 'none', borderBottom: '1px solid #f3f4f6', padding: '6px 4px', background: todayDay ? '#fffbeb' : 'transparent' }}>
@@ -131,7 +131,7 @@ function SharedCalendarView() {
                         <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', minHeight: 400 }}>
                             <div style={{ padding: '8px 4px', fontSize: 10, color: '#9ca3af' }}>Posts</div>
                             {weekDays.map((d, i) => {
-                                const dayPosts = getPostsForDay(posts, d);
+                                const dayPosts = getPostsForDay(posts, d, 'all', '');
                                 return (
                                     <div key={i} style={{ borderLeft: '1px solid #f3f4f6', padding: '8px 4px', minHeight: 120 }}>
                                         {dayPosts.map(post => (
