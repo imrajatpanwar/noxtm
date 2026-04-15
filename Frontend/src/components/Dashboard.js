@@ -408,8 +408,8 @@ function Dashboard({ user, onLogout }) {
             <NoxtmAssistant /> panel on the right, so the assistant renders on
             every section (not just Overview). */}
         <SidebarInset>
-          <div className="dashboard-inset-row" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, width: '100%' }}>
-            <div className="dashboard-content" style={{ flex: 1, minWidth: 0 }}>
+          <div className="dashboard-inset-row" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>
+            <div className="dashboard-content" style={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', height: '100%', scrollbarWidth: 'none' }}>
               {activeSection === 'message' ? (
                 renderContent()
               ) : (
