@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from './ui/dialog';
 import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm, truncateWords } from './calendarHelpers';
 import { useRole } from '../contexts/RoleContext';
 import './SocialMediaCalendar.css';
@@ -1012,51 +1011,51 @@ function SocialMediaCalendar() {
                 </div>
             )}
 
-            {/* Share Calendar Dialog */}
-            <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Share Calendar</DialogTitle>
-                        <DialogDescription>
-                            Generate a public link so anyone can view this calendar — no login required.
-                        </DialogDescription>
-                        <DialogClose />
-                    </DialogHeader>
-                    <DialogBody>
-                        {shareToken ? (
-                            <div className="smc-share-active">
-                                <div className="smc-share-status">
-                                    <div className="smc-share-dot" />
-                                    <span>Link active — anyone with this URL can view</span>
+            {/* Share Calendar Modal */}
+            {showShareDialog && (
+                <div className="smc-modal-overlay" onClick={() => setShowShareDialog(false)}>
+                    <div className="smc-modal smc-share-modal" onClick={e => e.stopPropagation()}>
+                        <div className="smc-modal-header">
+                            <h3>Share Calendar</h3>
+                            <button className="smc-modal-close" onClick={() => setShowShareDialog(false)}><FiX size={18} /></button>
+                        </div>
+                        <div className="smc-modal-body">
+                            <p className="smc-share-desc">Generate a public link so anyone can view this calendar — no login required.</p>
+                            {shareToken ? (
+                                <div className="smc-share-active">
+                                    <div className="smc-share-status">
+                                        <div className="smc-share-dot" />
+                                        <span>Link active — anyone with this URL can view</span>
+                                    </div>
+                                    <div className="smc-share-link-row">
+                                        <input readOnly value={shareUrl} className="smc-share-link-input" onClick={e => e.target.select()} />
+                                        <button className="smc-share-copy-btn" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Link copied!'); }} title="Copy link">
+                                            <FiCopy size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="smc-share-actions">
+                                        <button className="smc-share-action-btn" onClick={handleRegenerateShareLink} disabled={shareLoading}>
+                                            <FiRefreshCw size={13} /> Change link
+                                        </button>
+                                        <button className="smc-share-action-btn smc-share-action-danger" onClick={handleRemoveShareAccess} disabled={shareLoading}>
+                                            <FiLock size={13} /> Remove access
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="smc-share-link-row">
-                                    <input readOnly value={shareUrl} className="smc-share-link-input" onClick={e => e.target.select()} />
-                                    <button className="smc-share-copy-btn" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Link copied!'); }} title="Copy link">
-                                        <FiCopy size={14} />
+                            ) : (
+                                <div className="smc-share-empty">
+                                    <div className="smc-share-empty-icon"><FiLink size={28} /></div>
+                                    <p className="smc-share-empty-title">No active share link</p>
+                                    <p className="smc-share-empty-desc">Generate a link to let anyone view this calendar without logging in.</p>
+                                    <button className="smc-btn-primary smc-share-generate-btn" onClick={handleCreateShareLink} disabled={shareLoading}>
+                                        <FiShare2 size={14} /> {shareLoading ? 'Generating…' : 'Generate share link'}
                                     </button>
                                 </div>
-                                <div className="smc-share-actions">
-                                    <button className="smc-share-action-btn" onClick={handleRegenerateShareLink} disabled={shareLoading}>
-                                        <FiRefreshCw size={13} /> Change link
-                                    </button>
-                                    <button className="smc-share-action-btn smc-share-action-danger" onClick={handleRemoveShareAccess} disabled={shareLoading}>
-                                        <FiLock size={13} /> Remove access
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="smc-share-empty">
-                                <div className="smc-share-empty-icon"><FiLink size={28} /></div>
-                                <p className="smc-share-empty-title">No active share link</p>
-                                <p className="smc-share-empty-desc">Generate a link to let anyone view this calendar without logging in.</p>
-                                <button className="smc-btn-primary smc-share-generate-btn" onClick={handleCreateShareLink} disabled={shareLoading}>
-                                    <FiShare2 size={14} /> {shareLoading ? 'Generating…' : 'Generate share link'}
-                                </button>
-                            </div>
-                        )}
-                    </DialogBody>
-                </DialogContent>
-            </Dialog>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
