@@ -241,7 +241,7 @@ function SocialMediaCalendar() {
     const openEditAccount = (a, e) => {
         e.stopPropagation();
         setEditingAccount(a);
-        setEditAccountForm({ name: a.name, platform: a.platform, handle: a.handle || '', color: a.color || '#1a1a1a', assignedTo: (a.assignedTo || []).map(u => u._id || u) });
+        setEditAccountForm({ name: a.name, platform: a.platform, handle: a.handle || '', color: a.color || '#1a1a1a', assignedTo: Array.isArray(a.assignedTo) ? a.assignedTo.map(u => u._id || u) : [] });
         setShowAccountDropdown(false);
         setShowEditAccountModal(true);
     };
