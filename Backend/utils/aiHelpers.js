@@ -6,6 +6,7 @@ const Campaign = require('../models/Campaign');
 const Client = require('../models/Client');
 const Lead = require('../models/Lead');
 const EmailAccount = require('../models/EmailAccount');
+const CompanyData = require('../models/CompanyData');
 const { CoreMemory, ContextMemory, LearnedMemory } = require('../models/NoxtmMemory');
 
 /**
@@ -17,7 +18,7 @@ const { CoreMemory, ContextMemory, LearnedMemory } = require('../models/NoxtmMem
 const aggregateUserContext = async (userId, companyId) => {
   try {
     // Parallel queries for better performance
-    const [user, company, projects, campaigns, clients, leads, emailAccounts] =
+    const [user, company, projects, campaigns, clients, leads, emailAccounts, extractedCompaniesCount] =
       await Promise.all([
         User.findById(userId)
           .select('fullName email role')
@@ -53,7 +54,11 @@ const aggregateUserContext = async (userId, companyId) => {
 
         EmailAccount.find({ userId })
           .select('email domain')
-          .lean()
+          .lean(),
+
+        companyId
+          ? CompanyData.countDocuments({ companyId })
+          : Promise.resolve(0)
       ]);
 
     // Calculate lead status breakdown
@@ -83,7 +88,8 @@ const aggregateUserContext = async (userId, companyId) => {
       leadCount: leads.length,
       leadStatusBreakdown,
       emailAccountCount: emailAccounts.length,
-      domains: uniqueDomains.join(', ') || 'None'
+      domains: uniqueDomains.join(', ') || 'None',
+      extractedCompaniesCount: extractedCompaniesCount || 0
     };
   } catch (error) {
     console.error('Error aggregating user context:', error);
@@ -281,7 +287,8 @@ User Context:
 - Campaigns: ${contextData.campaignCount} total${contextData.recentCampaigns !== 'None' ? ` (Recent: ${contextData.recentCampaigns})` : ''}
 - Clients: ${contextData.clientCount} total${contextData.recentClients !== 'None' ? ` (Recent: ${contextData.recentClients})` : ''}
 - Leads: ${contextData.leadCount} total (${contextData.leadStatusBreakdown})
-- Email Accounts: ${contextData.emailAccountCount} total${contextData.domains !== 'None' ? ` (Domains: ${contextData.domains})` : ''}`;
+- Email Accounts: ${contextData.emailAccountCount} total${contextData.domains !== 'None' ? ` (Domains: ${contextData.domains})` : ''}
+- Extracted Companies (Data Center / Chrome Extension): ${contextData.extractedCompaniesCount} companies with contacts`;
 
   // === Core Memory ===
   if (memory?.core) {

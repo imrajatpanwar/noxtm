@@ -11,6 +11,7 @@ const WhatsAppAccount = require('../models/WhatsAppAccount');
 const WhatsAppMessage = require('../models/WhatsAppMessage');
 const CompanyMemory = require('../models/CompanyMemory');
 const AssistantAction = require('../models/AssistantAction');
+const CompanyData = require('../models/CompanyData');
 
 // ═══════════════════════════════════════════
 // TOOL DEFINITIONS (sent to Claude API)
@@ -250,6 +251,58 @@ const toolDefinitions = [
         }
       },
       required: ['query']
+    }
+  },
+  {
+    name: 'search_extracted_companies',
+    description: 'Search companies and their contacts extracted via the Chrome Extension. Use when the user asks about companies in their data center, extracted companies, or contacts within those companies.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search text to match company name, industry, email, or website' },
+        industry: { type: 'string', description: 'Filter by industry (optional)' },
+        source: { type: 'string', enum: ['extension', 'dashboard', 'import'], description: 'Filter by how the company was added (optional)' },
+        contact_status: { type: 'string', enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'], description: 'Filter companies that have contacts with this status (optional)' },
+        limit: { type: 'number', description: 'Max companies to return (default 10)' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'update_extracted_company',
+    description: 'Update a company record in the data center (extracted via Chrome Extension or added manually). Can update company fields like name, email, phone, website, industry, notes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string', description: 'The _id of the company to update. Get this from search_extracted_companies first.' },
+        company_name: { type: 'string', description: 'New company name (optional)' },
+        company_email: { type: 'string', description: 'New company email (optional)' },
+        company_phone: { type: 'string', description: 'New company phone (optional)' },
+        website: { type: 'string', description: 'New website URL (optional)' },
+        industry: { type: 'string', description: 'New industry (optional)' },
+        address: { type: 'string', description: 'New address (optional)' },
+        notes: { type: 'string', description: 'New or updated notes (optional)' }
+      },
+      required: ['company_id']
+    }
+  },
+  {
+    name: 'update_extracted_contact',
+    description: 'Update a contact within a company in the data center. Can update name, designation, phone, email, status, followUp, notes, or mark as important.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string', description: 'The _id of the parent company. Get from search_extracted_companies.' },
+        contact_id: { type: 'string', description: 'The _id of the contact within the company (contacts[n]._id). Get from search_extracted_companies.' },
+        full_name: { type: 'string', description: 'New full name (optional)' },
+        designation: { type: 'string', description: 'New job designation/title (optional)' },
+        phone: { type: 'string', description: 'New phone number (optional)' },
+        email: { type: 'string', description: 'New email address (optional)' },
+        status: { type: 'string', enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'], description: 'New lead status (optional)' },
+        follow_up: { type: 'string', description: 'Follow-up note or date (optional)' },
+        is_important: { type: 'boolean', description: 'Mark or unmark as important (optional)' }
+      },
+      required: ['company_id', 'contact_id']
     }
   }
 ];
@@ -1026,6 +1079,117 @@ const executors = {
       })),
       count: memories.length
     };
+  },
+
+  // ──────────────────────────────
+  // SEARCH EXTRACTED COMPANIES (Chrome Extension / Data Center)
+  // ──────────────────────────────
+  search_extracted_companies: async ({ companyId, input }) => {
+    const { query, industry, source, contact_status, limit = 10 } = input || {};
+
+    const filter = { companyId };
+    if (industry) filter.industry = { $regex: industry, $options: 'i' };
+    if (source) filter.source = source;
+    if (query) {
+      filter.$or = [
+        { companyName: { $regex: query, $options: 'i' } },
+        { companyEmail: { $regex: query, $options: 'i' } },
+        { website: { $regex: query, $options: 'i' } },
+        { industry: { $regex: query, $options: 'i' } },
+        { 'contacts.fullName': { $regex: query, $options: 'i' } },
+        { 'contacts.email': { $regex: query, $options: 'i' } }
+      ];
+    }
+    if (contact_status) {
+      filter['contacts.status'] = contact_status;
+    }
+
+    const companies = await CompanyData.find(filter)
+      .limit(Math.min(limit, 20))
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return {
+      count: companies.length,
+      companies: companies.map(c => ({
+        id: c._id,
+        name: c.companyName,
+        email: c.companyEmail,
+        phone: c.companyPhone,
+        website: c.website,
+        industry: c.industry,
+        address: c.address,
+        notes: c.notes,
+        source: c.source,
+        linkedin: c.linkedin,
+        contacts: (c.contacts || []).map(ct => ({
+          id: ct._id,
+          fullName: ct.fullName,
+          designation: ct.designation,
+          phone: ct.phone,
+          email: ct.email,
+          status: ct.status,
+          followUp: ct.followUp,
+          isImportant: ct.isImportant,
+          location: ct.location
+        }))
+      }))
+    };
+  },
+
+  // ──────────────────────────────
+  // UPDATE EXTRACTED COMPANY
+  // ──────────────────────────────
+  update_extracted_company: async ({ companyId, input }) => {
+    const { company_id, company_name, company_email, company_phone, website, industry, address, notes } = input || {};
+
+    if (!company_id) return { error: 'company_id is required' };
+
+    const record = await CompanyData.findOne({ _id: company_id, companyId });
+    if (!record) return { error: 'Company not found or access denied' };
+
+    const updates = {};
+    if (company_name !== undefined) updates.companyName = company_name;
+    if (company_email !== undefined) updates.companyEmail = company_email;
+    if (company_phone !== undefined) updates.companyPhone = company_phone;
+    if (website !== undefined) updates.website = website;
+    if (industry !== undefined) updates.industry = industry;
+    if (address !== undefined) updates.address = address;
+    if (notes !== undefined) updates.notes = notes;
+
+    if (Object.keys(updates).length === 0) return { error: 'No fields provided to update' };
+
+    Object.assign(record, updates);
+    await record.save();
+
+    return { success: true, updated: updates, companyName: record.companyName };
+  },
+
+  // ──────────────────────────────
+  // UPDATE EXTRACTED CONTACT
+  // ──────────────────────────────
+  update_extracted_contact: async ({ companyId, input }) => {
+    const { company_id, contact_id, full_name, designation, phone, email, status, follow_up, is_important } = input || {};
+
+    if (!company_id || !contact_id) return { error: 'company_id and contact_id are required' };
+
+    const record = await CompanyData.findOne({ _id: company_id, companyId });
+    if (!record) return { error: 'Company not found or access denied' };
+
+    const contact = record.contacts.id(contact_id);
+    if (!contact) return { error: 'Contact not found in this company' };
+
+    if (full_name !== undefined) contact.fullName = full_name;
+    if (designation !== undefined) contact.designation = designation;
+    if (phone !== undefined) contact.phone = phone;
+    if (email !== undefined) contact.email = email;
+    if (status !== undefined) contact.status = status;
+    if (follow_up !== undefined) contact.followUp = follow_up;
+    if (is_important !== undefined) contact.isImportant = is_important;
+
+    await record.save();
+
+    return { success: true, companyName: record.companyName, contactName: contact.fullName, updatedStatus: contact.status };
   }
 };
 
