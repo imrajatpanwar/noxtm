@@ -137,12 +137,12 @@ const toolDefinitions = [
   },
   {
     name: 'send_whatsapp_message',
-    description: 'Send a WhatsApp message to an EXTERNAL contact (client, lead, vendor) via WhatsApp. ONLY use this when the user explicitly says "WhatsApp" or the recipient is clearly an external contact — NOT a team member or colleague. For team members always use send_team_message instead.',
+    description: 'Send a WhatsApp message to an external contact or any phone number via WhatsApp. Use when the user says "WhatsApp", "send to number", or recipient is a client/lead/external contact. For team members use send_team_message instead. Can send to a known contact by name or to any raw phone number directly.',
     input_schema: {
       type: 'object',
       properties: {
-        contact_name: { type: 'string', description: 'Contact name to send to (will fuzzy match)' },
-        contact_phone: { type: 'string', description: 'Phone number if name not found' },
+        contact_name: { type: 'string', description: 'Contact name to search (fuzzy match against saved contacts)' },
+        contact_phone: { type: 'string', description: 'Phone number to send to — use this when no contact name is given or contact not found. Include country code (e.g. 919876543210).' },
         message: { type: 'string', description: 'Message content to send' }
       },
       required: ['message']
@@ -162,18 +162,19 @@ const toolDefinitions = [
   },
   {
     name: 'create_whatsapp_campaign',
-    description: 'Create a WhatsApp bulk campaign. Use when user asks to create a WhatsApp campaign or send bulk messages.',
+    description: 'Create a WhatsApp bulk campaign to send a message to multiple contacts. Use when user asks to create a campaign, blast a message, or bulk-send via WhatsApp. Use {{name}} in the message for personalization. If no contact filter given, includes all contacts.',
     input_schema: {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Campaign name' },
-        message_template: { type: 'string', description: 'Message template (use {name} for personalization)' },
-        contact_filter: { type: 'string', description: 'Filter contacts by tag or group name' },
-        delay_min: { type: 'number', description: 'Min delay between messages in seconds (default 30)' },
-        delay_max: { type: 'number', description: 'Max delay between messages in seconds (default 60)' },
-        daily_limit: { type: 'number', description: 'Max messages per day (default 100)' }
+        message: { type: 'string', description: 'Message to send. Use {{name}} for contact name personalization.' },
+        tag_filter: { type: 'string', description: 'Only include contacts with this tag (optional — omit to include all contacts)' },
+        delay_min: { type: 'number', description: 'Min delay between messages in seconds (default 10)' },
+        delay_max: { type: 'number', description: 'Max delay between messages in seconds (default 45)' },
+        daily_limit: { type: 'number', description: 'Max messages per day (default 100)' },
+        start_now: { type: 'boolean', description: 'Set to true to start the campaign immediately after creation (default false = stays as draft)' }
       },
-      required: ['name', 'message_template']
+      required: ['name', 'message']
     }
   },
   {
@@ -710,35 +711,46 @@ const executors = {
   send_whatsapp_message: async ({ companyId, userId, input }) => {
     const { contact_name, contact_phone, message } = input;
 
-    // Find company's WhatsApp account
     const account = await WhatsAppAccount.findOne({ companyId, status: 'connected' }).lean();
     if (!account) return { error: 'No connected WhatsApp account found. Please link a WhatsApp account first.' };
 
-    // Find contact
-    let contact;
+    const sessionManager = require('../services/whatsappSessionManager');
+    if (!sessionManager.isConnected(account._id.toString())) {
+      return { error: 'WhatsApp session is not connected. Please reconnect from WhatsApp settings.' };
+    }
+
+    let jid, displayName;
+
+    // Try finding existing contact first
+    let contact = null;
     if (contact_name) {
       contact = await WhatsAppContact.findOne({
         companyId,
-        name: { $regex: contact_name, $options: 'i' }
+        $or: [
+          { pushName: { $regex: contact_name, $options: 'i' } },
+          { phoneNumber: { $regex: contact_name.replace(/[^\d]/g, ''), $options: 'i' } }
+        ]
       }).lean();
     }
     if (!contact && contact_phone) {
+      const digits = contact_phone.replace(/[^\d]/g, '');
       contact = await WhatsAppContact.findOne({
         companyId,
-        phone: { $regex: contact_phone.replace(/[^\d]/g, '') }
+        phoneNumber: { $regex: digits }
       }).lean();
     }
 
-    if (!contact) {
-      return { error: `Contact "${contact_name || contact_phone}" not found. Available contacts can be listed using get_team_members or checking WhatsApp contacts.` };
-    }
-
-    // Use session manager to send
-    const sessionManager = require('../services/whatsappSessionManager');
-    const jid = contact.jid || `${contact.phone.replace(/[^\d]/g, '')}@s.whatsapp.net`;
-
-    if (!sessionManager.isConnected(account._id.toString())) {
-      return { error: 'WhatsApp session is not connected. Please reconnect from WhatsApp settings.' };
+    if (contact) {
+      jid = contact.whatsappId;
+      displayName = contact.pushName || contact.phoneNumber;
+    } else if (contact_phone) {
+      // Send to raw phone number — no contact record needed
+      const digits = contact_phone.replace(/[^\d]/g, '');
+      if (digits.length < 7) return { error: 'Invalid phone number provided.' };
+      jid = `${digits}@s.whatsapp.net`;
+      displayName = contact_phone;
+    } else {
+      return { error: `Contact "${contact_name}" not found in WhatsApp contacts. Try providing a phone number instead.` };
     }
 
     await sessionManager.sendMessage(account._id.toString(), jid, message, {
@@ -748,7 +760,7 @@ const executors = {
 
     return {
       success: true,
-      sentTo: contact.name || contact.phone,
+      sentTo: displayName,
       message: message.substring(0, 100) + (message.length > 100 ? '...' : '')
     };
   },
@@ -817,25 +829,27 @@ const executors = {
   // CREATE WHATSAPP CAMPAIGN
   // ──────────────────────────────
   create_whatsapp_campaign: async ({ companyId, userId, input }) => {
-    const { name, message_template, contact_filter, delay_min = 30, delay_max = 60, daily_limit = 100 } = input;
+    const { name, message, tag_filter, delay_min = 10, delay_max = 45, daily_limit = 100, start_now = false } = input;
 
-    // Find WhatsApp account
     const account = await WhatsAppAccount.findOne({ companyId, status: 'connected' }).lean();
-    if (!account) return { error: 'No connected WhatsApp account found.' };
+    if (!account) return { error: 'No connected WhatsApp account found. Please connect a WhatsApp account first.' };
 
-    // Get contacts
-    const contactQuery = { companyId };
-    if (contact_filter) {
-      contactQuery.$or = [
-        { tags: { $regex: contact_filter, $options: 'i' } },
-        { group: { $regex: contact_filter, $options: 'i' } },
-        { name: { $regex: contact_filter, $options: 'i' } }
-      ];
+    // Build contact query
+    const contactQuery = { companyId, isBlocked: { $ne: true }, optedOut: { $ne: true } };
+    if (tag_filter) {
+      contactQuery.tags = { $regex: tag_filter, $options: 'i' };
     }
-    const contacts = await WhatsAppContact.find(contactQuery).select('_id name phone jid').lean();
+
+    const contacts = await WhatsAppContact.find(contactQuery)
+      .select('_id pushName phoneNumber whatsappId')
+      .lean();
 
     if (contacts.length === 0) {
-      return { error: contact_filter ? `No contacts found matching "${contact_filter}"` : 'No WhatsApp contacts found.' };
+      return {
+        error: tag_filter
+          ? `No contacts found with tag "${tag_filter}". Try without a tag filter to include all contacts.`
+          : 'No WhatsApp contacts found. Contacts are added automatically when people message you.'
+      };
     }
 
     const campaign = await WhatsAppCampaign.create({
@@ -843,28 +857,43 @@ const executors = {
       accountId: account._id,
       createdBy: userId,
       name,
-      messageTemplate: message_template,
+      message,
       recipients: contacts.map(c => ({
         contactId: c._id,
-        jid: c.jid || `${c.phone.replace(/[^\d]/g, '')}@s.whatsapp.net`,
-        name: c.name,
+        whatsappId: c.whatsappId,
+        name: c.pushName || c.phoneNumber || '',
+        phone: c.phoneNumber || '',
         status: 'pending'
       })),
-      totalRecipients: contacts.length,
-      delayMin: delay_min,
-      delayMax: delay_max,
-      dailyLimit: daily_limit,
-      status: 'draft'
+      settings: {
+        delayMin: delay_min,
+        delayMax: delay_max,
+        dailyLimit: daily_limit
+      },
+      status: start_now ? 'running' : 'draft'
     });
+
+    // If start_now, trigger the campaign runner
+    if (start_now) {
+      try {
+        const sessionManager = require('../services/whatsappSessionManager');
+        if (sessionManager.startCampaign) {
+          setImmediate(() => sessionManager.startCampaign(campaign._id.toString()).catch(() => {}));
+        }
+      } catch (_) {}
+    }
 
     return {
       success: true,
       campaign: {
         id: campaign._id,
         name: campaign.name,
-        status: 'draft',
+        status: campaign.status,
         recipientCount: contacts.length,
-        note: 'Campaign created as draft. User can start it from WhatsApp Marketing section.'
+        message: message.substring(0, 80) + (message.length > 80 ? '...' : ''),
+        note: start_now
+          ? `Campaign started! Sending to ${contacts.length} contacts.`
+          : `Campaign created as draft with ${contacts.length} contacts. Go to WhatsApp Marketing to start it.`
       }
     };
   },
