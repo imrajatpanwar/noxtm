@@ -38,15 +38,36 @@ const QUICK_SUGGESTIONS = [
   'Campaign stats',
 ];
 
+// Detect what label to show based on the user's message
+function detectLoadingLabel(msg) {
+  const m = msg.toLowerCase();
+  if (/\b(edit|update|change|modify|fix|rename|set|correct|adjust|replace)\b/.test(m)) return 'Editing';
+  if (/\b(delete|remove|cancel|clear|drop)\b/.test(m)) return 'Processing';
+  if (/\b(create|make|add|build|generate|schedule|send|launch|write|compose|draft)\b/.test(m)) return 'Working';
+  if (/\b(search|find|look|fetch|get|show|list|filter|check)\b/.test(m)) return 'Searching';
+  if (/\b(save|remember|store|note|record|memorize)\b/.test(m)) return 'Saving';
+  if (/\b(analyz|calculat|stat|analytic|report|summar|breakdown)\b/.test(m)) return 'Analyzing';
+  return 'Thinking';
+}
+
+// Cycle phases while loading
+const LOADING_PHASES = [
+  { delay: 0,    suffix: '...' },
+  { delay: 4000, label: 'Working', suffix: '...' },
+  { delay: 9000, label: 'Almost there', suffix: '...' },
+];
+
 function NoxtmAssistant({ onCollapse }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Thinking');
   const [hasMore, setHasMore] = useState(false);
   const [scheduledActions, setScheduledActions] = useState([]);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const loadingTimers = useRef([]);
 
   // Load chat history on mount
   useEffect(() => {
@@ -98,6 +119,17 @@ function NoxtmAssistant({ onCollapse }) {
 
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: msg, time: new Date().toISOString() }]);
+
+    // Detect initial label and set up phase cycling
+    const initialLabel = detectLoadingLabel(msg);
+    setLoadingLabel(initialLabel);
+    loadingTimers.current.forEach(clearTimeout);
+    loadingTimers.current = [];
+    LOADING_PHASES.slice(1).forEach(phase => {
+      const t = setTimeout(() => setLoadingLabel(phase.label || initialLabel), phase.delay);
+      loadingTimers.current.push(t);
+    });
+
     setLoading(true);
 
     try {
@@ -137,7 +169,10 @@ function NoxtmAssistant({ onCollapse }) {
         isError: true
       }]);
     } finally {
+      loadingTimers.current.forEach(clearTimeout);
+      loadingTimers.current = [];
       setLoading(false);
+      setLoadingLabel('Thinking');
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [input, loading]);
@@ -238,10 +273,11 @@ function NoxtmAssistant({ onCollapse }) {
 
         {loading && (
           <div className="na-msg na-msg-assistant">
-            <div className="na-msg-bubble na-typing">
-              <span className="na-typing-dot" />
-              <span className="na-typing-dot" />
-              <span className="na-typing-dot" />
+            <div className="na-msg-bubble na-thinking-bubble">
+              <span className="na-thinking-dot" />
+              <span className="na-thinking-dot" />
+              <span className="na-thinking-dot" />
+              <span className="na-thinking-label">{loadingLabel}...</span>
             </div>
           </div>
         )}
