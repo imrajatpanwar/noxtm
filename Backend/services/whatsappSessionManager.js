@@ -791,6 +791,9 @@ async function sendMessage(accountId, jid, content, options = {}) {
       direction: 'outbound',
       type,
       content,
+      mediaUrl: options.mediaUrl || null,
+      mediaType: options.mediaType || null,
+      mediaFilename: options.mediaFilename || null,
       status: 'sent',
       timestamp: savedMessage.timestamp,
       isAutomated: options.isAutomated || false
