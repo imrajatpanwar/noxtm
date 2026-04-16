@@ -7,7 +7,6 @@ import {
 import splitViewIcon from '../assets/split_view.svg';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
-import { useModules } from '../contexts/ModuleContext';
 import {
   Sidebar as UISidebar,
   SidebarHeader,
@@ -27,8 +26,6 @@ import api from '../config/api';
 function Sidebar({ activeSection, onSectionChange }) {
   const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
   const { socket } = useContext(MessagingContext);
-  // Module installation context retained for future per-module gating
-  useModules();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === 'collapsed';
 

@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const path = require('path');
 const fs = require('fs');
 const WhatsAppAccount = require('../models/WhatsAppAccount');
@@ -339,7 +339,7 @@ async function startSession(accountId) {
 
     for (const msg of messages) {
       try {
-        await handleIncomingMessage(accountId, account.companyId, msg);
+        await handleIncomingMessage(accountId, account.companyId, msg, socket);
       } catch (err) {
         console.error(`[WA] Error handling message for ${accountId}:`, err.message);
       }
@@ -371,9 +371,39 @@ async function startSession(accountId) {
 }
 
 /**
+ * Download inbound media from Baileys and save to disk.
+ * Returns the public URL (/uploads/whatsapp-media/filename) or null on failure.
+ */
+async function downloadInboundMedia(sock, msg, type) {
+  try {
+    const mediaDir = path.join(__dirname, '..', 'uploads', 'whatsapp-media');
+    if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+
+    const buffer = await downloadMediaMessage(msg, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+
+    const ext = {
+      image: 'jpg',
+      video: 'mp4',
+      audio: 'ogg',
+      document: 'bin',
+      sticker: 'webp'
+    }[type] || 'bin';
+
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const filePath = path.join(mediaDir, filename);
+    fs.writeFileSync(filePath, buffer);
+
+    return `/uploads/whatsapp-media/${filename}`;
+  } catch (err) {
+    console.error('[WA] Media download failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Handle an incoming WhatsApp message
  */
-async function handleIncomingMessage(accountId, companyId, msg) {
+async function handleIncomingMessage(accountId, companyId, msg, sock) {
   // Skip status broadcasts, reactions to own messages, etc.
   if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') return;
 
@@ -402,19 +432,24 @@ async function handleIncomingMessage(accountId, companyId, msg) {
     type = 'image';
     content = msg.message.imageMessage.caption || '';
     mediaType = msg.message.imageMessage.mimetype;
+    mediaUrl = await downloadInboundMedia(sock, msg, 'image');
   } else if (msg.message.videoMessage) {
     type = 'video';
     content = msg.message.videoMessage.caption || '';
     mediaType = msg.message.videoMessage.mimetype;
+    mediaUrl = await downloadInboundMedia(sock, msg, 'video');
   } else if (msg.message.audioMessage) {
     type = 'audio';
     mediaType = msg.message.audioMessage.mimetype;
+    mediaUrl = await downloadInboundMedia(sock, msg, 'audio');
   } else if (msg.message.documentMessage) {
     type = 'document';
     content = msg.message.documentMessage.fileName || '';
     mediaType = msg.message.documentMessage.mimetype;
+    mediaUrl = await downloadInboundMedia(sock, msg, 'document');
   } else if (msg.message.stickerMessage) {
     type = 'sticker';
+    mediaUrl = await downloadInboundMedia(sock, msg, 'sticker');
   } else if (msg.message.locationMessage) {
     type = 'location';
     content = `${msg.message.locationMessage.degreesLatitude},${msg.message.locationMessage.degreesLongitude}`;
@@ -500,6 +535,8 @@ async function handleIncomingMessage(accountId, companyId, msg) {
       direction: 'inbound',
       type,
       content,
+      mediaUrl,
+      mediaType,
       timestamp: savedMessage.timestamp,
       contact: {
         _id: contact._id,

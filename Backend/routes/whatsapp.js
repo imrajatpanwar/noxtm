@@ -430,6 +430,42 @@ function initializeRoutes({ io }) {
     }
   });
 
+  // Multer for chat media uploads (images, videos, documents)
+  const waChatMediaStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, '..', 'uploads', 'whatsapp-media');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `wa-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`);
+    }
+  });
+  const waChatMediaUpload = multer({
+    storage: waChatMediaStorage,
+    limits: { fileSize: 16 * 1024 * 1024 }
+  });
+
+  /**
+   * POST /api/whatsapp/messages/upload-media
+   * Upload a media file for sending in chat
+   */
+  router.post('/messages/upload-media', waChatMediaUpload.single('media'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+      const url = `/uploads/whatsapp-media/${req.file.filename}`;
+      const mimetype = req.file.mimetype;
+      let type = 'document';
+      if (mimetype.startsWith('image/')) type = 'image';
+      else if (mimetype.startsWith('video/')) type = 'video';
+      else if (mimetype.startsWith('audio/')) type = 'audio';
+      res.json({ success: true, url, type, mimetype, filename: req.file.originalname });
+    } catch (error) {
+      console.error('[WA Routes] Media upload error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   /**
    * POST /api/whatsapp/messages/send
    * Send a message to a contact
