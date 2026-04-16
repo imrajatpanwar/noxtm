@@ -8,6 +8,7 @@ import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import './TaskManager.css';
+import { confirm } from './ui/alert-dialog';
 
 // Helper function to format relative time
 const formatRelativeTime = (date) => {
@@ -630,7 +631,7 @@ const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUs
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete this task?')) return;
+        if (!await confirm('Are you sure you want to delete this task?')) return;
         try {
             await api.delete(`/tasks/${task._id}`);
             onTaskUpdated();

@@ -5,6 +5,7 @@ import uploadIcon from './image/upload_icon.svg';
 import defaultAvatar from './image/default-avatar.svg';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import {
   FiPlus, FiX, FiMapPin,
   FiSearch, FiInfo, FiTrash2,
@@ -152,7 +153,7 @@ function TrendingServices({ onNavigate }) {
 
   const deleteService = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this trending service and all its targeted companies?')) return;
+    if (!await confirm('Delete this trending service and all its targeted companies?')) return;
     try {
       await api.delete(`/trending-services/${id}`);
       fetchServices();

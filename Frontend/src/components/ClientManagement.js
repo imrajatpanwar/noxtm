@@ -9,6 +9,7 @@ import api from '../config/api';
 import QuoteGenerator from './QuoteGenerator';
 import { Skeleton } from './ui/skeleton';
 import './ClientManagement.css';
+import { confirm } from './ui/alert-dialog';
 
 const ClientManagement = () => {
   const [clients, setClients] = useState([]);
@@ -87,7 +88,7 @@ const ClientManagement = () => {
   };
 
   const handleDeleteClient = async (clientId) => {
-    if (!window.confirm('Delete this client? This cannot be undone.')) return;
+    if (!await confirm('Delete this client? This cannot be undone.')) return;
     try {
       await api.delete(`/clients/${clientId}`);
       setClients(clients.filter(c => c._id !== clientId));

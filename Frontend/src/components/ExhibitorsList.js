@@ -3,6 +3,7 @@ import './ExhibitorsList.css';
 import Breadcrumb from './Breadcrumb';
 import defaultAvatar from './image/default-avatar.svg';
 import { FiPlus, FiX, FiSearch, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { confirm } from './ui/alert-dialog';
 
 function ExhibitorsList({ tradeShow, onNavigate }) {
   const [exhibitors, setExhibitors] = useState([]);
@@ -88,7 +89,7 @@ function ExhibitorsList({ tradeShow, onNavigate }) {
   };
 
   const deleteExhibitor = async (id) => {
-    if (!window.confirm('Delete this exhibitor?')) return;
+    if (!await confirm('Delete this exhibitor?')) return;
     try {
       const t = localStorage.getItem('token');
       await fetch(`/api/exhibitors/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${t}` } });

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import RuleBuilder from './RuleBuilder';
 import './RulesManager.css';
+import { confirm } from '../ui/alert-dialog';
 
 const RulesManager = ({ emailAccountId }) => {
   const [rules, setRules] = useState([]);
@@ -50,7 +51,7 @@ const RulesManager = ({ emailAccountId }) => {
   };
 
   const handleDeleteRule = async (ruleId) => {
-    if (!window.confirm('Are you sure you want to delete this rule?')) {
+    if (!await confirm('Are you sure you want to delete this rule?')) {
       return;
     }
 

@@ -385,7 +385,7 @@
 /* ─── Input Area ─── */
 .na-input-area {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   padding: 12px 14px 14px;
   border-top: 1px solid #f3f4f6;
@@ -404,6 +404,11 @@
   outline: none;
   transition: all 0.2s ease;
   font-family: 'Switzer', sans-serif;
+  resize: none;
+  overflow: hidden;
+  min-height: 40px;
+  max-height: 120px;
+  line-height: 1.5;
 }
 
 .na-input::placeholder {

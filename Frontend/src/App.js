@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import api from './config/api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Toaster } from './components/ui/sonner';
+import { AlertDialogProvider } from './components/ui/alert-dialog';
 import { RoleProvider } from './contexts/RoleContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import { ModuleProvider } from './contexts/ModuleContext';
@@ -345,6 +346,7 @@ function App() {
                 position="top-right"
                 style={{ zIndex: 10000 }}
               />
+              <AlertDialogProvider />
               <ConditionalHeader user={user} onLogout={logout} />
               <Routes>
                 <Route path="/" element={<Home user={user} />} />

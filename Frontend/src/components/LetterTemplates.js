@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiPlus, FiEdit2, FiTrash2, FiFileText, FiCopy, FiX, FiEye, FiPackage } from 'react-icons/fi';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './LetterTemplates.css';
 
 /* ──────────────────────────────────────────────
@@ -272,7 +273,7 @@ function LetterTemplates() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this template?')) return;
+    if (!await confirm('Delete this template?')) return;
     try {
       await api.delete(`/letter-templates/${id}`);
       fetchTemplates();

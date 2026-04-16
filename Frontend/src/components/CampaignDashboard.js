@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from './ui/skeleton';
 import './CampaignDashboard.css';
+import { confirm } from './ui/alert-dialog';
 
 function CampaignDashboard() {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ function CampaignDashboard() {
   };
 
   const handleDeleteCampaign = async (campaignId) => {
-    if (!window.confirm('Are you sure you want to delete this campaign?')) {
+    if (!await confirm('Are you sure you want to delete this campaign?')) {
       return;
     }
 

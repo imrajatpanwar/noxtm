@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiFileText, FiPlus, FiEdit2, FiTrash2, FiX, FiCopy, FiEye } from 'react-icons/fi';
 import './EmailManagement.css';
+import { confirm } from './ui/alert-dialog';
 
 function EmailTemplates() {
   const [templates, setTemplates] = useState([]);
@@ -129,7 +130,7 @@ function EmailTemplates() {
   };
 
   const handleDelete = async (templateId) => {
-    if (!window.confirm('Are you sure you want to delete this template?')) {
+    if (!await confirm('Are you sure you want to delete this template?')) {
       return;
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './CampaignDetails.css';
+import { confirm } from './ui/alert-dialog';
 
 function CampaignDetails() {
   const { id } = useParams();
@@ -76,7 +77,7 @@ function CampaignDetails() {
   };
 
   const handleSendNow = async () => {
-    if (!window.confirm('Are you sure you want to send this campaign now?')) {
+    if (!await confirm('Are you sure you want to send this campaign now?')) {
       return;
     }
 

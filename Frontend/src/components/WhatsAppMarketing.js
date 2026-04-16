@@ -5,6 +5,7 @@ import { WhatsAppProvider, useWhatsApp } from '../contexts/WhatsAppContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import {
   FiMessageSquare, FiUsers, FiSmartphone, FiZap, FiSend, FiSearch, FiPlus, FiSettings,
   FiTrash2, FiRefreshCw, FiWifi, FiWifiOff, FiStar, FiX, FiClock, FiEdit2,
@@ -213,7 +214,7 @@ function AccountsTab() {
   };
 
   const handleRemove = async (id) => {
-    if (window.confirm('Remove this account? All messages and data will be deleted.')) {
+    if (await confirm('Remove this account? All messages and data will be deleted.')) {
       try { await removeAccount(id); toast.success('Account removed'); } catch (e) { toast.error(e.message); }
     }
   };
@@ -1214,7 +1215,7 @@ function TemplatesTab() {
   const apiBase = process.env.REACT_APP_API_URL || '';
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this template?')) {
+    if (await confirm('Delete this template?')) {
       try { await deleteTemplate(id); toast.success('Template deleted'); } catch (e) { toast.error(e.message); }
     }
   };
@@ -1545,7 +1546,7 @@ function CampaignsTab() {
   };
 
   const handleDeletePhoneList = async (id) => {
-    if (window.confirm('Delete this phone list?')) {
+    if (await confirm('Delete this phone list?')) {
       try { await deletePhoneList(id); toast.success('Phone list deleted'); } catch (e) { toast.error(e.message); }
     }
   };
@@ -1563,7 +1564,7 @@ function CampaignsTab() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this campaign?')) {
+    if (await confirm('Delete this campaign?')) {
       try { await deleteCampaign(id); toast.success('Campaign deleted'); } catch (e) { toast.error(e.message); }
     }
   };

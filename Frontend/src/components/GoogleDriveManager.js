@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Progress } from './ui/progress';
 import SocialMediaUploads from './SocialMediaUploads';
 import './GoogleDriveManager.css';
+import { confirm } from './ui/alert-dialog';
 
 const CLIENT_ID = '375084822664-hljdpq569rpmgs1kd7kp3b36vs7s6n8k.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -159,7 +160,7 @@ export default function GoogleDriveManager() {
 
   // ── Delete a file ─────────────────────────────────────────────────────────
   const deleteFile = async (fileId, fileName) => {
-    if (!window.confirm(`Delete "${fileName}" from Google Drive?`)) return;
+    if (!await confirm(`Delete "${fileName}" from Google Drive?`)) return;
     try {
       await axios.delete(`${DRIVE_FILES_URL}/${fileId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },

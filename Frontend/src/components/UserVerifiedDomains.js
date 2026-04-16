@@ -3,6 +3,7 @@ import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import { FiGlobe, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiCopy, FiCheck, FiAlertCircle, FiClock, FiActivity } from 'react-icons/fi';
 import './EmailManagement.css';
+import { confirm } from './ui/alert-dialog';
 
 function UserVerifiedDomains() {
   useRole(); // Keep hook call to maintain context
@@ -105,7 +106,7 @@ function UserVerifiedDomains() {
   };
 
   const handleDeleteDomain = async (domain) => {
-    if (!window.confirm(`Are you sure you want to delete ${domain}?`)) {
+    if (!await confirm(`Are you sure you want to delete ${domain}?`)) {
       return;
     }
 

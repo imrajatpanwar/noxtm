@@ -10,6 +10,7 @@ import {
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import './BillingPayments.css';
+import { confirm } from './ui/alert-dialog';
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', CAD: 'C$' };
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -218,7 +219,7 @@ function BillingPayments() {
   };
 
   const handleDeleteSalary = async (id) => {
-    if (!window.confirm('Delete this salary record?')) return;
+    if (!await confirm('Delete this salary record?')) return;
     try { await api.delete(`/salaries/${id}`); fetchSalaries(); } catch (err) { alert('Error deleting'); }
   };
 
@@ -232,7 +233,7 @@ function BillingPayments() {
   };
 
   const handleGenerateSalaries = async () => {
-    if (!window.confirm(`Generate salary records for all employees for ${MONTHS[salaryMonth - 1]} ${salaryYear}? This will use last month's salary details and auto-compute attendance deductions and incentives.`)) return;
+    if (!await confirm(`Generate salary records for all employees for ${MONTHS[salaryMonth - 1]} ${salaryYear}? This will use last month's salary details and auto-compute attendance deductions and incentives.`)) return;
     setGenerating(true);
     try {
       const res = await api.post('/salaries/generate', { month: salaryMonth, year: salaryYear });
@@ -290,12 +291,12 @@ function BillingPayments() {
   };
 
   const handleDeleteExpense = async (id) => {
-    if (!window.confirm('Delete this expense?')) return;
+    if (!await confirm('Delete this expense?')) return;
     try { await api.delete(`/expenses/${id}`); fetchExpenses(); } catch (err) { alert('Error deleting'); }
   };
 
   const handleBulkDeleteExpenses = async () => {
-    if (!selectedExpenseIds.length || !window.confirm(`Delete ${selectedExpenseIds.length} expenses?`)) return;
+    if (!selectedExpenseIds.length || !await confirm(`Delete ${selectedExpenseIds.length} expenses?`)) return;
     try { await api.post('/expenses/bulk-delete', { ids: selectedExpenseIds }); setSelectedExpenseIds([]); fetchExpenses(); } catch (err) { alert('Error'); }
   };
 

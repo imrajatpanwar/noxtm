@@ -7,6 +7,7 @@ import {
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import './CompanyHandbook.css';
+import { confirm } from './ui/alert-dialog';
 
 const ICON_MAP = {
   book: FiBookOpen,
@@ -88,7 +89,7 @@ function CompanyHandbook() {
   };
 
   const deleteSection = async (id) => {
-    if (!window.confirm('Delete this handbook section and all its pages?')) return;
+    if (!await confirm('Delete this handbook section and all its pages?')) return;
     try {
       await api.delete(`/handbook/${id}`);
       if (activeSectionId === id) { setActiveSectionId(null); setActivePageId(null); }
@@ -132,7 +133,7 @@ function CompanyHandbook() {
   };
 
   const deletePage = async (sectionId, pageId) => {
-    if (!window.confirm('Delete this page?')) return;
+    if (!await confirm('Delete this page?')) return;
     try {
       await api.delete(`/handbook/${sectionId}/pages/${pageId}`);
       if (activePageId === pageId) setActivePageId(null);

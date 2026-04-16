@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './BlogList.css';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 
 function BlogList({ onEdit, onCreateNew }) {
   const [blogs, setBlogs] = useState([]);
@@ -58,7 +59,7 @@ function BlogList({ onEdit, onCreateNew }) {
   };
 
   const handleDelete = async (blogId) => {
-    if (!window.confirm('Are you sure you want to delete this blog post? This action cannot be undone.')) {
+    if (!await confirm('Are you sure you want to delete this blog post? This action cannot be undone.')) {
       return;
     }
 

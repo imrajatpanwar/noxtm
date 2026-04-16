@@ -10,6 +10,7 @@ import {
   FiLayers, FiClock, FiShield, FiFilter,
   FiChevronDown, FiUsers, FiEdit
 } from 'react-icons/fi';
+import { confirm } from './ui/alert-dialog';
 
 const INDUSTRY_OPTIONS = [
   'Solar-Energy Industry', 'Fashion Industry', 'Rail Industry', 'Education Industry',
@@ -180,7 +181,7 @@ function GlobalTradeShow({ onNavigate }) {
 
   const deleteShow = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this trade show and all its exhibitors?')) return;
+    if (!await confirm('Delete this trade show and all its exhibitors?')) return;
     try {
       await api.delete(`/trade-shows/${id}`);
       fetchShows();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ContactListManager.css';
+import { confirm } from './ui/alert-dialog';
 import CSVImport from './ImportModals/CSVImport';
 import LeadImport from './ImportModals/LeadImport';
 import TradeShowImport from './ImportModals/TradeShowImport';
@@ -66,7 +67,7 @@ function ContactListManager() {
   };
 
   const handleDeleteList = async (listId) => {
-    if (!window.confirm('Are you sure you want to delete this contact list?')) {
+    if (!await confirm('Are you sure you want to delete this contact list?')) {
       return;
     }
 
@@ -95,7 +96,7 @@ function ContactListManager() {
   };
 
   const handleDeleteContact = async (listId, email) => {
-    if (!window.confirm('Are you sure you want to remove this contact from the list?')) {
+    if (!await confirm('Are you sure you want to remove this contact from the list?')) {
       return;
     }
 

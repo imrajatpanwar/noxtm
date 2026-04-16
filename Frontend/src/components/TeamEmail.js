@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../config/api';
 import { FiMail, FiSend, FiRefreshCw, FiLogIn, FiLogOut, FiTrash2, FiEye } from 'react-icons/fi';
 import './TeamEmail.css';
+import { confirm } from './ui/alert-dialog';
 
 function TeamEmail() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -131,7 +132,7 @@ function TeamEmail() {
   };
 
   const deleteEmail = async (uid) => {
-    if (!window.confirm('Are you sure you want to delete this email?')) return;
+    if (!await confirm('Are you sure you want to delete this email?')) return;
 
     setLoading(true);
     try {

@@ -3,6 +3,7 @@ import api from '../../config/api';
 import SLAPolicyForm from './SLAPolicyForm';
 import { exportSLAPoliciesToCSV, exportSLAViolationsToCSV } from '../../utils/csvExport';
 import './SLAMonitor.css';
+import { confirm } from '../ui/alert-dialog';
 
 const SLAMonitor = () => {
   const [policies, setPolicies] = useState([]);
@@ -76,7 +77,7 @@ const SLAMonitor = () => {
   };
 
   const handleDeletePolicy = async (policyId) => {
-    if (!window.confirm('Are you sure you want to delete this SLA policy?')) {
+    if (!await confirm('Are you sure you want to delete this SLA policy?')) {
       return;
     }
 

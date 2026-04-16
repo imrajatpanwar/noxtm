@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './ClientLeads.css';
 
 const STATUS_OPTIONS = ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'];
@@ -178,7 +179,7 @@ function ClientLeads() {
   };
 
   const handleDeleteLabel = async (id) => {
-    if (!window.confirm('Delete this label? It will be removed from all contacts.')) return;
+    if (!await confirm('Delete this label? It will be removed from all contacts.')) return;
     try {
       await api.delete(`/contact-labels/${id}`);
       setLabels(prev => prev.filter(l => l._id !== id));

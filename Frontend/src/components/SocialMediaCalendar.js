@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { PLATFORMS, STATUSES, PRIORITIES, STATUS_COLORS, PRIORITY_COLORS, ACCOUNT_COLORS, WEEKDAYS, PLATFORM_LIMITS, statusClass, getInitials, formatTime, formatDateStr, isToday, getDaysInMonth, getWeekDays, getPostsForDay, defaultPostForm, defaultAccountForm, truncateWords } from './calendarHelpers';
 import { useRole } from '../contexts/RoleContext';
 import './SocialMediaCalendar.css';
+import { confirm } from './ui/alert-dialog';
 
 function SocialMediaCalendar() {
     const { currentUser } = useRole();
@@ -263,7 +264,7 @@ function SocialMediaCalendar() {
     };
 
     const handleDeletePost = async (id) => {
-        if (!window.confirm('Delete this post?')) return;
+        if (!await confirm('Delete this post?')) return;
         try { await api.delete(`/social-media-calendar/posts/${id}`); toast.success('Deleted'); setShowPostDetail(null); setContextMenu(null); fetchPosts(); } catch { toast.error('Failed'); }
     };
 
@@ -284,7 +285,7 @@ function SocialMediaCalendar() {
     };
 
     const handleBulkDelete = async () => {
-        if (selectedPosts.length === 0 || !window.confirm(`Delete ${selectedPosts.length} posts?`)) return;
+        if (selectedPosts.length === 0 || !await confirm(`Delete ${selectedPosts.length} posts?`)) return;
         try { await api.delete('/social-media-calendar/posts/bulk', { data: { postIds: selectedPosts } }); toast.success(`${selectedPosts.length} posts deleted`); setSelectedPosts([]); fetchPosts(); } catch { toast.error('Failed'); }
     };
 
@@ -308,7 +309,7 @@ function SocialMediaCalendar() {
     };
 
     const handleDeleteAccount = async (id) => {
-        if (!window.confirm('Delete account and all its posts?')) return;
+        if (!await confirm('Delete account and all its posts?')) return;
         try { await api.delete(`/social-media-calendar/accounts/${id}`); toast.success('Deleted'); if (selectedAccount === id) setSelectedAccount('all'); fetchAccounts(); fetchPosts(); } catch { toast.error('Failed'); }
     };
 

@@ -3,6 +3,7 @@ import './ExhibitorsList.css';
 import Breadcrumb from './Breadcrumb';
 import defaultAvatar from './image/default-avatar.svg';
 import { FiPlus, FiX, FiSearch, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { confirm } from './ui/alert-dialog';
 
 function TargetedCompanyList({ trendingService, onNavigate }) {
   const [companies, setCompanies] = useState([]);
@@ -88,7 +89,7 @@ function TargetedCompanyList({ trendingService, onNavigate }) {
   };
 
   const deleteCompany = async (id) => {
-    if (!window.confirm('Delete this targeted company?')) return;
+    if (!await confirm('Delete this targeted company?')) return;
     try {
       const t = localStorage.getItem('token');
       await fetch(`/api/targeted-companies/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${t}` } });

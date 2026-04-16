@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './CompanyPolicies.css';
 
 const CATEGORIES = [
@@ -124,7 +125,7 @@ function CompanyPolicies() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this policy?')) return;
+    if (!await confirm('Delete this policy?')) return;
     try {
       await api.delete(`/company-policies/${id}`);
       fetchPolicies();

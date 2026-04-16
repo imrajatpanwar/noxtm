@@ -8,6 +8,7 @@ import exhibitosLogo from './assets/exhibitos.svg';
 import botgitLogo from './assets/botgit-logo.svg';
 import { Skeleton } from './ui/skeleton';
 import './WorkspaceSettings.css';
+import { confirm } from './ui/alert-dialog';
 
 const EMPTY_PERMISSIONS = Object.keys(PERMISSION_LABELS).reduce((acc, key) => {
   acc[key] = false;
@@ -392,7 +393,7 @@ function WorkspaceSettings({ user, onLogout }) {
 
   // Remove member from company
   const handleRemoveMember = async (memberId, memberName) => {
-    if (!window.confirm(`Are you sure you want to remove ${memberName} from the company?`)) {
+    if (!await confirm(`Are you sure you want to remove ${memberName} from the company?`)) {
       return;
     }
 
@@ -749,7 +750,7 @@ function WorkspaceSettings({ user, onLogout }) {
   };
 
   const handleDeleteLabel = async (id) => {
-    if (!window.confirm('Delete this label? It will be removed from all contacts.')) return;
+    if (!await confirm('Delete this label? It will be removed from all contacts.')) return;
     try {
       await api.delete(`/contact-labels/${id}`);
       setLabels(prev => prev.filter(l => l._id !== id));
@@ -1687,7 +1688,7 @@ function WorkspaceSettings({ user, onLogout }) {
 
   const handleModuleUninstall = async (moduleId) => {
     // Show confirmation dialog
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       `Are you sure you want to uninstall ${moduleId}?\n\nThis will remove the module from your sidebar and disable its features.`
     );
 

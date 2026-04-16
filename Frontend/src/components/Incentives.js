@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { FiPlus, FiEdit2, FiTrash2, FiAward, FiX, FiDollarSign, FiCheck, FiXCircle, FiClock } from 'react-icons/fi';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './Incentives.css';
 
 function Incentives() {
@@ -101,7 +102,7 @@ function Incentives() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this incentive?')) return;
+    if (!await confirm('Delete this incentive?')) return;
     try {
       await api.delete(`/incentives/${id}`);
       fetchIncentives();

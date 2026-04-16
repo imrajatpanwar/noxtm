@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import NoxtmSkillsEditor from './NoxtmSkillsEditor';
 import NoxtmSkillAnalytics from './NoxtmSkillAnalytics';
+import { confirm } from './ui/alert-dialog';
 
 const containerStyle = {
   padding: '28px 32px',
@@ -395,7 +396,7 @@ function NoxtmBotAdmin() {
   };
 
   const deleteDefaultMemory = async (id) => {
-    if (!window.confirm('Delete this memory?')) return;
+    if (!await confirm('Delete this memory?')) return;
     try {
       const res = await api.delete(`/noxtm-bot/memories/default/${id}`);
       if (res.data.success) {
@@ -407,7 +408,7 @@ function NoxtmBotAdmin() {
   };
 
   const deleteUserMemory = async (memoryId, userId) => {
-    if (!window.confirm('Delete this user memory?')) return;
+    if (!await confirm('Delete this user memory?')) return;
     try {
       const res = await api.delete(`/noxtm-bot/memories/users/${memoryId}`);
       if (res.data.success) {
@@ -426,7 +427,7 @@ function NoxtmBotAdmin() {
   };
 
   const resetUserMemories = async (userId, userName) => {
-    if (!window.confirm(`Reset all memories for ${userName}? This cannot be undone.`)) return;
+    if (!await confirm(`Reset all memories for ${userName}? This cannot be undone.`)) return;
     setResettingUserId(userId);
     try {
       const res = await api.delete(`/noxtm-bot/memories/users/reset/${userId}`);

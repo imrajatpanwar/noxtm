@@ -4,6 +4,7 @@ import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import './SocialMediaCredentials.css';
 import CredentialsImage from '../assets/Credentials_image.png';
+import { confirm } from './ui/alert-dialog';
 
 const PLATFORMS = ['Instagram', 'LinkedIn', 'YouTube', 'X', 'Facebook', 'Reddit', 'Other'];
 
@@ -157,7 +158,7 @@ function SocialMediaCredentials() {
     };
 
     const handleDelete = async (credId) => {
-        if (!window.confirm('Are you sure you want to delete this credential?')) return;
+        if (!await confirm('Are you sure you want to delete this credential?')) return;
         try {
             await api.delete(`/social-media-calendar/credentials/${credId}`);
             fetchCredentials();

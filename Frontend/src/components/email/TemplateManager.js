@@ -3,6 +3,7 @@ import axios from 'axios';
 import TemplateEditor from './TemplateEditor';
 import { Skeleton } from '../ui/skeleton';
 import './TemplateManager.css';
+import { confirm } from '../ui/alert-dialog';
 
 const TemplateManager = () => {
   const [templates, setTemplates] = useState([]);
@@ -42,7 +43,7 @@ const TemplateManager = () => {
   };
 
   const handleDeleteTemplate = async (templateId) => {
-    if (!window.confirm('Are you sure you want to delete this template?')) {
+    if (!await confirm('Are you sure you want to delete this template?')) {
       return;
     }
 

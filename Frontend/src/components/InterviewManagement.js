@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import './InterviewManagement.css';
+import { confirm } from './ui/alert-dialog';
 
 const INTERVIEW_TYPES = [
   { value: 'phone', label: 'Phone', icon: FiPhone },
@@ -184,7 +185,7 @@ function InterviewManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this interview?')) return;
+    if (!await confirm('Delete this interview?')) return;
     try {
       const response = await api.delete(`/interviews/${id}`);
       if (response.data.success) {
@@ -199,7 +200,7 @@ function InterviewManagement() {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedIds.length} interviews?`)) return;
+    if (!await confirm(`Delete ${selectedIds.length} interviews?`)) return;
     try {
       await Promise.all(selectedIds.map(id => api.delete(`/interviews/${id}`)));
       toast.success(`${selectedIds.length} interviews deleted`);

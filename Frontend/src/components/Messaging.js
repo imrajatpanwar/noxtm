@@ -8,6 +8,7 @@ import api from '../config/api';
 import { MdSend } from 'react-icons/md';
 import { FiMoreVertical } from 'react-icons/fi';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './Messaging.css';
 // Group icon PNG imports
 import groupIcon1 from './image/group-icons/group_icon (1).png';
@@ -430,7 +431,7 @@ function Messaging() {
   const handleDeleteGroup = async () => {
     if (!selectedConversation) return;
 
-    const confirmed = window.confirm('Are you sure you want to delete this group? This action cannot be undone.');
+    const confirmed = await confirm('Are you sure you want to delete this group? This action cannot be undone.');
     if (!confirmed) return;
 
     try {

@@ -6,6 +6,7 @@ import {
   FiX, FiCheck, FiClock, FiAlertCircle, FiFileText
 } from 'react-icons/fi';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './HolidayCalendar.css';
 
 const TODAY = new Date();
@@ -107,7 +108,7 @@ function HolidayCalendar() {
     } catch (e) { console.error(e); } finally { setSavingHol(false); }
   };
   const deleteHol = async (id) => {
-    if (!window.confirm('Delete this holiday?')) return;
+    if (!await confirm('Delete this holiday?')) return;
     try { await api.delete(`/holidays/${id}`); fetchHolidays(); } catch (e) { console.error(e); }
   };
 

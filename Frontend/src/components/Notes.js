@@ -8,6 +8,7 @@ import {
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import './Notes.css';
+import { confirm } from './ui/alert-dialog';
 
 function Notes() {
   const [notes, setNotes] = useState([]);
@@ -137,7 +138,7 @@ function Notes() {
 
   // Delete note
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this note permanently?')) return;
+    if (!await confirm('Delete this note permanently?')) return;
     try {
       const res = await api.delete(`/notes/${id}`);
       if (res.data.success) {

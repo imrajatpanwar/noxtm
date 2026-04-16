@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './CampaignWizard.css';
+import { confirm } from './ui/alert-dialog';
 import CSVImport from './ImportModals/CSVImport';
 import LeadImport from './ImportModals/LeadImport';
 import TradeShowImport from './ImportModals/TradeShowImport';
@@ -229,7 +230,7 @@ function CampaignWizard() {
   };
 
   const handleSendNow = async () => {
-    if (!window.confirm('Are you sure you want to send this campaign now?')) {
+    if (!await confirm('Are you sure you want to send this campaign now?')) {
       return;
     }
 

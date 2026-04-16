@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Skeleton } from './ui/skeleton';
+import { confirm } from './ui/alert-dialog';
 import './ProjectManagement.css';
 import ProjectSettings from './ProjectSettings';
 import api from '../config/api';
@@ -332,7 +333,7 @@ const ProjectManagement = () => {
     };
 
     const handleDelete = async (projectId) => {
-        if (!window.confirm('Are you sure you want to delete this project?')) return;
+        if (!await confirm('Are you sure you want to delete this project?')) return;
 
         try {
             const token = localStorage.getItem('token');

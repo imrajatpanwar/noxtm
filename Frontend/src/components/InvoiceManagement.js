@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { Skeleton } from './ui/skeleton';
 import './InvoiceManagement.css';
+import { confirm } from './ui/alert-dialog';
 
 const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', CAD: 'C$' };
 const PAYMENT_TERMS = [
@@ -147,7 +148,7 @@ const InvoiceManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this invoice?')) return;
+    if (!await confirm('Delete this invoice?')) return;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
@@ -224,7 +225,7 @@ const InvoiceManagement = () => {
     setSelectedIds(s => s.length === filteredInvoices.length ? [] : filteredInvoices.map(i => i._id || i.id));
   };
   const bulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedIds.length} invoices?`)) return;
+    if (!await confirm(`Delete ${selectedIds.length} invoices?`)) return;
     const token = localStorage.getItem('token');
     for (const id of selectedIds) {
       try {

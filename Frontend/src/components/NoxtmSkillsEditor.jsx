@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../config/api';
+import { confirm } from './ui/alert-dialog';
 
 const inputStyle = {
   width: '100%',
@@ -154,7 +155,7 @@ function NoxtmSkillsEditor() {
   };
 
   const deleteSkill = async (id) => {
-    if (!window.confirm('Delete this skill?')) return;
+    if (!await confirm('Delete this skill?')) return;
     try {
       const res = await api.delete(`/noxtm-skills/${id}`);
       if (res.data.success) {

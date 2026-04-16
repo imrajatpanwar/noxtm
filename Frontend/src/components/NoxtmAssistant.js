@@ -118,6 +118,7 @@ function NoxtmAssistant({ onCollapse }) {
     if (!msg || loading) return;
 
     setInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     setMessages(prev => [...prev, { role: 'user', content: msg, time: new Date().toISOString() }]);
 
     // Detect initial label and set up phase cycling
@@ -289,13 +290,17 @@ function NoxtmAssistant({ onCollapse }) {
 
       {/* Input */}
       <div className="na-input-area">
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
           className="na-input"
           placeholder="Ask anything..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          rows={1}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+          }}
           onKeyDown={handleKeyDown}
           disabled={loading}
         />
