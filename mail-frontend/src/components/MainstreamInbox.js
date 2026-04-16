@@ -177,7 +177,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
   const [loginMailModalOpen, setLoginMailModalOpen] = useState(false); // NEW: Control Login Mail modal
   const [currentUser, setCurrentUser] = useState(user);  // Initialize with prop
   const [avatarUploadState, setAvatarUploadState] = useState({ uploading: false, error: null, success: null });
-  const emailsPerPage = 14;
+  const emailsPerPage = 20;
 
   // Gmail-style checkbox selection
   const [selectedEmails, setSelectedEmails] = useState(new Set());
@@ -855,7 +855,7 @@ function MainstreamInbox({ user, onNavigateToDomains, onLogout, initialTab }) { 
                   </div>
                 </div>
                 <button
-                  onClick={() => window.open(getMainAppUrl(), '_blank')}
+                  onClick={() => window.location.href = getMainAppUrl('/dashboard')}
                   className="mt-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer bg-transparent border-none p-0"
                 >
                   <ExternalLink className="h-3 w-3" />
