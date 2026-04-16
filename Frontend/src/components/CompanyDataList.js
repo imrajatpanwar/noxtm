@@ -418,7 +418,7 @@ function CompanyDataList() {
     <div className="cd-container">
       <div className="cd-header">
         <div>
-          <h1 className="cd-title">Company Data</h1>
+          <h1 className="cd-title">Data Center</h1>
           <p className="cd-subtitle">Companies and contacts extracted via Chrome Extension</p>
         </div>
         <div className="cd-header-actions">
@@ -430,7 +430,7 @@ function CompanyDataList() {
             <div className="cd-stat-divider" />
             <div className="cd-stat-item">
               <span className="cd-stat-value">{companies.length}</span>
-              <span className="cd-stat-label">Total Company Data</span>
+              <span className="cd-stat-label">Total Records</span>
             </div>
           </div>
 

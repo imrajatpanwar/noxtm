@@ -342,11 +342,11 @@ function Sidebar({ activeSection, onSectionChange }) {
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         isActive={activeSection === 'company-data'}
-                        tooltip="Company Data"
+                        tooltip="Data Center"
                         onClick={() => onSectionChange('company-data')}
                       >
                         <FiPackage className="sidebar-icon" />
-                        <span>Company Data</span>
+                        <span>Data Center</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
 

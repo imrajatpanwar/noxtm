@@ -232,7 +232,7 @@ function ClientLeads() {
       <div className="cl-header">
         <div>
           <h1 className="cl-title">Contacts</h1>
-          <p className="cl-subtitle">All contacts from your companies and trade shows</p>
+          <p className="cl-subtitle">All contacts from your companies</p>
         </div>
         <div className="cl-header-actions">
           <button className="cl-btn-outline" onClick={() => setShowLabelManager(!showLabelManager)}>

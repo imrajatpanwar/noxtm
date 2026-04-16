@@ -255,6 +255,36 @@ const toolDefinitions = [
     }
   },
   {
+    name: 'get_contacts',
+    description: 'Get or search contacts from the Contacts section (people from companies and trade shows). Use when user asks about contacts, people, leads by name/status/date, or wants to see who was added recently.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Search by name, email, company, or designation' },
+        status: { type: 'string', enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'], description: 'Filter by lead status' },
+        important: { type: 'boolean', description: 'Filter only important/starred contacts' },
+        sort_by: { type: 'string', enum: ['newest', 'oldest', 'name'], description: 'Sort order (default newest)' },
+        limit: { type: 'number', description: 'Max contacts to return (default 15)' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'update_contact',
+    description: 'Update a contact\'s status, follow-up note, or mark as important. Use when user wants to change a contact\'s lead status or add a note.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        exhibitor_id: { type: 'string', description: 'The exhibitorId of the contact (from get_contacts result)' },
+        contact_index: { type: 'number', description: 'The contactIndex of the contact (from get_contacts result)' },
+        status: { type: 'string', enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'], description: 'New lead status' },
+        follow_up: { type: 'string', description: 'Follow-up note' },
+        is_important: { type: 'boolean', description: 'Mark or unmark as important' }
+      },
+      required: ['exhibitor_id', 'contact_index']
+    }
+  },
+  {
     name: 'search_extracted_companies',
     description: 'Search companies and their contacts extracted via the Chrome Extension. Use when the user asks about companies in their data center, extracted companies, or contacts within those companies.',
     input_schema: {
@@ -1108,6 +1138,79 @@ const executors = {
       })),
       count: memories.length
     };
+  },
+
+  // ──────────────────────────────
+  // GET CONTACTS
+  // ──────────────────────────────
+  get_contacts: async ({ companyId, input }) => {
+    const { search, status, important, sort_by = 'newest', limit = 15 } = input || {};
+    const Exhibitor = require('../models/Exhibitor');
+    const ContactLabel = require('../models/ContactLabel');
+
+    const exhibitors = await Exhibitor.find({ companyId }).sort({ createdAt: sort_by === 'oldest' ? 1 : -1 }).lean();
+    const allLabels = await ContactLabel.find({ companyId }).lean();
+    const labelMap = {};
+    allLabels.forEach(l => { labelMap[l._id.toString()] = l.name; });
+
+    const contacts = [];
+    for (const ex of exhibitors) {
+      if (!ex.contacts || ex.contacts.length === 0) continue;
+      for (let i = 0; i < ex.contacts.length; i++) {
+        const c = ex.contacts[i];
+        if (!c.fullName && !c.email) continue;
+        if (status && c.status !== status) continue;
+        if (important && !c.isImportant) continue;
+        if (search) {
+          const q = search.toLowerCase();
+          const match = (c.fullName || '').toLowerCase().includes(q) ||
+            (c.email || '').toLowerCase().includes(q) ||
+            (ex.companyName || '').toLowerCase().includes(q) ||
+            (c.designation || '').toLowerCase().includes(q);
+          if (!match) continue;
+        }
+        contacts.push({
+          exhibitorId: ex._id,
+          contactIndex: i,
+          fullName: c.fullName || '',
+          designation: c.designation || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          status: c.status || 'Cold Lead',
+          followUp: c.followUp || '',
+          isImportant: c.isImportant || false,
+          labels: (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean),
+          companyName: ex.companyName || '',
+          createdAt: ex.createdAt
+        });
+        if (contacts.length >= Math.min(limit, 30)) break;
+      }
+      if (contacts.length >= Math.min(limit, 30)) break;
+    }
+
+    return { count: contacts.length, contacts };
+  },
+
+  // ──────────────────────────────
+  // UPDATE CONTACT
+  // ──────────────────────────────
+  update_contact: async ({ companyId, input }) => {
+    const { exhibitor_id, contact_index, status, follow_up, is_important } = input || {};
+    if (!exhibitor_id || contact_index === undefined) return { error: 'exhibitor_id and contact_index are required' };
+
+    const Exhibitor = require('../models/Exhibitor');
+    const exhibitor = await Exhibitor.findOne({ _id: exhibitor_id, companyId });
+    if (!exhibitor) return { error: 'Contact record not found or access denied' };
+
+    const contact = exhibitor.contacts[contact_index];
+    if (!contact) return { error: 'Contact index out of range' };
+
+    if (status !== undefined) contact.status = status;
+    if (follow_up !== undefined) contact.followUp = follow_up;
+    if (is_important !== undefined) contact.isImportant = is_important;
+
+    await exhibitor.save();
+    return { success: true, contactName: contact.fullName, updatedStatus: contact.status };
   },
 
   // ──────────────────────────────
