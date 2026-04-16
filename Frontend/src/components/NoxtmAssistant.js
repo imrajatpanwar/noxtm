@@ -273,11 +273,13 @@ function NoxtmAssistant({ onCollapse }) {
 
         {loading && (
           <div className="na-msg na-msg-assistant">
-            <div className="na-msg-bubble na-thinking-bubble">
-              <span className="na-thinking-dot" />
-              <span className="na-thinking-dot" />
-              <span className="na-thinking-dot" />
-              <span className="na-thinking-label">{loadingLabel}...</span>
+            <div className="na-thinking-bubble">
+              <span className="na-thinking-label">
+                {loadingLabel}
+                <span className="na-thinking-dot">.</span>
+                <span className="na-thinking-dot">.</span>
+                <span className="na-thinking-dot">.</span>
+              </span>
             </div>
           </div>
         )}
