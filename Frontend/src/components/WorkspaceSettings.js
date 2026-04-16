@@ -261,19 +261,23 @@ function WorkspaceSettings({ user, onLogout }) {
         return;
       }
 
-      console.log('Fetching company members...');
-      const response = await api.get('/company/members');
+      const [response, onlineRes] = await Promise.all([
+        api.get('/company/members'),
+        api.get('/messaging/users/online').catch(() => ({ data: { onlineUsers: [] } }))
+      ]);
       const data = response.data;
-      console.log('Response data:', data);
+      const onlineIds = new Set(onlineRes.data.onlineUsers || []);
 
       if (data.success) {
-        setCompanyMembers(data.members || []);
+        const members = (data.members || []).map(m => ({
+          ...m,
+          isOnline: onlineIds.has(m._id?.toString())
+        }));
+        setCompanyMembers(members);
         if (data.companyName) {
           setWorkspaceData(prev => ({ ...prev, name: data.companyName }));
         }
-        console.log('Loaded members:', data.members?.length || 0);
       } else {
-        console.log('No company members:', data.message);
         setCompanyMembers([]);
       }
     } catch (error) {
@@ -1325,20 +1329,13 @@ function WorkspaceSettings({ user, onLogout }) {
           ) : (
             <div className="members-grid">
               {companyMembers.map(member => {
-                const statusMap = {
-                  'active': 'active',
-                  'in review': 'pending',
-                  'inactive': 'inactive',
-                  'terminated': 'inactive',
-                };
-                const statusClass = statusMap[member.status?.toLowerCase()] || 'inactive';
-                const statusLabel = member.status || 'Unknown';
                 const joinedDate = member.joinedAt
                   ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                   : member.createdAt
                     ? new Date(member.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                     : null;
                 const isOwner = member._id === companyDetails?.owner?._id;
+                const isOnline = member.isOnline;
                 return (
                   <div key={member._id} className="member-card">
                     {isOwner && (
@@ -1353,13 +1350,13 @@ function WorkspaceSettings({ user, onLogout }) {
                         ) : (
                           getInitials(member.fullName)
                         )}
-                        <span className={`member-status-dot ${statusClass}`}></span>
+                        <span className={`member-status-dot ${isOnline ? 'online' : 'offline'}`}></span>
                       </div>
                       <div className="member-card-info">
                         <h4 className="member-card-name">{member.fullName || 'Unknown'}</h4>
                         <p className="member-card-email">{member.email || 'No email'}</p>
-                        <span className={`member-status-badge member-status-badge--${statusClass}`}>
-                          {statusLabel}
+                        <span className={`member-status-badge member-status-badge--${isOnline ? 'online' : 'offline'}`}>
+                          {isOnline ? 'Online' : 'Offline'}
                         </span>
                       </div>
                     </div>
