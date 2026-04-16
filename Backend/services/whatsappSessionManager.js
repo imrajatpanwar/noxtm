@@ -698,21 +698,29 @@ async function sendMessage(accountId, jid, content, options = {}) {
   let messageContent;
   const type = options.type || 'text';
 
+  // Resolve local web paths (e.g. /uploads/...) to absolute filesystem paths
+  const resolveMediaUrl = (url) => {
+    if (url && url.startsWith('/uploads/')) {
+      return path.join(__dirname, '..', url);
+    }
+    return url;
+  };
+
   switch (type) {
     case 'image':
       messageContent = options.mediaBuffer
         ? { image: options.mediaBuffer, caption: content || undefined }
-        : { image: { url: options.mediaUrl }, caption: content || undefined };
+        : { image: { url: resolveMediaUrl(options.mediaUrl) }, caption: content || undefined };
       break;
     case 'video':
-      messageContent = { video: { url: options.mediaUrl }, caption: content || undefined };
+      messageContent = { video: { url: resolveMediaUrl(options.mediaUrl) }, caption: content || undefined };
       break;
     case 'audio':
-      messageContent = { audio: { url: options.mediaUrl }, mimetype: 'audio/mpeg' };
+      messageContent = { audio: { url: resolveMediaUrl(options.mediaUrl) }, mimetype: 'audio/mpeg' };
       break;
     case 'document':
       messageContent = {
-        document: { url: options.mediaUrl },
+        document: { url: resolveMediaUrl(options.mediaUrl) },
         fileName: options.mediaFilename || 'document',
         mimetype: options.mediaType || 'application/pdf'
       };
