@@ -74,6 +74,9 @@ test_*.csv
 # Windows specific
 nul
 
+# WhatsApp sessions (contains auth credentials)
+Backend/whatsapp-sessions/
+
 # SSH keys (should never be committed)
 noxtm
 noxtm.pub
