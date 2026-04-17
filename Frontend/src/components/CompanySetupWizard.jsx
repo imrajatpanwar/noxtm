@@ -200,7 +200,7 @@ export default function CompanySetupWizard() {
   const handleKeyDown = (e) => { if (e.key === 'Enter') advance(); };
 
   // Not memoized — avoids stale closure over companyDetails/companyWebsite/teamSize
-  const advance = () => {
+  const advance = async () => {
     if (step === 1) {
       if (!workspaceName.trim()) { toast.error('Enter a workspace name'); return; }
       setStep(2);
