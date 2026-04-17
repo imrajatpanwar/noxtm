@@ -1,4 +1,3 @@
-// v2
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import SendMsgIcon from '../assets/Send_msg.svg';
@@ -419,7 +418,7 @@ function NoxtmBotSignup({ onSignup }) {
       case 'COMPANY_EMAIL': return 'Enter company email...';
       case 'COMPANY_INDUSTRY': return 'Pick an industry or type one...';
       case 'COMPANY_SIZE': return 'Select your team size...';
-      default: return 'Type a message...';
+      default: return 'Type a message here...';
     }
   };
 
