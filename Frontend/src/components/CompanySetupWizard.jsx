@@ -132,6 +132,7 @@ export default function CompanySetupWizard() {
   const [step, setStep] = useState(1);
   const [billing, setBilling] = useState('monthly');
   const [submitting, setSubmitting] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [animKey, setAnimKey] = useState(0); // trigger re-mount animation on step change
   const [headingDone, setHeadingDone] = useState(false);
 
@@ -206,13 +207,40 @@ export default function CompanySetupWizard() {
     } else if (step === 2) {
       if (!companyEmail.trim() || !/\S+@\S+\.\S+/.test(companyEmail)) { toast.error('Enter a valid email'); return; }
       const domain = companyEmail.split('@')[1] || '';
-      setCompanyDetails(prev => ({
-        ...prev,
-        industry: prev.industry || 'Technology',
-        website: prev.website || `https://${domain}`,
-      }));
       setCompanyWebsite(`https://${domain}`);
       setStep(3);
+      // Fire enrichment in background
+      setEnriching(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/api/company/enrich`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ email: companyEmail }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.data) {
+          const e = data.data;
+          setCompanyDetails({
+            industry: e.industry || 'Technology',
+            hq: e.headquarters || e.companyCity || '',
+            size: e.size || '',
+            founded: e.foundedYear ? String(e.foundedYear) : '',
+            description: e.description || '',
+            specialties: Array.isArray(e.specialties) ? e.specialties.join(', ') : (e.specialties || ''),
+            tech: Array.isArray(e.techStack) ? e.techStack.join(', ') : (e.techStack || ''),
+            website: e.companyWebsite || `https://${domain}`,
+            companyName: e.companyName || '',
+            logo: e.logo || '',
+          });
+          if (e.companyWebsite) setCompanyWebsite(e.companyWebsite);
+          if (e.companyName && !workspaceName) setWorkspaceName(e.companyName);
+        }
+      } catch (err) {
+        console.warn('[enrich] failed:', err.message);
+      } finally {
+        setEnriching(false);
+      }
     } else if (step === 3) {
       setStep(4);
     } else if (step === 4) {
@@ -435,10 +463,18 @@ export default function CompanySetupWizard() {
                 {step === 3 && headingDone && (
                   !editingCompany ? (
                     <div className="csw-company-card csw-fadein">
+                      {enriching && (
+                        <div className="csw-enrich-loading">
+                          <span className="csw-enrich-spinner" /> Fetching company data...
+                        </div>
+                      )}
                       <div className="csw-company-header">
-                        <div className="csw-company-logo">{workspaceName.charAt(0).toUpperCase()}</div>
+                        {companyDetails.logo
+                          ? <img src={companyDetails.logo} alt="logo" className="csw-company-logo-img" onError={e => e.target.style.display='none'} />
+                          : <div className="csw-company-logo">{(companyDetails.companyName || workspaceName).charAt(0).toUpperCase()}</div>
+                        }
                         <div>
-                          <div className="csw-company-name">{workspaceName}</div>
+                          <div className="csw-company-name">{companyDetails.companyName || workspaceName}</div>
                           <div className="csw-company-domain">{companyEmail.split('@')[1] || ''}</div>
                         </div>
                         <div className="csw-detected-badge">01 · DETECTED</div>

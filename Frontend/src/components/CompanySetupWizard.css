@@ -388,6 +388,40 @@
   max-width: 600px;
 }
 
+.csw-enrich-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #999;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+@keyframes csw-spin {
+  to { transform: rotate(360deg); }
+}
+
+.csw-enrich-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid #ddd;
+  border-top-color: #555;
+  border-radius: 50%;
+  animation: csw-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.csw-company-logo-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: contain;
+  border: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
 .csw-company-header {
   display: flex;
   align-items: center;

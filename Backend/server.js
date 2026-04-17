@@ -2537,6 +2537,21 @@ app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   }
 });
 
+// Domain enrichment for wizard step 3
+const { enrichFromDomain, extractDomain } = require('./utils/domainEnrich');
+app.post('/api/company/enrich', authenticateToken, async (req, res) => {
+  try {
+    const { email, website } = req.body;
+    const domain = extractDomain(email || website || '');
+    if (!domain) return res.status(400).json({ message: 'No domain found' });
+    const enriched = await enrichFromDomain(domain);
+    return res.json({ success: true, data: enriched });
+  } catch (err) {
+    console.error('[/api/company/enrich]', err.message);
+    return res.status(500).json({ success: false, message: 'Enrichment failed' });
+  }
+});
+
 // Setup company details
 app.post('/api/company/setup', authenticateToken, async (req, res) => {
   try {
