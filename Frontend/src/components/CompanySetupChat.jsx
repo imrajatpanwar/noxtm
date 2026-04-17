@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../config/api';
+import SendMsgIcon from '../assets/Send_msg.svg';
 import './NoxtmBotSignup.css';
 import './CompanySetupChat.css';
 import setupBg from '../assets/background_setup.webp';
@@ -44,11 +45,6 @@ const API_BASE = (() => {
   return isLocal ? 'http://localhost:5001' : '';
 })();
 
-const SendIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-  </svg>
-);
 
 const MicIcon = ({ active }) => (
   <svg viewBox="0 0 24 24" fill={active ? '#ef4444' : 'none'} stroke={active ? '#ef4444' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -700,16 +696,16 @@ function CompanySetupChat() {
             </button>
           )}
 
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
-            className="csc-input"
+            className="csc-input csc-input-textarea"
             placeholder={isListening ? 'Listening...' : placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={loading || isComplete || !initialized}
             autoFocus
+            rows={1}
           />
 
           {canDefer && !canSkip && !loading && (
@@ -726,7 +722,7 @@ function CompanySetupChat() {
           )}
 
           <button className="csc-send-btn" onClick={() => sendMessage(input)} disabled={!input.trim() || loading || isComplete}>
-            <SendIcon />
+            <img src={SendMsgIcon} alt="Send" />
           </button>
         </div>
         </>
