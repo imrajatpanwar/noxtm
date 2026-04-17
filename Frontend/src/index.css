@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Use Inter for numbers globally — intercepts all 'Switzer' font-family declarations */
+/* Use DM Sans for numbers globally — intercepts all 'Switzer' font-family declarations */
 @font-face {
   font-family: 'Switzer';
-  src: local('Inter');
+  src: local('DM Sans'), url('https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZa4ET-DNl0.woff2') format('woff2');
   unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D, U+0024, U+20B9, U+20AC, U+00A3;
   /* Covers: 0-9, . , % + - $ ₹ € £ */
 }
