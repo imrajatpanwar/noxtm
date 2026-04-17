@@ -1,3 +1,4 @@
+// v2
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import SendMsgIcon from '../assets/Send_msg.svg';
