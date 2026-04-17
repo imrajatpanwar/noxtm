@@ -533,17 +533,31 @@ function NoxtmBotSignup({ onSignup }) {
 
       {/* Input Area */}
       <div className="noxtm-bot-input-area">
-        <input
-          ref={inputRef}
-          type={isPasswordState ? 'password' : 'text'}
-          className={`noxtm-bot-input ${isPasswordState ? 'password-mode' : ''}`}
-          placeholder={getPlaceholder()}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading || flowState === 'COMPLETE'}
-          autoFocus
-        />
+        {isPasswordState ? (
+          <input
+            ref={inputRef}
+            type="password"
+            className="noxtm-bot-input password-mode"
+            placeholder={getPlaceholder()}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading || flowState === 'COMPLETE'}
+            autoFocus
+          />
+        ) : (
+          <textarea
+            ref={inputRef}
+            className="noxtm-bot-input noxtm-bot-input-textarea"
+            placeholder={getPlaceholder()}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading || flowState === 'COMPLETE'}
+            autoFocus
+            rows={1}
+          />
+        )}
         <button
           className="noxtm-bot-send-btn"
           onClick={() => sendMessage(input)}

@@ -528,6 +528,10 @@ function ChatsTab() {
   const [leadsMap, setLeadsMap] = useState({}); // phone → { status }
   const [lightboxImg, setLightboxImg] = useState(null); // for image preview
   const [mediaAttachment, setMediaAttachment] = useState(null); // { file, preview, type, name }
+  const [quickReplies, setQuickReplies] = useState([]);
+  const [slashMenu, setSlashMenu] = useState({ open: false, filter: '', index: 0 });
+  const [qrForm, setQrForm] = useState({ shortcut: '', message: '' });
+  const [qrSaving, setQrSaving] = useState(false);
   const messagesAreaRef = useRef(null);
   const textareaRef = useRef(null);
   const mediaInputRef = useRef(null);
@@ -535,6 +539,12 @@ function ChatsTab() {
   const prevMsgCountRef = useRef(0);
 
   const connectedAccounts = accounts.filter(a => a.status === 'connected');
+
+  useEffect(() => {
+    api.get('/whatsapp/quick-replies').then(res => {
+      if (res.data.success) setQuickReplies(res.data.data);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (connectedAccounts.length > 0 && !selectedAccount) {
@@ -680,8 +690,62 @@ function ChatsTab() {
     }
   };
 
+  // Slash menu filtered list
+  const slashFiltered = slashMenu.open
+    ? quickReplies.filter(r => r.shortcut.includes(slashMenu.filter.toLowerCase()))
+    : [];
+
+  const handleMessageChange = (e) => {
+    const val = e.target.value;
+    setMessageInput(val);
+    // Detect "/" at start or after whitespace
+    const match = val.match(/(^|\s)\/(\S*)$/);
+    if (match) {
+      setSlashMenu({ open: true, filter: match[2], index: 0 });
+    } else {
+      setSlashMenu({ open: false, filter: '', index: 0 });
+    }
+  };
+
+  const handleSlashSelect = (reply) => {
+    // Replace the trailing /... with the message
+    const newVal = messageInput.replace(/(^|\s)\/\S*$/, (m, pre) => pre + reply.message);
+    setMessageInput(newVal);
+    setSlashMenu({ open: false, filter: '', index: 0 });
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  const handleMessageKeyDown = (e) => {
+    if (slashMenu.open && slashFiltered.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashMenu(prev => ({ ...prev, index: Math.min(prev.index + 1, slashFiltered.length - 1) }));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashMenu(prev => ({ ...prev, index: Math.max(prev.index - 1, 0) }));
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSlashSelect(slashFiltered[slashMenu.index]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setSlashMenu({ open: false, filter: '', index: 0 });
+        return;
+      }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleSend = async () => {
     if ((!messageInput.trim() && !mediaAttachment) || !selectedContact || !selectedAccount || sending) return;
+    setSlashMenu({ open: false, filter: '', index: 0 });
     setSending(true);
     try {
       if (mediaAttachment) {
@@ -974,6 +1038,21 @@ function ChatsTab() {
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
+              {/* Slash menu popup */}
+              {slashMenu.open && slashFiltered.length > 0 && (
+                <div className="whwa-slash-menu">
+                  {slashFiltered.map((r, i) => (
+                    <div
+                      key={r._id}
+                      className={`whwa-slash-item${i === slashMenu.index ? ' active' : ''}`}
+                      onMouseDown={e => { e.preventDefault(); handleSlashSelect(r); }}
+                    >
+                      <span className="whwa-slash-shortcut">/{r.shortcut}</span>
+                      <span className="whwa-slash-preview">{r.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="whwa-chat-input">
                 <button className="whwa-attach-btn" onClick={() => mediaInputRef.current?.click()} title="Attach media">
                   <FiPaperclip size={16} />
@@ -981,10 +1060,10 @@ function ChatsTab() {
                 <textarea
                   ref={textareaRef}
                   className="whwa-message-input whwa-message-textarea"
-                  placeholder="Type a message... (Shift+Enter for new line)"
+                  placeholder="Type a message... Use / for quick replies"
                   value={messageInput}
-                  onChange={e => setMessageInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+                  onChange={handleMessageChange}
+                  onKeyDown={handleMessageKeyDown}
                   disabled={sending}
                   rows={1}
                 />
@@ -1007,6 +1086,10 @@ function ChatsTab() {
                     <button className={keypointTab === 'scheduled' ? 'active' : ''}
                       onClick={() => setKeypointTab('scheduled')}>
                       <FiCalendar size={12} /> Scheduled ({scheduledMsgs.length})
+                    </button>
+                    <button className={keypointTab === 'quickreplies' ? 'active' : ''}
+                      onClick={() => setKeypointTab('quickreplies')}>
+                      <FiHash size={12} /> Quick Replies ({quickReplies.length})
                     </button>
                   </div>
                   <button className="whwa-keypoints-close" onClick={() => setShowKeypoints(false)}>
@@ -1047,6 +1130,63 @@ function ChatsTab() {
                               </button>
                             </div>
                             <p className="whwa-kp-text">{kp.text}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {keypointTab === 'quickreplies' && (
+                  <div className="whwa-keypoints-content">
+                    <div className="whwa-qr-add">
+                      <input
+                        placeholder="Shortcut (e.g. hello)"
+                        value={qrForm.shortcut}
+                        onChange={e => setQrForm(f => ({ ...f, shortcut: e.target.value.replace(/^\/+/, '').replace(/\s/g, '') }))}
+                      />
+                      <textarea
+                        placeholder="Message to send..."
+                        value={qrForm.message}
+                        onChange={e => setQrForm(f => ({ ...f, message: e.target.value }))}
+                        rows={2}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!qrForm.shortcut.trim() || !qrForm.message.trim()) return;
+                          setQrSaving(true);
+                          try {
+                            const res = await api.post('/whatsapp/quick-replies', qrForm);
+                            if (res.data.success) {
+                              setQuickReplies(prev => [...prev, res.data.data].sort((a, b) => a.shortcut.localeCompare(b.shortcut)));
+                              setQrForm({ shortcut: '', message: '' });
+                              toast.success('Quick reply saved');
+                            }
+                          } catch (e) {
+                            toast.error(e.response?.data?.message || 'Failed to save');
+                          } finally { setQrSaving(false); }
+                        }}
+                        disabled={qrSaving || !qrForm.shortcut.trim() || !qrForm.message.trim()}
+                      >
+                        <FiPlus size={12} /> Add
+                      </button>
+                    </div>
+                    <div className="whwa-keypoints-list">
+                      {quickReplies.length === 0 ? (
+                        <div className="whwa-empty-sm"><p>No quick replies. Type / in chat to use them.</p></div>
+                      ) : (
+                        quickReplies.map(r => (
+                          <div key={r._id} className="whwa-qr-item">
+                            <div className="whwa-qr-shortcut">/{r.shortcut}</div>
+                            <p className="whwa-qr-msg">{r.message}</p>
+                            <button className="whwa-kp-del" onClick={async () => {
+                              try {
+                                await api.delete(`/whatsapp/quick-replies/${r._id}`);
+                                setQuickReplies(prev => prev.filter(x => x._id !== r._id));
+                              } catch { toast.error('Delete failed'); }
+                            }}>
+                              <FiX size={10} />
+                            </button>
                           </div>
                         ))
                       )}

@@ -328,6 +328,14 @@
   -webkit-text-security: disc;
 }
 
+.noxtm-bot-input-textarea {
+  resize: vertical;
+  min-height: 52px;
+  max-height: 200px;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
 /* Send button - small circle, black */
 .noxtm-bot-send-btn {
   width: 40px;

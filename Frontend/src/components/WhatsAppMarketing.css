@@ -1001,6 +1001,7 @@
 /* Chat Input */
 .whwa-chat-input-wrap {
   border-top: 1px solid #f0f0f0;
+  position: relative;
 }
 
 .whwa-format-toolbar {
@@ -3404,4 +3405,122 @@
 
 .whwa-media-preview-remove:hover {
   background: #fca5a5;
+}
+
+/* Slash menu */
+.whwa-slash-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 16px;
+  right: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.whwa-slash-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.whwa-slash-item:hover,
+.whwa-slash-item.active {
+  background: #f5f5f5;
+}
+
+.whwa-slash-shortcut {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  min-width: 70px;
+  font-family: monospace;
+}
+
+.whwa-slash-preview {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Quick replies panel in keypoints */
+.whwa-qr-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.whwa-qr-add input,
+.whwa-qr-add textarea {
+  padding: 7px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: 'Switzer', sans-serif;
+  outline: none;
+  resize: vertical;
+}
+
+.whwa-qr-add input:focus,
+.whwa-qr-add textarea:focus {
+  border-color: #1a1a1a;
+}
+
+.whwa-qr-add button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 7px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.whwa-qr-add button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.whwa-qr-item {
+  position: relative;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.whwa-qr-shortcut {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  color: #1a1a1a;
+  margin-bottom: 3px;
+}
+
+.whwa-qr-msg {
+  font-size: 12px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.4;
+  padding-right: 24px;
+}
+
+.whwa-qr-item .whwa-kp-del {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }

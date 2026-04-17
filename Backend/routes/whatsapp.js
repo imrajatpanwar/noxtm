@@ -16,6 +16,7 @@ const WhatsAppPhoneList = require('../models/WhatsAppPhoneList');
 const WhatsAppKeypoint = require('../models/WhatsAppKeypoint');
 const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
 const WhatsAppChatbotRule = require('../models/WhatsAppChatbotRule');
+const WhatsAppQuickReply = require('../models/WhatsAppQuickReply');
 const User = require('../models/User');
 
 const sessionManager = require('../services/whatsappSessionManager');
@@ -1445,6 +1446,64 @@ function initializeRoutes({ io }) {
     } catch (error) {
       console.error('[WA Routes] Dashboard error:', error);
       res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // =====================================================
+  // QUICK REPLIES (/ shortcuts)
+  // =====================================================
+
+  router.get('/quick-replies', async (req, res) => {
+    try {
+      const replies = await WhatsAppQuickReply.find({ companyId: req.user.companyId }).sort({ shortcut: 1 });
+      res.json({ success: true, data: replies });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  router.post('/quick-replies', async (req, res) => {
+    try {
+      const { shortcut, message } = req.body;
+      if (!shortcut || !message) return res.status(400).json({ success: false, message: 'shortcut and message required' });
+      const reply = await WhatsAppQuickReply.create({
+        companyId: req.user.companyId,
+        shortcut: shortcut.trim().toLowerCase().replace(/^\/+/, ''),
+        message: message.trim(),
+        createdBy: req.user._id
+      });
+      res.json({ success: true, data: reply });
+    } catch (err) {
+      if (err.code === 11000) return res.status(409).json({ success: false, message: 'Shortcut already exists' });
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  router.put('/quick-replies/:id', async (req, res) => {
+    try {
+      const { shortcut, message } = req.body;
+      const update = {};
+      if (shortcut) update.shortcut = shortcut.trim().toLowerCase().replace(/^\/+/, '');
+      if (message) update.message = message.trim();
+      const reply = await WhatsAppQuickReply.findOneAndUpdate(
+        { _id: req.params.id, companyId: req.user.companyId },
+        update,
+        { new: true }
+      );
+      if (!reply) return res.status(404).json({ success: false, message: 'Not found' });
+      res.json({ success: true, data: reply });
+    } catch (err) {
+      if (err.code === 11000) return res.status(409).json({ success: false, message: 'Shortcut already exists' });
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  router.delete('/quick-replies/:id', async (req, res) => {
+    try {
+      await WhatsAppQuickReply.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
     }
   });
 
