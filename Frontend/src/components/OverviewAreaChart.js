@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../config/api';
 
@@ -67,7 +67,7 @@ export default function OverviewAreaChart() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchChart = useCallback(() => {
     let cancelled = false;
     setLoading(true);
     api.get(`/overview-stats/chart?range=${range}`)
@@ -75,6 +75,14 @@ export default function OverviewAreaChart() {
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [range]);
+
+  useEffect(() => fetchChart(), [fetchChart]);
+
+  // Re-fetch on global 30s poll
+  useEffect(() => {
+    window.addEventListener('dashboard:refresh', fetchChart);
+    return () => window.removeEventListener('dashboard:refresh', fetchChart);
+  }, [fetchChart]);
 
   const tickFormatter = v => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 

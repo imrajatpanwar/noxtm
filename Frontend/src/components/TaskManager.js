@@ -912,6 +912,17 @@ function TaskManager({ isWidget = false }) {
         fetchCompanyUsers();
     }, [fetchTasks, fetchCompanyUsers]);
 
+    // Live updates — re-fetch when another user mutates a task (socket) or on 30s poll
+    useEffect(() => {
+        const onRefresh = () => fetchTasks();
+        window.addEventListener('dashboard:refresh', onRefresh);
+        window.addEventListener('task:updated', onRefresh);
+        return () => {
+            window.removeEventListener('dashboard:refresh', onRefresh);
+            window.removeEventListener('task:updated', onRefresh);
+        };
+    }, [fetchTasks]);
+
     const handleTaskClick = async (task) => {
         try {
             const response = await api.get(`/tasks/${task._id}`);

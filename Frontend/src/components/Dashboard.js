@@ -208,6 +208,13 @@ function Dashboard({ user, onLogout }) {
     }
   }, [currentUser, fetchDashboardData, navigate]);
 
+  // Global auto-refresh — fires every 30 seconds so visible sections stay live
+  useEffect(() => {
+    const tick = () => window.dispatchEvent(new CustomEvent('dashboard:refresh'));
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Listen for navigation to messaging from toast notifications
   useEffect(() => {
     const handleNavigateToMessaging = () => {

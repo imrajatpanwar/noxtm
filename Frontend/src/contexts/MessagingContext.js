@@ -168,6 +168,12 @@ export function MessagingProvider({ children }) {
 
           // Store userId in socket for later reference
           newSocket.userId = userId;
+
+          // Join company room for scoped real-time broadcasts (tasks, HR, leads, etc.)
+          const companyId = userData.companyId;
+          if (companyId) {
+            newSocket.emit('join-company', companyId.toString());
+          }
         }
       };
 
@@ -419,6 +425,16 @@ export function MessagingProvider({ children }) {
           duration: 6000,
           position: 'top-right',
         });
+      });
+
+      // Real-time task updates — dispatch window event so TaskManager re-fetches
+      newSocket.on('task:updated', () => {
+        window.dispatchEvent(new CustomEvent('task:updated'));
+      });
+
+      // General dashboard data change — dispatch refresh so all active sections re-fetch
+      newSocket.on('dashboard:data-changed', () => {
+        window.dispatchEvent(new CustomEvent('dashboard:refresh'));
       });
 
     };

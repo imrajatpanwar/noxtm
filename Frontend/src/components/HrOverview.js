@@ -38,6 +38,11 @@ function HrOverview() {
     fetchOverview();
   }, [fetchOverview]);
 
+  useEffect(() => {
+    window.addEventListener('dashboard:refresh', fetchOverview);
+    return () => window.removeEventListener('dashboard:refresh', fetchOverview);
+  }, [fetchOverview]);
+
   const handleSaveSettings = async () => {
     try {
       setSavingSettings(true);

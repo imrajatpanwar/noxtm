@@ -65,6 +65,11 @@ export default function LeadsFlow() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  useEffect(() => {
+    window.addEventListener('dashboard:refresh', fetchAll);
+    return () => window.removeEventListener('dashboard:refresh', fetchAll);
+  }, [fetchAll]);
+
   // Search debounce
   useEffect(() => {
     const t = setTimeout(() => fetchAll(), 350);

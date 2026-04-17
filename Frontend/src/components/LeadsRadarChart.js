@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Tooltip, ResponsiveContainer,
@@ -43,7 +43,7 @@ export default function LeadsRadarChart() {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
     api.get('/whatsapp-leads/stats')
       .then(res => {
         const s = res.data.stats || {};
@@ -53,6 +53,13 @@ export default function LeadsRadarChart() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  useEffect(() => {
+    window.addEventListener('dashboard:refresh', fetchStats);
+    return () => window.removeEventListener('dashboard:refresh', fetchStats);
+  }, [fetchStats]);
 
   return (
     <div style={CARD}>

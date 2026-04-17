@@ -3,6 +3,14 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const User = require('../models/User');
+const socketStore = require('../utils/socketStore');
+
+// Emit task:updated to all company members so their UI refreshes in real-time
+function emitTaskUpdate(companyId) {
+  if (!companyId) return;
+  const io = socketStore.getIo();
+  if (io) io.to(`company:${companyId.toString()}`).emit('task:updated');
+}
 
 // JWT authentication middleware (same as used in other routes)
 const jwt = require('jsonwebtoken');
@@ -165,6 +173,7 @@ router.post('/', async (req, res) => {
             .populate('assignees', 'fullName email profileImage')
             .populate('createdBy', 'fullName email profileImage');
 
+        emitTaskUpdate(req.companyId);
         res.status(201).json(populatedTask);
     } catch (error) {
         console.error('Error creating task:', error);
@@ -213,6 +222,7 @@ router.put('/:id', async (req, res) => {
             .populate('createdBy', 'fullName email profileImage')
             .populate('comments.author', 'fullName email profileImage');
 
+        emitTaskUpdate(req.companyId);
         res.json(populatedTask);
     } catch (error) {
         console.error('Error updating task:', error);
@@ -253,6 +263,7 @@ router.patch('/:id/status', async (req, res) => {
             .populate('assignees', 'fullName email profileImage')
             .populate('createdBy', 'fullName email profileImage');
 
+        emitTaskUpdate(req.companyId);
         res.json(populatedTask);
     } catch (error) {
         console.error('Error updating task status:', error);
@@ -291,6 +302,7 @@ router.patch('/:id/assignees', async (req, res) => {
             .populate('assignees', 'fullName email profileImage')
             .populate('createdBy', 'fullName email profileImage');
 
+        emitTaskUpdate(req.companyId);
         res.json(populatedTask);
     } catch (error) {
         console.error('Error updating assignees:', error);
@@ -345,6 +357,7 @@ router.post('/:id/comments', async (req, res) => {
             .populate('createdBy', 'fullName email profileImage')
             .populate('comments.author', 'fullName email profileImage');
 
+        emitTaskUpdate(req.companyId);
         res.json(populatedTask);
     } catch (error) {
         console.error('Error adding comment:', error);
@@ -364,6 +377,7 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Task not found' });
         }
 
+        emitTaskUpdate(task.companyId);
         res.json({ message: 'Task deleted successfully' });
     } catch (error) {
         console.error('Error deleting task:', error);

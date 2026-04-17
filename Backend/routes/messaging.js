@@ -54,7 +54,7 @@ function initializeRoutes(dependencies) {
         onlineUsers: Array.from(onlineUsers.keys())
       });
 
-      // User comes online
+      // User comes online — also join a company room for scoped broadcasts
       socket.on('user-online', (userId) => {
         const userIdStr = userId.toString();
         const wasAlreadyOnline = onlineUsers.has(userIdStr);
@@ -112,6 +112,15 @@ function initializeRoutes(dependencies) {
       socket.on('join', (jobId) => {
         socket.join(jobId);
         console.log(`🔍 Socket ${socket.id} joined crawler job room: ${jobId}`);
+      });
+
+      // Join company room for scoped real-time broadcasts (tasks, leads, HR, etc.)
+      socket.on('join-company', (companyId) => {
+        if (companyId) {
+          socket.join(`company:${companyId}`);
+          socket.companyId = companyId.toString();
+          console.log(`🏢 Socket ${socket.id} joined company room: company:${companyId}`);
+        }
       });
 
       // Join WhatsApp company room for real-time updates
