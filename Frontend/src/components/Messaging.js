@@ -294,11 +294,22 @@ function Messaging() {
       });
     };
 
+    // Handle messages-read — update readBy on all messages so "Seen" ticks appear instantly
+    const handleMessagesRead = ({ conversationId, readBy, readAt }) => {
+      if (selectedConversationRef.current?._id !== conversationId) return;
+      setMessages(prev => prev.map(msg => {
+        const alreadyRead = msg.readBy?.some(r => (r.user?._id || r.user)?.toString() === readBy);
+        if (alreadyRead) return msg;
+        return { ...msg, readBy: [...(msg.readBy || []), { user: readBy, readAt }] };
+      }));
+    };
+
     socket.on('new-message', handleNewMessage);
     socket.on('message-edited', handleMessageEdit);
     socket.on('message-deleted', handleMessageDelete);
     socket.on('message-reaction', handleMessageReaction);
     socket.on('unread-count-update', handleUnreadCountUpdate);
+    socket.on('messages-read', handleMessagesRead);
 
     return () => {
       socket.off('new-message', handleNewMessage);
@@ -306,6 +317,7 @@ function Messaging() {
       socket.off('message-deleted', handleMessageDelete);
       socket.off('message-reaction', handleMessageReaction);
       socket.off('unread-count-update', handleUnreadCountUpdate);
+      socket.off('messages-read', handleMessagesRead);
     };
   }, [socket]);
 

@@ -44,6 +44,16 @@ function initializeRoutes(dependencies) {
   // Using a Set allows multiple tabs/windows per user — only goes offline when ALL sockets disconnect
   const onlineUsers = new Map();
 
+  // Helper: emit an event to ALL active sockets of a user
+  function emitToUser(userId, event, data) {
+    const sockets = onlineUsers.get(userId.toString());
+    if (sockets) {
+      for (const socketId of sockets) {
+        io.to(socketId).emit(event, data);
+      }
+    }
+  }
+
   // Socket.IO connection handling
   if (io) {
     io.on('connection', (socket) => {
@@ -1394,6 +1404,15 @@ function initializeRoutes(dependencies) {
         sender: { $ne: userId }
       });
 
+      // Emit to the conversation room so the sender sees the "seen" indicator in real-time
+      if (io) {
+        io.to(`conversation:${conversationId}`).emit('messages-read', {
+          conversationId,
+          readBy: userId.toString(),
+          readAt: new Date().toISOString()
+        });
+      }
+
       res.json({
         success: true,
         message: 'Messages marked as read',
@@ -1481,36 +1500,33 @@ function initializeRoutes(dependencies) {
 
         console.log('📡 Broadcasting message to conversation room:', `conversation:${conversationId}`);
 
-        // Broadcast to conversation room - this is the primary delivery method
+        // Primary delivery: conversation room (users who have that chat open)
         io.to(`conversation:${conversationId}`).emit('new-message', messageData);
 
-        // Update unread counts for all participants (except sender)
+        // Fallback delivery + unread counts for all participants
         for (const participant of conversation.participants) {
-          const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
-          const participantSocketId = onlineUsers.get(participantId.toString());
+          const participantId = participant.user;
 
-          // Only update unread count for participants who are NOT the sender
-          if (participantId.toString() !== userId.toString() && participantSocketId) {
-            console.log(`� Updating unread count for user ${participantId}`);
+          // Direct delivery ensures message arrives even if not in conversation room
+          // (e.g. user is on a different section of the dashboard)
+          emitToUser(participantId, 'new-message', messageData);
 
-            // Update unread count for this participant
-            if (participantId.toString() !== userId.toString()) {
-              const participantData = conversation.participants.find(
-                p => p.user.toString() === participantId.toString()
-              );
-              const lastReadAt = participantData?.lastReadAt || new Date(0);
+          if (participantId.toString() !== userId.toString()) {
+            const participantData = conversation.participants.find(
+              p => p.user.toString() === participantId.toString()
+            );
+            const lastReadAt = participantData?.lastReadAt || new Date(0);
 
-              const unreadCount = await Message.countDocuments({
-                conversationId: conversation._id,
-                createdAt: { $gt: lastReadAt },
-                sender: { $ne: participantId }
-              });
+            const unreadCount = await Message.countDocuments({
+              conversationId: conversation._id,
+              createdAt: { $gt: lastReadAt },
+              sender: { $ne: participantId }
+            });
 
-              io.to(participantSocketId).emit('unread-count-update', {
-                conversationId: conversationId,
-                unreadCount: unreadCount
-              });
-            }
+            emitToUser(participantId, 'unread-count-update', {
+              conversationId: conversationId,
+              unreadCount: unreadCount
+            });
           }
         }
 
@@ -1673,31 +1689,30 @@ function initializeRoutes(dependencies) {
 
           io.to(`conversation:${conversationId}`).emit('new-message', messageData);
 
-          // Also emit to participants directly and update unread counts
+          // Emit directly to each participant's sockets + update unread counts
           for (const participant of conversation.participants) {
-            const participantId = participant.user;  // ✅ FIXED: participant.user is the ObjectId
-            const participantSocketId = onlineUsers.get(participantId.toString());
-            if (participantSocketId) {
-              io.to(participantSocketId).emit('new-message', messageData);
+            const participantId = participant.user;
 
-              // Update unread count for this participant (if not the sender)
-              if (participantId.toString() !== req.user.userId.toString()) {
-                const participantData = conversation.participants.find(
-                  p => p.user.toString() === participantId.toString()
-                );
-                const lastReadAt = participantData?.lastReadAt || new Date(0);
+            // Direct delivery (ensures delivery even if not in conversation room)
+            emitToUser(participantId, 'new-message', messageData);
 
-                const unreadCount = await Message.countDocuments({
-                  conversationId: conversation._id,
-                  createdAt: { $gt: lastReadAt },
-                  sender: { $ne: participantId }
-                });
+            // Update unread count for non-senders
+            if (participantId.toString() !== req.user.userId.toString()) {
+              const participantData = conversation.participants.find(
+                p => p.user.toString() === participantId.toString()
+              );
+              const lastReadAt = participantData?.lastReadAt || new Date(0);
 
-                io.to(participantSocketId).emit('unread-count-update', {
-                  conversationId: conversationId,
-                  unreadCount: unreadCount
-                });
-              }
+              const unreadCount = await Message.countDocuments({
+                conversationId: conversation._id,
+                createdAt: { $gt: lastReadAt },
+                sender: { $ne: participantId }
+              });
+
+              emitToUser(participantId, 'unread-count-update', {
+                conversationId: conversationId,
+                unreadCount: unreadCount
+              });
             }
           }
         }
