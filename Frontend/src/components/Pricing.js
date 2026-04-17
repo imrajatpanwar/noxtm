@@ -1,211 +1,208 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoMdCheckmark } from "react-icons/io";
 import { useRole } from '../contexts/RoleContext';
 import { toast } from 'sonner';
 import api from '../config/api';
+import setupBg from '../assets/background_setup.webp';
 import './Pricing.css';
+
+const PLANS = [
+  {
+    name: 'Starter',
+    subtitle: 'For solo entrepreneurs',
+    label: '01 — SOLO',
+    monthlyPrice: 1699,
+    yearlyPrice: 1359,
+    planKey: 'Starter',
+    hasTrial: true,
+    features: [
+      'Access to Dashboard management',
+      'Add 5 Team Access Max',
+      'Free Business Mail Access',
+      '10 GB Storage Access',
+      'Free AI Analytics & Suggestions',
+      '10+ integrations Tools',
+      'Customer support',
+    ],
+    highlighted: [],
+  },
+  {
+    name: 'Pro +',
+    subtitle: 'For Small Businesses',
+    label: '02 — POPULAR',
+    monthlyPrice: 2699,
+    yearlyPrice: 2159,
+    planKey: 'Pro+',
+    hasTrial: true,
+    popular: true,
+    features: [
+      'Everything from Starter',
+      'Add 60 Team Access Max',
+      'Free 10,000 Bulk emails',
+      '50GB Storage Access',
+      'Request new integrations',
+      'Intelligent Analytics Bot',
+      'AI Analysis work report',
+      'Priority customer support',
+      '99.9% Up time',
+    ],
+    highlighted: ['Everything from Starter', 'Add 60 Team Access Max', 'Free 10,000 Bulk emails', '50GB Storage Access', 'Request new integrations', 'Intelligent Analytics Bot', 'AI Analysis work report', 'Priority customer support', '99.9% Up time'],
+  },
+  {
+    name: 'Advance',
+    subtitle: 'For High-scale businesses',
+    label: '03 — SCALE',
+    monthlyPrice: 4699,
+    yearlyPrice: 3759,
+    planKey: 'Advance',
+    hasTrial: false,
+    features: [
+      'Everything from Pro+',
+      'Unlimited Team Access',
+      'Free 50,000 Bulk Emails',
+      '75GB Storage Access',
+      'Advanced noxtm bot',
+      'Custom Branding',
+    ],
+    highlighted: [],
+  },
+];
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const [billingType, setBillingType] = useState('monthly');
+  const [billing, setBilling] = useState('monthly');
   const [loading, setLoading] = useState(false);
+  const [activePlan, setActivePlan] = useState(null);
   const { currentUser } = useRole();
 
-  // Check if user already has an active subscription
   const userSub = currentUser?.subscription;
   const isOnTrial = userSub?.status === 'trial' && userSub?.endDate && new Date(userSub.endDate) > new Date();
-  const isActive = userSub?.status === 'active';
-  const currentPlanKey = userSub?.plan; // e.g. 'Starter', 'Pro+', 'Advance'
-
-  const plans = [
-    {
-      name: 'Starter',
-      subtitle: 'For solo entrepreneurs',
-      monthlyPrice: 1699,
-      yearlyPrice: 1359,
-      planKey: 'Starter',
-      hasTrial: true,
-      features: [
-        'Access to Dashboard management',
-        'Add 5 Team Access Max',
-        'Free Business Mail Access',
-        '10 GB Storage Access',
-        'Free AI Analytics & Suggestions',
-        '10+ integrations Tools',
-        'Customer support'
-      ]
-    },
-    {
-      name: 'Pro +',
-      subtitle: 'For Small Businesses',
-      monthlyPrice: 2699,
-      yearlyPrice: 2159,
-      planKey: 'Pro+',
-      hasTrial: true,
-      popular: true,
-      features: [
-        'Everything from Starter',
-        'Add 60 Team Access Max',
-        'Free 10,000 Bulk emails',
-        '50GB Storage Access',
-        'Request new integrations',
-        'Intelligent Analytics Bot',
-        'AI Analysis work report',
-        'Priority customer support',
-        '99.9% Up time'
-      ]
-    },
-    {
-      name: 'Advance',
-      subtitle: 'For High-scale businesses',
-      monthlyPrice: 4699,
-      yearlyPrice: 3759,
-      planKey: 'Advance',
-      hasTrial: false,
-      features: [
-        'Everything from Pro+',
-        'Unlimited Team Access',
-        'Free 50,000 Bulk Emails',
-        '75GB Storage Access',
-        'Advanced noxtm bot',
-        'Custom Branding'
-      ]
-    }
-  ];
+  const isActive  = userSub?.status === 'active';
+  const currentPlanKey = userSub?.plan;
 
   const handlePlanSelect = async (plan) => {
-    if (!currentUser) {
-      navigate('/signup');
-      return;
-    }
+    if (!currentUser) { navigate('/signup'); return; }
+    if (currentUser.role === 'Admin') { navigate('/dashboard'); return; }
 
-    if (currentUser.role === 'Admin') {
+    // already on this plan
+    if ((isOnTrial || isActive) && currentPlanKey === plan.planKey) {
       navigate('/dashboard');
       return;
     }
 
     setLoading(true);
+    setActivePlan(plan.planKey);
     try {
       if (plan.hasTrial) {
-        // Start 14-day free trial for Starter & Pro+
-        const response = await api.post('/subscription/start-trial', {
-          plan: plan.planKey
-        });
-
+        const response = await api.post('/subscription/start-trial', { plan: plan.planKey });
         if (response.data.success) {
           localStorage.setItem('user', JSON.stringify(response.data.user));
           window.dispatchEvent(new Event('userUpdated'));
-          toast.success(response.data.message || `14-day free trial of ${plan.name} started!`);
+          toast.success(response.data.message || `${plan.name} trial started!`);
           navigate('/dashboard');
         } else {
           toast.error(response.data.message || 'Failed to start trial');
+          setActivePlan(null);
         }
       } else {
-        // Advance plan — go to payment checkout
-        navigate(`/checkout?plan=${encodeURIComponent(plan.planKey)}&billing=${billingType === 'yearly' ? 'Annual' : 'Monthly'}`);
+        navigate(`/checkout?plan=${encodeURIComponent(plan.planKey)}&billing=${billing === 'yearly' ? 'Annual' : 'Monthly'}`);
       }
     } catch (error) {
-      console.error('Plan selection error:', error);
-      const msg = error.response?.data?.message || 'Failed to process. Please try again.';
-      toast.error(msg);
+      toast.error(error.response?.data?.message || 'Failed to process. Please try again.');
+      setActivePlan(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const getPrice = (plan) => {
-    return billingType === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+  const getPrice = (plan) => billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+
+  const btnLabel = (plan) => {
+    if (loading && activePlan === plan.planKey) return 'Starting...';
+    if ((isOnTrial || isActive) && currentPlanKey === plan.planKey)
+      return isOnTrial ? 'Current trial →' : 'Current plan →';
+    return plan.hasTrial ? 'Start trial →' : 'Get started →';
   };
 
   return (
-    <div className="pricing-container">
-      {/* Stepper */}
-      <div className="pricing-stepper">
-        <div className="pricing-step completed">
-          <div className="pricing-step-circle">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <span>Company Details</span>
-        </div>
-        <div className="pricing-step-line"></div>
-        <div className="pricing-step active">
-          <div className="pricing-step-circle">2</div>
-          <span>Choose Plan</span>
-        </div>
-        <div className="pricing-step-line"></div>
-        <div className="pricing-step">
-          <div className="pricing-step-circle">3</div>
-          <span>Get Started</span>
-        </div>
-      </div>
+    <div className="pr-root" style={{ backgroundImage: `url(${setupBg})` }}>
 
-      <div className="pricing-header">
-        <h1>Choose your plan</h1>
+      {/* grid overlay */}
+      <div className="pr-grid-overlay" />
 
-        <div className="billing-toggle">
-          <button
-            type="button"
-            className={`billing-option ${billingType === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBillingType('monthly')}
-          >
-            Pay monthly
-          </button>
-          <button
-            type="button"
-            className={`billing-option ${billingType === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBillingType('yearly')}
-          >
-            Pay yearly
-          </button>
+      {/* glass window */}
+      <div className="pr-window">
+        <div className="pr-dots">
+          <span className="pr-dot pr-dot-red" />
+          <span className="pr-dot pr-dot-yellow" />
+          <span className="pr-dot pr-dot-green" />
         </div>
-      </div>
 
-      <div className="pricing-cards-grid">
-        {plans.map((plan, index) => (
-          <div key={index} className={`pricing-card ${plan.popular ? 'pricing-card-popular' : ''}`}>
-            {plan.popular && <div className="popular-badge">Most Popular</div>}
-            {plan.hasTrial && <div className="trial-badge">14-Day Free Trial</div>}
+        <div className="pr-inner">
 
-            <div className="card-top">
-              <h3 className="plan-title">{plan.name}</h3>
-              <p className="plan-subtitle">{plan.subtitle}</p>
+          {/* header */}
+          <div className="pr-header">
+            <div>
+              <div className="pr-step-label">STEP 06 · CHOOSE PLAN</div>
+              <h1 className="pr-heading">Pick a plan.</h1>
+              <p className="pr-sub">14-day free trial. Upgrade, downgrade, or cancel any time.</p>
             </div>
-
-            <div className="card-price">
-              <span className="currency">₹</span>
-              <span className="amount">{getPrice(plan)}</span>
-              <span className="period">/ month</span>
+            <div className="pr-billing-toggle">
+              <button
+                className={billing === 'monthly' ? 'active' : ''}
+                onClick={() => setBilling('monthly')}
+              >Monthly</button>
+              <button
+                className={billing === 'yearly' ? 'active' : ''}
+                onClick={() => setBilling('yearly')}
+              >
+                Yearly <span className="pr-discount">-20%</span>
+              </button>
             </div>
-
-            <button
-              className={`get-started-btn ${plan.hasTrial ? 'trial-btn' : ''} ${(isOnTrial || isActive) && currentPlanKey === plan.planKey ? 'current-plan-btn' : ''}`}
-              onClick={() => {
-                if ((isOnTrial || isActive) && currentPlanKey === plan.planKey) {
-                  navigate('/dashboard');
-                } else {
-                  handlePlanSelect(plan);
-                }
-              }}
-              disabled={loading}
-            >
-              {loading ? 'Processing...'
-                : (isOnTrial || isActive) && currentPlanKey === plan.planKey
-                  ? (isOnTrial ? 'Current Trial — Go to Dashboard' : 'Current Plan — Go to Dashboard')
-                  : plan.hasTrial ? 'Start 14-Day Free Trial'
-                  : 'Get Started'}
-            </button>
-
-            <ul className="features-list">
-              {plan.features.map((feature, fIndex) => (
-                <li key={fIndex}>
-                  <span className="check-icon"><IoMdCheckmark /></span>
-                  <span className="feature-text">{feature}</span>
-                </li>
-              ))}
-            </ul>
           </div>
-        ))}
+
+          {/* plans */}
+          <div className="pr-plans-grid">
+            {PLANS.map(plan => (
+              <div
+                key={plan.planKey}
+                className={`pr-plan-card ${plan.popular ? 'popular' : ''} ${currentPlanKey === plan.planKey ? 'current' : ''}`}
+              >
+                {plan.popular && <div className="pr-recommended">● RECOMMENDED</div>}
+                <div className="pr-plan-label">{plan.label}</div>
+                <div className="pr-plan-name">{plan.name}</div>
+                <div className="pr-plan-subtitle">{plan.subtitle}</div>
+                <div className="pr-plan-price">
+                  <span className="pr-currency">₹</span>
+                  <span className="pr-amount">{getPrice(plan).toLocaleString()}</span>
+                  <span className="pr-per">/mo</span>
+                </div>
+                <button
+                  className={`pr-plan-btn ${plan.popular ? 'dark' : ''} ${currentPlanKey === plan.planKey ? 'current-btn' : ''}`}
+                  onClick={() => handlePlanSelect(plan)}
+                  disabled={loading}
+                >
+                  {btnLabel(plan)}
+                </button>
+                <ul className="pr-features">
+                  {plan.features.map(f => (
+                    <li key={f} className={plan.highlighted.includes(f) ? 'bold' : ''}>
+                      <span className={`pr-feat-icon ${plan.highlighted.includes(f) ? 'filled' : ''}`}>✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* footer bar */}
+          <div className="pr-footer-bar">
+            <span>🔒 SSL ENCRYPTED · CANCEL ANY TIME</span>
+            <span>GST INCLUDED · BILLED IN INR</span>
+          </div>
+
+        </div>
       </div>
     </div>
   );

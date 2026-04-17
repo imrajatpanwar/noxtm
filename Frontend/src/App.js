@@ -19,6 +19,7 @@ import Dashboard from './components/Dashboard';
 import AccessRestricted from './components/AccessRestricted';
 import CompanySetup from './components/CompanySetup';
 import CompanySetupChat from './components/CompanySetupChat';
+import CompanySetupWizard from './components/CompanySetupWizard';
 import JoinCompany from './components/JoinCompany';
 import Footer from './components/Footer';
 import PublicBlogList from './components/PublicBlogList';
@@ -44,7 +45,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 function ConditionalHeader({ user, onLogout }) {
   const location = useLocation();
-  const hideHeaderRoutes = ['/signup', '/login'];
+  const hideHeaderRoutes = ['/signup', '/login', '/company-setup'];
   if (hideHeaderRoutes.includes(location.pathname)) {
     return null;
   }
@@ -388,7 +389,7 @@ function App() {
                   path="/company-setup"
                   element={
                     user ? (
-                      <CompanySetupChat />
+                      <CompanySetupWizard />
                     ) : (
                       <Navigate to="/login" />
                     )
