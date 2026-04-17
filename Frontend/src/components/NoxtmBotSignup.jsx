@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import SendMsgIcon from '../assets/Send_msg.svg';
 import './NoxtmBotSignup.css';
 
 // Use same backend URL as the rest of the app (config/api.js)
@@ -30,12 +31,6 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// Send arrow icon
-const SendIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-  </svg>
-);
 
 function NoxtmBotSignup({ onSignup }) {
   const navigate = useNavigate();
@@ -563,7 +558,7 @@ function NoxtmBotSignup({ onSignup }) {
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || loading}
         >
-          <SendIcon />
+          <img src={SendMsgIcon} alt="Send" />
         </button>
       </div>
 

@@ -290,10 +290,10 @@
 
 /* Input area - bottom */
 .noxtm-bot-input-area {
-  padding: 20px 24px 24px;
+  padding: 20px 24px 28px;
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 14px;
   max-width: 640px;
   width: 100%;
   margin: 0 auto;
@@ -303,12 +303,12 @@
 
 .noxtm-bot-input {
   flex: 1;
-  padding: 16px 18px;
-  border-radius: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
   border: 1px solid #e5e5e5;
   background: #ffffff;
   color: #111827;
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
   transition: all 0.2s;
   font-family: 'Switzer', sans-serif;
@@ -330,45 +330,45 @@
 
 .noxtm-bot-input-textarea {
   resize: vertical;
-  min-height: 52px;
-  max-height: 200px;
-  line-height: 1.5;
+  min-height: 62px;
+  max-height: 260px;
+  line-height: 1.6;
   overflow-y: auto;
 }
 
-/* Send button - small circle, black */
+/* Send button - uses Send_msg.svg (already has circle + arrow) */
 .noxtm-bot-send-btn {
-  width: 40px;
-  height: 40px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: none;
-  background: #111827;
-  color: white;
+  background: transparent;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
   flex-shrink: 0;
 }
 
+.noxtm-bot-send-btn img {
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+
 .noxtm-bot-send-btn:hover:not(:disabled) {
-  background: #000000;
+  transform: scale(1.06);
 }
 
 .noxtm-bot-send-btn:active:not(:disabled) {
-  transform: scale(0.93);
-  background: #000000;
+  transform: scale(0.94);
 }
 
 .noxtm-bot-send-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-
-.noxtm-bot-send-btn svg {
-  width: 16px;
-  height: 16px;
 }
 
 /* Login link */
