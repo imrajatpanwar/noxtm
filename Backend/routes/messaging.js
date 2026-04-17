@@ -40,7 +40,8 @@ function initializeRoutes(dependencies) {
     return hasAtLeastOne ? sanitized : null;
   }
 
-  // Store online users (userId -> socketId mapping)
+  // Store online users (userId -> Set<socketId> mapping)
+  // Using a Set allows multiple tabs/windows per user — only goes offline when ALL sockets disconnect
   const onlineUsers = new Map();
 
   // Socket.IO connection handling
@@ -56,17 +57,28 @@ function initializeRoutes(dependencies) {
       // User comes online
       socket.on('user-online', (userId) => {
         const userIdStr = userId.toString();
-        console.log(`👤 User ${userIdStr} is online`);
-        onlineUsers.set(userIdStr, socket.id);
+        const wasAlreadyOnline = onlineUsers.has(userIdStr);
+
+        if (!onlineUsers.has(userIdStr)) {
+          onlineUsers.set(userIdStr, new Set());
+        }
+        onlineUsers.get(userIdStr).add(socket.id);
+
+        // Tag socket with userId for quick lookup on disconnect
+        socket.userId = userIdStr;
+
         socketStore.setUserOnline(userIdStr, socket.id);
+        console.log(`👤 User ${userIdStr} is online (${onlineUsers.get(userIdStr).size} connection(s))`);
 
-        // Broadcast to all connected clients (including sender)
-        io.emit('user-status-changed', {
-          userId: userIdStr,
-          status: 'online'
-        });
+        // Only broadcast status change if this is a new online event
+        if (!wasAlreadyOnline) {
+          io.emit('user-status-changed', {
+            userId: userIdStr,
+            status: 'online'
+          });
+        }
 
-        // Also send updated list
+        // Always send updated list so newly-connected clients are in sync
         io.emit('online-users-list', {
           onlineUsers: Array.from(onlineUsers.keys())
         });
@@ -137,23 +149,21 @@ function initializeRoutes(dependencies) {
       socket.on('disconnecting', () => {
         console.log('🔌 User disconnecting, cleaning up rooms:', Array.from(socket.rooms));
 
-        // Find user and mark as offline before removing listeners
-        for (const [userId, socketId] of onlineUsers.entries()) {
-          if (socketId === socket.id) {
-            onlineUsers.delete(userId);
-            socketStore.setUserOffline(userId);
-            console.log(`👤 User ${userId} going offline`);
-            // Broadcast to all connected clients
-            io.emit('user-status-changed', {
-              userId,
-              status: 'offline'
-            });
+        const userId = socket.userId;
+        if (userId && onlineUsers.has(userId)) {
+          const sockets = onlineUsers.get(userId);
+          sockets.delete(socket.id);
 
-            // Send updated online users list
-            io.emit('online-users-list', {
-              onlineUsers: Array.from(onlineUsers.keys())
-            });
-            break;
+          if (sockets.size === 0) {
+            // No more active connections for this user — they are truly offline
+            onlineUsers.delete(userId);
+            socketStore.setUserOffline(userId, socket.id);
+            console.log(`👤 User ${userId} is now offline (all connections closed)`);
+
+            io.emit('user-status-changed', { userId, status: 'offline' });
+            io.emit('online-users-list', { onlineUsers: Array.from(onlineUsers.keys()) });
+          } else {
+            console.log(`👤 User ${userId} still has ${sockets.size} active connection(s), staying online`);
           }
         }
       });
