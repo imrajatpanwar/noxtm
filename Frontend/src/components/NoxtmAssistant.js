@@ -2,14 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import api from '../config/api';
 import splitViewIcon from '../assets/split_view.svg';
+import SendMsgIcon from '../assets/Send_msg.svg';
 import './NoxtmAssistant.css';
-
-// ─── Icons ───
-const SendIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-  </svg>
-);
 
 const SparkleIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -309,7 +303,7 @@ function NoxtmAssistant({ onCollapse }) {
           onClick={() => sendMessage()}
           disabled={!input.trim() || loading}
         >
-          <SendIcon />
+          <img src={SendMsgIcon} alt="Send" />
         </button>
       </div>
     </div>

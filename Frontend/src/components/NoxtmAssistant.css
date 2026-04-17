@@ -395,19 +395,19 @@
 
 .na-input {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #111827;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
   font-family: 'Switzer', sans-serif;
-  resize: none;
-  overflow: hidden;
-  min-height: 40px;
-  max-height: 120px;
+  resize: vertical;
+  overflow-y: auto;
+  min-height: 48px;
+  max-height: 200px;
   line-height: 1.5;
 }
 
@@ -425,23 +425,32 @@
 }
 
 .na-send-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   border: none;
-  background: #111827;
-  color: #ffffff;
+  background: transparent;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
   flex-shrink: 0;
 }
 
+.na-send-btn img {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+
 .na-send-btn:hover:not(:disabled) {
-  background: #000;
-  transform: scale(1.05);
+  transform: scale(1.07);
+}
+
+.na-send-btn:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .na-send-btn:disabled {
