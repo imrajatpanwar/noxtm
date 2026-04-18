@@ -63,8 +63,8 @@ const companyDataSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'],
-      default: 'Cold Lead'
+      enum: ['new', 'active', 'followup', 'converted', 'dead', 'Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'],
+      default: 'new'
     },
     followUp: {
       type: String,

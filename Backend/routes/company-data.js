@@ -8,6 +8,12 @@ const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
+const LEGACY_STATUS_MAP = {
+  'Cold Lead': 'new', 'Warm Lead': 'followup',
+  'Qualified (SQL)': 'converted', 'Active': 'active', 'Dead Lead': 'dead',
+};
+function normalizeStatus(s) { return LEGACY_STATUS_MAP[s] || s || 'new'; }
+
 // ============ PERMISSION HELPER ============
 // Resolves whether the current user can view/edit every company-data record in their
 // workspace, or only the ones they created. For now the rule is simply:
@@ -486,7 +492,7 @@ router.get('/company-data-contacts', auth, async (req, res) => {
           email: c.email || '',
           location: c.location || '',
           socialLinks: c.socialLinks || [],
-          status: c.status || 'Cold Lead',
+          status: normalizeStatus(c.status),
           followUp: c.followUp || '',
           isImportant: c.isImportant || false,
           labels: contactLabels,
@@ -555,7 +561,7 @@ router.patch('/company-data-contacts/:companyDataId/:contactIndex/status', auth,
       email: c.email || '',
       location: c.location || '',
       socialLinks: c.socialLinks || [],
-      status: c.status || 'Cold Lead',
+      status: normalizeStatus(c.status),
       followUp: c.followUp || '',
       isImportant: c.isImportant || false,
       labels: c.labels || [],
