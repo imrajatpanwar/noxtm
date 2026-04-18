@@ -5,11 +5,11 @@ const TargetedCompany = require('../models/TargetedCompany');
 const { authenticateToken } = require('../middleware/auth');
 
 const WA_TO_CONTACT_STATUS = {
-  new:       'Cold Lead',
-  active:    'Active',
-  followup:  'Warm Lead',
-  converted: 'Qualified (SQL)',
-  dead:      'Dead Lead',
+  new:       'new',
+  active:    'active',
+  followup:  'followup',
+  converted: 'converted',
+  dead:      'dead',
 };
 
 async function syncContactStatus(companyId, phone, waStatus) {

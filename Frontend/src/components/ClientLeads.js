@@ -11,13 +11,20 @@ import { Skeleton } from './ui/skeleton';
 import { confirm } from './ui/alert-dialog';
 import './ClientLeads.css';
 
-const STATUS_OPTIONS = ['Cold Lead', 'Warm Lead', 'Qualified (SQL)', 'Active', 'Dead Lead'];
+const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
+const STATUS_LABELS = {
+  new:       'New',
+  active:    'Active',
+  followup:  'Follow-up',
+  converted: 'Converted',
+  dead:      'Dead',
+};
 const STATUS_COLORS = {
-  'Cold Lead': { bg: '#dbeafe', color: '#1d4ed8' },
-  'Warm Lead': { bg: '#fef3c7', color: '#b45309' },
-  'Qualified (SQL)': { bg: '#dcfce7', color: '#15803d' },
-  'Active': { bg: '#f3e8ff', color: '#7c3aed' },
-  'Dead Lead': { bg: '#fee2e2', color: '#dc2626' }
+  new:       { bg: '#dbeafe', color: '#1d4ed8' },
+  active:    { bg: '#f3e8ff', color: '#7c3aed' },
+  followup:  { bg: '#fef3c7', color: '#b45309' },
+  converted: { bg: '#dcfce7', color: '#15803d' },
+  dead:      { bg: '#fee2e2', color: '#dc2626' },
 };
 
 const LABEL_COLORS = [
@@ -82,11 +89,11 @@ function ClientLeads() {
   // Stats
   const stats = {
     total: contacts.length,
-    cold: contacts.filter(c => c.status === 'Cold Lead').length,
-    warm: contacts.filter(c => c.status === 'Warm Lead').length,
-    qualified: contacts.filter(c => c.status === 'Qualified (SQL)').length,
-    active: contacts.filter(c => c.status === 'Active').length,
-    dead: contacts.filter(c => c.status === 'Dead Lead').length,
+    new: contacts.filter(c => c.status === 'new').length,
+    active: contacts.filter(c => c.status === 'active').length,
+    followup: contacts.filter(c => c.status === 'followup').length,
+    converted: contacts.filter(c => c.status === 'converted').length,
+    dead: contacts.filter(c => c.status === 'dead').length,
     important: contacts.filter(c => c.isImportant).length
   };
 
@@ -388,7 +395,7 @@ function ClientLeads() {
         <div className="cl-toolbar-right">
           <select className="cl-filter-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="All">All Statuses</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
           </select>
 
           {/* Label filter */}
@@ -488,7 +495,7 @@ function ClientLeads() {
                     </td>
                     <td>
                       <span className="cl-status-badge" style={{ background: style.bg, color: style.color }}>
-                        {contact.status}
+                        {STATUS_LABELS[contact.status] || contact.status}
                       </span>
                     </td>
                     <td onClick={e => e.stopPropagation()}>
@@ -607,7 +614,7 @@ function ContactSidePanel({ contact, labels, onClose, onStatusChange, onFollowUp
             <div className="cl-panel-stat">
               <FiActivity className="cl-panel-stat-icon" />
               <div>
-                <span className="cl-panel-stat-value">{contact.status}</span>
+                <span className="cl-panel-stat-value">{STATUS_LABELS[contact.status] || contact.status}</span>
                 <span className="cl-panel-stat-label">Status</span>
               </div>
             </div>
@@ -676,7 +683,7 @@ function ContactSidePanel({ contact, labels, onClose, onStatusChange, onFollowUp
                 onChange={e => onStatusChange(contact, e.target.value)}
                 style={{ marginBottom: 8 }}
               >
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             </div>
           </div>

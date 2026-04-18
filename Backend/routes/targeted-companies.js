@@ -7,13 +7,13 @@ const WhatsAppLead = require('../models/WhatsAppLead');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
-// Map WhatsAppLead status → Contacts status
+// WhatsApp lead status values are the same as contact status now — direct pass-through
 const WA_TO_CONTACT_STATUS = {
-  new:       'Cold Lead',
-  active:    'Active',
-  followup:  'Warm Lead',
-  converted: 'Qualified (SQL)',
-  dead:      'Dead Lead',
+  new:       'new',
+  active:    'active',
+  followup:  'followup',
+  converted: 'converted',
+  dead:      'dead',
 };
 
 // Simpler POST endpoint for Chrome extension
@@ -260,8 +260,8 @@ router.get('/contacts', auth, async (req, res) => {
         const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
         const waStatus = cleanPhone && phoneStatusMap[cleanPhone];
         const resolvedStatus = waStatus
-          ? (WA_TO_CONTACT_STATUS[waStatus] || c.status || 'Cold Lead')
-          : (c.status || 'Cold Lead');
+          ? (WA_TO_CONTACT_STATUS[waStatus] || c.status || 'new')
+          : (c.status || 'new');
 
         const contact = {
           _id: `${tc._id}_${i}`,
@@ -340,7 +340,7 @@ router.patch('/contacts/:targetedCompanyId/:contactIndex/status', auth, async (r
       email: c.email || '',
       location: c.location || '',
       socialLinks: c.socialLinks || [],
-      status: c.status || 'Cold Lead',
+      status: c.status || 'new',
       followUp: c.followUp || '',
       isImportant: c.isImportant || false,
       labels: c.labels || [],
