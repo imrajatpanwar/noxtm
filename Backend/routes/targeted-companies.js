@@ -319,7 +319,7 @@ router.get('/contacts', auth, async (req, res) => {
 });
 
 // Update contact status/followUp within a targeted company
-router.patch('/contacts/:targetedCompanyId/:contactIndex/status', auth, async (req, res) => {
+router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/status', auth, async (req, res) => {
   try {
     const User = mongoose.model('User');
     const user = await User.findById(req.user.userId);
@@ -384,7 +384,7 @@ router.patch('/contacts/:targetedCompanyId/:contactIndex/status', auth, async (r
 });
 
 // ============ TOGGLE IMPORTANT ============
-router.patch('/contacts/:targetedCompanyId/:contactIndex/important', auth, async (req, res) => {
+router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/important', auth, async (req, res) => {
   try {
     const User = mongoose.model('User');
     const user = await User.findById(req.user.userId);
@@ -410,7 +410,7 @@ router.patch('/contacts/:targetedCompanyId/:contactIndex/important', auth, async
 });
 
 // ============ ADD LABEL TO CONTACT ============
-router.patch('/contacts/:targetedCompanyId/:contactIndex/labels', auth, async (req, res) => {
+router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/labels', auth, async (req, res) => {
   try {
     const User = mongoose.model('User');
     const user = await User.findById(req.user.userId);

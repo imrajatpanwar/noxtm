@@ -109,7 +109,7 @@ function Contacts() {
   const handleToggleImportant = async (contact, e) => {
     if (e) e.stopPropagation();
     try {
-      const res = await api.patch(`/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/important`);
+      const res = await api.patch(`/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/important`);
       const newVal = res.data.isImportant;
       setContacts(prev => prev.map(c => c._id === contact._id ? { ...c, isImportant: newVal } : c));
       if (selectedContact?._id === contact._id) setSelectedContact(prev => ({ ...prev, isImportant: newVal }));
@@ -123,7 +123,7 @@ function Contacts() {
   // Add/remove label on a contact
   const handleContactLabel = async (contact, labelId, action) => {
     try {
-      const res = await api.patch(`/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/labels`, { labelId, action });
+      const res = await api.patch(`/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/labels`, { labelId, action });
       const newLabels = res.data.labels;
       setContacts(prev => prev.map(c => c._id === contact._id ? { ...c, labels: newLabels } : c));
       if (selectedContact?._id === contact._id) setSelectedContact(prev => ({ ...prev, labels: newLabels }));
@@ -138,7 +138,7 @@ function Contacts() {
   const handleStatusChange = async (contact, newStatus) => {
     try {
       const response = await api.patch(
-        `/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
+        `/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
         { status: newStatus }
       );
       setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
@@ -154,7 +154,7 @@ function Contacts() {
   const handleFollowUpChange = async (contact, followUp) => {
     try {
       const response = await api.patch(
-        `/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
+        `/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
         { followUp }
       );
       setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
