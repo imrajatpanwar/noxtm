@@ -8,7 +8,7 @@ import Sidebar from './Sidebar';
 import Overview from './Overview';
 import TaskManager from './TaskManager';
 import LeadsFlow from './LeadsFlow';
-import ClientLeads from './ClientLeads';
+import Contacts from './Contacts';
 import EmailSetup from './EmailSetup';
 import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
@@ -289,7 +289,7 @@ function Dashboard({ user, onLogout }) {
       case 'client-management':
         return <ClientManagement />;
       case 'client-leads':
-        return <ClientLeads />;
+        return <Contacts />;
       case 'leads-metrics':
         return <div />;
       case 'company-data':

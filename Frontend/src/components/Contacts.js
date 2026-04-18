@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 import { confirm } from './ui/alert-dialog';
-import './ClientLeads.css';
+import './Contacts.css';
 
 const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
 const STATUS_LABELS = {
@@ -40,7 +40,7 @@ const LABEL_COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
 ];
 
-function ClientLeads() {
+function Contacts() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,7 +109,7 @@ function ClientLeads() {
   const handleToggleImportant = async (contact, e) => {
     if (e) e.stopPropagation();
     try {
-      const res = await api.patch(`/contacts/${contact.exhibitorId}/${contact.contactIndex}/important`);
+      const res = await api.patch(`/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/important`);
       const newVal = res.data.isImportant;
       setContacts(prev => prev.map(c => c._id === contact._id ? { ...c, isImportant: newVal } : c));
       if (selectedContact?._id === contact._id) setSelectedContact(prev => ({ ...prev, isImportant: newVal }));
@@ -123,7 +123,7 @@ function ClientLeads() {
   // Add/remove label on a contact
   const handleContactLabel = async (contact, labelId, action) => {
     try {
-      const res = await api.patch(`/contacts/${contact.exhibitorId}/${contact.contactIndex}/labels`, { labelId, action });
+      const res = await api.patch(`/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/labels`, { labelId, action });
       const newLabels = res.data.labels;
       setContacts(prev => prev.map(c => c._id === contact._id ? { ...c, labels: newLabels } : c));
       if (selectedContact?._id === contact._id) setSelectedContact(prev => ({ ...prev, labels: newLabels }));
@@ -138,7 +138,7 @@ function ClientLeads() {
   const handleStatusChange = async (contact, newStatus) => {
     try {
       const response = await api.patch(
-        `/contacts/${contact.exhibitorId}/${contact.contactIndex}/status`,
+        `/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
         { status: newStatus }
       );
       setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
@@ -154,7 +154,7 @@ function ClientLeads() {
   const handleFollowUpChange = async (contact, followUp) => {
     try {
       const response = await api.patch(
-        `/contacts/${contact.exhibitorId}/${contact.contactIndex}/status`,
+        `/contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
         { followUp }
       );
       setContacts(contacts.map(c => c._id === contact._id ? { ...c, ...response.data } : c));
@@ -209,9 +209,9 @@ function ClientLeads() {
   // CSV Export
   const handleExport = () => {
     const csvContent = [
-      ['Contact Name', 'Company', 'Trade Show', 'Email', 'Phone', 'Designation', 'Location', 'Status', 'Follow-Up', 'Important', 'Labels'],
+      ['Contact Name', 'Company', 'Email', 'Phone', 'Designation', 'Location', 'Status', 'Follow-Up', 'Important', 'Labels'],
       ...contacts.map(c => [
-        c.fullName, c.companyName, c.tradeShowName || '', c.email, c.phone || '',
+        c.fullName, c.companyName, c.email, c.phone || '',
         c.designation || '', c.location || '', c.status, c.followUp || '',
         c.isImportant ? 'Yes' : 'No',
         (c.labels || []).map(l => l.name).join('; ')
@@ -456,7 +456,6 @@ function ClientLeads() {
                 <th style={{ width: 40 }}></th>
                 <th>Contact</th>
                 <th>Company</th>
-                <th>Trade Show</th>
                 <th>Phone</th>
                 <th>Status</th>
                 <th>Labels</th>
@@ -491,9 +490,6 @@ function ClientLeads() {
                     </td>
                     <td>
                       <span className="cl-company-name">{contact.companyName}</span>
-                    </td>
-                    <td>
-                      <span className="cl-company-name" style={{ fontSize: 12, color: '#6b7280' }}>{contact.tradeShowName || '-'}</span>
                     </td>
                     <td>
                       <div className="cl-contact-cell">
@@ -611,9 +607,6 @@ function ContactSidePanel({ contact, labels, onClose, onStatusChange, onFollowUp
             <div className="cl-panel-profile-info">
               <h2>{contact.fullName}</h2>
               <span className="cl-panel-company">{contact.companyName}</span>
-              {contact.tradeShowName && (
-                <span style={{ fontSize: 12, color: '#6b7280', display: 'block', marginTop: 2 }}>{contact.tradeShowName}</span>
-              )}
             </div>
           </div>
 
@@ -796,4 +789,4 @@ function ContactSidePanel({ contact, labels, onClose, onStatusChange, onFollowUp
   );
 }
 
-export default ClientLeads;
+export default Contacts;

@@ -340,6 +340,23 @@ router.patch('/contacts/:targetedCompanyId/:contactIndex/status', auth, async (r
 
     await targetedCompany.save();
 
+    // Sync status to WhatsApp lead by phone (last-10-digit match)
+    if (status) {
+      const phone = targetedCompany.contacts[idx].phone;
+      const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+      const last10 = cleanPhone.slice(-10);
+      if (last10) {
+        const waLeads = await WhatsAppLead.find({ companyId: user.companyId }).select('phone _id').lean();
+        for (const wl of waLeads) {
+          const wLast10 = (wl.phone || '').replace(/[^0-9]/g, '').slice(-10);
+          if (wLast10 && wLast10 === last10) {
+            await WhatsAppLead.updateOne({ _id: wl._id }, { $set: { status } });
+            break;
+          }
+        }
+      }
+    }
+
     const c = targetedCompany.contacts[idx];
     res.json({
       _id: `${targetedCompany._id}_${idx}`,
