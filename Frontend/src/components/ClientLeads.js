@@ -19,6 +19,14 @@ const STATUS_LABELS = {
   converted: 'Converted',
   dead:      'Dead',
 };
+const LEGACY_NORMALIZE = {
+  'Cold Lead':       'new',
+  'Warm Lead':       'followup',
+  'Qualified (SQL)': 'converted',
+  'Active':          'active',
+  'Dead Lead':       'dead',
+};
+const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
 const STATUS_COLORS = {
   new:       { bg: '#dbeafe', color: '#1d4ed8' },
   active:    { bg: '#f3e8ff', color: '#7c3aed' },
@@ -458,7 +466,7 @@ function ClientLeads() {
             </thead>
             <tbody>
               {contacts.map(contact => {
-                const style = getStatusStyle(contact.status);
+                const style = getStatusStyle(normalizeStatus(contact.status));
                 return (
                   <tr key={contact._id} onClick={() => handleContactClick(contact)}>
                     <td onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
@@ -495,7 +503,7 @@ function ClientLeads() {
                     </td>
                     <td>
                       <span className="cl-status-badge" style={{ background: style.bg, color: style.color }}>
-                        {STATUS_LABELS[contact.status] || contact.status}
+                        {STATUS_LABELS[normalizeStatus(contact.status)]}
                       </span>
                     </td>
                     <td onClick={e => e.stopPropagation()}>
@@ -614,7 +622,7 @@ function ContactSidePanel({ contact, labels, onClose, onStatusChange, onFollowUp
             <div className="cl-panel-stat">
               <FiActivity className="cl-panel-stat-icon" />
               <div>
-                <span className="cl-panel-stat-value">{STATUS_LABELS[contact.status] || contact.status}</span>
+                <span className="cl-panel-stat-value">{STATUS_LABELS[normalizeStatus(contact.status)]}</span>
                 <span className="cl-panel-stat-label">Status</span>
               </div>
             </div>

@@ -248,16 +248,14 @@ router.get('/contacts', auth, async (req, res) => {
     const labelMap = {};
     allLabels.forEach(l => { labelMap[l._id.toString()] = l; });
 
-    // Build phone → WhatsAppLead status map for this company
-    const allPhones = [];
-    for (const tc of targetedCompanies) {
-      for (const c of (tc.contacts || [])) {
-        if (c.phone) allPhones.push(c.phone.replace(/[^0-9]/g, ''));
-      }
-    }
-    const waLeads = await WhatsAppLead.find({ companyId, phone: { $in: allPhones } }).select('phone status').lean();
-    const phoneStatusMap = {};
-    waLeads.forEach(l => { phoneStatusMap[l.phone] = l.status; });
+    // Build last-10-digit → WhatsAppLead status map (handles country code mismatch)
+    const waLeads = await WhatsAppLead.find({ companyId }).select('phone status').lean();
+    const phoneStatusMap = {}; // last10 → status
+    waLeads.forEach(l => {
+      const digits = (l.phone || '').replace(/[^0-9]/g, '');
+      const last10 = digits.slice(-10);
+      if (last10) phoneStatusMap[last10] = l.status;
+    });
 
     const contacts = [];
     for (const tc of targetedCompanies) {
@@ -268,9 +266,10 @@ router.get('/contacts', auth, async (req, res) => {
 
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
 
-        // If this contact has a WhatsApp lead, use its status; else normalize stored status
+        // Match by last 10 digits to handle country code differences
         const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
-        const waStatus = cleanPhone && phoneStatusMap[cleanPhone];
+        const last10 = cleanPhone.slice(-10);
+        const waStatus = last10 && phoneStatusMap[last10];
         const resolvedStatus = waStatus
           ? (WA_TO_CONTACT_STATUS[waStatus] || normalizeStatus(c.status))
           : normalizeStatus(c.status);

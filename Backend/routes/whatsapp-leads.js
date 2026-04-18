@@ -16,14 +16,14 @@ async function syncContactStatus(companyId, phone, waStatus) {
   try {
     const contactStatus = WA_TO_CONTACT_STATUS[waStatus];
     if (!contactStatus) return;
-    const cleaned = phone?.replace(/[^0-9]/g, '');
-    if (!cleaned) return;
-    // Find all targeted companies for this company that have a contact with this phone
+    const waLast10 = (phone || '').replace(/[^0-9]/g, '').slice(-10);
+    if (!waLast10) return;
     const tcs = await TargetedCompany.find({ companyId });
     for (const tc of tcs) {
       let changed = false;
       (tc.contacts || []).forEach((c, i) => {
-        if ((c.phone || '').replace(/[^0-9]/g, '') === cleaned) {
+        const cLast10 = (c.phone || '').replace(/[^0-9]/g, '').slice(-10);
+        if (cLast10 && cLast10 === waLast10) {
           tc.contacts[i].status = contactStatus;
           changed = true;
         }
