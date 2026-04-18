@@ -16,6 +16,18 @@ const WA_TO_CONTACT_STATUS = {
   dead:      'dead',
 };
 
+// Normalize legacy status values stored in DB
+const LEGACY_STATUS_MAP = {
+  'Cold Lead':       'new',
+  'Warm Lead':       'followup',
+  'Qualified (SQL)': 'converted',
+  'Active':          'active',
+  'Dead Lead':       'dead',
+};
+function normalizeStatus(s) {
+  return LEGACY_STATUS_MAP[s] || s || 'new';
+}
+
 // Simpler POST endpoint for Chrome extension
 
 // Get ALL targeted companies for the user's company (used by Leads Flow dropdown)
@@ -256,12 +268,12 @@ router.get('/contacts', auth, async (req, res) => {
 
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
 
-        // If this contact has a WhatsApp lead, use its status; else fall back to stored status
+        // If this contact has a WhatsApp lead, use its status; else normalize stored status
         const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
         const waStatus = cleanPhone && phoneStatusMap[cleanPhone];
         const resolvedStatus = waStatus
-          ? (WA_TO_CONTACT_STATUS[waStatus] || c.status || 'new')
-          : (c.status || 'new');
+          ? (WA_TO_CONTACT_STATUS[waStatus] || normalizeStatus(c.status))
+          : normalizeStatus(c.status);
 
         const contact = {
           _id: `${tc._id}_${i}`,
@@ -340,7 +352,7 @@ router.patch('/contacts/:targetedCompanyId/:contactIndex/status', auth, async (r
       email: c.email || '',
       location: c.location || '',
       socialLinks: c.socialLinks || [],
-      status: c.status || 'new',
+      status: normalizeStatus(c.status),
       followUp: c.followUp || '',
       isImportant: c.isImportant || false,
       labels: c.labels || [],

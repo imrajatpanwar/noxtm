@@ -346,17 +346,17 @@ function ClientLeads() {
             <FiActivity style={{ color: '#1d4ed8' }} />
           </div>
           <div className="cl-stat-info">
-            <span className="cl-stat-number">{stats.cold}</span>
-            <span className="cl-stat-label">Cold</span>
+            <span className="cl-stat-number">{stats.new}</span>
+            <span className="cl-stat-label">New</span>
           </div>
         </div>
         <div className="cl-stat-card">
-          <div className="cl-stat-icon" style={{ background: '#fef3c7' }}>
-            <FiActivity style={{ color: '#b45309' }} />
+          <div className="cl-stat-icon" style={{ background: '#f3e8ff' }}>
+            <FiActivity style={{ color: '#7c3aed' }} />
           </div>
           <div className="cl-stat-info">
-            <span className="cl-stat-number">{stats.warm}</span>
-            <span className="cl-stat-label">Warm</span>
+            <span className="cl-stat-number">{stats.active}</span>
+            <span className="cl-stat-label">Active</span>
           </div>
         </div>
         <div className="cl-stat-card">
@@ -364,8 +364,8 @@ function ClientLeads() {
             <FiChevronRight style={{ color: '#15803d' }} />
           </div>
           <div className="cl-stat-info">
-            <span className="cl-stat-number">{stats.qualified}</span>
-            <span className="cl-stat-label">Qualified</span>
+            <span className="cl-stat-number">{stats.converted}</span>
+            <span className="cl-stat-label">Converted</span>
           </div>
         </div>
         <div className={`cl-stat-card ${filterImportant ? 'cl-stat-active' : ''}`} onClick={() => setFilterImportant(!filterImportant)} style={{ cursor: 'pointer' }}>
