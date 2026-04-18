@@ -89,7 +89,7 @@ function PermissionSelect({ value, onChange, disabled }) {
   );
 }
 
-function CompanyDataList() {
+function CompanyDataList({ activeTab, tabs, onTabChange }) {
   const { currentUser } = useRole();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -500,6 +500,35 @@ function CompanyDataList() {
             )}
           </div>
         </div>
+
+        {/* Tab bar inside header */}
+        {tabs && onTabChange && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 16, borderTop: '1px solid #e5e7eb', paddingTop: 0 }}>
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 16px', fontSize: 14, fontWeight: 500,
+                    color: isActive ? '#09090b' : '#6b7280',
+                    background: 'transparent', border: 'none',
+                    borderBottom: isActive ? '2px solid #09090b' : '2px solid transparent',
+                    marginBottom: -1, cursor: 'pointer',
+                    transition: 'color 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#09090b'; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#6b7280'; }}
+                >
+                  <Icon size={15} /> {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Search + stats row */}
