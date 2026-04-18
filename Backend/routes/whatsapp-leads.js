@@ -3,6 +3,7 @@ const router = express.Router();
 const WhatsAppLead = require('../models/WhatsAppLead');
 const TargetedCompany = require('../models/TargetedCompany');
 const { authenticateToken } = require('../middleware/auth');
+const { normalizePhone } = require('../utils/phoneNormalize');
 
 const WA_TO_CONTACT_STATUS = {
   new:       'new',
@@ -16,13 +17,13 @@ async function syncContactStatus(companyId, phone, waStatus) {
   try {
     const contactStatus = WA_TO_CONTACT_STATUS[waStatus];
     if (!contactStatus) return;
-    const waLast10 = (phone || '').replace(/[^0-9]/g, '').slice(-10);
+    const waLast10 = normalizePhone(phone);
     if (!waLast10) return;
     const tcs = await TargetedCompany.find({ companyId });
     for (const tc of tcs) {
       let changed = false;
       (tc.contacts || []).forEach((c, i) => {
-        const cLast10 = (c.phone || '').replace(/[^0-9]/g, '').slice(-10);
+        const cLast10 = normalizePhone(c.phone);
         if (cLast10 && cLast10 === waLast10) {
           tc.contacts[i].status = contactStatus;
           changed = true;
@@ -87,7 +88,7 @@ router.get('/by-phone', async (req, res) => {
     const { companyId } = req.user;
     const { phone } = req.query;
     if (!phone) return res.json({ lead: null });
-    const cleaned = phone.replace(/[^0-9]/g, '');
+    const cleaned = String(phone).replace(/\D/g, '');
     const lead = await WhatsAppLead.findOne({ companyId, phone: cleaned }).lean();
     res.json({ lead });
   } catch (err) {
@@ -108,7 +109,7 @@ router.put('/:id/status', async (req, res) => {
       { new: true }
     );
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
-    syncContactStatus(companyId, lead.phone, status); // fire-and-forget
+    await syncContactStatus(companyId, lead.phone, status);
     res.json({ lead });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -122,14 +123,14 @@ router.put('/by-phone/status', async (req, res) => {
     const { phone, status } = req.body;
     const valid = ['new', 'active', 'dead', 'followup', 'converted'];
     if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
-    const cleaned = phone?.replace(/[^0-9]/g, '');
+    const cleaned = phone ? String(phone).replace(/\D/g, '') : '';
     if (!cleaned) return res.status(400).json({ message: 'Phone required' });
     const lead = await WhatsAppLead.findOneAndUpdate(
       { companyId, phone: cleaned },
       { $set: { status } },
       { new: true }
     );
-    syncContactStatus(companyId, cleaned, status); // fire-and-forget
+    await syncContactStatus(companyId, cleaned, status);
     res.json({ lead });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

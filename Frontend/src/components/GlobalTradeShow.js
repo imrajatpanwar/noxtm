@@ -32,14 +32,13 @@ const DATE_FILTERS = [
   { label: 'Next 6 Months', value: 'next6' }
 ];
 
-function GlobalTradeShow({ onNavigate }) {
+function GlobalTradeShow() {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyUsers, setCompanyUsers] = useState([]);
-  const [showsWithExhibitors, setShowsWithExhibitors] = useState({});
 
   // Filters
   const [filterIndustry, setFilterIndustry] = useState('');
@@ -89,17 +88,7 @@ function GlobalTradeShow({ onNavigate }) {
     try {
       setLoading(true);
       const r = await api.get('/trade-shows');
-      const tradeShows = r.data.tradeShows || [];
-      setShows(tradeShows);
-      
-      // Fetch exhibitor count for each trade show
-      tradeShows.forEach(async (show) => {
-        try {
-          const exhibitorsRes = await api.get(`/trade-shows/${show._id}/exhibitors`);
-          const actualCount = exhibitorsRes.data.exhibitors?.length || 0;
-          setShowsWithExhibitors(prev => ({ ...prev, [show._id]: actualCount }));
-        } catch (e) { console.error(`Failed to fetch exhibitors for ${show._id}`, e); }
-      });
+      setShows(r.data.tradeShows || []);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -399,7 +388,7 @@ function GlobalTradeShow({ onNavigate }) {
           {filtered.map(s => {
             const cd = getDays(s.showDate);
             return (
-              <div key={s._id} className="gts-card" onClick={() => onNavigate && onNavigate('exhibitor-list', s)}>
+              <div key={s._id} className="gts-card">
                 {/* Trade Show Name */}
                 <div className="gts-card-head">
                   <div className="gts-card-logo">
@@ -429,7 +418,7 @@ function GlobalTradeShow({ onNavigate }) {
                   <div className="gts-stat">
                     <FiUsers size={12} className="gts-stat-icon" />
                     <div>
-                      <strong>{showsWithExhibitors[s._id] !== undefined ? `${showsWithExhibitors[s._id]}/${s.exhibitors || '0'}` : (s.exhibitors || '0')}</strong>
+                      <strong>{s.exhibitors || '0'}</strong>
                       <span>Exhibitors</span>
                     </div>
                   </div>

@@ -145,9 +145,6 @@ app.use('/api/leads', leadsRoutes);
 const whatsappLeadsRoutes = require('./routes/whatsapp-leads');
 app.use('/api/whatsapp-leads', whatsappLeadsRoutes);
 
-// Exhibitors routes
-const exhibitorsRoutes = require('./routes/exhibitors');
-app.use('/api', exhibitorsRoutes);
 const companyDataRoutes = require('./routes/company-data');
 app.use('/api', companyDataRoutes);
 

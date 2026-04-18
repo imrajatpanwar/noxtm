@@ -8,7 +8,6 @@ import Sidebar from './Sidebar';
 import Overview from './Overview';
 import TaskManager from './TaskManager';
 import LeadsFlow from './LeadsFlow';
-import Contacts from './Contacts';
 import EmailSetup from './EmailSetup';
 import ProjectManagement from './ProjectManagement';
 import ProjectDelivered from './ProjectDelivered';
@@ -37,10 +36,9 @@ import ManageIntegrations from './ManageIntegrations';
 import UsersRoles from './UsersRoles';
 import WorkspaceSettings from './WorkspaceSettings';
 import GlobalTradeShow from './GlobalTradeShow';
-import ExhibitorsList from './ExhibitorsList';
 import TrendingServices from './TrendingServices';
 import TargetedCompanyList from './TargetedCompanyList';
-import CompanyDataList from './CompanyDataList';
+import DataCenter from './DataCenter';
 import ClientManagement from './ClientManagement';
 import InvoiceManagement from './InvoiceManagement';
 import MailPoller from './MailPoller';
@@ -113,7 +111,6 @@ function Dashboard({ user, onLogout }) {
   }, [assistantWidth]);
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
-  const [selectedTradeShow, setSelectedTradeShow] = useState(null);
   const [selectedTrendingService, setSelectedTrendingService] = useState(null);
 
   const isAdmin = currentUser?.role === 'Admin';
@@ -270,9 +267,6 @@ function Dashboard({ user, onLogout }) {
 
   const handleNavigate = (section, data) => {
     setActiveSection(section);
-    if (section === 'exhibitor-list' && data) {
-      setSelectedTradeShow(data);
-    }
     if (section === 'targeted-company-list' && data) {
       setSelectedTrendingService(data);
     }
@@ -288,16 +282,12 @@ function Dashboard({ user, onLogout }) {
         return <LeadsFlow />;
       case 'client-management':
         return <ClientManagement />;
-      case 'client-leads':
-        return <Contacts />;
       case 'leads-metrics':
         return <div />;
       case 'company-data':
-        return <CompanyDataList />;
+        return <DataCenter />;
       case 'global-trade-show':
-        return <GlobalTradeShow onNavigate={handleNavigate} />;
-      case 'exhibitor-list':
-        return <ExhibitorsList tradeShow={selectedTradeShow} onNavigate={handleNavigate} />;
+        return <GlobalTradeShow />;
       case 'trending-services':
         return <TrendingServices onNavigate={handleNavigate} />;
       case 'targeted-company-list':

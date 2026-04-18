@@ -10,7 +10,7 @@ const leadCampaignSchema = new mongoose.Schema({
   dataTypeAssignments: [{
     dataType: {
       type: String,
-      enum: ['lead-mining', 'exhibitor-list', 'exhibitor-data'],
+      enum: ['lead-mining'],
       required: true
     },
     assignees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]

@@ -4,7 +4,6 @@ import './ContactListManager.css';
 import { confirm } from './ui/alert-dialog';
 import CSVImport from './ImportModals/CSVImport';
 import LeadImport from './ImportModals/LeadImport';
-import TradeShowImport from './ImportModals/TradeShowImport';
 
 function ContactListManager() {
   const navigate = useNavigate();
@@ -197,7 +196,6 @@ function ContactListManager() {
     const badges = {
       csv: { label: 'CSV', color: '#3B82F6' },
       leads: { label: 'Leads', color: '#10B981' },
-      tradeshow: { label: 'Trade Show', color: '#F59E0B' },
       custom: { label: 'Custom', color: '#6B7280' },
       manual: { label: 'Manual', color: '#8B5CF6' }
     };
@@ -256,13 +254,6 @@ function ContactListManager() {
               >
                 👥 Leads
               </button>
-              <button
-                className="btn-import-small"
-                onClick={() => setShowImportModal('tradeshow')}
-                title="Import Trade Show"
-              >
-                🎪 Shows
-              </button>
             </div>
           </div>
 
@@ -283,7 +274,6 @@ function ContactListManager() {
               <option value="all">All Sources</option>
               <option value="csv">CSV</option>
               <option value="leads">Leads</option>
-              <option value="tradeshow">Trade Shows</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -446,12 +436,6 @@ function ContactListManager() {
       )}
       {showImportModal === 'leads' && (
         <LeadImport
-          onClose={() => setShowImportModal(null)}
-          onImportComplete={handleImportComplete}
-        />
-      )}
-      {showImportModal === 'tradeshow' && (
-        <TradeShowImport
           onClose={() => setShowImportModal(null)}
           onImportComplete={handleImportComplete}
         />

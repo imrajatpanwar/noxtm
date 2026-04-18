@@ -387,18 +387,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                       )}
                     </SidebarMenuItem>
 
-                    {/* Contacts */}
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        isActive={activeSection === 'client-leads'}
-                        tooltip="Contacts"
-                        onClick={() => onSectionChange('client-leads')}
-                      >
-                        <FiUserCheck className="sidebar-icon" />
-                        <span>Contacts</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-
                     {/* Client Management */}
                     <SidebarMenuItem>
                       <SidebarMenuButton

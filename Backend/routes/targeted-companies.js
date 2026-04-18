@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const TargetedCompany = require('../models/TargetedCompany');
 const ContactLabel = require('../models/ContactLabel');
 const WhatsAppLead = require('../models/WhatsAppLead');
+const { normalizePhone } = require('../utils/phoneNormalize');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
 
@@ -248,13 +249,13 @@ router.get('/contacts', auth, async (req, res) => {
     const labelMap = {};
     allLabels.forEach(l => { labelMap[l._id.toString()] = l; });
 
-    // Build last-10-digit → WhatsAppLead status map (handles country code mismatch)
+    // Build normalized-phone → WhatsAppLead status map (handles country code mismatch)
+    // WhatsAppLead is the single source of truth for status.
     const waLeads = await WhatsAppLead.find({ companyId }).select('phone status').lean();
-    const phoneStatusMap = {}; // last10 → status
+    const phoneStatusMap = {}; // normalizedPhone → status
     waLeads.forEach(l => {
-      const digits = (l.phone || '').replace(/[^0-9]/g, '');
-      const last10 = digits.slice(-10);
-      if (last10) phoneStatusMap[last10] = l.status;
+      const key = normalizePhone(l.phone);
+      if (key) phoneStatusMap[key] = l.status;
     });
 
     const contacts = [];
@@ -266,12 +267,13 @@ router.get('/contacts', auth, async (req, res) => {
 
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
 
-        // Match by last 10 digits to handle country code differences
-        const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
-        const last10 = cleanPhone.slice(-10);
-        const waStatus = last10 && phoneStatusMap[last10];
+        // WhatsAppLead is the single source of truth. If a phone match exists,
+        // its status ALWAYS wins. Fall back to stored contact status only when
+        // no WhatsAppLead exists for this phone (legacy data).
+        const key = normalizePhone(c.phone);
+        const waStatus = key ? phoneStatusMap[key] : null;
         const resolvedStatus = waStatus
-          ? (WA_TO_CONTACT_STATUS[waStatus] || normalizeStatus(c.status))
+          ? waStatus
           : normalizeStatus(c.status);
 
         const contact = {
@@ -335,27 +337,29 @@ router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/status', auth, async
       return res.status(404).json({ message: 'Contact not found' });
     }
 
-    if (status) targetedCompany.contacts[idx].status = status;
+    // WhatsAppLead is the single source of truth for status.
+    // 1) Find the matching WhatsAppLead by normalized phone FIRST.
+    // 2) Update WhatsAppLead.status (await).
+    // 3) THEN mirror the status to TargetedCompany.contacts[idx].status.
+    // If no WhatsAppLead exists yet, still update the contact (legacy data case).
+    let effectiveStatus = status;
+    if (status) {
+      const key = normalizePhone(targetedCompany.contacts[idx].phone);
+      if (key) {
+        const waLeads = await WhatsAppLead.find({ companyId: user.companyId }).select('phone _id').lean();
+        const match = waLeads.find(wl => normalizePhone(wl.phone) === key);
+        if (match) {
+          await WhatsAppLead.updateOne({ _id: match._id }, { $set: { status } });
+          // Re-read to confirm source-of-truth value
+          const updated = await WhatsAppLead.findById(match._id).select('status').lean();
+          effectiveStatus = updated ? updated.status : status;
+        }
+      }
+      targetedCompany.contacts[idx].status = effectiveStatus;
+    }
     if (followUp !== undefined) targetedCompany.contacts[idx].followUp = followUp;
 
     await targetedCompany.save();
-
-    // Sync status to WhatsApp lead by phone (last-10-digit match)
-    if (status) {
-      const phone = targetedCompany.contacts[idx].phone;
-      const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
-      const last10 = cleanPhone.slice(-10);
-      if (last10) {
-        const waLeads = await WhatsAppLead.find({ companyId: user.companyId }).select('phone _id').lean();
-        for (const wl of waLeads) {
-          const wLast10 = (wl.phone || '').replace(/[^0-9]/g, '').slice(-10);
-          if (wLast10 && wLast10 === last10) {
-            await WhatsAppLead.updateOne({ _id: wl._id }, { $set: { status } });
-            break;
-          }
-        }
-      }
-    }
 
     const c = targetedCompany.contacts[idx];
     res.json({
@@ -368,7 +372,8 @@ router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/status', auth, async
       email: c.email || '',
       location: c.location || '',
       socialLinks: c.socialLinks || [],
-      status: normalizeStatus(c.status),
+      // Return raw status from WhatsAppLead (source of truth) — do not mask with normalizeStatus
+      status: effectiveStatus || c.status || 'new',
       followUp: c.followUp || '',
       isImportant: c.isImportant || false,
       labels: c.labels || [],
@@ -452,7 +457,7 @@ router.patch('/tc-contacts/:targetedCompanyId/:contactIndex/labels', auth, async
   }
 });
 
-// ============ CONTACT LABELS CRUD (shared with exhibitors) ============
+// ============ CONTACT LABELS CRUD ============
 
 // Get all labels for company
 router.get('/contact-labels', auth, async (req, res) => {

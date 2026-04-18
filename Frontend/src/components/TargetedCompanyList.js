@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './ExhibitorsList.css';
 import Breadcrumb from './Breadcrumb';
 import defaultAvatar from './image/default-avatar.svg';
 import { FiPlus, FiX, FiSearch, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';

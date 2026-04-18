@@ -6,7 +6,6 @@ import './CampaignWizard.css';
 import { confirm } from './ui/alert-dialog';
 import CSVImport from './ImportModals/CSVImport';
 import LeadImport from './ImportModals/LeadImport';
-import TradeShowImport from './ImportModals/TradeShowImport';
 
 function CampaignWizard() {
   const navigate = useNavigate();
@@ -483,12 +482,6 @@ function CampaignWizard() {
               >
                 👥 Import from Leads
               </button>
-              <button
-                className="btn-import"
-                onClick={() => setShowImportModal('tradeshow')}
-              >
-                🎪 Import from Trade Show
-              </button>
             </div>
 
             <div className="contact-lists">
@@ -635,12 +628,6 @@ function CampaignWizard() {
       )}
       {showImportModal === 'leads' && (
         <LeadImport
-          onClose={() => setShowImportModal(null)}
-          onImportComplete={handleImportComplete}
-        />
-      )}
-      {showImportModal === 'tradeshow' && (
-        <TradeShowImport
           onClose={() => setShowImportModal(null)}
           onImportComplete={handleImportComplete}
         />

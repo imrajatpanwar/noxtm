@@ -6,7 +6,6 @@ const LeadDirectory = require('../models/Lead');
 const User = require('../models/User');
 const InstalledModule = require('../models/InstalledModule');
 const TradeShow = require('../models/TradeShow');
-const Exhibitor = require('../models/Exhibitor');
 const TrendingService = require('../models/TrendingService');
 const TargetedCompany = require('../models/TargetedCompany');
 const CompanyData = require('../models/CompanyData');
@@ -67,18 +66,6 @@ router.get('/settings', auth, async (req, res) => {
                 tradeShows = await TradeShow.find(query)
                     .select('shortName fullName showDate location industry')
                     .sort({ showDate: -1 });
-
-                // Add exhibitor count for each trade show
-                for (let i = 0; i < tradeShows.length; i++) {
-                    const count = await Exhibitor.countDocuments({
-                        tradeShowId: tradeShows[i]._id,
-                        companyId: user.companyId
-                    });
-                    tradeShows[i] = {
-                        ...tradeShows[i].toObject(),
-                        exhibitorCount: count
-                    };
-                }
             } catch (e) {
                 console.error('Error fetching trade shows for findr:', e);
             }
@@ -419,120 +406,6 @@ router.get('/campaigns/:id/leads', auth, async (req, res) => {
     } catch (error) {
         console.error('Error fetching campaign leads:', error);
         res.status(500).json({ message: 'Failed to fetch leads', error: error.message });
-    }
-});
-
-// GET /findr/trade-shows/:tradeShowId/exhibitors - Get exhibitors for a trade show (Chrome Extension)
-router.get('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const { tradeShowId } = req.params;
-
-        const user = await User.findById(userId).select('companyId');
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        const exhibitors = await Exhibitor.find({
-            tradeShowId,
-            companyId: user.companyId
-        }).sort({ createdAt: -1 });
-
-        const tradeShow = await TradeShow.findById(tradeShowId)
-            .select('shortName fullName showDate location');
-
-        res.json({
-            success: true,
-            tradeShow: tradeShow || {},
-            exhibitors
-        });
-    } catch (error) {
-        console.error('Error fetching exhibitors for findr:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch exhibitors', error: error.message });
-    }
-});
-
-// POST /findr/trade-shows/:tradeShowId/exhibitors - Add exhibitor from Chrome Extension
-router.post('/trade-shows/:tradeShowId/exhibitors', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const { tradeShowId } = req.params;
-        const { companyName, companyEmail, phone, address, boothNo, website, linkedIn, contacts } = req.body;
-
-        const user = await User.findById(userId).select('companyId');
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        if (!companyName) {
-            return res.status(400).json({ success: false, message: 'Company name is required' });
-        }
-
-        const exhibitor = new Exhibitor({
-            tradeShowId,
-            companyName,
-            companyEmail: companyEmail || '',
-            location: address || '',
-            boothNo: boothNo || '',
-            website: website || '',
-            contacts: contacts || [],
-            createdBy: userId,
-            companyId: user.companyId,
-            extractedAt: new Date()
-        });
-
-        await exhibitor.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Exhibitor added successfully',
-            exhibitor
-        });
-    } catch (error) {
-        console.error('Error adding exhibitor from findr:', error);
-        res.status(500).json({ success: false, message: 'Failed to add exhibitor', error: error.message });
-    }
-});
-
-// PUT /findr/exhibitors/:id - Update exhibitor from Chrome Extension
-router.put('/exhibitors/:id', auth, async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const exhibitorId = req.params.id;
-
-        const user = await User.findById(userId).select('companyId');
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        const exhibitor = await Exhibitor.findOne({
-            _id: exhibitorId,
-            companyId: user.companyId
-        });
-
-        if (!exhibitor) {
-            return res.status(404).json({ success: false, message: 'Exhibitor not found' });
-        }
-
-        // Update fields
-        const { companyName, companyEmail, location, boothNo, website, contacts } = req.body;
-        if (companyName !== undefined) exhibitor.companyName = companyName;
-        if (companyEmail !== undefined) exhibitor.companyEmail = companyEmail;
-        if (location !== undefined) exhibitor.location = location;
-        if (boothNo !== undefined) exhibitor.boothNo = boothNo;
-        if (website !== undefined) exhibitor.website = website;
-        if (contacts !== undefined) exhibitor.contacts = contacts;
-
-        await exhibitor.save();
-
-        res.json({
-            success: true,
-            message: 'Exhibitor updated successfully',
-            exhibitor
-        });
-    } catch (error) {
-        console.error('Error updating exhibitor from findr:', error);
-        res.status(500).json({ success: false, message: 'Failed to update exhibitor', error: error.message });
     }
 });
 
