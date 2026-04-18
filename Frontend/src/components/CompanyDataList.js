@@ -5,6 +5,7 @@ import { useRole } from '../contexts/RoleContext';
 import api from '../config/api';
 import { toast } from 'sonner';
 import { Skeleton } from './ui/skeleton';
+import AllContacts from './AllContacts';
 import './CompanyDataList.css';
 
 const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9', '#10b981', '#14b8a6', '#f97316'];
@@ -417,9 +418,45 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
   return (
     <div className="cd-container">
       <div className="cd-header">
-        <div>
-          <h1 className="cd-title">Data Center</h1>
-          <p className="cd-subtitle">Companies and contacts extracted via Chrome Extension</p>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Animated title */}
+          <h1
+            className="cd-title"
+            style={{
+              transition: 'opacity 0.2s ease, transform 0.2s ease',
+              opacity: 1,
+            }}
+          >
+            {activeTab === 'contacts' ? 'All Contacts' : 'Data Center'}
+          </h1>
+          {/* Tabs — sit above the header border-bottom */}
+          {tabs && onTabChange && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginTop: 12, marginBottom: -1 }}>
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
+                      padding: '9px 16px', fontSize: 13.5, fontWeight: 500,
+                      color: isActive ? '#09090b' : '#6b7280',
+                      background: 'transparent', border: 'none',
+                      borderBottom: isActive ? '2px solid #09090b' : '2px solid transparent',
+                      cursor: 'pointer', transition: 'color 0.18s, border-color 0.18s',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#09090b'; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#6b7280'; }}
+                  >
+                    <Icon size={14} /> {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="cd-header-actions">
           <div className="cd-stats-container">
@@ -501,37 +538,13 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
           </div>
         </div>
 
-        {/* Tab bar inside header */}
-        {tabs && onTabChange && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 16, borderTop: '1px solid #e5e7eb', paddingTop: 0 }}>
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '10px 16px', fontSize: 14, fontWeight: 500,
-                    color: isActive ? '#09090b' : '#6b7280',
-                    background: 'transparent', border: 'none',
-                    borderBottom: isActive ? '2px solid #09090b' : '2px solid transparent',
-                    marginBottom: -1, cursor: 'pointer',
-                    transition: 'color 0.15s, border-color 0.15s',
-                  }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#09090b'; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#6b7280'; }}
-                >
-                  <Icon size={15} /> {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
-      {/* Search + stats row */}
+      {/* All Contacts tab content */}
+      {activeTab === 'contacts' && <AllContacts />}
+
+      {/* Companies tab content */}
+      {activeTab !== 'contacts' && <>
       <div className="cd-search-stats-row">
         {selectedCards.size > 0 && (
           <div className="cd-select-all" onClick={(e) => e.stopPropagation()} title="Select all">
@@ -1018,6 +1031,9 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
           </div>
         </div>
       )}
+
+      {/* End companies tab content */}
+      </>}
 
       {/* ===== Right-side Filter Drawer ===== */}
       {showFilterDrawer && (

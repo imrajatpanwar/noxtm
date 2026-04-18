@@ -28,7 +28,7 @@ const STATUS_COLORS = {
   dead:      { bg: '#fee2e2', color: '#dc2626' },
 };
 
-function AllContacts({ activeTab, tabs, onTabChange }) {
+function AllContacts() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,40 +148,6 @@ function AllContacts({ activeTab, tabs, onTabChange }) {
 
   return (
     <div style={{ padding: 24 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 20, background: '#fff', margin: '-24px -24px 20px', padding: '24px 24px 0', borderBottom: '1px solid #e5e7eb' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0 }}>All Contacts</h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>Decision makers from all companies</p>
-        {/* Tab bar */}
-        {tabs && onTabChange && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 12 }}>
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '10px 16px', fontSize: 14, fontWeight: 500,
-                    color: isActive ? '#09090b' : '#6b7280',
-                    background: 'transparent', border: 'none',
-                    borderBottom: isActive ? '2px solid #09090b' : '2px solid transparent',
-                    marginBottom: -1, cursor: 'pointer',
-                    transition: 'color 0.15s, border-color 0.15s',
-                  }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#09090b'; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#6b7280'; }}
-                >
-                  <Icon size={15} /> {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Stats */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <StatCard icon={FiUser} iconBg="#eff6ff" iconColor="#3b82f6" value={stats.total} label="Total Contacts" />
