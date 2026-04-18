@@ -1,7 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const WhatsAppLead = require('../models/WhatsAppLead');
+const TargetedCompany = require('../models/TargetedCompany');
 const { authenticateToken } = require('../middleware/auth');
+
+const WA_TO_CONTACT_STATUS = {
+  new:       'Cold Lead',
+  active:    'Active',
+  followup:  'Warm Lead',
+  converted: 'Qualified (SQL)',
+  dead:      'Dead Lead',
+};
+
+async function syncContactStatus(companyId, phone, waStatus) {
+  try {
+    const contactStatus = WA_TO_CONTACT_STATUS[waStatus];
+    if (!contactStatus) return;
+    const cleaned = phone?.replace(/[^0-9]/g, '');
+    if (!cleaned) return;
+    // Find all targeted companies for this company that have a contact with this phone
+    const tcs = await TargetedCompany.find({ companyId });
+    for (const tc of tcs) {
+      let changed = false;
+      (tc.contacts || []).forEach((c, i) => {
+        if ((c.phone || '').replace(/[^0-9]/g, '') === cleaned) {
+          tc.contacts[i].status = contactStatus;
+          changed = true;
+        }
+      });
+      if (changed) await tc.save();
+    }
+  } catch (e) {
+    console.warn('[syncContactStatus] failed:', e.message);
+  }
+}
 
 router.use(authenticateToken);
 
@@ -76,6 +108,7 @@ router.put('/:id/status', async (req, res) => {
       { new: true }
     );
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
+    syncContactStatus(companyId, lead.phone, status); // fire-and-forget
     res.json({ lead });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -96,6 +129,7 @@ router.put('/by-phone/status', async (req, res) => {
       { $set: { status } },
       { new: true }
     );
+    syncContactStatus(companyId, cleaned, status); // fire-and-forget
     res.json({ lead });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

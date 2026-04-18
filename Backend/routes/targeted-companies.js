@@ -3,8 +3,18 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const TargetedCompany = require('../models/TargetedCompany');
 const ContactLabel = require('../models/ContactLabel');
+const WhatsAppLead = require('../models/WhatsAppLead');
 const { authenticateToken } = require('../middleware/auth');
 const auth = authenticateToken;
+
+// Map WhatsAppLead status → Contacts status
+const WA_TO_CONTACT_STATUS = {
+  new:       'Cold Lead',
+  active:    'Active',
+  followup:  'Warm Lead',
+  converted: 'Qualified (SQL)',
+  dead:      'Dead Lead',
+};
 
 // Simpler POST endpoint for Chrome extension
 
@@ -226,6 +236,17 @@ router.get('/contacts', auth, async (req, res) => {
     const labelMap = {};
     allLabels.forEach(l => { labelMap[l._id.toString()] = l; });
 
+    // Build phone → WhatsAppLead status map for this company
+    const allPhones = [];
+    for (const tc of targetedCompanies) {
+      for (const c of (tc.contacts || [])) {
+        if (c.phone) allPhones.push(c.phone.replace(/[^0-9]/g, ''));
+      }
+    }
+    const waLeads = await WhatsAppLead.find({ companyId, phone: { $in: allPhones } }).select('phone status').lean();
+    const phoneStatusMap = {};
+    waLeads.forEach(l => { phoneStatusMap[l.phone] = l.status; });
+
     const contacts = [];
     for (const tc of targetedCompanies) {
       if (!tc.contacts || tc.contacts.length === 0) continue;
@@ -234,6 +255,13 @@ router.get('/contacts', auth, async (req, res) => {
         if (!c.fullName && !c.email) continue;
 
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
+
+        // If this contact has a WhatsApp lead, use its status; else fall back to stored status
+        const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
+        const waStatus = cleanPhone && phoneStatusMap[cleanPhone];
+        const resolvedStatus = waStatus
+          ? (WA_TO_CONTACT_STATUS[waStatus] || c.status || 'Cold Lead')
+          : (c.status || 'Cold Lead');
 
         const contact = {
           _id: `${tc._id}_${i}`,
@@ -245,7 +273,7 @@ router.get('/contacts', auth, async (req, res) => {
           email: c.email || '',
           location: c.location || '',
           socialLinks: c.socialLinks || [],
-          status: c.status || 'Cold Lead',
+          status: resolvedStatus,
           followUp: c.followUp || '',
           isImportant: c.isImportant || false,
           labels: contactLabels,
