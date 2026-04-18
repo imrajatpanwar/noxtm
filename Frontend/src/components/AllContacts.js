@@ -6,6 +6,12 @@ import { toast } from 'sonner';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
 
+const LEGACY_NORMALIZE = {
+  'Cold Lead': 'new', 'Warm Lead': 'followup',
+  'Qualified (SQL)': 'converted', 'Active': 'active', 'Dead Lead': 'dead',
+};
+const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
+
 const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
 const STATUS_LABELS = {
   new:       'New',
@@ -49,8 +55,9 @@ function AllContacts() {
       if (filterImportant) params.important = 'true';
       if (filterLabelId) params.labelId = filterLabelId;
 
-      const response = await api.get('/contacts', { params });
-      const data = Array.isArray(response.data) ? response.data : [];
+      const response = await api.get('/company-data-contacts', { params });
+      const raw = Array.isArray(response.data) ? response.data : [];
+      const data = raw.map(c => ({ ...c, status: normalizeStatus(c.status) }));
       setContacts(data);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -75,7 +82,7 @@ function AllContacts() {
   const handleToggleImportant = async (contact, e) => {
     if (e) e.stopPropagation();
     try {
-      await api.patch(`/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/important`);
+      await api.patch(`/company-data-contacts/${contact.companyDataId}/${contact.contactIndex}/important`);
       await fetchContacts();
     } catch (error) {
       console.error('Error toggling important:', error);
@@ -86,7 +93,7 @@ function AllContacts() {
   const handleStatusChange = async (contact, newStatus) => {
     try {
       await api.patch(
-        `/tc-contacts/${contact.targetedCompanyId}/${contact.contactIndex}/status`,
+        `/company-data-contacts/${contact.companyDataId}/${contact.contactIndex}/status`,
         { status: newStatus }
       );
       toast.success('Status updated');
