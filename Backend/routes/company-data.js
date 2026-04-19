@@ -473,12 +473,23 @@ router.get('/company-data-contacts', auth, async (req, res) => {
     const labelMap = {};
     allLabels.forEach(l => { labelMap[l._id.toString()] = l; });
 
+    // Fetch all companies to get their location info
+    const companyIds = [...new Set(companies.map(c => c.companyId))];
+    const companiesMap = {};
+    if (companyIds.length > 0) {
+      const companiesList = await Company.find({ _id: { $in: companyIds } }).lean();
+      companiesList.forEach(c => { companiesMap[c._id.toString()] = c; });
+    }
+
     const contacts = [];
     for (const comp of companies) {
       if (!comp.contacts || comp.contacts.length === 0) continue;
       for (let i = 0; i < comp.contacts.length; i++) {
         const c = comp.contacts[i];
         if (!c.fullName && !c.email) continue;
+
+        const companyDetails = companiesMap[comp.companyId.toString()] || {};
+        const companyLocation = companyDetails.address || companyDetails.headquarters || companyDetails.companyCity || companyDetails.companyState || companyDetails.companyCountry || '';
 
         const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
 
@@ -491,6 +502,7 @@ router.get('/company-data-contacts', auth, async (req, res) => {
           phone: c.phone || '',
           email: c.email || '',
           location: c.location || '',
+          companyLocation: companyLocation,
           socialLinks: c.socialLinks || [],
           status: normalizeStatus(c.status),
           followUp: c.followUp || '',

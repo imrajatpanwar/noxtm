@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+const blockSchema = new mongoose.Schema({
+  content: { type: String, required: true },
+  date: { type: Date, default: Date.now }
+}, { _id: false });
+
 const companyPolicySchema = new mongoose.Schema({
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -9,61 +14,20 @@ const companyPolicySchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: true,
+    default: 'Company Policy',
     trim: true,
     maxlength: 200
   },
-  description: {
-    type: String,
-    default: '',
-    trim: true,
-    maxlength: 500
-  },
-  category: {
-    type: String,
-    enum: ['hr', 'security', 'operations', 'compliance', 'finance', 'it', 'general'],
-    default: 'general'
-  },
-  content: {
-    type: String,
-    default: ''
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'published', 'archived'],
-    default: 'draft'
-  },
-  version: {
-    type: String,
-    default: '1.0'
-  },
-  effectiveDate: {
-    type: Date,
-    default: null
-  },
-  reviewDate: {
-    type: Date,
-    default: null
-  },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'critical'],
-    default: 'medium'
-  },
-  tags: [{
-    type: String,
-    trim: true,
-    maxlength: 50
-  }],
-  // Who must acknowledge this policy
-  requiresAcknowledgment: {
-    type: Boolean,
-    default: false
-  },
+  // Growing document blocks — each append adds a new block with its timestamp
+  blocks: [blockSchema],
   acknowledgments: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
+    },
+    signatureImage: {
+      type: String,
+      default: ''
     },
     acknowledgedAt: {
       type: Date,
@@ -72,22 +36,16 @@ const companyPolicySchema = new mongoose.Schema({
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   },
   lastUpdatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  },
-  sortOrder: {
-    type: Number,
-    default: 0
   }
 }, {
   timestamps: true
 });
 
-companyPolicySchema.index({ companyId: 1, category: 1 });
-companyPolicySchema.index({ companyId: 1, status: 1 });
+companyPolicySchema.index({ companyId: 1 });
 
 module.exports = mongoose.model('CompanyPolicy', companyPolicySchema);

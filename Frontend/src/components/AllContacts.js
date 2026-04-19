@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FiSearch, FiUser, FiPhone, FiActivity, FiChevronRight, FiStar, FiX
+  FiSearch, FiPhone, FiActivity, FiChevronRight, FiX, FiUser
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
@@ -15,16 +15,12 @@ const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
 const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
 const STATUS_LABELS = {
   new:       'New',
-  active:    'Active',
   followup:  'Follow-up',
-  converted: 'Converted',
   dead:      'Dead',
 };
 const STATUS_COLORS = {
   new:       { bg: '#dbeafe', color: '#1d4ed8' },
-  active:    { bg: '#f3e8ff', color: '#7c3aed' },
   followup:  { bg: '#fef3c7', color: '#b45309' },
-  converted: { bg: '#dcfce7', color: '#15803d' },
   dead:      { bg: '#fee2e2', color: '#dc2626' },
 };
 
@@ -33,7 +29,6 @@ function AllContacts() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [filterImportant, setFilterImportant] = useState(false);
   const [filterLabelId, setFilterLabelId] = useState('');
   const [labels, setLabels] = useState([]);
 
@@ -52,7 +47,6 @@ function AllContacts() {
       const params = {};
       if (filterStatus !== 'All') params.status = filterStatus;
       if (searchTerm) params.search = searchTerm;
-      if (filterImportant) params.important = 'true';
       if (filterLabelId) params.labelId = filterLabelId;
 
       const response = await api.get('/company-data-contacts', { params });
@@ -66,28 +60,13 @@ function AllContacts() {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, searchTerm, filterImportant, filterLabelId]);
+  }, [filterStatus, searchTerm, filterLabelId]);
 
   useEffect(() => { fetchLabels(); }, [fetchLabels]);
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
 
   const stats = {
     total: contacts.length,
-    new: contacts.filter(c => c.status === 'new').length,
-    active: contacts.filter(c => c.status === 'active').length,
-    converted: contacts.filter(c => c.status === 'converted').length,
-    important: contacts.filter(c => c.isImportant).length,
-  };
-
-  const handleToggleImportant = async (contact, e) => {
-    if (e) e.stopPropagation();
-    try {
-      await api.patch(`/company-data-contacts/${contact.companyDataId}/${contact.contactIndex}/important`);
-      await fetchContacts();
-    } catch (error) {
-      console.error('Error toggling important:', error);
-      toast.error('Failed to update');
-    }
   };
 
   const handleStatusChange = async (contact, newStatus) => {
@@ -104,67 +83,17 @@ function AllContacts() {
     }
   };
 
-  const activeFiltersCount =
-    (filterStatus !== 'All' ? 1 : 0) +
-    (filterImportant ? 1 : 0) +
-    (filterLabelId ? 1 : 0);
+  const activeFiltersCount = filterLabelId ? 1 : 0;
 
   const clearAllFilters = () => {
     setFilterStatus('All');
-    setFilterImportant(false);
     setFilterLabelId('');
   };
 
   const getStatusStyle = (status) => STATUS_COLORS[status] || { bg: '#f5f5f5', color: '#525252' };
 
-  const StatCard = ({ icon: Icon, iconBg, iconColor, value, label, active, onClick }) => (
-    <div
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '16px',
-        background: '#fff',
-        borderRadius: 8,
-        border: active ? '2px solid #f59e0b' : '1px solid #e5e7eb',
-        cursor: onClick ? 'pointer' : 'default',
-        flex: 1,
-        minWidth: 0,
-      }}
-    >
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: 40, height: 40, borderRadius: 8, background: iconBg, flexShrink: 0,
-      }}>
-        <Icon style={{ color: iconColor, fill: label === 'Important' && active ? iconColor : 'none' }} />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: 18, fontWeight: 600, color: '#111827', lineHeight: 1.2 }}>{value}</span>
-        <span style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{label}</span>
-      </div>
-    </div>
-  );
-
   return (
-    <div style={{ padding: 24 }}>
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <StatCard icon={FiUser} iconBg="#eff6ff" iconColor="#3b82f6" value={stats.total} label="Total Contacts" />
-        <StatCard icon={FiActivity} iconBg="#dbeafe" iconColor="#1d4ed8" value={stats.new} label="New" />
-        <StatCard icon={FiActivity} iconBg="#f3e8ff" iconColor="#7c3aed" value={stats.active} label="Active" />
-        <StatCard icon={FiChevronRight} iconBg="#dcfce7" iconColor="#15803d" value={stats.converted} label="Converted" />
-        <StatCard
-          icon={FiStar}
-          iconBg={filterImportant ? '#fef3c7' : '#fffbeb'}
-          iconColor="#f59e0b"
-          value={stats.important}
-          label="Important"
-          active={filterImportant}
-          onClick={() => setFilterImportant(!filterImportant)}
-        />
-      </div>
-
+    <div>
       {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
@@ -199,19 +128,6 @@ function AllContacts() {
           <option value="">All Labels</option>
           {labels.map(l => <option key={l._id} value={l._id}>{l.name}</option>)}
         </select>
-
-        <button
-          onClick={() => setFilterImportant(!filterImportant)}
-          title="Filter important"
-          style={{
-            padding: '8px 12px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
-            border: filterImportant ? '1px solid #f59e0b' : '1px solid #d1d5db',
-            background: filterImportant ? '#fffbeb' : '#fff',
-            display: 'flex', alignItems: 'center',
-          }}
-        >
-          <FiStar style={{ fill: filterImportant ? '#f59e0b' : 'none', color: filterImportant ? '#f59e0b' : '#6b7280' }} />
-        </button>
 
         {activeFiltersCount > 0 && (
           <button
@@ -265,10 +181,10 @@ function AllContacts() {
             <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ width: 40, padding: '10px 8px' }}></th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Contact</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Company</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Phone</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Location</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Status</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Labels</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, color: '#6b7280' }}>Date</th>
@@ -279,18 +195,6 @@ function AllContacts() {
                   const style = getStatusStyle(contact.status);
                   return (
                     <tr key={contact._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                        <button
-                          onClick={(e) => handleToggleImportant(contact, e)}
-                          title={contact.isImportant ? 'Remove from important' : 'Mark as important'}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                        >
-                          <FiStar style={{
-                            fill: contact.isImportant ? '#f59e0b' : 'none',
-                            color: contact.isImportant ? '#f59e0b' : '#9ca3af',
-                          }} />
-                        </button>
-                      </td>
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{
@@ -313,6 +217,9 @@ function AllContacts() {
                             <FiPhone size={12} /> {contact.phone}
                           </span>
                         ) : '-'}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: 13 }}>
+                        {contact.sourceType === 'extension' ? 'Extension' : contact.sourceType === 'dashboard' ? 'Dashboard' : contact.sourceType === 'import' ? 'Import' : '-'}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
                         <select

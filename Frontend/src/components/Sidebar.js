@@ -33,7 +33,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [financeManagementExpanded, setFinanceManagementExpanded] = useState(false);
   const [internalPoliciesExpanded, setInternalPoliciesExpanded] = useState(false);
   const [settingsConfigExpanded, setSettingsConfigExpanded] = useState(false);
-  const [leadManagementExpanded, setLeadManagementExpanded] = useState(false);
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
@@ -258,7 +257,6 @@ function Sidebar({ activeSection, onSectionChange }) {
   const toggleFinanceManagement = () => setFinanceManagementExpanded(!financeManagementExpanded);
   const toggleInternalPolicies = () => setInternalPoliciesExpanded(!internalPoliciesExpanded);
   const toggleSettingsConfig = () => setSettingsConfigExpanded(!settingsConfigExpanded);
-  const toggleLeadManagement = () => setLeadManagementExpanded(!leadManagementExpanded);
   const toggleSocialMedia = () => setSocialMediaExpanded(!socialMediaExpanded);
 
 
@@ -350,43 +348,6 @@ function Sidebar({ activeSection, onSectionChange }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
 
-                    {/* Lead Management (expandable) */}
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        isActive={activeSection === 'lead-management'}
-                        tooltip="Lead Management"
-                        onClick={toggleLeadManagement}
-                      >
-                        <FiTarget className="sidebar-icon" />
-                        <span>Lead Management</span>
-                        {leadManagementExpanded ?
-                          <FiChevronDown className="sidebar-chevron" /> :
-                          <FiChevronRight className="sidebar-chevron" />
-                        }
-                      </SidebarMenuButton>
-
-                      {leadManagementExpanded && !isCollapsed && (
-                        <div className="sidebar-submenu">
-                          <SidebarMenuButton
-                            isActive={activeSection === 'leads-flow'}
-                            className="sidebar-subitem"
-                            onClick={() => onSectionChange('leads-flow')}
-                          >
-                            <FiTrendingUp className="sidebar-icon" />
-                            <span>Leads Flow</span>
-                          </SidebarMenuButton>
-                          <SidebarMenuButton
-                            isActive={activeSection === 'leads-metrics'}
-                            className="sidebar-subitem"
-                            onClick={() => onSectionChange('leads-metrics')}
-                          >
-                            <FiFolder className="sidebar-icon" />
-                            <span>Leads Metrics</span>
-                          </SidebarMenuButton>
-                        </div>
-                      )}
-                    </SidebarMenuItem>
-
                     {/* Client Management */}
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -396,6 +357,37 @@ function Sidebar({ activeSection, onSectionChange }) {
                       >
                         <FiUsers className="sidebar-icon" />
                         <span>Client Management</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Lead Management Section */}
+            {hasPermissionForSection('Data Center') && (
+              <SidebarGroup>
+                <SidebarGroupLabel>LEAD MANAGEMENT</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'leads-flow'}
+                        tooltip="Leads Flow"
+                        onClick={() => onSectionChange('leads-flow')}
+                      >
+                        <FiTrendingUp className="sidebar-icon" />
+                        <span>Leads Flow</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'leads-metrics'}
+                        tooltip="Lead Metrics"
+                        onClick={() => onSectionChange('leads-metrics')}
+                      >
+                        <FiFolder className="sidebar-icon" />
+                        <span>Lead Metrics</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>

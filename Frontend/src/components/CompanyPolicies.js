@@ -1,466 +1,589 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  FiShield, FiPlus, FiSearch, FiFilter, FiFileText, FiEdit3, FiTrash2,
-  FiCheck, FiClock, FiAlertTriangle, FiTag, FiX, FiSave,
-  FiChevronDown, FiCalendar, FiUsers, FiCheckCircle,
-  FiLock, FiSettings, FiDollarSign, FiMonitor, FiBookOpen
-} from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FiPlus, FiEdit3, FiX, FiCheck, FiFileText } from 'react-icons/fi';
 import api from '../config/api';
-import { Skeleton } from './ui/skeleton';
-import { confirm } from './ui/alert-dialog';
+import { useRole } from '../contexts/RoleContext';
 import './CompanyPolicies.css';
 
-const CATEGORIES = [
-  { key: 'all', label: 'All', icon: FiFileText },
-  { key: 'hr', label: 'HR', icon: FiUsers },
-  { key: 'security', label: 'Security', icon: FiLock },
-  { key: 'operations', label: 'Operations', icon: FiSettings },
-  { key: 'compliance', label: 'Compliance', icon: FiShield },
-  { key: 'finance', label: 'Finance', icon: FiDollarSign },
-  { key: 'it', label: 'IT', icon: FiMonitor },
-  { key: 'general', label: 'General', icon: FiBookOpen },
-];
+// ── Rich textarea with bold + bullet toolbar ────────────────────────────────
+function RichTextarea({ value, onChange, rows = 18, placeholder }) {
+  const ref = useRef(null);
 
-const PRIORITY_MAP = {
-  low: { label: 'Low', color: '#64748b' },
-  medium: { label: 'Medium', color: '#3b82f6' },
-  high: { label: 'High', color: '#f59e0b' },
-  critical: { label: 'Critical', color: '#ef4444' },
-};
+  const applyBold = () => {
+    const el = ref.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = value.slice(start, end);
+    const newVal = value.slice(0, start) + '**' + selected + '**' + value.slice(end);
+    onChange(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + 2, end + 2);
+    });
+  };
 
-const STATUS_MAP = {
-  draft: { label: 'Draft', color: '#94a3b8', bg: '#f1f5f9' },
-  published: { label: 'Published', color: '#16a34a', bg: '#f0fdf4' },
-  archived: { label: 'Archived', color: '#64748b', bg: '#f8fafc' },
-};
+  const applyBullet = () => {
+    const el = ref.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
 
-function CompanyPolicies() {
-  const [policies, setPolicies] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [activeStatus, setActiveStatus] = useState('all');
-  const [showModal, setShowModal] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState(null);
-  const [viewingPolicy, setViewingPolicy] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    title: '', description: '', category: 'general', content: '',
-    status: 'draft', version: '1.0', effectiveDate: '', reviewDate: '',
-    priority: 'medium', tags: '', requiresAcknowledgment: false
+    // Find start of first selected line
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    // Find end of last selected line
+    const lineEnd = value.indexOf('\n', end);
+    const blockEnd = lineEnd === -1 ? value.length : lineEnd;
+
+    const block = value.slice(lineStart, blockEnd);
+    const lines = block.split('\n');
+
+    // Toggle: if all lines already have bullet, remove; otherwise add
+    const allBulleted = lines.every(l => l.startsWith('- '));
+    const newLines = allBulleted
+      ? lines.map(l => l.slice(2))
+      : lines.map(l => l.startsWith('- ') ? l : '- ' + l);
+
+    const newBlock = newLines.join('\n');
+    const newVal = value.slice(0, lineStart) + newBlock + value.slice(blockEnd);
+    onChange(newVal);
+
+    requestAnimationFrame(() => {
+      el.focus();
+      const delta = allBulleted ? -2 : 2;
+      el.setSelectionRange(start + delta, end + delta * lines.length);
+    });
+  };
+
+  return (
+    <div className="cp-rte-wrap">
+      <div className="cp-rte-toolbar">
+        <button type="button" className="cp-rte-btn" onMouseDown={e => { e.preventDefault(); applyBold(); }} title="Bold (select text first)">
+          <strong>B</strong>
+        </button>
+        <button type="button" className="cp-rte-btn" onMouseDown={e => { e.preventDefault(); applyBullet(); }} title="Bullet list (select lines or place cursor)">
+          • List
+        </button>
+      </div>
+      <textarea
+        ref={ref}
+        rows={rows}
+        className="cp-letter-textarea"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+// ── Render inline: **bold** markers ─────────────────────────────────────────
+function RichInline({ text }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i}>{part.slice(2, -2)}</strong>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+// ── Render text with **bold** and - bullet list support ───────────────────────
+function RichText({ text }) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const output = [];
+  let bulletBuffer = [];
+
+  const flushBullets = (key) => {
+    if (bulletBuffer.length === 0) return;
+    output.push(
+      <ul key={`ul-${key}`} className="cp-bullet-list">
+        {bulletBuffer.map((item, j) => (
+          <li key={j}><RichInline text={item} /></li>
+        ))}
+      </ul>
+    );
+    bulletBuffer = [];
+  };
+
+  lines.forEach((line, i) => {
+    if (line.startsWith('- ')) {
+      bulletBuffer.push(line.slice(2));
+    } else {
+      flushBullets(i);
+      output.push(<span key={i}><RichInline text={line} />{'\n'}</span>);
+    }
   });
+  flushBullets('end');
 
-  const fetchPolicies = useCallback(async () => {
+  return <>{output}</>;
+}
+
+// ── Signature canvas ────────────────────────────────────────────────────────
+function SignaturePad({ onSigned }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+
+  const pos = (e, canvas) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+
+  const start = (e) => {
+    e.preventDefault();
+    drawing.current = true;
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    const p = pos(e, c);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  const move = (e) => {
+    if (!drawing.current) return;
+    e.preventDefault();
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    const p = pos(e, c);
+    ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    onSigned(c.toDataURL('image/png'));
+  };
+
+  const stop = () => { drawing.current = false; };
+
+  const clear = () => {
+    const c = canvasRef.current;
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+    onSigned(null);
+  };
+
+  return (
+    <div className="sig-wrap">
+      <canvas
+        ref={canvasRef}
+        className="sig-canvas"
+        width={460}
+        height={140}
+        onMouseDown={start}
+        onMouseMove={move}
+        onMouseUp={stop}
+        onMouseLeave={stop}
+        onTouchStart={start}
+        onTouchMove={move}
+        onTouchEnd={stop}
+      />
+      <button type="button" className="sig-clear-btn" onClick={clear}>Clear</button>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+function CompanyPolicies() {
+  const { currentUser } = useRole();
+  const canEdit =
+    currentUser?.roleInCompany === 'Owner' ||
+    currentUser?.role === 'Admin' ||
+    currentUser?.role === 'Business Admin';
+
+  const [policy, setPolicy] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Inline title editing
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
+  const titleInputRef = useRef(null);
+
+  // Create modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [createTitle, setCreateTitle] = useState('Company Policies');
+  const [createContent, setCreateContent] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  // Append modal
+  const [showAppend, setShowAppend] = useState(false);
+  const [appendContent, setAppendContent] = useState('');
+  const [appending, setAppending] = useState(false);
+
+  // Edit block modal
+  const [editBlockIndex, setEditBlockIndex] = useState(null);
+  const [editBlockContent, setEditBlockContent] = useState('');
+  const [editingBlock, setEditingBlock] = useState(false);
+
+  // Accept modal
+  const [showAccept, setShowAccept] = useState(false);
+  const [signature, setSignature] = useState(null);
+  const [accepting, setAccepting] = useState(false);
+
+  const fetchPolicy = useCallback(async () => {
     try {
-      const params = {};
-      if (activeCategory !== 'all') params.category = activeCategory;
-      if (activeStatus !== 'all') params.status = activeStatus;
-      if (search) params.search = search;
-      const res = await api.get('/company-policies', { params });
-      if (res.data.success) setPolicies(res.data.policies);
+      const res = await api.get('/company-policies');
+      if (res.data.success) {
+        setPolicy(res.data.policy);
+        if (res.data.policy) setTitleDraft(res.data.policy.title || 'Company Policies');
+      }
     } catch (err) {
-      console.error('Error fetching policies:', err);
+      console.error('Error fetching policy:', err);
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeStatus, search]);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await api.get('/company-policies/stats');
-      if (res.data.success) setStats(res.data.stats);
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    }
   }, []);
 
+  useEffect(() => { fetchPolicy(); }, [fetchPolicy]);
+
   useEffect(() => {
-    fetchPolicies();
-    fetchStats();
-  }, [fetchPolicies, fetchStats]);
+    if (titleEditing && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [titleEditing]);
 
-  const openCreate = () => {
-    setEditingPolicy(null);
-    setForm({ title: '', description: '', category: 'general', content: '', status: 'draft', version: '1.0', effectiveDate: '', reviewDate: '', priority: 'medium', tags: '', requiresAcknowledgment: false });
-    setShowModal(true);
-  };
-
-  const openEdit = (p) => {
-    setEditingPolicy(p);
-    setForm({
-      title: p.title, description: p.description || '', category: p.category,
-      content: p.content || '', status: p.status, version: p.version || '1.0',
-      effectiveDate: p.effectiveDate ? p.effectiveDate.split('T')[0] : '',
-      reviewDate: p.reviewDate ? p.reviewDate.split('T')[0] : '',
-      priority: p.priority || 'medium', tags: (p.tags || []).join(', '),
-      requiresAcknowledgment: p.requiresAcknowledgment || false
-    });
-    setShowModal(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.title.trim()) return;
-    setSaving(true);
+  const handleTitleSave = async () => {
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === policy.title) {
+      setTitleEditing(false);
+      setTitleDraft(policy.title);
+      return;
+    }
+    setSavingTitle(true);
     try {
-      const payload = {
-        ...form,
-        tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-        effectiveDate: form.effectiveDate || null,
-        reviewDate: form.reviewDate || null,
-      };
-      if (editingPolicy) {
-        await api.put(`/company-policies/${editingPolicy._id}`, payload);
-      } else {
-        await api.post('/company-policies', payload);
-      }
-      setShowModal(false);
-      fetchPolicies();
-      fetchStats();
+      await api.patch(`/company-policies/${policy._id}/title`, { title: trimmed });
+      setPolicy(prev => ({ ...prev, title: trimmed }));
+      setTitleEditing(false);
     } catch (err) {
-      console.error('Error saving policy:', err);
+      console.error('Error saving title:', err);
+      setTitleDraft(policy.title);
+      setTitleEditing(false);
     } finally {
-      setSaving(false);
+      setSavingTitle(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!await confirm('Delete this policy?')) return;
+  const handleTitleKeyDown = (e) => {
+    if (e.key === 'Enter') handleTitleSave();
+    if (e.key === 'Escape') {
+      setTitleEditing(false);
+      setTitleDraft(policy.title);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!createContent.trim()) return;
+    setCreating(true);
     try {
-      await api.delete(`/company-policies/${id}`);
-      fetchPolicies();
-      fetchStats();
-      if (viewingPolicy?._id === id) setViewingPolicy(null);
+      await api.post('/company-policies', { title: createTitle, content: createContent });
+      setShowCreate(false);
+      setCreateContent('');
+      setCreateTitle('Company Policies');
+      fetchPolicy();
     } catch (err) {
-      console.error('Error deleting:', err);
+      console.error('Error creating policy:', err);
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleAcknowledge = async (id) => {
+  const handleAppend = async () => {
+    if (!appendContent.trim() || !policy) return;
+    setAppending(true);
     try {
-      await api.post(`/company-policies/${id}/acknowledge`);
-      fetchPolicies();
-      fetchStats();
-      if (viewingPolicy?._id === id) {
-        setViewingPolicy(prev => ({ ...prev, isAcknowledged: true }));
-      }
+      await api.post(`/company-policies/${policy._id}/append`, { content: appendContent });
+      setShowAppend(false);
+      setAppendContent('');
+      fetchPolicy();
     } catch (err) {
-      console.error('Error acknowledging:', err);
+      console.error('Error appending to policy:', err);
+    } finally {
+      setAppending(false);
     }
   };
 
-  const openView = async (id) => {
+  const handleEditBlock = async () => {
+    if (!editBlockContent.trim() || !policy || editBlockIndex === null) return;
+    setEditingBlock(true);
     try {
-      const res = await api.get(`/company-policies/${id}`);
-      if (res.data.success) setViewingPolicy(res.data.policy);
+      await api.patch(`/company-policies/${policy._id}/blocks/${editBlockIndex}`, { content: editBlockContent });
+      setEditBlockIndex(null);
+      setEditBlockContent('');
+      fetchPolicy();
     } catch (err) {
-      console.error('Error fetching policy:', err);
+      console.error('Error editing block:', err);
+    } finally {
+      setEditingBlock(false);
     }
   };
 
-  const getCatIcon = (key) => {
-    const cat = CATEGORIES.find(c => c.key === key);
-    return cat ? cat.icon : FiFileText;
+  const handleAccept = async () => {
+    if (!signature || !policy) return;
+    setAccepting(true);
+    try {
+      await api.post(`/company-policies/${policy._id}/acknowledge`, { signatureImage: signature });
+      setShowAccept(false);
+      fetchPolicy();
+    } catch (err) {
+      console.error('Error accepting policy:', err);
+    } finally {
+      setAccepting(false);
+    }
   };
 
-  const fmtDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const fmtDate = (d) =>
+    new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  /* ============ VIEW: Single Policy Detail ============ */
-  if (viewingPolicy) {
-    const CatIcon = getCatIcon(viewingPolicy.category);
-    const stInfo = STATUS_MAP[viewingPolicy.status] || STATUS_MAP.draft;
-    const prInfo = PRIORITY_MAP[viewingPolicy.priority] || PRIORITY_MAP.medium;
-
+  // ── Loading ──────────────────────────────────────────────────────────────
+  if (loading) {
     return (
       <div className="cp-wrap">
-        <button className="cp-back-btn" onClick={() => setViewingPolicy(null)}>
-          <FiChevronDown className="cp-back-chevron" /> Back to Policies
-        </button>
-
-        <div className="cp-view-card">
-          <div className="cp-view-top">
-            <div className="cp-view-icon" style={{ background: stInfo.bg }}>
-              <CatIcon size={24} style={{ color: stInfo.color }} />
-            </div>
-            <div className="cp-view-title-block">
-              <h1>{viewingPolicy.title}</h1>
-              {viewingPolicy.description && <p>{viewingPolicy.description}</p>}
-            </div>
-            <div className="cp-view-top-btns">
-              <button className="cp-icon-btn" onClick={() => openEdit(viewingPolicy)}><FiEdit3 size={15} /></button>
-              <button className="cp-icon-btn danger" onClick={() => handleDelete(viewingPolicy._id)}><FiTrash2 size={15} /></button>
-            </div>
-          </div>
-
-          <div className="cp-view-badges">
-            <span className="cp-badge" style={{ background: stInfo.bg, color: stInfo.color }}>{stInfo.label}</span>
-            <span className="cp-badge priority" style={{ color: prInfo.color }}>{prInfo.label} Priority</span>
-            <span className="cp-meta-chip"><FiTag size={11} /> {viewingPolicy.category}</span>
-            <span className="cp-meta-chip"><FiClock size={11} /> v{viewingPolicy.version}</span>
-            {viewingPolicy.effectiveDate && <span className="cp-meta-chip"><FiCalendar size={11} /> Effective: {fmtDate(viewingPolicy.effectiveDate)}</span>}
-            {viewingPolicy.reviewDate && <span className="cp-meta-chip"><FiAlertTriangle size={11} /> Review: {fmtDate(viewingPolicy.reviewDate)}</span>}
-          </div>
-
-          <div className="cp-view-content-body">
-            {viewingPolicy.content ? (
-              <div className="cp-rich-content" dangerouslySetInnerHTML={{ __html: viewingPolicy.content.replace(/\n/g, '<br/>') }} />
-            ) : (
-              <p className="cp-no-content">No content has been added to this policy yet.</p>
-            )}
-          </div>
-
-          <div className="cp-view-bottom">
-            <div className="cp-view-bottom-left">
-              {viewingPolicy.createdBy && (
-                <span className="cp-author">Created by <strong>{viewingPolicy.createdBy.fullName}</strong> · {fmtDate(viewingPolicy.createdAt)}</span>
-              )}
-              {viewingPolicy.tags?.length > 0 && (
-                <div className="cp-tags-row">
-                  {viewingPolicy.tags.map((t, i) => <span key={i} className="cp-tag-chip">{t}</span>)}
-                </div>
-              )}
-            </div>
-            <div className="cp-view-bottom-right">
-              {viewingPolicy.requiresAcknowledgment && !viewingPolicy.isAcknowledged && (
-                <button className="cp-ack-btn" onClick={() => handleAcknowledge(viewingPolicy._id)}>
-                  <FiCheckCircle size={15} /> Acknowledge Policy
-                </button>
-              )}
-              {viewingPolicy.isAcknowledged && (
-                <span className="cp-ack-done"><FiCheckCircle size={14} /> Acknowledged</span>
-              )}
-              {viewingPolicy.acknowledgments?.length > 0 && (
-                <span className="cp-ack-count"><FiUsers size={12} /> {viewingPolicy.acknowledgments.length} acknowledged</span>
-              )}
-            </div>
-          </div>
+        <div className="cp-loading-state">
+          <div className="cp-loading-line" style={{ width: 260 }} />
+          <div className="cp-loading-line" style={{ width: '100%' }} />
+          <div className="cp-loading-line" style={{ width: '85%' }} />
+          <div className="cp-loading-line" style={{ width: '90%' }} />
         </div>
       </div>
     );
   }
 
-  /* ============ LIST VIEW ============ */
+  // ── No policy ────────────────────────────────────────────────────────────
+  if (!policy) {
+    return (
+      <div className="cp-wrap">
+        <div className="cp-empty-state">
+          <div className="cp-empty-icon-wrap">
+            <FiFileText size={32} />
+          </div>
+          <h3>No Company Policy</h3>
+          {canEdit ? (
+            <>
+              <p>Create your company policy document to share with your team.</p>
+              <button className="cp-btn-primary" onClick={() => setShowCreate(true)}>
+                <FiPlus size={15} /> Create Policy
+              </button>
+            </>
+          ) : (
+            <p>Your company has not created a policy document yet.</p>
+          )}
+        </div>
+
+        {showCreate && (
+          <div className="cp-overlay" onClick={() => setShowCreate(false)}>
+            <div className="cp-modal" onClick={e => e.stopPropagation()}>
+              <div className="cp-modal-head">
+                <h2>Create Company Policy</h2>
+                <button onClick={() => setShowCreate(false)}><FiX size={17} /></button>
+              </div>
+              <div className="cp-modal-body">
+                <div className="cp-fg">
+                  <label>Policy Title</label>
+                  <input
+                    type="text"
+                    value={createTitle}
+                    onChange={e => setCreateTitle(e.target.value)}
+                    placeholder="Company Policies"
+                  />
+                </div>
+                <div className="cp-fg">
+                  <label>Policy Content</label>
+                  <RichTextarea
+                    value={createContent}
+                    onChange={setCreateContent}
+                    placeholder="Write your company policy here..."
+                  />
+                </div>
+              </div>
+              <div className="cp-modal-foot">
+                <button className="cp-btn-sec" onClick={() => setShowCreate(false)}>Cancel</button>
+                <button
+                  className="cp-btn-primary"
+                  onClick={handleCreate}
+                  disabled={creating || !createContent.trim()}
+                >
+                  {creating ? 'Saving...' : 'Save Policy'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Policy exists ────────────────────────────────────────────────────────
+  const isAccepted = policy.isAcknowledged;
+
   return (
     <div className="cp-wrap">
-      {/* Header */}
-      <div className="cp-header">
-        <div className="cp-header-left">
-          <div className="cp-header-icon"><FiShield size={22} /></div>
-          <div>
-            <h1>Company Policies</h1>
-            <p>Manage organizational policies, procedures, and compliance documents</p>
-          </div>
+      <div className="cp-letter">
+        {/* Letter header */}
+        <div className="cp-letter-header">
+          {titleEditing ? (
+            <div className="cp-title-edit-wrap">
+              <input
+                ref={titleInputRef}
+                className="cp-title-input"
+                value={titleDraft}
+                onChange={e => setTitleDraft(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={handleTitleKeyDown}
+                disabled={savingTitle}
+                maxLength={200}
+              />
+            </div>
+          ) : (
+            <div className="cp-title-display-wrap">
+              <h1>{policy.title || 'Company Policies'}</h1>
+              {canEdit && (
+                <button
+                  className="cp-title-edit-btn"
+                  onClick={() => {
+                    setTitleDraft(policy.title || 'Company Policies');
+                    setTitleEditing(true);
+                  }}
+                  title="Edit title"
+                >
+                  <FiEdit3 size={15} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        <button className="cp-btn-primary" onClick={openCreate}>
-          <FiPlus size={16} /> New Policy
-        </button>
-      </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="cp-stats">
-          <div className="cp-stat">
-            <div className="cp-stat-ic blue"><FiFileText size={18} /></div>
-            <div className="cp-stat-body">
-              <span className="cp-stat-n">{stats.total}</span>
-              <span className="cp-stat-l">Total Policies</span>
+        {/* Content blocks */}
+        <div className="cp-letter-body">
+          {(policy.blocks || []).map((block, i) => (
+            <div key={i} className="cp-block">
+              <div className="cp-block-date-row">
+                <span>{fmtDate(block.date)}</span>
+                {canEdit && (
+                  <button
+                    className="cp-block-edit-btn"
+                    title="Edit this block"
+                    onClick={() => {
+                      setEditBlockIndex(i);
+                      setEditBlockContent(block.content);
+                    }}
+                  >
+                    <FiEdit3 size={12} />
+                  </button>
+                )}
+              </div>
+              <div className="cp-block-text"><RichText text={block.content} /></div>
             </div>
-          </div>
-          <div className="cp-stat">
-            <div className="cp-stat-ic green"><FiCheck size={18} /></div>
-            <div className="cp-stat-body">
-              <span className="cp-stat-n">{stats.published}</span>
-              <span className="cp-stat-l">Published</span>
-            </div>
-          </div>
-          <div className="cp-stat">
-            <div className="cp-stat-ic amber"><FiEdit3 size={18} /></div>
-            <div className="cp-stat-body">
-              <span className="cp-stat-n">{stats.drafts}</span>
-              <span className="cp-stat-l">Drafts</span>
-            </div>
-          </div>
-          <div className="cp-stat">
-            <div className="cp-stat-ic red"><FiAlertTriangle size={18} /></div>
-            <div className="cp-stat-body">
-              <span className="cp-stat-n">{stats.pendingAck}</span>
-              <span className="cp-stat-l">Pending Ack</span>
-            </div>
-          </div>
-          <div className="cp-stat">
-            <div className="cp-stat-ic purple"><FiClock size={18} /></div>
-            <div className="cp-stat-body">
-              <span className="cp-stat-n">{stats.needingReview}</span>
-              <span className="cp-stat-l">Review Due</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="cp-filters">
-        <div className="cp-search">
-          <FiSearch size={15} />
-          <input type="text" placeholder="Search policies..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="cp-pills">
-          {CATEGORIES.map(c => (
-            <button key={c.key} className={`cp-pill ${activeCategory === c.key ? 'active' : ''}`} onClick={() => setActiveCategory(c.key)}>
-              <c.icon size={13} /> {c.label}
-            </button>
           ))}
         </div>
-        <div className="cp-select-wrap">
-          <FiFilter size={14} />
-          <select value={activeStatus} onChange={e => setActiveStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
-          </select>
+
+        {/* Footer */}
+        <div className="cp-letter-footer">
+          {canEdit ? (
+            <button className="cp-btn-primary" onClick={() => setShowAppend(true)}>
+              <FiEdit3 size={14} /> Edit / Add More
+            </button>
+          ) : !isAccepted ? (
+            <button className="cp-btn-accept" onClick={() => setShowAccept(true)}>
+              <FiCheck size={14} /> Accept Company Policy
+            </button>
+          ) : (
+            <div className="cp-accepted-tag">
+              <FiCheck size={14} /> You have accepted this policy
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <div className="cp-empty" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Skeleton className="tw-h-8 tw-w-48" />
-          <Skeleton className="tw-h-4 tw-w-full" />
-          <Skeleton className="tw-h-4 tw-w-full" />
-          <Skeleton className="tw-h-4 tw-w-3/4" />
-        </div>
-      ) : policies.length === 0 ? (
-        <div className="cp-empty">
-          <div className="cp-empty-ic"><FiShield size={44} /></div>
-          <h3>No Policies Found</h3>
-          <p>Create your first company policy to get started.</p>
-          <button className="cp-btn-primary" onClick={openCreate}><FiPlus size={16} /> Create Policy</button>
-        </div>
-      ) : (
-        <div className="cp-grid">
-          {policies.map(p => {
-            const CIcon = getCatIcon(p.category);
-            const si = STATUS_MAP[p.status] || STATUS_MAP.draft;
-            const pi = PRIORITY_MAP[p.priority] || PRIORITY_MAP.medium;
-            return (
-              <div key={p._id} className="cp-card" onClick={() => openView(p._id)}>
-                <div className="cp-card-top">
-                  <div className="cp-card-icon"><CIcon size={18} /></div>
-                  <div className="cp-card-dots">
-                    <span className="cp-dot" style={{ background: si.color }} title={si.label} />
-                    <span className="cp-dot" style={{ background: pi.color }} title={pi.label} />
-                  </div>
-                </div>
-                <h3>{p.title}</h3>
-                {p.description && <p className="cp-card-desc">{p.description}</p>}
-                <div className="cp-card-meta">
-                  <span className="cp-card-cat">{p.category}</span>
-                  <span className="cp-card-ver">v{p.version}</span>
-                  {p.requiresAcknowledgment && (
-                    <span className={`cp-card-ack ${p.isAcknowledged ? 'done' : ''}`}>
-                      <FiCheckCircle size={11} /> {p.isAcknowledged ? 'Acked' : 'Ack needed'}
-                    </span>
-                  )}
-                </div>
-                <div className="cp-card-foot">
-                  <span>{fmtDate(p.createdAt)}</span>
-                  <div className="cp-card-btns" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => openEdit(p)}><FiEdit3 size={13} /></button>
-                    <button className="danger" onClick={() => handleDelete(p._id)}><FiTrash2 size={13} /></button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {/* ── Edit block modal ── */}
+      {editBlockIndex !== null && (
+        <div className="cp-overlay" onClick={() => setEditBlockIndex(null)}>
+          <div className="cp-modal" onClick={e => e.stopPropagation()}>
+            <div className="cp-modal-head">
+              <h2>Edit Policy Block</h2>
+              <button onClick={() => setEditBlockIndex(null)}><FiX size={17} /></button>
+            </div>
+            <div className="cp-modal-body">
+              <p className="cp-note">You are editing an existing block. The date will remain unchanged.</p>
+              <RichTextarea
+                value={editBlockContent}
+                onChange={setEditBlockContent}
+                placeholder="Edit block content..."
+              />
+            </div>
+            <div className="cp-modal-foot">
+              <button className="cp-btn-sec" onClick={() => setEditBlockIndex(null)}>Cancel</button>
+              <button
+                className="cp-btn-primary"
+                onClick={handleEditBlock}
+                disabled={editingBlock || !editBlockContent.trim()}
+              >
+                {editingBlock ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && (
-        <div className="cp-overlay" onClick={() => setShowModal(false)}>
+      {/* ── Append modal ── */}
+      {showAppend && (
+        <div className="cp-overlay" onClick={() => setShowAppend(false)}>
           <div className="cp-modal" onClick={e => e.stopPropagation()}>
             <div className="cp-modal-head">
-              <h2>{editingPolicy ? 'Edit Policy' : 'New Policy'}</h2>
-              <button onClick={() => setShowModal(false)}><FiX size={18} /></button>
+              <h2>Add to Policy</h2>
+              <button onClick={() => setShowAppend(false)}><FiX size={17} /></button>
             </div>
             <div className="cp-modal-body">
-              <div className="cp-form-row">
-                <div className="cp-fg full">
-                  <label>Title *</label>
-                  <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Policy title" />
-                </div>
-              </div>
-              <div className="cp-form-row">
-                <div className="cp-fg full">
-                  <label>Description</label>
-                  <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Brief description" />
-                </div>
-              </div>
-              <div className="cp-form-row tri">
-                <div className="cp-fg">
-                  <label>Category</label>
-                  <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                    {CATEGORIES.filter(c => c.key !== 'all').map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div className="cp-fg">
-                  <label>Priority</label>
-                  <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
-                <div className="cp-fg">
-                  <label>Status</label>
-                  <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-              </div>
-              <div className="cp-form-row tri">
-                <div className="cp-fg">
-                  <label>Version</label>
-                  <input type="text" value={form.version} onChange={e => setForm({...form, version: e.target.value})} placeholder="1.0" />
-                </div>
-                <div className="cp-fg">
-                  <label>Effective Date</label>
-                  <input type="date" value={form.effectiveDate} onChange={e => setForm({...form, effectiveDate: e.target.value})} />
-                </div>
-                <div className="cp-fg">
-                  <label>Review Date</label>
-                  <input type="date" value={form.reviewDate} onChange={e => setForm({...form, reviewDate: e.target.value})} />
-                </div>
-              </div>
-              <div className="cp-form-row">
-                <div className="cp-fg full">
-                  <label>Content</label>
-                  <textarea rows={10} value={form.content} onChange={e => setForm({...form, content: e.target.value})} placeholder="Write the policy content here..." />
-                </div>
-              </div>
-              <div className="cp-form-row">
-                <div className="cp-fg full">
-                  <label>Tags (comma separated)</label>
-                  <input type="text" value={form.tags} onChange={e => setForm({...form, tags: e.target.value})} placeholder="e.g. leave, remote, hybrid" />
-                </div>
-              </div>
-              <div className="cp-form-row">
-                <label className="cp-check">
-                  <input type="checkbox" checked={form.requiresAcknowledgment} onChange={e => setForm({...form, requiresAcknowledgment: e.target.checked})} />
-                  <span>Require employee acknowledgment</span>
-                </label>
-              </div>
+              <p className="cp-note">New content will be appended with today's date. Existing content stays unchanged.</p>
+              <RichTextarea
+                value={appendContent}
+                onChange={setAppendContent}
+                placeholder="Continue the policy..."
+              />
             </div>
             <div className="cp-modal-foot">
-              <button className="cp-btn-sec" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="cp-btn-primary" onClick={handleSave} disabled={saving || !form.title.trim()}>
-                <FiSave size={15} /> {saving ? 'Saving...' : editingPolicy ? 'Update' : 'Create'}
+              <button className="cp-btn-sec" onClick={() => setShowAppend(false)}>Cancel</button>
+              <button
+                className="cp-btn-primary"
+                onClick={handleAppend}
+                disabled={appending || !appendContent.trim()}
+              >
+                {appending ? 'Adding...' : 'Add to Policy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Accept modal ── */}
+      {showAccept && (
+        <div className="cp-overlay" onClick={() => setShowAccept(false)}>
+          <div className="cp-modal cp-modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="cp-modal-head">
+              <h2>Accept Company Policy</h2>
+              <button onClick={() => setShowAccept(false)}><FiX size={17} /></button>
+            </div>
+            <div className="cp-modal-body">
+              <p className="cp-note">
+                By signing below, you confirm that you have read and agree to the Company Policy.
+              </p>
+              <div className="cp-sig-label">Draw your signature</div>
+              <SignaturePad onSigned={setSignature} />
+            </div>
+            <div className="cp-modal-foot">
+              <button className="cp-btn-sec" onClick={() => setShowAccept(false)}>Cancel</button>
+              <button
+                className="cp-btn-accept"
+                onClick={handleAccept}
+                disabled={!signature || accepting}
+              >
+                <FiCheck size={14} /> {accepting ? 'Accepting...' : 'I Accept'}
               </button>
             </div>
           </div>

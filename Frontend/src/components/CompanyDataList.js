@@ -8,6 +8,12 @@ import { Skeleton } from './ui/skeleton';
 import AllContacts from './AllContacts';
 import './CompanyDataList.css';
 
+const LEGACY_NORMALIZE = {
+  'Cold Lead': 'new', 'Warm Lead': 'followup',
+  'Qualified (SQL)': 'converted', 'Active': 'active', 'Dead Lead': 'dead',
+};
+const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
+
 const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9', '#10b981', '#14b8a6', '#f97316'];
 
 function getInitials(name) {
@@ -403,6 +409,20 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
     [companies]
   );
 
+  const contactsStats = useMemo(() => {
+    let total = 0, newCount = 0, activeCount = 0, convertedCount = 0;
+    companies.forEach(c => {
+      (c.contacts || []).forEach(contact => {
+        total++;
+        const status = normalizeStatus(contact.status);
+        if (status === 'new') newCount++;
+        else if (status === 'active') activeCount++;
+        else if (status === 'converted') convertedCount++;
+      });
+    });
+    return { total, new: newCount, active: activeCount, converted: convertedCount };
+  }, [companies]);
+
   const activeFilterCount = [
     filterIndustries.length > 0,
     !!filterAssignedTo,
@@ -460,15 +480,41 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
         </div>
         <div className="cd-header-actions">
           <div className="cd-stats-container">
-            <div className="cd-stat-item">
-              <span className="cd-stat-value">{addedTodayCount}</span>
-              <span className="cd-stat-label">Added Today</span>
-            </div>
-            <div className="cd-stat-divider" />
-            <div className="cd-stat-item">
-              <span className="cd-stat-value">{companies.length}</span>
-              <span className="cd-stat-label">Total Records</span>
-            </div>
+            {activeTab === 'contacts' ? (
+              <>
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{contactsStats.total}</span>
+                  <span className="cd-stat-label">Total Contacts</span>
+                </div>
+                <div className="cd-stat-divider" />
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{contactsStats.new}</span>
+                  <span className="cd-stat-label">New</span>
+                </div>
+                <div className="cd-stat-divider" />
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{contactsStats.active}</span>
+                  <span className="cd-stat-label">Active</span>
+                </div>
+                <div className="cd-stat-divider" />
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{contactsStats.converted}</span>
+                  <span className="cd-stat-label">Converted</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{addedTodayCount}</span>
+                  <span className="cd-stat-label">Added Today</span>
+                </div>
+                <div className="cd-stat-divider" />
+                <div className="cd-stat-item">
+                  <span className="cd-stat-value">{companies.length}</span>
+                  <span className="cd-stat-label">Total Records</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Avatar stack */}
