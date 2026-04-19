@@ -537,18 +537,18 @@ function CompanyPolicies() {
             <div className="cp-ack-sigblock">
               <div className="cp-ack-sig-label">For Noxtm Studio (Authorized Signatory)</div>
               <div className="cp-ack-sig-box">
-                {policy.ownerSignatureImage
-                  ? <img src={policy.ownerSignatureImage} alt="Owner signature" className="cp-ack-sig-img" />
+                {(policy.ownerAcknowledgment?.signatureImage || policy.ownerSignatureImage)
+                  ? <img src={policy.ownerAcknowledgment?.signatureImage || policy.ownerSignatureImage} alt="Owner signature" className="cp-ack-sig-img" />
                   : canEdit
                     ? <button className="cp-ack-sign-btn" onClick={() => setShowOwnerSig(true)}>+ Add Signature</button>
                     : <span className="cp-ack-sig-placeholder">—</span>}
               </div>
-              {policy.ownerSignatureImage && canEdit && (
+              {(policy.ownerAcknowledgment?.signatureImage || policy.ownerSignatureImage) && canEdit && (
                 <button className="cp-ack-resign-btn" onClick={() => setShowOwnerSig(true)}>Re-sign</button>
               )}
               <div className="cp-ack-field">
                 <span className="cp-ack-field-label">Printed Name:</span>
-                <span className="cp-ack-field-val">Rajat Panwar</span>
+                <span className="cp-ack-field-val">{policy.ownerAcknowledgment?.fullName || 'Rajat Panwar'}</span>
               </div>
               <div className="cp-ack-field">
                 <span className="cp-ack-field-label">Title:</span>
@@ -557,7 +557,9 @@ function CompanyPolicies() {
               <div className="cp-ack-field">
                 <span className="cp-ack-field-label">Date:</span>
                 <span className="cp-ack-field-val">
-                  {policy.ownerSignedAt ? fmtDate(policy.ownerSignedAt) : '___________________________'}
+                  {(policy.ownerAcknowledgment?.acknowledgedAt || policy.ownerSignedAt)
+                    ? fmtDate(policy.ownerAcknowledgment?.acknowledgedAt || policy.ownerSignedAt)
+                    : '___________________________'}
                 </span>
               </div>
             </div>

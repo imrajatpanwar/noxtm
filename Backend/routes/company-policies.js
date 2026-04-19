@@ -34,11 +34,12 @@ router.get('/', async (req, res) => {
 
     const policy = await CompanyPolicy.findOne({ companyId: user.companyId })
       .populate('createdBy', 'fullName')
-      .populate('acknowledgments.userId', 'fullName')
+      .populate('acknowledgments.userId', 'fullName role roleInCompany')
       .lean();
 
     if (!policy) return res.json({ success: true, policy: null });
 
+    // Find current user's acknowledgment
     const userAck = policy.acknowledgments?.find(
       a => String(a.userId?._id || a.userId) === String(userId)
     );
@@ -47,7 +48,21 @@ router.get('/', async (req, res) => {
       ? { signatureImage: userAck.signatureImage, acknowledgedAt: userAck.acknowledgedAt, fullName: userAck.userId?.fullName || '' }
       : null;
 
-    res.json({ success: true, policy: { ...policy, isAcknowledged, userAcknowledgment } });
+    // Find company owner's acknowledgment for Authorized Signatory section
+    const company = await Company.findById(user.companyId).select('owner members').lean();
+    const ownerUserId = company?.owner;
+    const ownerAck = policy.acknowledgments?.find(a => {
+      const ackUserId = a.userId?._id || a.userId;
+      if (ownerUserId && String(ackUserId) === String(ownerUserId)) return true;
+      // Also match by roleInCompany Owner in members
+      const member = company?.members?.find(m => m.user && String(m.user) === String(ackUserId));
+      return member?.roleInCompany === 'Owner';
+    });
+    const ownerAcknowledgment = ownerAck
+      ? { signatureImage: ownerAck.signatureImage, acknowledgedAt: ownerAck.acknowledgedAt, fullName: ownerAck.userId?.fullName || '' }
+      : null;
+
+    res.json({ success: true, policy: { ...policy, isAcknowledged, userAcknowledgment, ownerAcknowledgment } });
   } catch (err) {
     console.error('Error fetching policy:', err);
     res.status(500).json({ success: false, message: 'Server error' });
