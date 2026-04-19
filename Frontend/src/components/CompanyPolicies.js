@@ -226,6 +226,11 @@ function CompanyPolicies() {
   const [signature, setSignature] = useState(null);
   const [accepting, setAccepting] = useState(false);
 
+  // Owner signature modal
+  const [showOwnerSig, setShowOwnerSig] = useState(false);
+  const [ownerSig, setOwnerSig] = useState(null);
+  const [savingOwnerSig, setSavingOwnerSig] = useState(false);
+
   const fetchPolicy = useCallback(async () => {
     try {
       const res = await api.get('/company-policies');
@@ -335,6 +340,21 @@ function CompanyPolicies() {
       console.error('Error accepting policy:', err);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  const handleOwnerSig = async () => {
+    if (!ownerSig || !policy) return;
+    setSavingOwnerSig(true);
+    try {
+      const res = await api.patch(`/company-policies/${policy._id}/owner-signature`, { signatureImage: ownerSig });
+      setPolicy(prev => ({ ...prev, ownerSignatureImage: res.data.ownerSignatureImage, ownerSignedAt: res.data.ownerSignedAt }));
+      setShowOwnerSig(false);
+      setOwnerSig(null);
+    } catch (err) {
+      console.error('Error saving owner signature:', err);
+    } finally {
+      setSavingOwnerSig(false);
     }
   };
 
@@ -483,6 +503,67 @@ function CompanyPolicies() {
           ))}
         </div>
 
+        {/* Acknowledgement & Agreement section */}
+        <div className="cp-ack-section">
+          <div className="cp-ack-title">ACKNOWLEDGEMENT &amp; AGREEMENT</div>
+          <p className="cp-ack-body">
+            I, the undersigned, acknowledge that I have received, read, and understood the Noxtm Studio Official Company Policies.
+            I understand that adherence to these policies is a condition of my continued employment or contract with Noxtm Studio.
+            I agree that any violation of these terms may result in disciplinary action, including immediate termination and potential legal liability.
+          </p>
+
+          <div className="cp-ack-sigrow">
+            {/* Employee */}
+            <div className="cp-ack-sigblock">
+              <div className="cp-ack-sig-label">Employee / Contractor Signature</div>
+              <div className="cp-ack-sig-box">
+                {policy.userAcknowledgment?.signatureImage
+                  ? <img src={policy.userAcknowledgment.signatureImage} alt="Employee signature" className="cp-ack-sig-img" />
+                  : <span className="cp-ack-sig-placeholder">—</span>}
+              </div>
+              <div className="cp-ack-field">
+                <span className="cp-ack-field-label">Printed Name:</span>
+                <span className="cp-ack-field-val">{policy.userAcknowledgment?.fullName || '___________________________'}</span>
+              </div>
+              <div className="cp-ack-field">
+                <span className="cp-ack-field-label">Date:</span>
+                <span className="cp-ack-field-val">
+                  {policy.userAcknowledgment?.acknowledgedAt ? fmtDate(policy.userAcknowledgment.acknowledgedAt) : '___________________________'}
+                </span>
+              </div>
+            </div>
+
+            {/* Owner */}
+            <div className="cp-ack-sigblock">
+              <div className="cp-ack-sig-label">For Noxtm Studio (Authorized Signatory)</div>
+              <div className="cp-ack-sig-box">
+                {policy.ownerSignatureImage
+                  ? <img src={policy.ownerSignatureImage} alt="Owner signature" className="cp-ack-sig-img" />
+                  : canEdit
+                    ? <button className="cp-ack-sign-btn" onClick={() => setShowOwnerSig(true)}>+ Add Signature</button>
+                    : <span className="cp-ack-sig-placeholder">—</span>}
+              </div>
+              {policy.ownerSignatureImage && canEdit && (
+                <button className="cp-ack-resign-btn" onClick={() => setShowOwnerSig(true)}>Re-sign</button>
+              )}
+              <div className="cp-ack-field">
+                <span className="cp-ack-field-label">Printed Name:</span>
+                <span className="cp-ack-field-val">Rajat Panwar</span>
+              </div>
+              <div className="cp-ack-field">
+                <span className="cp-ack-field-label">Title:</span>
+                <span className="cp-ack-field-val">Owner / Founder</span>
+              </div>
+              <div className="cp-ack-field">
+                <span className="cp-ack-field-label">Date:</span>
+                <span className="cp-ack-field-val">
+                  {policy.ownerSignedAt ? fmtDate(policy.ownerSignedAt) : '___________________________'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="cp-letter-footer">
           {canEdit ? (
@@ -555,6 +636,33 @@ function CompanyPolicies() {
                 disabled={appending || !appendContent.trim()}
               >
                 {appending ? 'Adding...' : 'Add to Policy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Owner signature modal ── */}
+      {showOwnerSig && (
+        <div className="cp-overlay" onClick={() => setShowOwnerSig(false)}>
+          <div className="cp-modal cp-modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="cp-modal-head">
+              <h2>Owner Signature</h2>
+              <button onClick={() => setShowOwnerSig(false)}><FiX size={17} /></button>
+            </div>
+            <div className="cp-modal-body">
+              <p className="cp-note">Sign as Rajat Panwar — Owner / Founder</p>
+              <div className="cp-sig-label">Draw your signature</div>
+              <SignaturePad onSigned={setOwnerSig} />
+            </div>
+            <div className="cp-modal-foot">
+              <button className="cp-btn-sec" onClick={() => setShowOwnerSig(false)}>Cancel</button>
+              <button
+                className="cp-btn-primary"
+                onClick={handleOwnerSig}
+                disabled={!ownerSig || savingOwnerSig}
+              >
+                <FiCheck size={14} /> {savingOwnerSig ? 'Saving...' : 'Save Signature'}
               </button>
             </div>
           </div>

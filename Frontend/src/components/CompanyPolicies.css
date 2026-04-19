@@ -305,6 +305,124 @@
   line-height: 1.7;
 }
 
+/* ── Acknowledgement & Agreement section ────────────────────── */
+.cp-ack-section {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 2px solid #0f172a;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.cp-ack-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0f172a;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.cp-ack-body {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: #334155;
+  margin-bottom: 28px;
+}
+
+.cp-ack-sigrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.cp-ack-sigblock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-ack-sig-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.cp-ack-sig-box {
+  height: 80px;
+  border-bottom: 1.5px solid #94a3b8;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 4px;
+}
+
+.cp-ack-sig-img {
+  max-height: 72px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cp-ack-sig-placeholder {
+  color: #cbd5e1;
+  font-size: 1.2rem;
+}
+
+.cp-ack-sign-btn {
+  background: none;
+  border: 1.5px dashed #94a3b8;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 4px;
+}
+
+.cp-ack-sign-btn:hover {
+  border-color: #0f172a;
+  color: #0f172a;
+}
+
+.cp-ack-resign-btn {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-top: -6px;
+}
+
+.cp-ack-field {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.875rem;
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+}
+
+.cp-ack-field-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.cp-ack-field-val {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+@media (max-width: 600px) {
+  .cp-ack-sigrow {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Letter footer ───────────────────────────────────────────── */
 .cp-letter-footer {
   display: flex;

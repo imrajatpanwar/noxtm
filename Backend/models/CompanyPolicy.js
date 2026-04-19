@@ -38,6 +38,8 @@ const companyPolicySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  ownerSignatureImage: { type: String, default: '' },
+  ownerSignedAt: { type: Date },
   lastUpdatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

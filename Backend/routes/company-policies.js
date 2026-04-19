@@ -34,15 +34,20 @@ router.get('/', async (req, res) => {
 
     const policy = await CompanyPolicy.findOne({ companyId: user.companyId })
       .populate('createdBy', 'fullName')
+      .populate('acknowledgments.userId', 'fullName')
       .lean();
 
     if (!policy) return res.json({ success: true, policy: null });
 
-    const isAcknowledged = policy.acknowledgments?.some(
-      a => String(a.userId) === String(userId)
+    const userAck = policy.acknowledgments?.find(
+      a => String(a.userId?._id || a.userId) === String(userId)
     );
+    const isAcknowledged = !!userAck;
+    const userAcknowledgment = userAck
+      ? { signatureImage: userAck.signatureImage, acknowledgedAt: userAck.acknowledgedAt, fullName: userAck.userId?.fullName || '' }
+      : null;
 
-    res.json({ success: true, policy: { ...policy, isAcknowledged } });
+    res.json({ success: true, policy: { ...policy, isAcknowledged, userAcknowledgment } });
   } catch (err) {
     console.error('Error fetching policy:', err);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -188,6 +193,32 @@ router.patch('/:id/title', async (req, res) => {
     res.json({ success: true, title: policy.title });
   } catch (err) {
     console.error('Error updating policy title:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ============================================
+// PATCH /api/company-policies/:id/owner-signature — Set owner signature
+// ============================================
+router.patch('/:id/owner-signature', async (req, res) => {
+  try {
+    const { userId, user } = await getUser(req);
+    if (!user?.companyId) return res.status(400).json({ success: false, message: 'No company' });
+    if (!await canManagePolicy(user, userId)) return res.status(403).json({ success: false, message: 'Not authorized' });
+
+    const { signatureImage } = req.body;
+    if (!signatureImage) return res.status(400).json({ success: false, message: 'Signature is required' });
+
+    const policy = await CompanyPolicy.findOne({ _id: req.params.id, companyId: user.companyId });
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+
+    policy.ownerSignatureImage = signatureImage;
+    policy.ownerSignedAt = new Date();
+    await policy.save();
+
+    res.json({ success: true, ownerSignatureImage: policy.ownerSignatureImage, ownerSignedAt: policy.ownerSignedAt });
+  } catch (err) {
+    console.error('Error saving owner signature:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
