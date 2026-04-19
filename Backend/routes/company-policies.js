@@ -229,6 +229,19 @@ router.patch('/:id/owner-signature', async (req, res) => {
 
     policy.ownerSignatureImage = signatureImage;
     policy.ownerSignedAt = new Date();
+
+    // Also update the owner's acknowledgment entry if it exists
+    const company = await Company.findById(user.companyId).select('owner members').lean();
+    const ownerAck = policy.acknowledgments.find(a => {
+      if (company?.owner && String(a.userId) === String(company.owner)) return true;
+      const member = company?.members?.find(m => m.user && String(m.user) === String(a.userId));
+      return member?.roleInCompany === 'Owner';
+    });
+    if (ownerAck) {
+      ownerAck.signatureImage = signatureImage;
+      ownerAck.acknowledgedAt = policy.ownerSignedAt;
+    }
+
     await policy.save();
 
     res.json({ success: true, ownerSignatureImage: policy.ownerSignatureImage, ownerSignedAt: policy.ownerSignedAt });

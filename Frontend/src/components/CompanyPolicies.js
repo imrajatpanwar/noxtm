@@ -348,7 +348,14 @@ function CompanyPolicies() {
     setSavingOwnerSig(true);
     try {
       const res = await api.patch(`/company-policies/${policy._id}/owner-signature`, { signatureImage: ownerSig });
-      setPolicy(prev => ({ ...prev, ownerSignatureImage: res.data.ownerSignatureImage, ownerSignedAt: res.data.ownerSignedAt }));
+      setPolicy(prev => ({
+        ...prev,
+        ownerSignatureImage: res.data.ownerSignatureImage,
+        ownerSignedAt: res.data.ownerSignedAt,
+        ownerAcknowledgment: prev.ownerAcknowledgment
+          ? { ...prev.ownerAcknowledgment, signatureImage: res.data.ownerSignatureImage, acknowledgedAt: res.data.ownerSignedAt }
+          : null
+      }));
       setShowOwnerSig(false);
       setOwnerSig(null);
     } catch (err) {
