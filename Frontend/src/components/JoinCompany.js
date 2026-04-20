@@ -10,12 +10,12 @@ function JoinCompany({ onSignup }) {
   const [searchParams] = useSearchParams();
   const { token: paramToken } = useParams();
   const navigate = useNavigate();
-  // Support both /invite/:token and /join-company?token=xxx formats
   const token = paramToken || searchParams.get('token');
 
   const [loading, setLoading] = useState(true);
   const [invitationValid, setInvitationValid] = useState(false);
   const [invitationData, setInvitationData] = useState(null);
+  const [loginMode, setLoginMode] = useState(false); // existing user → login to join
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -36,7 +36,6 @@ function JoinCompany({ onSignup }) {
       navigate('/login');
       return;
     }
-
     verifyInvitation();
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -48,17 +47,9 @@ function JoinCompany({ onSignup }) {
       if (data.valid) {
         setInvitationValid(true);
         setInvitationData(data);
-        setFormData(prev => ({
-          ...prev,
-          email: data.invitation.email
-        }));
+        setFormData(prev => ({ ...prev, email: data.invitation.email }));
       } else {
-        const errorMsg = data.message || 'Invalid or expired invitation';
-        if (errorMsg.includes('expired') || errorMsg.includes('used')) {
-          toast.error(errorMsg);
-        } else {
-          toast.error(errorMsg);
-        }
+        toast.error(data.message || 'Invalid or expired invitation');
         setTimeout(() => navigate('/login'), 3000);
       }
     } catch (error) {
@@ -71,9 +62,7 @@ function JoinCompany({ onSignup }) {
   };
 
   const validatePasswordStrength = (password) => {
-    const strength = {
-      minLength: password.length >= 6,
-    };
+    const strength = { minLength: password.length >= 6 };
     strength.isValid = strength.minLength;
     setPasswordStrength(strength);
   };
@@ -85,26 +74,80 @@ function JoinCompany({ onSignup }) {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Shared: accept invitation after we have a valid auth token + userId
+  const acceptInvitation = async (authToken, userId, userBase) => {
+    const acceptResponse = await api.post(
+      '/messaging/invitations/signup-accept',
+      { token, userId },
+      { headers: { Authorization: `Bearer ${authToken}` } }
+    );
+    const acceptData = acceptResponse.data;
+
+    if (acceptData.success) {
+      const finalToken = acceptData.token || authToken;
+      localStorage.setItem('token', finalToken);
+      const updatedUser = {
+        ...userBase,
+        companyId: acceptData.company.id,
+        subscription: acceptData.user.subscription,
+        permissions: acceptData.user.permissions,
+        access: acceptData.user.access
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('userUpdated'));
+      toast.success(`Successfully joined ${invitationData.company.companyName}!`);
+      setTimeout(() => navigate('/dashboard', { replace: true }), 100);
+    } else {
+      toast.error(acceptData.message || 'Failed to join company');
+      setSubmitting(false);
+    }
+  };
+
+  // Login-to-join handler (existing users)
+  const handleLoginJoin = async (e) => {
+    e.preventDefault();
+    if (!formData.password) {
+      toast.error('Please enter your password');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const loginResponse = await api.post('/login', {
+        email: formData.email,
+        password: formData.password
+      });
+      const loginData = loginResponse.data;
+      if (!loginData.token) {
+        toast.error(loginData.message || 'Login failed');
+        setSubmitting(false);
+        return;
+      }
+      localStorage.setItem('token', loginData.token);
+      localStorage.setItem('user', JSON.stringify(loginData.user));
+      await acceptInvitation(loginData.token, loginData.user.id || loginData.user._id, loginData.user);
+    } catch (error) {
+      console.error('Login-join error:', error);
+      const msg = error.response?.data?.message;
+      toast.error(msg || 'Login failed. Check your password.');
+      setSubmitting(false);
+    }
+  };
+
+  // Register + join handler (new users)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.fullName.trim()) {
       toast.error('Please enter your full name');
       return;
     }
-
     if (!passwordStrength.isValid) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -113,88 +156,35 @@ function JoinCompany({ onSignup }) {
     setSubmitting(true);
 
     try {
-      // Create user account directly via API call instead of using onSignup
-      // This bypasses the email verification flow used in regular signup
       const signupResponse = await api.post('/register', {
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
         invitationToken: token
       });
-
       const signupData = signupResponse.data;
 
       if (!signupData.success) {
-        if (signupData.userExists) {
-          toast.error('This email is already registered. Try logging in instead.');
-          setTimeout(() => {
-            navigate(`/login?email=${encodeURIComponent(formData.email)}`);
-          }, 2000);
-        } else {
-          toast.error(signupData.message || 'Failed to create account');
-        }
+        toast.error(signupData.message || 'Failed to create account');
         setSubmitting(false);
         return;
       }
 
-      // Store the token immediately after registration
       localStorage.setItem('token', signupData.token);
       localStorage.setItem('user', JSON.stringify(signupData.user));
-
-      // Accept invitation with authentication
-      const acceptResponse = await api.post('/messaging/invitations/signup-accept', {
-        token: token,
-        userId: signupData.user.id
-      });
-
-      const acceptData = acceptResponse.data;
-
-      if (acceptData.success) {
-        // Update token if new one provided
-        if (acceptData.token) {
-          localStorage.setItem('token', acceptData.token);
-        }
-
-        // Update user with complete company info
-        const updatedUser = {
-          ...signupData.user,
-          companyId: acceptData.company.id,
-          subscription: acceptData.user.subscription,
-          permissions: acceptData.user.permissions,
-          access: acceptData.user.access
-        };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-
-        // Dispatch event to notify App.js and RoleContext
-        window.dispatchEvent(new Event('userUpdated'));
-
-        toast.success(`Successfully joined ${invitationData.company.companyName}!`);
-
-        // Short delay for state propagation, then navigate
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 100);
-      } else {
-        toast.error(acceptData.message || 'Failed to join company');
-        setSubmitting(false);
-      }
+      await acceptInvitation(signupData.token, signupData.user.id, signupData.user);
     } catch (error) {
       console.error('Error during signup:', error);
-      const errMsg = error.response?.data?.message;
-      if (errMsg) {
-        toast.error(errMsg);
-        // If invitation expired/invalid, redirect after delay
-        if (errMsg.toLowerCase().includes('invitation') || errMsg.toLowerCase().includes('expired')) {
-          setTimeout(() => navigate('/login'), 3000);
-        }
-        // If user already exists, redirect to login
-        if (error.response?.data?.userExists) {
-          setTimeout(() => navigate(`/login?email=${encodeURIComponent(formData.email)}`), 2000);
-        }
+      const errData = error.response?.data;
+      if (errData?.userExists) {
+        // Switch to login mode — user already has an account
+        setLoginMode(true);
+        toast.info('Account already exists. Enter your password to join.');
+        setSubmitting(false);
       } else {
-        toast.error('An error occurred. Please try again.');
+        toast.error(errData?.message || 'An error occurred. Please try again.');
+        setSubmitting(false);
       }
-      setSubmitting(false);
     }
   };
 
@@ -262,85 +252,124 @@ function JoinCompany({ onSignup }) {
             </div>
 
             <div className="jc-footer-link">
-              <p>Already have an account? <a href="/login">Login here</a></p>
+              {loginMode
+                ? <p>New user? <button type="button" className="jc-link-btn" onClick={() => setLoginMode(false)}>Create account instead</button></p>
+                : <p>Already have an account? <button type="button" className="jc-link-btn" onClick={() => setLoginMode(true)}>Login here</button></p>
+              }
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="jc-form">
-            <div className="jc-form-group">
-              <label htmlFor="fullName">Full Name*</label>
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Enter your full name"
-                required
-                disabled={submitting}
-              />
-            </div>
+          {loginMode ? (
+            // LOGIN TO JOIN form
+            <form onSubmit={handleLoginJoin} className="jc-form">
+              <div className="jc-login-notice">
+                <p>This email already has an account. Enter your password to join <strong>{invitationData.company.companyName}</strong>.</p>
+              </div>
 
-            <div className="jc-form-group jc-password-wrapper">
-              <label htmlFor="password">Password*</label>
-              <div className="jc-password-field">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handlePasswordChange}
-                  placeholder="Create a Strong Password"
-                  required
-                  disabled={submitting}
-                  minLength="6"
-                />
-                <button
-                  type="button"
-                  className="jc-password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <FiEyeOff /> : <FiEye />}
+              <div className="jc-form-group jc-password-wrapper">
+                <label htmlFor="password">Password*</label>
+                <div className="jc-password-field">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Enter your password"
+                    required
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    className="jc-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="jc-form-footer">
+                <button type="submit" className="jc-btn-submit" disabled={submitting}>
+                  {submitting ? 'Joining...' : 'Login & Join'}
                 </button>
               </div>
-            </div>
-
-            <div className="jc-form-group jc-password-wrapper">
-              <label htmlFor="confirmPassword">Confirm Password*</label>
-              <div className="jc-password-field">
+            </form>
+          ) : (
+            // REGISTER form
+            <form onSubmit={handleSubmit} className="jc-form">
+              <div className="jc-form-group">
+                <label htmlFor="fullName">Full Name*</label>
                 <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="Re-enter your password"
+                  placeholder="Enter your full name"
                   required
                   disabled={submitting}
-                  minLength="6"
                 />
-                <button
-                  type="button"
-                  className="jc-password-toggle"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  tabIndex={-1}
-                >
-                  {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
+              </div>
+
+              <div className="jc-form-group jc-password-wrapper">
+                <label htmlFor="password">Password*</label>
+                <div className="jc-password-field">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handlePasswordChange}
+                    placeholder="Create a Strong Password"
+                    required
+                    disabled={submitting}
+                    minLength="6"
+                  />
+                  <button
+                    type="button"
+                    className="jc-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="jc-form-group jc-password-wrapper">
+                <label htmlFor="confirmPassword">Confirm Password*</label>
+                <div className="jc-password-field">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Re-enter your password"
+                    required
+                    disabled={submitting}
+                    minLength="6"
+                  />
+                  <button
+                    type="button"
+                    className="jc-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="jc-form-footer">
+                <button type="submit" className="jc-btn-submit" disabled={submitting}>
+                  {submitting ? 'Creating Account...' : 'Accept & Join'}
                 </button>
               </div>
-            </div>
-
-            <div className="jc-form-footer">
-              <button
-                type="submit"
-                className="jc-btn-submit"
-                disabled={submitting}
-              >
-                {submitting ? 'Creating Account...' : 'Accept & Join'}
-              </button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
     </div>

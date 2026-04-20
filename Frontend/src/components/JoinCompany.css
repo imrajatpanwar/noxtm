@@ -178,6 +178,36 @@
   text-decoration: underline;
 }
 
+.jc-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.jc-link-btn:hover {
+  text-decoration: underline;
+}
+
+.jc-login-notice {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.jc-login-notice p {
+  margin: 0;
+  font-size: 14px;
+  color: #0369a1;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 .jc-form-footer {
   display: flex;
   justify-content: flex-end;

@@ -468,13 +468,6 @@ function initializeRoutes(dependencies) {
         });
       }
 
-      // Check if user already has a company
-      if (user.companyId) {
-        return res.status(400).json({
-          message: 'You are already a member of another company'
-        });
-      }
-
       // Add user to company members
       company.members.push({
         user: userId,
@@ -608,13 +601,6 @@ function initializeRoutes(dependencies) {
       if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
         return res.status(403).json({
           message: 'This invitation was sent to a different email address'
-        });
-      }
-
-      // Check if user already has a company
-      if (user.companyId) {
-        return res.status(400).json({
-          message: 'You are already a member of another company'
         });
       }
 
