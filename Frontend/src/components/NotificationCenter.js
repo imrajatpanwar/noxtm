@@ -22,22 +22,6 @@ function NotificationCenter() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Add notification when permissions change
-  useEffect(() => {
-    if (permissionUpdateTrigger > 0) {
-      const newNotification = {
-        id: Date.now(),
-        type: 'permission_update',
-        title: 'Permissions Updated',
-        message: 'Your access permissions have been modified by an administrator.',
-        timestamp: new Date(),
-        read: false,
-        icon: 'shield'
-      };
-      setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
-      setUnreadCount(prev => prev + 1);
-    }
-  }, [permissionUpdateTrigger]);
 
   // Fetch notifications from backend
   const fetchNotifications = useCallback(async () => {
