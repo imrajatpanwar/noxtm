@@ -180,7 +180,20 @@ function JoinCompany({ onSignup }) {
       }
     } catch (error) {
       console.error('Error during signup:', error);
-      toast.error('An error occurred. Please try again.');
+      const errMsg = error.response?.data?.message;
+      if (errMsg) {
+        toast.error(errMsg);
+        // If invitation expired/invalid, redirect after delay
+        if (errMsg.toLowerCase().includes('invitation') || errMsg.toLowerCase().includes('expired')) {
+          setTimeout(() => navigate('/login'), 3000);
+        }
+        // If user already exists, redirect to login
+        if (error.response?.data?.userExists) {
+          setTimeout(() => navigate(`/login?email=${encodeURIComponent(formData.email)}`), 2000);
+        }
+      } else {
+        toast.error('An error occurred. Please try again.');
+      }
       setSubmitting(false);
     }
   };
