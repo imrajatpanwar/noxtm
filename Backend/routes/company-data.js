@@ -263,6 +263,7 @@ router.get('/company-data', auth, async (req, res) => {
       );
     }
 
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(companies);
   } catch (error) {
     console.error('Error fetching company data:', error);
