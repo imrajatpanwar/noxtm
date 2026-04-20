@@ -8,9 +8,9 @@ const chartConfig = {
 };
 
 const RANGES = [
-  { value: '90d', short: '3M' },
-  { value: '30d', short: '30D' },
   { value: '7d',  short: '7D' },
+  { value: '30d', short: '30D' },
+  { value: '90d', short: '3M' },
 ];
 
 const CARD = {
@@ -63,7 +63,7 @@ function CustomLegend({ payload }) {
 }
 
 export default function OverviewAreaChart() {
-  const [range, setRange] = useState('90d');
+  const [range, setRange] = useState('7d');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,31 +101,33 @@ export default function OverviewAreaChart() {
             Company data &amp; projects over time
           </div>
         </div>
-        <div style={{ display: 'flex', background: '#f4f4f5', borderRadius: 8, padding: 2, gap: 2 }}>
-          {RANGES.map(r => (
-            <button
-              key={r.value}
-              onClick={() => setRange(r.value)}
-              style={{
-                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: 500, fontFamily: "'Switzer', sans-serif",
-                background: range === r.value ? '#fff' : 'transparent',
-                color: range === r.value ? '#09090b' : '#6b7280',
-                boxShadow: range === r.value ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
-              {r.short}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 12 }}>
-          {Object.entries(chartConfig).map(([key, cfg]) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color }} />
-              <span style={{ fontSize: 12, color: '#6b7280', fontFamily: "'Switzer', sans-serif", fontWeight: 500 }}>{cfg.label}</span>
-            </div>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {Object.entries(chartConfig).map(([key, cfg]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color }} />
+                <span style={{ fontSize: 12, color: '#6b7280', fontFamily: "'Switzer', sans-serif", fontWeight: 500 }}>{cfg.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', background: '#f4f4f5', borderRadius: 8, padding: 2, gap: 2 }}>
+            {RANGES.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setRange(r.value)}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                  fontSize: 11, fontWeight: 500, fontFamily: "'Switzer', sans-serif",
+                  background: range === r.value ? '#fff' : 'transparent',
+                  color: range === r.value ? '#09090b' : '#6b7280',
+                  boxShadow: range === r.value ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {r.short}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       {/* Chart */}
@@ -162,11 +164,13 @@ export default function OverviewAreaChart() {
                 axisLine={false}
                 tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: "'Switzer', sans-serif" }}
                 allowDecimals={false}
-                width={36}
+                width={40}
+                domain={[0, 'auto']}
+                tickFormatter={(v) => v === 0 ? '0' : v}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e4e4e7', strokeWidth: 1 }} />
-              <Area dataKey="companies" type="monotone" fill="url(#fillCompanies)" stroke="#1a1a1a" strokeWidth={1.5} dot={false} activeDot={{ r: 4, fill: '#1a1a1a', strokeWidth: 0 }} stackId="a" />
-              <Area dataKey="projects"  type="monotone" fill="url(#fillProjects)"  stroke="#6b7280" strokeWidth={1.5} dot={false} activeDot={{ r: 4, fill: '#6b7280', strokeWidth: 0 }} stackId="a" />
+              <Area dataKey="companies" type="monotone" fill="url(#fillCompanies)" stroke="#1a1a1a" strokeWidth={1.5} dot={false} activeDot={{ r: 4, fill: '#1a1a1a', strokeWidth: 0 }} />
+              <Area dataKey="projects"  type="monotone" fill="url(#fillProjects)"  stroke="#6b7280" strokeWidth={1.5} dot={false} activeDot={{ r: 4, fill: '#6b7280', strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         )}

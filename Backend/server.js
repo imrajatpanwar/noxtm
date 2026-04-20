@@ -251,6 +251,8 @@ app.use('/api/incentives', incentivesRoutes);
 // Company Policies & Handbook routes
 const companyPoliciesRoutes = require('./routes/company-policies');
 app.use('/api/company-policies', companyPoliciesRoutes);
+const notificationsRoutes = require('./routes/notifications');
+app.use('/api/notifications', notificationsRoutes);
 const handbookRoutes = require('./routes/handbook');
 app.use('/api/handbook', handbookRoutes);
 

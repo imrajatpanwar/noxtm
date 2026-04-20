@@ -222,6 +222,15 @@ function Dashboard({ user, onLogout }) {
     return () => window.removeEventListener('dashboard:navigateToMessaging', handleNavigateToMessaging);
   }, []);
 
+  // Listen for notification click navigation
+  useEffect(() => {
+    const handleNavigateSection = (e) => {
+      if (e.detail?.section) setActiveSection(e.detail.section);
+    };
+    window.addEventListener('navigate:section', handleNavigateSection);
+    return () => window.removeEventListener('navigate:section', handleNavigateSection);
+  }, []);
+
   // Listen for navigation to settings from header profile dropdown
   useEffect(() => {
     const handleNavigateToSettings = () => {

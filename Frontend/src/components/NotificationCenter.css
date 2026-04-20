@@ -259,6 +259,10 @@
 }
 
 /* Unread state */
+.nc-item-clickable:hover {
+  background: #eff6ff;
+}
+
 .nc-item-unread {
   background: #fafbff;
 }

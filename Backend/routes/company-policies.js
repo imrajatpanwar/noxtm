@@ -4,6 +4,33 @@ const { authenticateToken } = require('../middleware/auth');
 const CompanyPolicy = require('../models/CompanyPolicy');
 const Company = require('../models/Company');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+
+// Notify all company members except the actor
+const notifyTeam = async ({ companyId, actorId, title, message }) => {
+  try {
+    const company = await Company.findById(companyId).select('owner members').lean();
+    if (!company) return;
+    const memberIds = new Set();
+    if (company.owner) memberIds.add(String(company.owner));
+    (company.members || []).forEach(m => { if (m.user) memberIds.add(String(m.user)); });
+    memberIds.delete(String(actorId));
+    if (!memberIds.size) return;
+    const docs = [...memberIds].map(uid => ({
+      userId: uid,
+      companyId,
+      type: 'company_policy',
+      title,
+      message,
+      icon: 'policy',
+      link: 'company-policies',
+      read: false,
+    }));
+    await Notification.insertMany(docs);
+  } catch (err) {
+    console.error('notifyTeam error:', err);
+  }
+};
 
 router.use(authenticateToken);
 
@@ -94,6 +121,7 @@ router.post('/', async (req, res) => {
 
     await policy.save();
     const populated = await CompanyPolicy.findById(policy._id).populate('createdBy', 'fullName').lean();
+    notifyTeam({ companyId: user.companyId, actorId: userId, title: 'Company Policy Created', message: `A new company policy "${policy.title}" has been published. Tap to review.` });
     res.status(201).json({ success: true, policy: populated });
   } catch (err) {
     console.error('Error creating policy:', err);
@@ -121,6 +149,7 @@ router.post('/:id/append', async (req, res) => {
     await policy.save();
 
     const populated = await CompanyPolicy.findById(policy._id).populate('createdBy', 'fullName').lean();
+    notifyTeam({ companyId: user.companyId, actorId: userId, title: 'Company Policy Updated', message: `The company policy "${policy.title}" has been updated. Tap to review.` });
     res.json({ success: true, policy: populated });
   } catch (err) {
     console.error('Error appending to policy:', err);
@@ -179,6 +208,7 @@ router.patch('/:id/blocks/:index', async (req, res) => {
     await policy.save();
 
     const populated = await CompanyPolicy.findById(policy._id).populate('createdBy', 'fullName').lean();
+    notifyTeam({ companyId: user.companyId, actorId: userId, title: 'Company Policy Updated', message: `The company policy "${policy.title}" has been updated. Tap to review.` });
     res.json({ success: true, policy: populated });
   } catch (err) {
     console.error('Error editing policy block:', err);
