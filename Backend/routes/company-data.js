@@ -233,13 +233,13 @@ router.get('/company-data', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { search, industry, labelId } = req.query;
+    const { search, industry, labelId, scope } = req.query;
     const query = { companyId: user.companyId };
 
-    // Use centralized permission resolver — canViewAll means the user sees every record
-    // in their workspace; otherwise restrict to records they created themselves.
+    // canViewAll grants permission to see all records, but only when explicitly
+    // requested via scope=all. Default (no scope / scope=mine) always shows own records.
     const { canViewAll } = await resolveCompanyDataPermissions(user);
-    if (!canViewAll) {
+    if (!canViewAll || scope !== 'all') {
       query.createdBy = user._id;
     }
 
