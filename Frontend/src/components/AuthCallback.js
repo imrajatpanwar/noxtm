@@ -39,7 +39,7 @@ function AuthCallback({ onAuthCallback }) {
                 const payload = JSON.parse(atob(token.split('.')[1]));
 
                 // Fetch full user data from backend
-                const apiBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000' : '';
+                const apiBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5001' : '';
                 const response = await fetch(`${apiBase}/api/users/me`, {
                     headers: {
                         'Authorization': `Bearer ${token}`

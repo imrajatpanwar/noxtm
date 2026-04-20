@@ -112,6 +112,7 @@ function Dashboard({ user, onLogout }) {
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedTrendingService, setSelectedTrendingService] = useState(null);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
 
   const isAdmin = currentUser?.role === 'Admin';
 
@@ -229,6 +230,15 @@ function Dashboard({ user, onLogout }) {
     };
     window.addEventListener('navigate:section', handleNavigateSection);
     return () => window.removeEventListener('navigate:section', handleNavigateSection);
+  }, []);
+
+  // Check if profile emergency contact is missing
+  useEffect(() => {
+    api.get('/profile').then(res => {
+      const d = res.data;
+      const missing = !d?.emergencyContact?.name?.trim() || !d?.emergencyContact?.phone?.trim();
+      setProfileIncomplete(missing);
+    }).catch(() => {});
   }, []);
 
   // Listen for navigation to settings from header profile dropdown
@@ -416,6 +426,15 @@ function Dashboard({ user, onLogout }) {
         <SidebarInset>
           <div className="dashboard-inset-row" style={{ display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0, height: '100%', width: '100%' }}>
             <div className="dashboard-content" style={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', height: '100%', scrollbarWidth: 'none' }}>
+              {profileIncomplete && (
+                <div className="dash-profile-banner">
+                  <span className="dash-banner-icon">⚠️</span>
+                  <span className="dash-banner-text">Your profile is incomplete. Complete it now to unlock all features and get the best experience.</span>
+                  <button className="dash-banner-btn" onClick={() => { setActiveSection('workspace-settings'); setProfileIncomplete(false); }}>
+                    Complete Now →
+                  </button>
+                </div>
+              )}
               {(activeSection === 'message' || activeSection === 'whatsapp-marketing') ? (
                 renderContent()
               ) : (

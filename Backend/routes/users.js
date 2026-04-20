@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const User = require('../models/User');
 
-// Get current user info
+// Get current user info — returns same shape as /api/login
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId)
@@ -14,15 +14,58 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // Build permissions + access same way as /api/login
+    const rawPerms = user.permissions || {};
+    const permissions = {
+      dashboard: rawPerms.dashboard ?? false,
+      dataCenter: rawPerms.dataCenter ?? false,
+      projects: rawPerms.projects ?? false,
+      teamCommunication: rawPerms.teamCommunication ?? false,
+      digitalMediaManagement: rawPerms.digitalMediaManagement ?? false,
+      marketing: rawPerms.marketing ?? false,
+      hrManagement: rawPerms.hrManagement ?? false,
+      financeManagement: rawPerms.financeManagement ?? false,
+      seoManagement: rawPerms.seoManagement ?? false,
+      internalPolicies: rawPerms.internalPolicies ?? false,
+      settingsConfiguration: rawPerms.settingsConfiguration ?? false,
+    };
+    const access = {
+      dashboard: permissions.dashboard,
+      dataCenter: permissions.dataCenter,
+      projects: permissions.projects,
+      teamCommunication: permissions.teamCommunication,
+      digitalMediaManagement: permissions.digitalMediaManagement,
+      marketing: permissions.marketing,
+      hrManagement: permissions.hrManagement,
+      financeManagement: permissions.financeManagement,
+      seoManagement: permissions.seoManagement,
+      internalPolicies: permissions.internalPolicies,
+      settingsConfiguration: permissions.settingsConfiguration,
+    };
+
     res.json({
       success: true,
       user: {
         id: user._id,
+        _id: user._id,
+        fullName: user.fullName,
         name: user.fullName,
         email: user.email,
+        role: user.role,
+        roleInCompany: user.roleInCompany,
+        companyId: user.companyId?._id || user.companyId,
         company: user.companyId,
         timezone: user.timezone || 'UTC',
-        role: user.role
+        profileImage: user.profileImage,
+        permissions,
+        access,
+        subscription: user.subscription || { plan: 'None', status: 'inactive' },
+        phoneNumber: user.phoneNumber,
+        businessEmail: user.businessEmail,
+        bio: user.bio,
+        jobTitle: user.jobTitle,
+        department: user.department,
+        emergencyContact: user.emergencyContact,
       }
     });
   } catch (error) {

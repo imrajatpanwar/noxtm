@@ -19,59 +19,21 @@
  * @returns {Object} Validation result with { valid, message, errors }
  */
 function validatePassword(password) {
-  const errors = [];
-
-  // Check if password exists
   if (!password) {
-    return {
-      valid: false,
-      message: 'Password is required',
-      errors: ['Password is required']
-    };
+    return { valid: false, message: 'Password is required', errors: ['Password is required'] };
   }
 
-  // Convert to string if not already
   const pwd = String(password);
 
-  // Check minimum length
-  if (pwd.length < 8) {
-    errors.push('Password must be at least 8 characters long');
+  if (pwd.length < 6) {
+    return { valid: false, message: 'Password must be at least 6 characters long', errors: ['Password must be at least 6 characters long'] };
   }
 
-  // Check maximum length (prevent DoS attacks)
   if (pwd.length > 128) {
-    errors.push('Password must not exceed 128 characters');
+    return { valid: false, message: 'Password must not exceed 128 characters', errors: ['Password must not exceed 128 characters'] };
   }
 
-  // Check for uppercase letter
-  if (!/[A-Z]/.test(pwd)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-
-  // Check for lowercase letter
-  if (!/[a-z]/.test(pwd)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-
-  // Check for special character
-  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(pwd)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
-  }
-
-  // Return validation result
-  if (errors.length === 0) {
-    return {
-      valid: true,
-      message: 'Password meets all security requirements',
-      errors: []
-    };
-  } else {
-    return {
-      valid: false,
-      message: errors.join('. ') + '.',
-      errors: errors
-    };
-  }
+  return { valid: true, message: 'Password is valid', errors: [] };
 }
 
 /**

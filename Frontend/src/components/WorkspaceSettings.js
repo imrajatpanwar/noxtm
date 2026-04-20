@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid, FiCpu, FiSend, FiTag, FiEdit2 } from 'react-icons/fi';
+import { FiSettings, FiUsers, FiShield, FiDatabase, FiSave, FiX, FiEdit3, FiPlus, FiTrash2, FiCopy, FiCheck, FiMail, FiPackage, FiUser, FiPhone, FiCalendar, FiBriefcase, FiCamera, FiMapPin, FiClock, FiActivity, FiCreditCard, FiTrendingUp, FiHardDrive, FiZap, FiAward, FiGlobe, FiLayers, FiRefreshCw, FiExternalLink, FiAlertCircle, FiChevronRight, FiDollarSign, FiGrid, FiCpu, FiSend, FiTag, FiEdit2, FiFileText } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DEPARTMENTS, PERMISSION_LABELS } from '../utils/departmentDefaults';
 import { useModules } from '../contexts/ModuleContext';
@@ -7,6 +7,10 @@ import api from '../config/api';
 import exhibitosLogo from './assets/exhibitos.svg';
 import botgitLogo from './assets/botgit-logo.svg';
 import { Skeleton } from './ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Progress } from './ui/progress';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
 import './WorkspaceSettings.css';
 import { confirm } from './ui/alert-dialog';
 
@@ -18,6 +22,7 @@ const EMPTY_PERMISSIONS = Object.keys(PERMISSION_LABELS).reduce((acc, key) => {
 function WorkspaceSettings({ user, onLogout }) {
   const { isModuleInstalled, isModuleInstalling, installModule, uninstallModule } = useModules();
   const [activeTab, setActiveTab] = useState('profile');
+  const [billingHistory, setBillingHistory] = useState([]);
   const [moduleTab, setModuleTab] = useState('all'); // 'all' or 'installed'
   const [isEditing, setIsEditing] = useState(false);
   const [workspaceData, setWorkspaceData] = useState({
@@ -37,6 +42,8 @@ function WorkspaceSettings({ user, onLogout }) {
   // Billing state
   const [billingInfo, setBillingInfo] = useState(null);
   const [billingUsage, setBillingUsage] = useState(null);
+  const [billingSubTab, setBillingSubTab] = useState('overview');
+  const [billingCycle, setBillingCycle] = useState('monthly');
 
   // Company members state
   const [companyMembers, setCompanyMembers] = useState([]);
@@ -695,15 +702,18 @@ function WorkspaceSettings({ user, onLogout }) {
     } else if (activeTab === 'general') {
       fetchCompanyDetails();
       fetchAiSettings();
-      // Fetch billing info
+    } else if (activeTab === 'billing') {
+      fetchCompanyDetails();
       (async () => {
         try {
-          const [infoRes, usageRes] = await Promise.all([
+          const [infoRes, usageRes, histRes] = await Promise.all([
             api.get('/billing/info'),
-            api.get('/billing/usage')
+            api.get('/billing/usage'),
+            api.get('/billing/history'),
           ]);
           if (infoRes.data.success) setBillingInfo(infoRes.data.billing);
           if (usageRes.data.success) setBillingUsage(usageRes.data.usage);
+          if (histRes.data.success) setBillingHistory(histRes.data.history || []);
         } catch (e) { /* billing may not be available */ }
       })();
     }
@@ -722,6 +732,16 @@ function WorkspaceSettings({ user, onLogout }) {
       })();
     }
   }, [activeTab]);
+
+  // Navigate to billing tab when sidebar upgrade button clicked
+  useEffect(() => {
+    const handler = (e) => {
+      setActiveTab('billing');
+      setBillingSubTab(e.detail?.subTab || 'plans');
+    };
+    window.addEventListener('workspace-settings:billing', handler);
+    return () => window.removeEventListener('workspace-settings:billing', handler);
+  }, []);
 
   // Label handlers
   const handleCreateLabel = async () => {
@@ -973,8 +993,8 @@ function WorkspaceSettings({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Subscription & Billing Card */}
-        <div className="wsg-card">
+        {/* Subscription & Billing moved to Billing tab */}
+        {false && <div className="wsg-card">
           <div className="wsg-card-head">
             <div className="wsg-card-head-left">
               <div className="wsg-card-icon billing"><FiCreditCard size={18} /></div>
@@ -1089,7 +1109,7 @@ function WorkspaceSettings({ user, onLogout }) {
               <span>{emailQuota ? `${(emailQuota.totalMB / 1024).toFixed(0)}GB` : '10GB'} total</span>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Owner Info Card */}
         {companyDetails?.owner && (
@@ -1225,6 +1245,409 @@ function WorkspaceSettings({ user, onLogout }) {
             <FiAlertCircle size={13} />
             <span>This AI provider is used across all AI features: WhatsApp Bot, AI Commenter, and more.</span>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBillingSettings = () => {
+    const sub = user?.subscription || {};
+    const bill = billingInfo || {};
+    const usage = billingUsage || {};
+    const planName = sub.plan || 'Trial';
+    const subStatus = sub.status || 'inactive';
+    const isActive = ['active', 'trial'].includes(subStatus);
+    const endDate = sub.endDate ? new Date(sub.endDate) : null;
+    const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - new Date()) / 86400000)) : null;
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const memberCount = companyDetails?.memberCount || 0;
+    const emailQuota = companyDetails?.emailSettings?.emailQuota;
+    const storageUsedPct = emailQuota ? Math.min(100, Math.round((emailQuota.usedMB / emailQuota.totalMB) * 100)) : 0;
+
+    const PLANS = [
+      {
+        key: 'Starter', label: 'Starter', subtitle: 'For solo entrepreneurs', tag: '01 — SOLO',
+        price: { monthly: 1699, yearly: 1359 }, currency: '₹',
+        features: [
+          'Access to Dashboard management',
+          'Add 5 Team Access Max',
+          'Free Business Mail Access',
+          '10 GB Storage Access',
+          'Free AI Analytics & Suggestions',
+          '10+ integrations Tools',
+          'Customer support',
+        ],
+        color: '#1a1a1a', popular: false,
+      },
+      {
+        key: 'Pro+', label: 'Pro +', subtitle: 'For Small Businesses', tag: '02 — POPULAR',
+        price: { monthly: 2699, yearly: 2159 }, currency: '₹',
+        features: [
+          'Everything from Starter',
+          'Add 60 Team Access Max',
+          'Free 10,000 Bulk emails',
+          '50GB Storage Access',
+          'Request new integrations',
+          'Intelligent Analytics Bot',
+          'AI Analysis work report',
+          'Priority customer support',
+          '99.9% Up time',
+        ],
+        color: '#ffffff', popular: true, dark: true,
+      },
+      {
+        key: 'Advance', label: 'Advance', subtitle: 'For High-scale businesses', tag: '03 — SCALE',
+        price: { monthly: 4699, yearly: 3759 }, currency: '₹',
+        features: [
+          'Everything from Pro+',
+          'Unlimited Team Access',
+          'Free 50,000 Bulk Emails',
+          '75GB Storage Access',
+          'Advanced noxtm bot',
+          'Custom Branding',
+        ],
+        color: '#1a1a1a', popular: false,
+      },
+    ];
+
+    const billingNav = [
+      { key: 'overview', label: 'Overview', icon: <FiGrid size={15} /> },
+      { key: 'plans', label: 'Plans', icon: <FiLayers size={15} /> },
+      { key: 'subscription', label: 'Subscription', icon: <FiRefreshCw size={15} /> },
+      { key: 'invoices', label: 'Invoices', icon: <FiFileText size={15} /> },
+    ];
+
+    const renderOverview = () => {
+      const emailUsedPct = bill.totalPurchased > 0
+        ? Math.min(100, Math.round(((usage.thisMonth || 0) / bill.totalPurchased) * 100))
+        : 0;
+      const trialPct = daysLeft !== null ? Math.min(100, Math.max(0, ((14 - daysLeft) / 14) * 100)) : 0;
+      const usedGB = emailQuota ? (emailQuota.usedMB / 1024) : 0;
+      const totalGB = emailQuota ? (emailQuota.totalMB / 1024) : 10;
+
+      return (
+        <div className="bov-root">
+
+          {/* ── Top: Plan hero + upgrade CTA ── */}
+          <div className="bov-top-row">
+            {/* Plan info */}
+            <div className="bov-plan-block">
+              <div className="bov-plan-pill">
+                <span className="bov-plan-dot" />
+                {subStatus.charAt(0).toUpperCase() + subStatus.slice(1)}
+              </div>
+              <div className="bov-plan-name">{planName}</div>
+              <div className="bov-plan-meta">
+                <span><FiCalendar size={12} /> Started {fmtDate(sub.startDate)}</span>
+                <span>·</span>
+                <span><FiRefreshCw size={12} /> {sub.billingCycle || 'Monthly'}</span>
+              </div>
+              {daysLeft !== null && (
+                <div className="bov-trial-section">
+                  <div className="bov-trial-row">
+                    <span className="bov-trial-label">Trial period</span>
+                    <span className="bov-trial-right"><strong>{daysLeft}</strong> days left · expires {fmtDate(endDate)}</span>
+                  </div>
+                  <Progress value={trialPct} className="bov-bar" />
+                </div>
+              )}
+            </div>
+
+            {/* Upgrade CTA */}
+            {subStatus === 'trial' && (
+              <div className="bov-upgrade-block">
+                <div className="bov-upgrade-tag"><FiZap size={11} /> Limited trial</div>
+                <div className="bov-upgrade-headline">Unlock full access</div>
+                <div className="bov-upgrade-desc">Get all features, priority support, and higher limits.</div>
+                <button className="bov-upgrade-cta" onClick={() => setBillingSubTab('plans')}>
+                  View Plans <FiChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Stat row ── */}
+          <div className="bov-stat-row">
+            {[
+              { icon: <FiUsers size={14} />,     label: 'Team Seats',    val: `${memberCount}`,        sub: 'members',   color: '#6366f1' },
+              { icon: <FiClock size={14} />,     label: 'Renews',        val: fmtDate(endDate),        sub: '',          color: '#f59e0b' },
+              { icon: <FiMail size={14} />,      label: 'Emails Used',   val: (usage.thisMonth||0).toLocaleString(), sub: 'this month', color: '#06b6d4' },
+              { icon: <FiHardDrive size={14} />, label: 'Storage Used',  val: `${usedGB.toFixed(1)} GB`, sub: `of ${totalGB.toFixed(0)} GB`, color: '#8b5cf6' },
+            ].map(s => (
+              <div key={s.label} className="bov-stat-pill">
+                <div className="bov-stat-pill-icon" style={{ color: s.color, background: s.color + '14' }}>{s.icon}</div>
+                <div className="bov-stat-pill-body">
+                  <div className="bov-stat-pill-label">{s.label}</div>
+                  <div className="bov-stat-pill-val">{s.val} <span className="bov-stat-pill-sub">{s.sub}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Usage cards row ── */}
+          <div className="bov-usage-row">
+            {/* Email credits */}
+            <Card className="bov-usage-card">
+              <CardContent className="bov-usage-card-body">
+                <div className="bov-usage-card-head">
+                  <div className="bov-usage-card-icon" style={{ background: '#fff7ed', color: '#ea580c' }}><FiZap size={15} /></div>
+                  <div>
+                    <div className="bov-usage-card-title">Email Credits</div>
+                    <div className="bov-usage-card-sub">Monthly sending quota</div>
+                  </div>
+                  <div className="bov-usage-card-pct">{emailUsedPct}%</div>
+                </div>
+                <Progress value={emailUsedPct} className="bov-bar" style={{ marginTop: 12 }} />
+                <div className="bov-usage-card-nums">
+                  <div className="bov-ucn-item">
+                    <span className="bov-ucn-val" style={{ color: '#16a34a' }}>{bill.emailCredits?.toLocaleString() ?? '0'}</span>
+                    <span className="bov-ucn-label">Available</span>
+                  </div>
+                  <div className="bov-ucn-sep" />
+                  <div className="bov-ucn-item">
+                    <span className="bov-ucn-val">{bill.totalPurchased?.toLocaleString() ?? '0'}</span>
+                    <span className="bov-ucn-label">Total</span>
+                  </div>
+                  <div className="bov-ucn-sep" />
+                  <div className="bov-ucn-item">
+                    <span className="bov-ucn-val" style={{ color: '#64748b' }}>{bill.totalUsed?.toLocaleString() ?? '0'}</span>
+                    <span className="bov-ucn-label">Used</span>
+                  </div>
+                </div>
+                <div className="bov-usage-foot">
+                  <span>Last month: {usage.lastMonth || 0}</span>
+                  <span>All time: {(usage.total || 0).toLocaleString()}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Storage */}
+            <Card className="bov-usage-card">
+              <CardContent className="bov-usage-card-body">
+                <div className="bov-usage-card-head">
+                  <div className="bov-usage-card-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}><FiHardDrive size={15} /></div>
+                  <div>
+                    <div className="bov-usage-card-title">Storage</div>
+                    <div className="bov-usage-card-sub">Files & media</div>
+                  </div>
+                  <Badge variant="outline" style={{ marginLeft: 'auto', fontSize: '0.7rem', color: storageUsedPct > 85 ? '#ef4444' : '#64748b', borderColor: storageUsedPct > 85 ? '#fecaca' : '#e2e8f0' }}>
+                    {storageUsedPct}% used
+                  </Badge>
+                </div>
+                <Progress value={storageUsedPct} className={`bov-bar ${storageUsedPct > 85 ? 'bov-bar-red' : ''}`} style={{ marginTop: 12 }} />
+                <div className="bov-storage-big">
+                  <span className="bov-storage-big-used">{usedGB.toFixed(1)}</span>
+                  <span className="bov-storage-big-unit">GB</span>
+                  <span className="bov-storage-big-of">/ {totalGB.toFixed(0)} GB</span>
+                </div>
+                {storageUsedPct > 85 && (
+                  <div className="bov-warn-chip"><FiAlertCircle size={12} /> Almost full — upgrade for more storage</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick links */}
+            <Card className="bov-usage-card">
+              <CardContent className="bov-usage-card-body">
+                <div className="bov-usage-card-head">
+                  <div className="bov-usage-card-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}><FiCreditCard size={15} /></div>
+                  <div>
+                    <div className="bov-usage-card-title">Quick Actions</div>
+                    <div className="bov-usage-card-sub">Manage billing</div>
+                  </div>
+                </div>
+                <div className="bov-quick-links">
+                  {[
+                    { icon: <FiLayers size={14} />,    label: 'Compare Plans',      onClick: () => setBillingSubTab('plans') },
+                    { icon: <FiRefreshCw size={14} />, label: 'Subscription Details', onClick: () => setBillingSubTab('subscription') },
+                    { icon: <FiFileText size={14} />,  label: 'Invoice History',    onClick: () => setBillingSubTab('invoices') },
+                  ].map(a => (
+                    <button key={a.label} className="bov-quick-link" onClick={a.onClick}>
+                      <span className="bov-quick-link-icon">{a.icon}</span>
+                      <span>{a.label}</span>
+                      <FiChevronRight size={13} style={{ marginLeft: 'auto', opacity: 0.4 }} />
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+        </div>
+      );
+    };
+
+    const renderPlans = () => {
+      return (
+        <div className="wsg-billing-content">
+          <div className="wsg-plans-header">
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Pick a plan.</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>14-day free trial. Upgrade, downgrade, or cancel any time.</p>
+            </div>
+            <div className="wsg-cycle-toggle">
+              <button className={billingCycle === 'monthly' ? 'active' : ''} onClick={() => setBillingCycle('monthly')}>Monthly</button>
+              <button className={billingCycle === 'yearly' ? 'active' : ''} onClick={() => setBillingCycle('yearly')}>Yearly <span className="wsg-save-tag">-20%</span></button>
+            </div>
+          </div>
+          <div className="wsg-plans-grid">
+            {PLANS.map(plan => {
+              const isCurrent = planName === plan.key;
+              const price = plan.price[billingCycle];
+              return (
+                <div key={plan.key} className={`wsg-plan-card ${plan.dark ? 'dark' : ''} ${isCurrent ? 'current' : ''}`}>
+                  {plan.popular && <div className="wsg-plan-recommended-tag">• RECOMMENDED</div>}
+                  <div className="wsg-plan-tag">{plan.tag}</div>
+                  <div className="wsg-plan-card-name">{plan.label}</div>
+                  <div className="wsg-plan-card-subtitle">{plan.subtitle}</div>
+                  <div className="wsg-plan-card-price">
+                    <span className="wsg-price-currency">{plan.currency}</span>
+                    <span className="wsg-price-num">{price.toLocaleString()}</span>
+                    <span className="wsg-price-period">/mo</span>
+                  </div>
+                  <button
+                    className={`wsg-plan-select-btn ${isCurrent ? 'current' : ''} ${plan.dark ? 'dark-card-btn' : ''}`}
+                    disabled={isCurrent}
+                  >
+                    {isCurrent ? 'Current trial →' : 'Get started →'}
+                  </button>
+                  <ul className="wsg-plan-features">
+                    {plan.features.map(f => (
+                      <li key={f}>
+                        <FiCheck size={12} style={{ flexShrink: 0, opacity: 0.7 }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          <div className="wsg-plans-footer">
+            <span>🔒 SSL ENCRYPTED · CANCEL ANY TIME</span>
+            <span>GST INCLUDED · BILLED IN INR</span>
+          </div>
+        </div>
+      );
+    };
+
+    const renderSubscription = () => (
+      <div className="wsg-billing-content">
+        <div className="wsg-card">
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon"><FiRefreshCw size={16} /></div>
+              <div><h3>Subscription Details</h3><span className="wsg-card-sub">Your current subscription and billing info</span></div>
+            </div>
+          </div>
+          <div className="wsg-sub-grid">
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiPackage size={14} /></div><div><span className="wsg-sub-item-label">Plan</span><span className="wsg-sub-item-val">{planName}</span></div></div>
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiActivity size={14} /></div><div><span className="wsg-sub-item-label">Status</span><span className={`wsg-sub-item-val ${isActive ? 'text-green' : 'text-red'}`}>{subStatus}</span></div></div>
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiCalendar size={14} /></div><div><span className="wsg-sub-item-label">Start Date</span><span className="wsg-sub-item-val">{fmtDate(sub.startDate)}</span></div></div>
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiClock size={14} /></div><div><span className="wsg-sub-item-label">End / Renewal Date</span><span className="wsg-sub-item-val">{fmtDate(endDate)}</span></div></div>
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiRefreshCw size={14} /></div><div><span className="wsg-sub-item-label">Billing Cycle</span><span className="wsg-sub-item-val">{sub.billingCycle || 'Monthly'}</span></div></div>
+            <div className="wsg-sub-item"><div className="wsg-sub-item-ic"><FiUsers size={14} /></div><div><span className="wsg-sub-item-label">Team Seats</span><span className="wsg-sub-item-val">{memberCount} members</span></div></div>
+          </div>
+          {daysLeft !== null && (
+            <div className="wsg-sub-renewal-bar">
+              <div className="wsg-usage-head"><span>Trial / Plan Period</span><span className="wsg-usage-nums">{daysLeft} days remaining</span></div>
+              <div className="wsg-usage-bar-track">
+                <div className="wsg-usage-bar-fill" style={{ width: `${Math.min(100, Math.max(0, ((30 - daysLeft) / 30) * 100))}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="wsg-card" style={{ marginTop: 16 }}>
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon"><FiCreditCard size={16} /></div>
+              <div><h3>Payment Method</h3><span className="wsg-card-sub">Manage how you pay for Noxtm</span></div>
+            </div>
+          </div>
+          <div className="wsg-payment-empty">
+            <FiCreditCard size={28} style={{ color: '#cbd5e1', marginBottom: 8 }} />
+            <p>No payment method on file</p>
+            <button className="wsg-add-payment-btn"><FiPlus size={13} /> Add Payment Method</button>
+          </div>
+        </div>
+        <div className="wsg-card wsg-danger-zone" style={{ marginTop: 16 }}>
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon danger"><FiAlertCircle size={16} /></div>
+              <div><h3>Danger Zone</h3><span className="wsg-card-sub">Irreversible billing actions</span></div>
+            </div>
+          </div>
+          <div className="wsg-danger-row">
+            <div><span className="wsg-danger-title">Cancel Subscription</span><span className="wsg-danger-desc">You will lose access at end of billing period.</span></div>
+            <button className="wsg-danger-btn">Cancel Plan</button>
+          </div>
+        </div>
+      </div>
+    );
+
+    const renderInvoices = () => (
+      <div className="wsg-billing-content">
+        <div className="wsg-card">
+          <div className="wsg-card-head">
+            <div className="wsg-card-head-left">
+              <div className="wsg-card-icon"><FiFileText size={16} /></div>
+              <div><h3>Invoice History</h3><span className="wsg-card-sub">Past purchases and billing records</span></div>
+            </div>
+          </div>
+          {billingHistory.length === 0 ? (
+            <div className="wsg-invoices-empty">
+              <FiFileText size={28} style={{ color: '#cbd5e1', marginBottom: 8 }} />
+              <p>No invoices yet</p>
+              <span>Your billing history will appear here once you subscribe to a plan.</span>
+            </div>
+          ) : (
+            <div className="wsg-invoice-list">
+              <div className="wsg-invoice-header">
+                <span>Invoice #</span><span>Date</span><span>Plan / Credits</span><span>Amount</span><span>Status</span><span>Action</span>
+              </div>
+              {billingHistory.map((inv, i) => (
+                <div key={i} className="wsg-invoice-row">
+                  <span className="wsg-invoice-id">#INV-{String(i + 1).padStart(4, '0')}</span>
+                  <span>{fmtDate(inv.date || inv.purchasedAt || inv.createdAt)}</span>
+                  <span>{inv.plan || inv.credits?.toLocaleString() || '—'}</span>
+                  <span>{inv.amount != null ? `₹${inv.amount.toLocaleString()}` : '—'}</span>
+                  <span className={`wsg-invoice-status ${inv.status || 'paid'}`}>{inv.status || 'Paid'}</span>
+                  <button className="wsg-invoice-dl"><FiExternalLink size={12} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="wsg-billing-layout">
+        {/* Left nav */}
+        <div className="wsg-billing-nav">
+          <div className="wsg-billing-nav-title">Billing</div>
+          {billingNav.map(n => (
+            <button
+              key={n.key}
+              className={`wsg-billing-nav-item ${billingSubTab === n.key ? 'active' : ''}`}
+              onClick={() => setBillingSubTab(n.key)}
+            >
+              {n.icon}
+              <span>{n.label}</span>
+            </button>
+          ))}
+          <div className="wsg-billing-nav-divider" />
+          <button className="wsg-billing-nav-item" onClick={() => setBillingSubTab('plans')}>
+            <FiZap size={15} />
+            <span>Upgrade Plan</span>
+          </button>
+        </div>
+        {/* Right content */}
+        <div className="wsg-billing-main">
+          {billingSubTab === 'overview' && renderOverview()}
+          {billingSubTab === 'plans' && renderPlans()}
+          {billingSubTab === 'subscription' && renderSubscription()}
+          {billingSubTab === 'invoices' && renderInvoices()}
         </div>
       </div>
     );
@@ -2356,6 +2779,12 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiTag /> Labels
         </button>
+        <button
+          className={`tab-button ${activeTab === 'billing' ? 'active' : ''}`}
+          onClick={() => setActiveTab('billing')}
+        >
+          <FiCreditCard /> Billing
+        </button>
       </div>
 
       <div className="workspace-content">
@@ -2365,6 +2794,7 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
         {activeTab === 'labels' && renderLabelsSettings()}
+        {activeTab === 'billing' && renderBillingSettings()}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import {
 import splitViewIcon from '../assets/split_view.svg';
 import { useRole } from '../contexts/RoleContext';
 import { MessagingContext } from '../contexts/MessagingContext';
+import { FiZap } from 'react-icons/fi';
 import {
   Sidebar as UISidebar,
   SidebarHeader,
@@ -852,6 +853,49 @@ function Sidebar({ activeSection, onSectionChange }) {
           </>
         )}
       </SidebarContent>
+
+      {/* Plan upgrade card — fixed at bottom, trial users only */}
+      {!isCollapsed && currentUser?.subscription?.status === 'trial' && (() => {
+        const endDate = currentUser.subscription?.endDate ? new Date(currentUser.subscription.endDate) : null;
+        const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - Date.now()) / 86400000)) : null;
+        return (
+          <div className="sb-plan-card-wrap">
+            <div className="sb-plan-card">
+              <div className="sb-plan-top">
+                <div className="sb-plan-icon"><FiZap size={14} /></div>
+                <div>
+                  <div className="sb-plan-label">Current plan</div>
+                  <div className="sb-plan-name">{currentUser.subscription?.plan || 'Trial'}</div>
+                </div>
+              </div>
+              {daysLeft !== null && (
+                <div className="sb-plan-days-row">
+                  <div className="sb-plan-days-track">
+                    <div
+                      className="sb-plan-days-fill"
+                      style={{ width: `${Math.min(100, Math.max(0, ((30 - daysLeft) / 30) * 100))}%` }}
+                    />
+                  </div>
+                  <span className="sb-plan-days-text">
+                    {daysLeft === 0 ? 'Trial expires today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in trial`}
+                  </span>
+                </div>
+              )}
+              <p className="sb-plan-desc">Upgrade to Pro to unlock all features</p>
+              <button
+                className="sb-plan-btn"
+                onClick={() => {
+                  onSectionChange('workspace-settings');
+                  window.dispatchEvent(new CustomEvent('workspace-settings:billing'));
+                }}
+              >
+                <FiZap size={13} /> Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
     </UISidebar>
   );
 }

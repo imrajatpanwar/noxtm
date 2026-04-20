@@ -26,9 +26,6 @@ function JoinCompany({ onSignup }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({
-    hasUppercase: false,
-    hasLowercase: false,
-    hasSpecialChar: false,
     minLength: false,
     isValid: false
   });
@@ -75,12 +72,9 @@ function JoinCompany({ onSignup }) {
 
   const validatePasswordStrength = (password) => {
     const strength = {
-      hasUppercase: /[A-Z]/.test(password),
-      hasLowercase: /[a-z]/.test(password),
-      hasSpecialChar: /[^A-Za-z0-9\s]/.test(password),
-      minLength: password.length >= 8,
+      minLength: password.length >= 6,
     };
-    strength.isValid = Object.values(strength).every(v => v);
+    strength.isValid = strength.minLength;
     setPasswordStrength(strength);
   };
 
@@ -107,7 +101,7 @@ function JoinCompany({ onSignup }) {
     }
 
     if (!passwordStrength.isValid) {
-      toast.error('Password must contain uppercase, lowercase, and special character');
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -286,7 +280,7 @@ function JoinCompany({ onSignup }) {
                   placeholder="Create a Strong Password"
                   required
                   disabled={submitting}
-                  minLength="8"
+                  minLength="6"
                 />
                 <button
                   type="button"
@@ -311,7 +305,7 @@ function JoinCompany({ onSignup }) {
                   placeholder="Re-enter your password"
                   required
                   disabled={submitting}
-                  minLength="8"
+                  minLength="6"
                 />
                 <button
                   type="button"

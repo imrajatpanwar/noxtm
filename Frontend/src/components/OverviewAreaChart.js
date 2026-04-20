@@ -78,11 +78,6 @@ export default function OverviewAreaChart() {
 
   useEffect(() => fetchChart(), [fetchChart]);
 
-  // Re-fetch on global 30s poll
-  useEffect(() => {
-    window.addEventListener('dashboard:refresh', fetchChart);
-    return () => window.removeEventListener('dashboard:refresh', fetchChart);
-  }, [fetchChart]);
 
   const tickFormatter = v => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 

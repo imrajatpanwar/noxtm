@@ -1,3 +1,46 @@
+.dash-profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: 11px 18px;
+  margin: 12px 20px 0;
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.dash-banner-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.dash-banner-text {
+  font-size: 0.855rem;
+  font-weight: 500;
+  color: #c2410c;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-banner-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #ea580c;
+  font-size: 0.855rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Dashboard Container — direct child of SidebarProvider wrapper.
    flex:1 so it grows to fill the wrapper's full width. */
 .dashboard-container {

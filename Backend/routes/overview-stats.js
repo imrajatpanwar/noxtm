@@ -267,7 +267,18 @@ router.get('/', async (req, res) => {
  */
 router.get('/chart', async (req, res) => {
     try {
-        const companyId = req.user.companyId;
+        const userId = req.user.userId || req.user._id;
+        let companyId = req.user.companyId || req.user.company;
+
+        // Fresh DB lookup in case JWT is stale (user added to company after login)
+        if (!companyId) {
+            const freshUser = await require('../models/User').findById(userId).select('companyId').lean();
+            companyId = freshUser?.companyId;
+        }
+        if (!companyId) {
+            const memberCompany = await Company.findOne({ 'members.user': toObjectId(userId) }).select('_id').lean();
+            companyId = memberCompany?._id;
+        }
         if (!companyId) return res.json({ data: [] });
 
         const rangeParam = req.query.range || '90d';
