@@ -5,7 +5,7 @@ import api from '../config/api';
 import './NotificationCenter.css';
 
 function NotificationCenter() {
-  const { currentUser, permissionUpdateTrigger } = useRole();
+  const { currentUser } = useRole();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,15 +44,13 @@ function NotificationCenter() {
     try {
       const res = await api.get('/notifications');
       if (res.data.success) {
-        // Merge backend notifications with local-only ones (permission_update etc)
-        const localOnly = JSON.parse(localStorage.getItem(`notifications_local_${currentUser?.id}`) || '[]');
-        const merged = [...res.data.notifications, ...localOnly].sort((a, b) => new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp));
-        setNotifications(merged);
-        setUnreadCount(merged.filter(n => !n.read).length);
+        setNotifications(res.data.notifications);
+        setUnreadCount(res.data.unreadCount);
       }
     } catch {
       // Fallback to localStorage if API fails
-      const saved = JSON.parse(localStorage.getItem(`notifications_${currentUser?.id}`) || '[]');
+      const saved = JSON.parse(localStorage.getItem(`notifications_${currentUser?.id}`) || '[]')
+        .filter(n => n.type !== 'permission_update');
       setNotifications(saved);
       setUnreadCount(saved.filter(n => !n.read).length);
     }
@@ -66,24 +64,6 @@ function NotificationCenter() {
     return () => clearInterval(interval);
   }, [currentUser?.id, fetchNotifications]);
 
-  // Save local-only notifications (permission_update etc)
-  useEffect(() => {
-    if (permissionUpdateTrigger > 0) {
-      const newNotification = {
-        id: Date.now(),
-        type: 'permission_update',
-        title: 'Permissions Updated',
-        message: 'Your access permissions have been modified by an administrator.',
-        timestamp: new Date(),
-        read: false,
-        icon: 'shield'
-      };
-      const localOnly = JSON.parse(localStorage.getItem(`notifications_local_${currentUser?.id}`) || '[]');
-      const updated = [newNotification, ...localOnly.slice(0, 9)];
-      localStorage.setItem(`notifications_local_${currentUser?.id}`, JSON.stringify(updated));
-      fetchNotifications();
-    }
-  }, [permissionUpdateTrigger]);  // eslint-disable-line
 
   // Listen for external notification updates
   useEffect(() => {
