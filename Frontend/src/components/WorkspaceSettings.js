@@ -2779,12 +2779,14 @@ function WorkspaceSettings({ user, onLogout }) {
         >
           <FiTag /> Labels
         </button>
-        <button
-          className={`tab-button ${activeTab === 'billing' ? 'active' : ''}`}
-          onClick={() => setActiveTab('billing')}
-        >
-          <FiCreditCard /> Billing
-        </button>
+        {(companyDetails?.owner?._id === user?._id || user?.role === 'admin') && (
+          <button
+            className={`tab-button ${activeTab === 'billing' ? 'active' : ''}`}
+            onClick={() => setActiveTab('billing')}
+          >
+            <FiCreditCard /> Billing
+          </button>
+        )}
       </div>
 
       <div className="workspace-content">
@@ -2794,7 +2796,7 @@ function WorkspaceSettings({ user, onLogout }) {
         {activeTab === 'security' && renderSecuritySettings()}
         {activeTab === 'modules' && renderModulesSettings()}
         {activeTab === 'labels' && renderLabelsSettings()}
-        {activeTab === 'billing' && renderBillingSettings()}
+        {(companyDetails?.owner?._id === user?._id || user?.role === 'admin') && activeTab === 'billing' && renderBillingSettings()}
       </div>
     </div>
   );

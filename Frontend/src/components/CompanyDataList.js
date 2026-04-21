@@ -126,7 +126,9 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
   const [filterHasWebsite, setFilterHasWebsite] = useState(false);
   const [filterDateAdded, setFilterDateAdded] = useState('');
   const [sortOrder, setSortOrder] = useState('az');
-  const [openSections, setOpenSections] = useState({ industry: true, assignedTo: false, contacts: false, dateAdded: false, sort: false });
+  const [openSections, setOpenSections] = useState({ industry: false, assignedTo: true, contacts: false, dateAdded: false, sort: false });
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   // Selection
   const [selectedCards, setSelectedCards] = useState(new Set());
@@ -333,6 +335,8 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
     setFilterContactsMin('');
     setFilterHasWebsite(false);
     setFilterDateAdded('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
     setSortOrder('az');
     setLabelFilter('');
   };
@@ -393,6 +397,17 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
     } else if (filterDateAdded === 'month') {
       const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       result = result.filter(c => c.createdAt && new Date(c.createdAt) >= monthAgo);
+    } else if (filterDateAdded === 'custom') {
+      if (filterDateFrom) {
+        const from = new Date(filterDateFrom);
+        from.setHours(0, 0, 0, 0);
+        result = result.filter(c => c.createdAt && new Date(c.createdAt) >= from);
+      }
+      if (filterDateTo) {
+        const to = new Date(filterDateTo);
+        to.setHours(23, 59, 59, 999);
+        result = result.filter(c => c.createdAt && new Date(c.createdAt) <= to);
+      }
     }
     result.sort((a, b) => {
       if (sortOrder === 'az') return (a.companyName || '').localeCompare(b.companyName || '');
@@ -402,12 +417,19 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
       return 0;
     });
     return result;
-  }, [companies, filterIndustries, filterAssignedTo, filterContactsMin, filterHasWebsite, filterDateAdded, sortOrder]);
+  }, [companies, filterIndustries, filterAssignedTo, filterContactsMin, filterHasWebsite, filterDateAdded, filterDateFrom, filterDateTo, sortOrder]);
+
+  const statsSource = useMemo(() =>
+    filterAssignedTo ? companies.filter(c => (c.createdBy?._id || c.createdBy) === filterAssignedTo) : companies,
+    [companies, filterAssignedTo]
+  );
 
   const addedTodayCount = useMemo(() =>
-    companies.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === new Date().toDateString()).length,
-    [companies]
+    statsSource.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === new Date().toDateString()).length,
+    [statsSource]
   );
+
+  const totalRecordsCount = statsSource.length;
 
   const contactsStats = useMemo(() => {
     let total = 0, newCount = 0, activeCount = 0, convertedCount = 0;
@@ -510,7 +532,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
                 </div>
                 <div className="cd-stat-divider" />
                 <div className="cd-stat-item">
-                  <span className="cd-stat-value">{companies.length}</span>
+                  <span className="cd-stat-value">{totalRecordsCount}</span>
                   <span className="cd-stat-label">Total Records</span>
                 </div>
               </>
@@ -697,8 +719,8 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
           )}
           {filterDateAdded && (
             <span className="cd-active-tag">
-              {filterDateAdded === 'today' ? 'Today' : filterDateAdded === 'week' ? 'Last 7 days' : 'Last 30 days'}
-              <button onClick={() => setFilterDateAdded('')}><FiX size={10} /></button>
+              {filterDateAdded === 'today' ? 'Today' : filterDateAdded === 'week' ? 'Last 7 days' : filterDateAdded === 'month' ? 'Last 30 days' : filterDateFrom && filterDateTo ? `${filterDateFrom} → ${filterDateTo}` : filterDateFrom ? `From ${filterDateFrom}` : filterDateTo ? `To ${filterDateTo}` : 'Custom range'}
+              <button onClick={() => { setFilterDateAdded(''); setFilterDateFrom(''); setFilterDateTo(''); }}><FiX size={10} /></button>
             </span>
           )}
           {labelFilter && (
@@ -1187,13 +1209,37 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
                   { value: 'today', label: 'Today' },
                   { value: 'week', label: 'Last 7 days' },
                   { value: 'month', label: 'Last 30 days' },
+                  { value: 'custom', label: 'Custom range' },
                 ].map(opt => (
                   <label key={opt.value} className="cd-filter-checkbox-row">
                     <input type="radio" name="dateAdded" checked={filterDateAdded === opt.value}
-                      onChange={() => setFilterDateAdded(filterDateAdded === opt.value ? '' : opt.value)} />
+                      onChange={() => {
+                        if (filterDateAdded === opt.value) {
+                          setFilterDateAdded('');
+                          setFilterDateFrom('');
+                          setFilterDateTo('');
+                        } else {
+                          setFilterDateAdded(opt.value);
+                          if (opt.value !== 'custom') { setFilterDateFrom(''); setFilterDateTo(''); }
+                        }
+                      }} />
                     <span>{opt.label}</span>
                   </label>
                 ))}
+                {filterDateAdded === 'custom' && (
+                  <div className="cd-date-range-inputs">
+                    <div className="cd-date-range-row">
+                      <label className="cd-date-range-label">From</label>
+                      <input type="date" className="cd-date-range-input" value={filterDateFrom}
+                        onChange={(e) => setFilterDateFrom(e.target.value)} />
+                    </div>
+                    <div className="cd-date-range-row">
+                      <label className="cd-date-range-label">To</label>
+                      <input type="date" className="cd-date-range-input" value={filterDateTo}
+                        onChange={(e) => setFilterDateTo(e.target.value)} />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -2509,7 +2509,7 @@ app.post('/api/subscription/checkout', authenticateToken, async (req, res) => {
   }
 });
 
-// Check subscription status
+// Check subscription status — uses company subscription for all members
 app.get('/api/subscription/status', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -2524,6 +2524,18 @@ app.get('/api/subscription/status', authenticateToken, async (req, res) => {
         subscription: { plan: 'Admin', status: 'active' },
         role: user.role
       });
+    }
+
+    // Use company subscription as source of truth for all users
+    if (user.companyId) {
+      const Company = require('./models/Company');
+      const company = await Company.findById(user.companyId).select('subscription');
+      if (company?.subscription) {
+        return res.json({
+          subscription: company.subscription,
+          role: user.role
+        });
+      }
     }
 
     res.json({

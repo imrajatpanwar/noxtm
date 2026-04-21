@@ -2140,3 +2140,74 @@
   vertical-align: middle;
   white-space: nowrap;
 }
+
+/* Assign To - user detail row with stats */
+.cd-filter-user-detail-row {
+  align-items: flex-start !important;
+}
+
+.cd-filter-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cd-filter-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #18181b;
+}
+
+.cd-filter-user-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #a1a1aa;
+  font-weight: 400;
+}
+
+.cd-filter-user-stat-sep {
+  color: #d4d4d8;
+}
+
+/* Date range inputs */
+.cd-date-range-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 4px;
+  margin-top: 4px;
+  border-top: 1px dashed #e4e4e7;
+}
+
+.cd-date-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cd-date-range-label {
+  font-size: 12px;
+  color: #71717a;
+  min-width: 36px;
+  font-weight: 500;
+}
+
+.cd-date-range-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Switzer', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #18181b;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cd-date-range-input:focus {
+  border-color: #a1a1aa;
+  background: #fff;
+}

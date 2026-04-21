@@ -488,6 +488,77 @@ router.put('/companies/:id', async (req, res) => {
 });
 
 /**
+ * PUT /api/admin/companies/:id/subscription
+ * Admin override: change company subscription plan
+ */
+router.put('/companies/:id/subscription', async (req, res) => {
+  try {
+    const { plan, billingCycle, status, reason } = req.body;
+    const company = await Company.findById(req.params.id);
+
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'Company not found' });
+    }
+
+    const validPlans = ['Trial', 'Starter', 'Pro+', 'Advance', 'Noxtm', 'Enterprise'];
+    if (plan && !validPlans.includes(plan)) {
+      return res.status(400).json({ success: false, message: 'Invalid plan' });
+    }
+
+    const before = {
+      plan: company.subscription?.plan,
+      status: company.subscription?.status,
+      startDate: company.subscription?.startDate,
+      endDate: company.subscription?.endDate
+    };
+
+    if (!company.subscription) {
+      company.subscription = {};
+    }
+    if (plan) company.subscription.plan = plan;
+    if (status) company.subscription.status = status;
+
+    // Auto-set dates
+    company.subscription.startDate = new Date();
+    const end = new Date();
+    if (billingCycle === 'Annual') {
+      end.setFullYear(end.getFullYear() + 1);
+    } else {
+      end.setMonth(end.getMonth() + 1);
+    }
+    company.subscription.endDate = end;
+
+    await company.save();
+
+    const after = {
+      plan: company.subscription.plan,
+      status: company.subscription.status,
+      startDate: company.subscription.startDate,
+      endDate: company.subscription.endDate
+    };
+
+    // Audit log
+    await AdminAuditLog.logAction({
+      adminId: req.user._id,
+      action: 'plan_change',
+      targetType: 'Company',
+      targetId: company._id,
+      targetName: company.companyName,
+      description: `Plan: ${before.plan || 'None'} → ${after.plan}; Status: ${before.status || 'none'} → ${after.status}`,
+      before,
+      after,
+      reason: reason || '',
+      ipAddress: getIp(req)
+    });
+
+    res.json({ success: true, company: { _id: company._id, subscription: company.subscription }, message: 'Company subscription updated' });
+  } catch (error) {
+    console.error('Admin: Error updating company subscription:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
  * POST /api/admin/companies/:id/credits
  * Add or remove mail credits for a company
  */

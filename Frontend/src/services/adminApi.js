@@ -40,6 +40,10 @@ export const updateAdminCompany = (id, data) => {
   return api.put(`/admin/companies/${id}`, data);
 };
 
+export const updateCompanySubscription = (id, data) => {
+  return api.put(`/admin/companies/${id}/subscription`, data);
+};
+
 export const adjustCompanyCredits = (companyId, data) => {
   return api.post(`/admin/companies/${companyId}/credits`, data);
 };

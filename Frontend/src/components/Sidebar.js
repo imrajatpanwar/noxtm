@@ -854,8 +854,8 @@ function Sidebar({ activeSection, onSectionChange }) {
         )}
       </SidebarContent>
 
-      {/* Plan upgrade card — fixed at bottom, trial users only */}
-      {!isCollapsed && currentUser?.subscription?.status === 'trial' && (() => {
+      {/* Plan upgrade card — fixed at bottom, Owner on trial only */}
+      {!isCollapsed && currentUser?.subscription?.status === 'trial' && currentUser?.roleInCompany === 'Owner' && (() => {
         const endDate = currentUser.subscription?.endDate ? new Date(currentUser.subscription.endDate) : null;
         const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - Date.now()) / 86400000)) : null;
         return (

@@ -4,7 +4,7 @@ import {
   FiSearch, FiChevronLeft, FiChevronRight, FiX, FiCheck,
   FiCreditCard, FiFilter, FiAlertCircle, FiTrendingUp
 } from 'react-icons/fi';
-import { getAdminUsers, updateUserSubscription, getAdminStats } from '../../services/adminApi';
+import { getAdminCompanies, updateCompanySubscription, getAdminStats } from '../../services/adminApi';
 import { Skeleton } from '../ui/skeleton';
 
 const PLANS = ['None', 'Trial', 'Starter', 'Pro+', 'Advance', 'Noxtm', 'Enterprise'];
@@ -32,7 +32,7 @@ const getSubStatusBadge = (status) => {
 };
 
 function AdminPlanManagement() {
-  const [users, setUsers] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, pages: 0 });
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ plan: '', status: '' });
@@ -49,24 +49,26 @@ function AdminPlanManagement() {
   const [bulkModal, setBulkModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ plan: 'Starter', billingCycle: 'Monthly', status: 'active', reason: '' });
 
-  const fetchUsers = useCallback(async (page = 1) => {
+  const fetchCompanies = useCallback(async (page = 1) => {
     setIsLoading(true);
     try {
       const params = { page, limit: 25, search };
-      if (filters.plan) params.plan = filters.plan;
-      // Filter by subscription status needs backend query param support
-      const res = await getAdminUsers(params);
+      const res = await getAdminCompanies(params);
       if (res.data.success) {
-        let filtered = res.data.users;
-        // Client-side filter by subscription status if needed
-        if (filters.status) {
-          filtered = filtered.filter(u => u.subscription?.status === filters.status);
+        let filtered = res.data.companies;
+        // Client-side filter by plan
+        if (filters.plan) {
+          filtered = filtered.filter(c => (c.subscription?.plan || 'None') === filters.plan);
         }
-        setUsers(filtered);
+        // Client-side filter by subscription status
+        if (filters.status) {
+          filtered = filtered.filter(c => c.subscription?.status === filters.status);
+        }
+        setCompanies(filtered);
         setPagination(res.data.pagination);
       }
     } catch (err) {
-      toast.error('Failed to fetch users');
+      toast.error('Failed to fetch companies');
     } finally {
       setIsLoading(false);
     }
@@ -82,30 +84,28 @@ function AdminPlanManagement() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchUsers(1), 300);
+    const timer = setTimeout(() => fetchCompanies(1), 300);
     return () => clearTimeout(timer);
-  }, [fetchUsers]);
+  }, [fetchCompanies]);
 
   // Single plan change
-  const openPlanModal = (user) => {
+  const openPlanModal = (company) => {
     setPlanForm({
-      plan: user.subscription?.plan || 'None',
-      billingCycle: user.subscription?.billingCycle || 'Monthly',
-      status: user.subscription?.status || 'active',
-      startDate: user.subscription?.startDate ? new Date(user.subscription.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      endDate: user.subscription?.endDate ? new Date(user.subscription.endDate).toISOString().split('T')[0] : '',
+      plan: company.subscription?.plan || 'None',
+      billingCycle: 'Monthly',
+      status: company.subscription?.status || 'active',
       reason: ''
     });
-    setPlanModal(user);
+    setPlanModal(company);
   };
 
   const handlePlanSave = async () => {
     try {
-      const res = await updateUserSubscription(planModal._id, planForm);
+      const res = await updateCompanySubscription(planModal._id, planForm);
       if (res.data.success) {
-        toast.success('Subscription updated');
+        toast.success('Company subscription updated');
         setPlanModal(null);
-        fetchUsers(pagination.page);
+        fetchCompanies(pagination.page);
         fetchStats();
       }
     } catch (err) {
@@ -119,10 +119,10 @@ function AdminPlanManagement() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === users.length) {
+    if (selectedIds.length === companies.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(users.map(u => u._id));
+      setSelectedIds(companies.map(c => c._id));
     }
   };
 
@@ -130,14 +130,14 @@ function AdminPlanManagement() {
     let successCount = 0;
     for (const id of selectedIds) {
       try {
-        await updateUserSubscription(id, bulkForm);
+        await updateCompanySubscription(id, bulkForm);
         successCount++;
       } catch { /* skip */ }
     }
-    toast.success(`Updated ${successCount} of ${selectedIds.length} users`);
+    toast.success(`Updated ${successCount} of ${selectedIds.length} companies`);
     setBulkModal(false);
     setSelectedIds([]);
-    fetchUsers(pagination.page);
+    fetchCompanies(pagination.page);
     fetchStats();
   };
 
@@ -149,7 +149,6 @@ function AdminPlanManagement() {
     return `${days}d`;
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   return (
@@ -178,7 +177,7 @@ function AdminPlanManagement() {
       <div className="admin-toolbar">
         <div className="admin-search-box">
           <FiSearch className="admin-search-icon" />
-          <input type="text" placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="admin-search-input" />
+          <input type="text" placeholder="Search companies..." value={search} onChange={(e) => setSearch(e.target.value)} className="admin-search-input" />
           {search && <FiX className="admin-search-clear" onClick={() => setSearch('')} />}
         </div>
         <div className="admin-toolbar-right">
@@ -225,45 +224,47 @@ function AdminPlanManagement() {
             <thead>
               <tr>
                 <th>
-                  <input type="checkbox" checked={selectedIds.length === users.length && users.length > 0} onChange={toggleSelectAll} />
+                  <input type="checkbox" checked={selectedIds.length === companies.length && companies.length > 0} onChange={toggleSelectAll} />
                 </th>
-                <th>User</th>
+                <th>Company</th>
+                <th>Owner</th>
+                <th>Members</th>
                 <th>Current Plan</th>
                 <th>Status</th>
-                <th>Billing</th>
-                <th>Start Date</th>
-                <th>End Date</th>
                 <th>Remaining</th>
                 <th>Price</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 ? (
-                <tr><td colSpan="10" className="admin-empty">No users found</td></tr>
+              {companies.length === 0 ? (
+                <tr><td colSpan="9" className="admin-empty">No companies found</td></tr>
               ) : (
-                users.map(user => {
-                  const plan = user.subscription?.plan || 'None';
-                  const cycle = user.subscription?.billingCycle || 'Monthly';
-                  const price = PLAN_PRICES[plan]?.[cycle === 'Annual' ? 'annual' : 'monthly'] || '—';
+                companies.map(company => {
+                  const plan = company.subscription?.plan || 'None';
+                  const price = PLAN_PRICES[plan]?.monthly || '—';
                   return (
-                    <tr key={user._id} className={selectedIds.includes(user._id) ? 'admin-row-selected' : ''}>
-                      <td><input type="checkbox" checked={selectedIds.includes(user._id)} onChange={() => toggleSelect(user._id)} /></td>
+                    <tr key={company._id} className={selectedIds.includes(company._id) ? 'admin-row-selected' : ''}>
+                      <td><input type="checkbox" checked={selectedIds.includes(company._id)} onChange={() => toggleSelect(company._id)} /></td>
                       <td>
                         <div>
-                          <div>{user.fullName || 'N/A'}</div>
-                          <div className="admin-text-muted">{user.email}</div>
+                          <div>{company.companyName || 'N/A'}</div>
+                          <div className="admin-text-muted">{company.industry || '—'}</div>
                         </div>
                       </td>
+                      <td>
+                        <div>
+                          <div>{company.owner?.fullName || 'N/A'}</div>
+                          <div className="admin-text-muted">{company.owner?.email || '—'}</div>
+                        </div>
+                      </td>
+                      <td>{company.memberCount || 0}</td>
                       <td><span className={`admin-badge ${getPlanBadgeClass(plan)}`}>{plan}</span></td>
-                      <td><span className={`admin-badge ${getSubStatusBadge(user.subscription?.status)}`}>{user.subscription?.status || 'none'}</span></td>
-                      <td>{cycle}</td>
-                      <td>{formatDate(user.subscription?.startDate)}</td>
-                      <td>{formatDate(user.subscription?.endDate)}</td>
-                      <td>{getDaysRemaining(user.subscription?.endDate)}</td>
+                      <td><span className={`admin-badge ${getSubStatusBadge(company.subscription?.status)}`}>{company.subscription?.status || 'none'}</span></td>
+                      <td>{getDaysRemaining(company.subscription?.endDate)}</td>
                       <td>{price}</td>
                       <td>
-                        <button className="admin-action-btn" title="Change Plan" onClick={() => openPlanModal(user)}>
+                        <button className="admin-action-btn" title="Change Plan" onClick={() => openPlanModal(company)}>
                           <FiCreditCard />
                         </button>
                       </td>
@@ -279,9 +280,9 @@ function AdminPlanManagement() {
       {/* Pagination */}
       {pagination.pages > 1 && (
         <div className="admin-pagination">
-          <button className="admin-btn admin-btn-sm" disabled={pagination.page <= 1} onClick={() => fetchUsers(pagination.page - 1)}><FiChevronLeft /></button>
+          <button className="admin-btn admin-btn-sm" disabled={pagination.page <= 1} onClick={() => fetchCompanies(pagination.page - 1)}><FiChevronLeft /></button>
           <span className="admin-page-info">Page {pagination.page} of {pagination.pages}</span>
-          <button className="admin-btn admin-btn-sm" disabled={pagination.page >= pagination.pages} onClick={() => fetchUsers(pagination.page + 1)}><FiChevronRight /></button>
+          <button className="admin-btn admin-btn-sm" disabled={pagination.page >= pagination.pages} onClick={() => fetchCompanies(pagination.page + 1)}><FiChevronRight /></button>
         </div>
       )}
 
@@ -290,7 +291,7 @@ function AdminPlanManagement() {
         <div className="admin-modal-overlay" onClick={() => setPlanModal(null)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
-              <h3><FiCreditCard /> Change Plan — {planModal.fullName || planModal.email}</h3>
+              <h3><FiCreditCard /> Change Plan — {planModal.companyName}</h3>
               <button className="admin-modal-close" onClick={() => setPlanModal(null)}><FiX /></button>
             </div>
             <div className="admin-modal-body">
@@ -319,16 +320,6 @@ function AdminPlanManagement() {
                   {PLAN_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="admin-form-row">
-                <div className="admin-form-group">
-                  <label>Start Date</label>
-                  <input type="date" value={planForm.startDate} onChange={(e) => setPlanForm(f => ({ ...f, startDate: e.target.value }))} className="admin-input" />
-                </div>
-                <div className="admin-form-group">
-                  <label>End Date</label>
-                  <input type="date" value={planForm.endDate} onChange={(e) => setPlanForm(f => ({ ...f, endDate: e.target.value }))} className="admin-input" />
-                </div>
-              </div>
               <div className="admin-form-group">
                 <label>Reason</label>
                 <textarea value={planForm.reason} onChange={(e) => setPlanForm(f => ({ ...f, reason: e.target.value }))} className="admin-textarea" placeholder="Reason for plan change..." rows={2} />
@@ -347,7 +338,7 @@ function AdminPlanManagement() {
         <div className="admin-modal-overlay" onClick={() => setBulkModal(false)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
-              <h3><FiCreditCard /> Bulk Plan Change — {selectedIds.length} users</h3>
+              <h3><FiCreditCard /> Bulk Plan Change — {selectedIds.length} companies</h3>
               <button className="admin-modal-close" onClick={() => setBulkModal(false)}><FiX /></button>
             </div>
             <div className="admin-modal-body">
@@ -378,7 +369,7 @@ function AdminPlanManagement() {
             </div>
             <div className="admin-modal-footer">
               <button className="admin-btn admin-btn-secondary" onClick={() => setBulkModal(false)}>Cancel</button>
-              <button className="admin-btn admin-btn-primary" onClick={handleBulkSave}><FiCheck /> Apply to {selectedIds.length} Users</button>
+              <button className="admin-btn admin-btn-primary" onClick={handleBulkSave}><FiCheck /> Apply to {selectedIds.length} Companies</button>
             </div>
           </div>
         </div>
