@@ -6,20 +6,20 @@ const Task = require('../models/Task');
 const Note = require('../models/Note');
 const Lead = require('../models/Lead');
 const Client = require('../models/Client');
-const ContactList = require('../models/ContactList');
 const Project = require('../models/Project');
 const SocialMediaPost = require('../models/SocialMediaPost');
 const Campaign = require('../models/Campaign');
 const LinkedInAIComment = require('../models/LinkedInAIComment');
 const WhatsAppCampaign = require('../models/WhatsAppCampaign');
 const WhatsAppContact = require('../models/WhatsAppContact');
+const WhatsAppLead = require('../models/WhatsAppLead');
 const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const LeaveApplication = require('../models/LeaveApplication');
 const Attendance = require('../models/Attendance');
 const Company = require('../models/Company');
-const TargetedCompany = require('../models/TargetedCompany');
 const CompanyData = require('../models/CompanyData');
+const User = require('../models/User');
 
 const toObjectId = (id) => id ? new mongoose.Types.ObjectId(id) : null;
 
@@ -32,9 +32,36 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.userId;
-        const companyId = req.user.companyId;
+        let companyId = req.user.companyId;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        const user = await User.findById(userId).select('role companyId').lean();
+        if (user?.companyId) companyId = user.companyId;
+
+        const company = companyId
+            ? await Company.findById(companyId).select('owner members dataAccessPermissions').lean().catch(() => null)
+            : null;
+        const member = company?.members?.find(m => m.user && m.user.toString() === userId.toString());
+        const isWorkspaceOwner = Boolean(
+            user?.role === 'Admin' ||
+            member?.roleInCompany === 'Owner' ||
+            (company?.owner && company.owner.toString() === userId.toString())
+        );
+        const delegatedDataAccess = company?.dataAccessPermissions?.find(p => {
+            const uid = p.user?._id || p.user;
+            return uid && uid.toString() === userId.toString();
+        });
+        const canViewAllDataCenter = isWorkspaceOwner ||
+            delegatedDataAccess?.permission === 'view_all' ||
+            delegatedDataAccess?.permission === 'edit_all';
+
+        const dataCenterMatch = companyId
+            ? { companyId: toObjectId(companyId) }
+            : { createdBy: toObjectId(userId) };
+        if (!canViewAllDataCenter) {
+            dataCenterMatch.createdBy = toObjectId(userId);
+        }
 
         // Run all queries in parallel for speed
         const [
@@ -42,12 +69,11 @@ router.get('/', async (req, res) => {
             taskStats,
             // Notes
             notesCount,
-            // Companies Data (Targeted Companies)
-            companiesCount,
+            // Data Center companies and contacts
+            dataCenterStats,
             // Leads
             leadStats,
-            // Contacts
-            contactsTotal,
+            whatsappLeadStats,
             // Clients
             clientsCount,
             // Projects
@@ -62,7 +88,7 @@ router.get('/', async (req, res) => {
             whatsappCampaigns,
             whatsappContacts,
             // HR - Team size
-            companyData,
+            teamCompany,
             // HR - Leaves pending
             pendingLeaves,
             // HR - Attendance today
@@ -81,8 +107,17 @@ router.get('/', async (req, res) => {
             // 2. Notes count
             Note.countDocuments(companyId ? { companyId } : { userId }).catch(() => 0),
 
-            // 3. Targeted Companies count
-            TargetedCompany.countDocuments(companyId ? { companyId } : { userId }).catch(() => 0),
+            // 3. Data Center company/contact totals
+            CompanyData.aggregate([
+                { $match: dataCenterMatch },
+                {
+                    $group: {
+                        _id: null,
+                        companies: { $sum: 1 },
+                        contacts: { $sum: { $size: { $ifNull: ['$contacts', []] } } }
+                    }
+                }
+            ]).catch(() => []),
 
             // 4. Leads by status
             Lead.aggregate([
@@ -90,11 +125,10 @@ router.get('/', async (req, res) => {
                 { $group: { _id: '$status', count: { $sum: 1 } } }
             ]).catch(() => []),
 
-            // 5. Total contacts across all lists
-            ContactList.aggregate([
-                { $match: companyId ? { companyId: toObjectId(companyId) } : { userId: userId } },
-                { $project: { count: { $size: { $ifNull: ['$contacts', []] } } } },
-                { $group: { _id: null, total: { $sum: '$count' } } }
+            // 4b. WhatsApp leads by status
+            WhatsAppLead.aggregate([
+                { $match: companyId ? { companyId: toObjectId(companyId) } : {} },
+                { $group: { _id: '$status', count: { $sum: 1 } } }
             ]).catch(() => []),
 
             // 6. Clients count
@@ -167,6 +201,7 @@ router.get('/', async (req, res) => {
 
         const tasks = toMap(taskStats);
         const leads = toMap(leadStats);
+        const whatsappLeads = toMap(whatsappLeadStats);
         const projects = toMap(projectStats);
         const social = toMap(socialStats);
         const campaigns = toMap(campaignStats);
@@ -186,7 +221,8 @@ router.get('/', async (req, res) => {
             totalExpenses += e.total || 0;
         });
 
-        const teamSize = companyData?.members?.length || 0;
+        const dataCenterTotals = dataCenterStats?.[0] || {};
+        const teamSize = teamCompany?.members?.length || 0;
 
         res.json({
             success: true,
@@ -199,16 +235,19 @@ router.get('/', async (req, res) => {
                     done: tasks['Done'] || 0
                 },
                 notes: { total: notesCount },
-                companiesData: { total: companiesCount },
+                companiesData: { total: dataCenterTotals.companies || 0 },
                 leads: {
-                    total: leads._total,
+                    total: leads._total + whatsappLeads._total,
+                    new: whatsappLeads.new || 0,
                     cold: leads['Cold Lead'] || 0,
                     warm: leads['Warm Lead'] || 0,
                     qualified: leads['Qualified (SQL)'] || 0,
-                    active: leads['Active'] || 0,
-                    dead: leads['Dead Lead'] || 0
+                    active: (leads['Active'] || 0) + (whatsappLeads.active || 0),
+                    followup: whatsappLeads.followup || 0,
+                    converted: whatsappLeads.converted || 0,
+                    dead: (leads['Dead Lead'] || 0) + (whatsappLeads.dead || 0)
                 },
-                contacts: { total: contactsTotal?.[0]?.total || 0 },
+                contacts: { total: dataCenterTotals.contacts || 0 },
                 clients: { total: clientsCount },
                 projects: {
                     total: projects._total,

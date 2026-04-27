@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../config/api';
 
 const chartConfig = {
@@ -39,22 +39,6 @@ function CustomTooltip({ active, payload, label }) {
           </div>
           <span style={{ fontSize: 12, fontWeight: 600, color: '#09090b', fontVariantNumeric: 'tabular-nums' }}>
             {entry.value.toLocaleString()}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CustomLegend({ payload }) {
-  if (!payload?.length) return null;
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 12 }}>
-      {payload.map(entry => (
-        <div key={entry.value} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color }} />
-          <span style={{ fontSize: 12, color: '#6b7280', fontFamily: "'Switzer', sans-serif" }}>
-            {chartConfig[entry.dataKey || entry.value]?.label || entry.value}
           </span>
         </div>
       ))}
@@ -128,11 +112,11 @@ export default function OverviewAreaChart() {
       {/* Chart */}
       <div style={{ padding: '16px 16px 12px' }}>
         {loading ? (
-          <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13, fontFamily: "'Switzer', sans-serif" }}>
+          <div style={{ height: 174, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13, fontFamily: "'Switzer', sans-serif" }}>
             Loading…
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={174}>
             <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="fillCompanies" x1="0" y1="0" x2="0" y2="1">

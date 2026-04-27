@@ -100,11 +100,11 @@ export default function LeadsRadarChart() {
       {/* Chart */}
       <div style={{ flex: 1, padding: '8px 8px 0' }}>
         {loading ? (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13, fontFamily: "'Switzer', sans-serif" }}>
+          <div style={{ height: 174, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13, fontFamily: "'Switzer', sans-serif" }}>
             Loading…
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={174}>
             <RadarChart data={data} outerRadius="72%">
               <PolarGrid stroke="#f0f0f0" />
               <PolarAngleAxis
@@ -125,6 +125,38 @@ export default function LeadsRadarChart() {
             </RadarChart>
           </ResponsiveContainer>
         )}
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 8,
+        padding: '0 18px 16px',
+        fontFamily: "'Switzer', sans-serif",
+      }}>
+        {[
+          ['New', stats.new || 0],
+          ['Follow-up', stats.followup || 0],
+          ['Dead', stats.dead || 0],
+        ].map(([label, value]) => (
+          <div key={label} style={{
+            borderRadius: 8,
+            background: 'transparent',
+            padding: '8px 9px',
+            minWidth: 0,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{value}</div>
+            <div style={{
+              marginTop: 3,
+              color: '#71717a',
+              fontSize: 10,
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>{label}</div>
+          </div>
+        ))}
       </div>
 
     </div>

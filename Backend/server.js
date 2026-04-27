@@ -3662,7 +3662,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
     }
 
     const user = await User.findById(req.user.userId)
-      .populate('companyId', 'companyName')
+      .populate('companyId', 'companyName address companyCity companyState companyCountry headquarters latitude longitude')
       .select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

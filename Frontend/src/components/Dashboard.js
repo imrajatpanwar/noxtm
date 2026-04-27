@@ -113,6 +113,7 @@ function Dashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedTrendingService, setSelectedTrendingService] = useState(null);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [policyPending, setPolicyPending] = useState(false);
 
   const isAdmin = currentUser?.role === 'Admin';
 
@@ -241,6 +242,20 @@ function Dashboard({ user, onLogout }) {
     }).catch(() => {});
   }, []);
 
+  // Check if company policy exists and user hasn't accepted it
+  useEffect(() => {
+    if (!currentUser?.companyId) return;
+    const isOwner = currentUser?.roleInCompany === 'Owner' || currentUser?.role === 'Admin';
+    if (isOwner) return; // owners don't need to accept
+    api.get('/company-policies').then(res => {
+      if (res.data.success && res.data.policy && !res.data.policy.isAcknowledged) {
+        setPolicyPending(true);
+      } else {
+        setPolicyPending(false);
+      }
+    }).catch(() => {});
+  }, [currentUser]);
+
   // Listen for navigation to settings from header profile dropdown
   useEffect(() => {
     const handleNavigateToSettings = () => {
@@ -277,6 +292,19 @@ function Dashboard({ user, onLogout }) {
   }, []);
 
   const handleSectionChange = (section) => {
+    // Re-check policy acceptance when navigating away from policies page
+    if (activeSection === 'company-policies' && section !== 'company-policies' && currentUser?.companyId) {
+      const isOwner = currentUser?.roleInCompany === 'Owner' || currentUser?.role === 'Admin';
+      if (!isOwner) {
+        api.get('/company-policies').then(res => {
+          if (res.data.success && res.data.policy && !res.data.policy.isAcknowledged) {
+            setPolicyPending(true);
+          } else {
+            setPolicyPending(false);
+          }
+        }).catch(() => {});
+      }
+    }
     setActiveSection(section);
     // Update visitor tracking with dashboard sub-section
     const pageName = 'Dashboard / ' + section.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -294,7 +322,7 @@ function Dashboard({ user, onLogout }) {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <Overview user={user} dashboardData={dashboardData} error={error} />;
+        return <Overview user={user} dashboardData={dashboardData} error={error} onNavigate={handleSectionChange} />;
       case 'task-manager':
         return <TaskManager />;
       case 'leads-flow':
@@ -432,6 +460,15 @@ function Dashboard({ user, onLogout }) {
                   <span className="dash-banner-text">Your profile is incomplete. Complete it now to unlock all features and get the best experience.</span>
                   <button className="dash-banner-btn" onClick={() => { setActiveSection('workspace-settings'); setProfileIncomplete(false); }}>
                     Complete Now →
+                  </button>
+                </div>
+              )}
+              {policyPending && (
+                <div className="dash-profile-banner dash-policy-banner">
+                  <span className="dash-banner-icon">📋</span>
+                  <span className="dash-banner-text">Your company has a policy that requires your acceptance. Please review and accept it.</span>
+                  <button className="dash-banner-btn" onClick={() => setActiveSection('company-policies')}>
+                    Review Policy →
                   </button>
                 </div>
               )}

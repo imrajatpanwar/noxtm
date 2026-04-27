@@ -10,6 +10,8 @@ import { Skeleton } from './ui/skeleton';
 import './Notes.css';
 import { confirm } from './ui/alert-dialog';
 
+const NOTE_ORDER_STORAGE_KEY = 'noxtm_notes_board_order';
+
 function Notes() {
   const [notes, setNotes] = useState([]);
   const [assignedNotes, setAssignedNotes] = useState([]);
@@ -27,6 +29,14 @@ function Notes() {
   const [companyUsers, setCompanyUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [noteOrder, setNoteOrder] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(NOTE_ORDER_STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [draggedNoteId, setDraggedNoteId] = useState(null);
   const menuRef = useRef(null);
   const searchTimer = useRef(null);
   const userDropdownRef = useRef(null);
@@ -77,6 +87,19 @@ function Notes() {
     if (activeTab === 'my') fetchNotes();
     else fetchAssignedNotes();
   }, [activeTab, fetchNotes, fetchAssignedNotes]);
+
+  useEffect(() => {
+    setNoteOrder(prev => {
+      const ids = notes.map(note => note._id);
+      return [...prev.filter(id => ids.includes(id)), ...ids.filter(id => !prev.includes(id))];
+    });
+  }, [notes]);
+
+  useEffect(() => {
+    if (noteOrder.length > 0) {
+      localStorage.setItem(NOTE_ORDER_STORAGE_KEY, JSON.stringify(noteOrder));
+    }
+  }, [noteOrder]);
 
   // Debounced search
   const handleSearch = (value) => {
@@ -200,6 +223,19 @@ function Notes() {
     setActiveMenu(null);
   };
 
+  const handleNoteDrop = (targetId) => {
+    if (!draggedNoteId || draggedNoteId === targetId) return;
+    setNoteOrder(prev => {
+      const ids = prev.length ? prev : notes.map(note => note._id);
+      const next = ids.filter(id => id !== draggedNoteId);
+      const targetIndex = next.indexOf(targetId);
+      if (targetIndex === -1) return ids;
+      next.splice(targetIndex, 0, draggedNoteId);
+      return next;
+    });
+    setDraggedNoteId(null);
+  };
+
   const openEditNote = (note) => {
     // If this note is assigned to me (not mine), open in view-only mode
     if (note.isAssignedToMe) {
@@ -308,8 +344,11 @@ function Notes() {
     return str.length > len ? str.substring(0, len) + '...' : str;
   };
 
-  const pinnedNotes = notes.filter(n => n.pinned);
-  const otherNotes = notes.filter(n => !n.pinned);
+  const orderedNotes = [...notes].sort((a, b) => {
+    const aIndex = noteOrder.indexOf(a._id);
+    const bIndex = noteOrder.indexOf(b._id);
+    return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
   const pendingAssigned = assignedNotes.filter(n => n.myAssignmentStatus === 'pending' || (!n.myAssignmentStatus && n.assignmentStatus === 'pending'));
   const acceptedAssigned = assignedNotes.filter(n => n.myAssignmentStatus === 'accepted' || (!n.myAssignmentStatus && n.assignmentStatus === 'accepted'));
 
@@ -318,7 +357,7 @@ function Notes() {
       {/* Header */}
       <div className="notes-header">
         <div className="notes-header-left">
-          <h1 className="notes-title">Notes</h1>
+          <h1 className="notes-title">Small Business Guide</h1>
           <span className="notes-count">{activeTab === 'my' ? notes.length : assignedNotes.length}</span>
         </div>
         <div className="notes-header-right">
@@ -358,6 +397,10 @@ function Notes() {
 
       {/* Tabs */}
       <div className="notes-tabs">
+        <div className="notes-board-label">
+          <span className="notes-drag-dot" />
+          <strong>Ideas</strong>
+        </div>
         <button
           className={`notes-tab ${activeTab === 'my' ? 'active' : ''}`}
           onClick={() => setActiveTab('my')}
@@ -398,50 +441,30 @@ function Notes() {
             </div>
           ) : (
             <>
-              {pinnedNotes.length > 0 && (
-                <>
-                  <div className="notes-section-label">Pinned</div>
-                  <div className="notes-grid">
-                    {pinnedNotes.map(note => (
-                      <NoteCard
-                        key={note._id}
-                        note={note}
-                        activeMenu={activeMenu}
-                        setActiveMenu={setActiveMenu}
-                        menuRef={menuRef}
-                        onEdit={openEditNote}
-                        onDelete={handleDelete}
-                        onPin={handlePin}
-                        onArchive={handleArchive}
-                        formatDate={formatDate}
-                        truncate={truncate}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-              {otherNotes.length > 0 && (
-                <>
-                  {pinnedNotes.length > 0 && <div className="notes-section-label">Others</div>}
-                  <div className="notes-grid">
-                    {otherNotes.map(note => (
-                      <NoteCard
-                        key={note._id}
-                        note={note}
-                        activeMenu={activeMenu}
-                        setActiveMenu={setActiveMenu}
-                        menuRef={menuRef}
-                        onEdit={openEditNote}
-                        onDelete={handleDelete}
-                        onPin={handlePin}
-                        onArchive={handleArchive}
-                        formatDate={formatDate}
-                        truncate={truncate}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+              <div className="notes-grid notes-board-grid">
+                {orderedNotes.map(note => (
+                  <NoteCard
+                    key={note._id}
+                    note={note}
+                    activeMenu={activeMenu}
+                    setActiveMenu={setActiveMenu}
+                    menuRef={menuRef}
+                    onOpen={openEditNote}
+                    onEdit={openEditNote}
+                    onDelete={handleDelete}
+                    onPin={handlePin}
+                    onArchive={handleArchive}
+                    formatDate={formatDate}
+                    truncate={truncate}
+                    draggable
+                    isDragging={draggedNoteId === note._id}
+                    onDragStart={() => setDraggedNoteId(note._id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleNoteDrop(note._id)}
+                    onDragEnd={() => setDraggedNoteId(null)}
+                  />
+                ))}
+              </div>
             </>
           )
         ) : (
@@ -463,6 +486,7 @@ function Notes() {
                         key={note._id}
                         note={note}
                         onRespond={handleAssignmentResponse}
+                        onOpen={openViewNote}
                         formatDate={formatDate}
                         truncate={truncate}
                       />
@@ -479,6 +503,7 @@ function Notes() {
                         key={note._id}
                         note={note}
                         onRespond={handleAssignmentResponse}
+                        onOpen={openViewNote}
                         formatDate={formatDate}
                         truncate={truncate}
                         accepted
@@ -494,7 +519,7 @@ function Notes() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className="notes-modal-overlay" onClick={() => { setShowEditor(false); resetEditor(); }}>
+        <div className="notes-modal-overlay">
           <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
             <div className="notes-modal-header">
               <h2>{isEditing ? 'Edit Note' : 'New Note'}</h2>
@@ -522,6 +547,27 @@ function Notes() {
                 rows={12}
               />
 
+              <div className="notes-editor-tags">
+                <FiTag className="notes-tag-icon" />
+                <div className="notes-tag-list">
+                  {editorData.tags.map(tag => (
+                    <span key={tag} className="notes-tag">
+                      {tag}
+                      <button onClick={() => removeTag(tag)}><FiX /></button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    className="notes-tag-input"
+                    placeholder={editorData.tags.length === 0 ? 'Add tags...' : ''}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    maxLength={30}
+                  />
+                </div>
+              </div>
+
               {/* Assign to User */}
               <div className="notes-assign-section">
                 <div className="notes-assign-label">
@@ -545,8 +591,7 @@ function Notes() {
                       ))}
                     </div>
                   )}
-                  
-                  {/* Trigger to open dropdown */}
+
                   <div
                     className="notes-assign-trigger"
                     onClick={() => setShowUserDropdown(!showUserDropdown)}
@@ -554,7 +599,7 @@ function Notes() {
                     <FiUser />
                     <span>{editorData.assignedTo.length > 0 ? 'Add more...' : 'Select team members...'}</span>
                   </div>
-                  
+
                   {showUserDropdown && (
                     <div className="notes-assign-dropdown">
                       <div className="notes-assign-search">
@@ -602,27 +647,6 @@ function Notes() {
                   )}
                 </div>
               </div>
-
-              <div className="notes-editor-tags">
-                <FiTag className="notes-tag-icon" />
-                <div className="notes-tag-list">
-                  {editorData.tags.map(tag => (
-                    <span key={tag} className="notes-tag">
-                      {tag}
-                      <button onClick={() => removeTag(tag)}><FiX /></button>
-                    </span>
-                  ))}
-                  <input
-                    type="text"
-                    className="notes-tag-input"
-                    placeholder={editorData.tags.length === 0 ? 'Add tags...' : ''}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    maxLength={30}
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="notes-modal-footer">
@@ -639,31 +663,27 @@ function Notes() {
       )}
       {/* View-Only Modal for assigned notes */}
       {viewNote && (
-        <div className="notes-modal-overlay" onClick={() => setViewNote(null)}>
-          <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="notes-modal-header">
-              <div>
-                <h3 className="notes-view-title">{viewNote.title}</h3>
-                <div className="notes-view-meta">
-                  <span className="notes-view-from"><FiUser /> Assigned by {viewNote.assignedBy?.fullName || viewNote.userId?.fullName || 'Unknown'}</span>
-                  <span className="notes-view-time"><FiClock /> {formatDate(viewNote.updatedAt)}</span>
-                </div>
-              </div>
-              <button className="notes-modal-close" onClick={() => setViewNote(null)}>
-                <FiX />
-              </button>
-            </div>
-            <div className="notes-modal-body">
-              <div className="notes-view-content">{viewNote.content || 'No content.'}</div>
-              {viewNote.tags && viewNote.tags.length > 0 && (
-                <div className="notes-view-tags">
-                  {viewNote.tags.map(tag => (
-                    <span key={tag} className="note-card-tag">{tag}</span>
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="notes-reader-overlay">
+          <div className="notes-reader-actions">
+            <button aria-label="More options"><FiMoreVertical /></button>
+            <button aria-label="Close" onClick={() => setViewNote(null)}><FiX /></button>
+            <button aria-label="Reader layout"><FiArchive /></button>
           </div>
+          <article className="notes-reader">
+            <h1>{viewNote.title}</h1>
+            <div className="notes-reader-meta">
+              <span>{viewNote.assignedBy || viewNote.userId ? `Assigned by ${viewNote.assignedBy?.fullName || viewNote.userId?.fullName || 'Unknown'}` : 'Personal note'}</span>
+              <span>{formatDate(viewNote.updatedAt)}</span>
+            </div>
+            <div className="notes-reader-content">{viewNote.content || 'No content.'}</div>
+            {viewNote.tags && viewNote.tags.length > 0 && (
+              <div className="notes-reader-tags">
+                {viewNote.tags.map(tag => (
+                  <span key={tag}>{tag}</span>
+                ))}
+              </div>
+            )}
+          </article>
         </div>
       )}
     </div>
@@ -673,7 +693,25 @@ function Notes() {
 // ============================================
 // Note Card Component
 // ============================================
-function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, onPin, onArchive, formatDate, truncate }) {
+function NoteCard({
+  note,
+  activeMenu,
+  setActiveMenu,
+  menuRef,
+  onOpen,
+  onEdit,
+  onDelete,
+  onPin,
+  onArchive,
+  formatDate,
+  truncate,
+  draggable,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd
+}) {
   const assignedUsers = note.assignedTo && Array.isArray(note.assignedTo) ? note.assignedTo : (note.assignedTo ? [note.assignedTo] : []);
   const hasAssignments = assignedUsers.length > 0 && note.assignments && note.assignments.length > 0;
   const isAssigned = note.isAssignedToMe;
@@ -689,7 +727,15 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
   };
 
   return (
-    <div className={`note-card ${note.pinned ? 'pinned' : ''} ${isAssigned ? 'assigned-in-my' : ''}`} onClick={() => onEdit(note)}>
+    <div
+      className={`note-card ${note.pinned ? 'pinned' : ''} ${isAssigned ? 'assigned-in-my' : ''} ${isDragging ? 'dragging' : ''}`}
+      onClick={() => onOpen(note)}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
       <div className="note-card-top">
         <h3 className="note-card-title">
           {isAssigned && (
@@ -780,11 +826,11 @@ function NoteCard({ note, activeMenu, setActiveMenu, menuRef, onEdit, onDelete, 
 // ============================================
 // Assigned Note Card Component (for "Assigned to Me" tab)
 // ============================================
-function AssignedNoteCard({ note, onRespond, formatDate, truncate, accepted }) {
+function AssignedNoteCard({ note, onRespond, onOpen, formatDate, truncate, accepted }) {
   const sender = note.assignedBy || note.userId;
 
   return (
-    <div className={`note-card assigned-card ${accepted ? 'accepted' : 'pending'}`}>
+    <div className={`note-card assigned-card ${accepted ? 'accepted' : 'pending'}`} onClick={() => onOpen(note)}>
       <div className="note-card-top">
         <h3 className="note-card-title">{note.title}</h3>
         <div className="assigned-from">
@@ -812,14 +858,14 @@ function AssignedNoteCard({ note, onRespond, formatDate, truncate, accepted }) {
           <div className="assigned-actions">
             <button
               className="assigned-btn accept"
-              onClick={() => onRespond(note._id, 'accepted')}
+              onClick={(e) => { e.stopPropagation(); onRespond(note._id, 'accepted'); }}
               title="Accept"
             >
               <FiCheckCircle />
             </button>
             <button
               className="assigned-btn reject"
-              onClick={() => onRespond(note._id, 'rejected')}
+              onClick={(e) => { e.stopPropagation(); onRespond(note._id, 'rejected'); }}
               title="Reject"
             >
               <FiXCircle />

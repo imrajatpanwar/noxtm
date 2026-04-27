@@ -41,6 +41,21 @@
   text-underline-offset: 2px;
 }
 
+/* Policy banner — blue variant */
+.dash-policy-banner {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  margin-top: 8px;
+}
+
+.dash-policy-banner .dash-banner-text {
+  color: #1d4ed8;
+}
+
+.dash-policy-banner .dash-banner-btn {
+  color: #1d4ed8;
+}
+
 /* Dashboard Container — direct child of SidebarProvider wrapper.
    flex:1 so it grows to fill the wrapper's full width. */
 .dashboard-container {

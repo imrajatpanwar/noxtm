@@ -1,1105 +1,912 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiPlus, FiX, FiMessageSquare, FiClock, FiCheck, FiCalendar, FiFlag, FiSend, FiChevronDown, FiChevronRight, FiSearch, FiExternalLink, FiMoreHorizontal, FiBold, FiItalic, FiList } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiActivity, FiCheck, FiClock, FiInbox, FiMessageSquare, FiMoreVertical, FiPlus, FiSearch, FiSend, FiUserCheck, FiUserX, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Separator } from './ui/separator';
-import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import './TaskManager.css';
 import { confirm } from './ui/alert-dialog';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogBody, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Input } from './ui/input';
+import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
-// Helper function to format relative time
-const formatRelativeTime = (date) => {
-    const now = new Date();
-    const diff = now - new Date(date);
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const weeks = Math.floor(days / 7);
+const TASK_TYPES = [
+  { id: 'One Time',  label: 'One Time',  code: 'OT', color: '#111827', desc: 'Single task, no repeat' },
+  { id: 'Daily',     label: 'Daily Task', code: 'DY', color: '#111827', desc: 'Repeats daily with target' },
+  { id: 'Calendar',  label: 'Calendar',  code: 'CL', color: '#111827', desc: 'Tied to a calendar date' },
+  { id: 'Recurring', label: 'Recurring', code: 'RC', color: '#111827', desc: 'Weekly or monthly repeat' },
+  { id: 'Milestone', label: 'Milestone', code: 'MS', color: '#111827', desc: 'Key project milestone' },
+  { id: 'Sprint',    label: 'Sprint',    code: 'SP', color: '#111827', desc: 'Timeboxed sprint task' },
+];
+const TYPE_META = TASK_TYPES.reduce((a, t) => { a[t.id] = t; return a; }, {});
 
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes}min ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    if (weeks < 4) return `${weeks}w ago`;
-    return new Date(date).toLocaleDateString();
+const SOURCES = ['Manual', 'Data Center', 'Calendar', 'CRM', 'HR'];
+
+const getId = (value) => (value?._id || value?.id || value)?.toString?.() || '';
+const sameUser = (left, right) => Boolean(getId(left) && getId(left) === getId(right));
+const getPendingRequests = (task) => (task.assignmentRequests || []).filter(request => request.status === 'pending');
+const getMyPendingRequest = (task, currentUserId) => getPendingRequests(task).find(request => sameUser(request.user, currentUserId));
+const getAcceptedRequests = (task) => (task.assignmentRequests || []).filter(request => request.status === 'accepted');
+const getRejectedRequests = (task) => (task.assignmentRequests || []).filter(request => request.status === 'rejected');
+
+const isDataCenterTask = (task) => (
+  task?.progressSource === 'Data Center' ||
+  task?.source === 'Data Center' ||
+  (task?.labels || []).includes('Data Center')
+);
+
+const getTodayProgress = (task) => {
+  if (Number.isFinite(Number(task.todayProgress))) return Number(task.todayProgress);
+  const today = new Date().toISOString().slice(0, 10);
+  return (task.dailyProgress || [])
+    .filter(p => p.date === today)
+    .reduce((sum, p) => sum + (Number(p.count) || 0), 0);
 };
 
-// Priority badge component
-const PriorityBadge = ({ priority }) => {
-    const colors = {
-        'Low': { bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
-        'Medium': { bg: '#fff8e1', color: '#f57f17', border: '#ffe082' },
-        'High': { bg: '#fff3e0', color: '#e65100', border: '#ffcc80' },
-        'Urgent': { bg: '#ffebee', color: '#c62828', border: '#ef9a9a' }
+const getProgressTarget = (task) => {
+  const target = Number(task.progressTarget || task.target);
+  return Number.isFinite(target) && target > 0 ? target : 100;
+};
+
+const getProgressMeta = (task) => {
+  const hasDailyProgress = isDataCenterTask(task) || task.taskType === 'Daily' || Number(task.target) > 0 || (task.dailyProgress || []).length > 0;
+
+  if (hasDailyProgress) {
+    const done = getTodayProgress(task);
+    const target = getProgressTarget(task);
+    const percent = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+    const isDataCenterProgress = isDataCenterTask(task);
+    return {
+      label: isDataCenterProgress ? 'Data Center Today' : 'Daily Task',
+      value: `Target : ${done}/${target}`,
+      percent,
     };
-    const style = colors[priority] || colors['Medium'];
+  }
 
-    return (
-        <span className="priority-badge" style={{
-            backgroundColor: style.bg,
-            color: style.color,
-            border: `1px solid ${style.border}`
-        }}>
-            <FiFlag size={10} />
-            {priority}
-        </span>
-    );
+  const byStatus = {
+    Todo: 0,
+    'In Progress': 45,
+    'In Review': 72,
+    Done: 100,
+  };
+  const percent = byStatus[task.status] ?? 0;
+  return {
+    label: 'Progress',
+    value: `${percent}%`,
+    percent,
+  };
 };
 
-// Status badge component
-const StatusBadge = ({ status }) => {
-    const statusClass = status?.toLowerCase().replace(/\s+/g, '-') || 'todo';
-    return (
-        <span className={`status-badge ${statusClass}`}>
-            {status}
-        </span>
-    );
+const getCardSource = (task) => {
+  if (task.source && task.source !== 'Manual') return task.source;
+  const firstModuleLabel = (task.labels || []).find(label => label && label !== 'Manual');
+  return firstModuleLabel || task.source || 'Manual';
 };
 
-// User avatar component
-const UserAvatar = ({ user, size = 28 }) => {
-    if (!user) return null;
+const getUserLabel = (user, fallback = 'User') => (
+  user?.fullName || user?.name || user?.email || fallback
+);
 
-    // Handle different name field possibilities
-    const displayName = user.fullName || user.name || user.email?.split('@')[0] || 'User';
-    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+const formatTaskTime = (value) => {
+  if (!value) return 'Just now';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+};
 
-    // Generate consistent color from name
-    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
-    const colorIndex = displayName.charCodeAt(0) % colors.length;
-    const bgColor = colors[colorIndex];
+const getActivityLabel = (action = '') => ({
+  created: 'created the task',
+  updated: 'updated the task',
+  status_changed: 'changed status',
+  assigned: 'updated assignees',
+  unassigned: 'removed an assignee',
+  commented: 'commented',
+  priority_changed: 'changed priority',
+  assignment_requested: 'sent assignment request',
+  assignment_accepted: 'accepted assignment',
+  assignment_rejected: 'rejected assignment'
+}[action] || action.replace(/_/g, ' ') || 'updated the task');
 
-    // Handle different profile image field possibilities
-    const profileImg = user.profileImage || user.avatar || user.profilePicture;
+/* ── Avatar (circular) ─────────────────────────────────── */
+const UserAvatar = ({ user, size = 30 }) => {
+  const [imgError, setImgError] = React.useState(false);
+  if (!user) return null;
+  const name = user.fullName || user.name || user.email?.split('@')[0] || '?';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const palette = ['#667eea','#f5576c','#4facfe','#43e97b','#f093fb','#f97316','#06b6d4','#8b5cf6'];
+  const bg = palette[name.charCodeAt(0) % palette.length];
+  const img = (user.profileImage || user.avatar) && !imgError ? (user.profileImage || user.avatar) : null;
+  return (
+    <div className="tm-av" style={{ width: size, height: size, fontSize: size * 0.38, background: img ? 'transparent' : bg }} title={name}>
+      {img ? <img src={img} alt={name} onError={() => setImgError(true)} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%' }} /> : <span>{initials}</span>}
+    </div>
+  );
+};
 
-    return (
-        <div
-            className="user-avatar"
-            style={{
-                width: size,
-                height: size,
-                fontSize: size * 0.4,
-                background: profileImg ? 'transparent' : bgColor
-            }}
-            title={displayName}
-        >
-            {profileImg ? (
-                <img src={profileImg} alt={displayName} />
-            ) : (
-                <span>{initials}</span>
-            )}
+/* ── Daily progress bar ───────────────────────────────── */
+const DailyBar = ({ task }) => {
+  const { label, value, percent } = getProgressMeta(task);
+  const BARS = 44;
+  const filled = Math.round((percent / 100) * BARS);
+  return (
+    <div className="tm-bar-section" role="progressbar" aria-label={`${label} ${value}`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={percent}>
+      <div className="tm-bar-labels">
+        <span className="tm-bar-type-label">{label}</span>
+        <span className="tm-bar-target">{value}</span>
+      </div>
+      <div className="tm-bars-row">
+        {Array.from({ length: BARS }, (_, i) => (
+          <div key={i} className={`tm-seg${i < filled ? ' on' : ''}`} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ── Task Card ─────────────────────────────────────────── */
+const TaskCard = ({ task, onClick, currentUserId }) => {
+  const sourceLabel = getCardSource(task);
+  const commentCount = task.commentCount ?? task.comments?.length ?? 0;
+  const pBadgeClass = { Low:'tm-pb-low', Medium:'tm-pb-med', High:'tm-pb-high', Urgent:'tm-pb-urg' }[task.priority] || 'tm-pb-med';
+  const myPendingRequest = getMyPendingRequest(task, currentUserId);
+  const pendingRequests = getPendingRequests(task);
+  const acceptedRequests = getAcceptedRequests(task);
+  const rejectedRequests = getRejectedRequests(task);
+  const createdByMe = sameUser(task.createdBy, currentUserId);
+
+  return (
+    <Card className={`tm-card${myPendingRequest ? ' tm-card-request' : ''}`} onClick={onClick}>
+      {(myPendingRequest || (createdByMe && pendingRequests.length > 0)) && (
+        <div className="tm-request-strip">
+          <span>
+            {myPendingRequest ? <FiInbox size={13} /> : <FiClock size={13} />}
+            {myPendingRequest ? 'Request for you' : `${pendingRequests.length} request${pendingRequests.length === 1 ? '' : 's'} pending`}
+          </span>
+          <strong>{myPendingRequest ? 'Review' : 'Waiting'}</strong>
         </div>
-    );
-};
+      )}
 
-// Comment thread component
-const CommentThread = ({ comments, taskId, onCommentAdded, currentUserId, companyUsers }) => {
-    const [newComment, setNewComment] = useState('');
-    const [replyingTo, setReplyingTo] = useState(null);
-    const [replyContent, setReplyContent] = useState('');
-    const [expandedThreads, setExpandedThreads] = useState({});
-    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
-    const [mentionSearch, setMentionSearch] = useState('');
-    const [mentionPosition, setMentionPosition] = useState(0);
-    const [mentionInputType, setMentionInputType] = useState('main'); // 'main' or 'reply'
-
-    const topLevelComments = comments.filter(c => !c.parentId);
-    const getReplies = (parentId) => comments.filter(c => c.parentId === parentId);
-
-    const handleInputChange = (e, isReply = false) => {
-        const value = e.target.value;
-        const cursorPosition = e.target.selectionStart;
-        
-        if (isReply) {
-            setReplyContent(value);
-        } else {
-            setNewComment(value);
-        }
-
-        // Check for @ mention
-        const textBeforeCursor = value.substring(0, cursorPosition);
-        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-        
-        if (lastAtIndex !== -1) {
-            const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-            // Check if there's a space after @, if yes, don't show dropdown
-            if (!textAfterAt.includes(' ')) {
-                setMentionSearch(textAfterAt);
-                setMentionPosition(lastAtIndex);
-                setShowMentionDropdown(true);
-                setMentionInputType(isReply ? 'reply' : 'main');
-            } else {
-                setShowMentionDropdown(false);
-            }
-        } else {
-            setShowMentionDropdown(false);
-        }
-    };
-
-    const handleMentionSelect = (user) => {
-        const currentValue = mentionInputType === 'reply' ? replyContent : newComment;
-        const beforeMention = currentValue.substring(0, mentionPosition);
-        const afterMention = currentValue.substring(mentionPosition + mentionSearch.length + 1);
-        const newValue = `${beforeMention}@${user.fullName || user.name} ${afterMention}`;
-        
-        if (mentionInputType === 'reply') {
-            setReplyContent(newValue);
-        } else {
-            setNewComment(newValue);
-        }
-        
-        setShowMentionDropdown(false);
-        setMentionSearch('');
-    };
-
-    const filteredUsers = companyUsers?.filter(user => {
-        const searchLower = mentionSearch.toLowerCase();
-        const fullName = (user.fullName || user.name || '').toLowerCase();
-        const email = (user.email || '').toLowerCase();
-        return fullName.includes(searchLower) || email.includes(searchLower);
-    }) || [];
-
-
-    const handleSubmitComment = async (e, parentId = null) => {
-        e.preventDefault();
-        const content = parentId ? replyContent : newComment;
-        if (!content.trim()) return;
-
-        try {
-            await api.post(`/tasks/${taskId}/comments`, {
-                content: content.trim(),
-                parentId
-            });
-            if (parentId) {
-                setReplyContent('');
-                setReplyingTo(null);
-            } else {
-                setNewComment('');
-            }
-            onCommentAdded();
-        } catch (error) {
-            console.error('Error adding comment:', error);
-        }
-    };
-
-    const toggleThread = (commentId) => {
-        setExpandedThreads(prev => ({
-            ...prev,
-            [commentId]: !prev[commentId]
-        }));
-    };
-
-    const renderComment = (comment, isReply = false) => {
-        const replies = getReplies(comment._id);
-        const hasReplies = replies.length > 0;
-        const isExpanded = expandedThreads[comment._id] !== false; // Default to expanded
-
-        return (
-            <div key={comment._id} className={`comment ${isReply ? 'comment-reply' : ''}`}>
-                <div className="comment-header">
-                    <UserAvatar user={comment.author} size={24} />
-                    <span className="comment-author">{comment.author?.fullName || 'Unknown'}</span>
-                    <span className="comment-time">{formatRelativeTime(comment.createdAt)}</span>
-                </div>
-                <div className="comment-content">{comment.content}</div>
-                <div className="comment-actions">
-                    <button
-                        className="reply-btn"
-                        onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
-                    >
-                        Reply
-                    </button>
-                    {hasReplies && (
-                        <button
-                            className="toggle-replies-btn"
-                            onClick={() => toggleThread(comment._id)}
-                        >
-                            {isExpanded ? <FiChevronDown size={14} /> : <FiChevronRight size={14} />}
-                            {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                        </button>
-                    )}
-                </div>
-
-                {replyingTo === comment._id && (
-                    <form onSubmit={(e) => handleSubmitComment(e, comment._id)} className="reply-form">
-                        <div className="comment-input-wrapper">
-                            <input
-                                type="text"
-                                value={replyContent}
-                                onChange={(e) => handleInputChange(e, true)}
-                                placeholder="Write a reply..."
-                                autoFocus
-                            />
-                            {showMentionDropdown && mentionInputType === 'reply' && (
-                                <div className="mention-dropdown">
-                                    {filteredUsers.length > 0 ? (
-                                        filteredUsers.map(user => (
-                                            <div
-                                                key={user._id}
-                                                className="mention-option"
-                                                onClick={() => handleMentionSelect(user)}
-                                            >
-                                                <UserAvatar user={user} size={20} />
-                                                <span>{user.fullName || user.name}</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="mention-option no-results">No users found</div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <button type="submit" disabled={!replyContent.trim()}>
-                            <FiSend size={14} />
-                        </button>
-                    </form>
-                )}
-
-                {hasReplies && isExpanded && (
-                    <div className="replies">
-                        {replies.map(reply => renderComment(reply, true))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    return (
-        <div className="comment-thread">
-            <div className="comments-list">
-                {topLevelComments.length === 0 ? (
-                    <div className="no-comments">No comments yet. Start the conversation!</div>
-                ) : (
-                    topLevelComments.map(comment => renderComment(comment))
-                )}
-            </div>
-            <form onSubmit={(e) => handleSubmitComment(e)} className="new-comment-form">
-                <div className="comment-input-wrapper">
-                    <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => handleInputChange(e, false)}
-                        placeholder="Add a comment..."
-                    />
-                    {showMentionDropdown && mentionInputType === 'main' && (
-                        <div className="mention-dropdown">
-                            {filteredUsers.length > 0 ? (
-                                filteredUsers.map(user => (
-                                    <div
-                                        key={user._id}
-                                        className="mention-option"
-                                        onClick={() => handleMentionSelect(user)}
-                                    >
-                                        <UserAvatar user={user} size={20} />
-                                        <span>{user.fullName || user.name}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="mention-option no-results">No users found</div>
-                            )}
-                        </div>
-                    )}
-                </div>
-                <button type="submit" disabled={!newComment.trim()}>
-                    <FiSend size={16} />
-                </button>
-            </form>
+      {/* Top: title + menu */}
+      <div className="tm-card-head">
+        <div>
+          <h3 className="tm-card-title">{task.title}</h3>
+          {task.description && <p className="tm-card-desc">{task.description.slice(0, 100)}{task.description.length > 100 ? '…' : ''}</p>}
         </div>
-    );
+        <button className="tm-card-menu" onClick={e => e.stopPropagation()} aria-label="Task options"><FiMoreVertical size={22}/></button>
+      </div>
+
+      <DailyBar task={task} />
+
+      {/* Footer: avatars | badges + comments */}
+      <div className="tm-card-foot">
+        <div className="tm-av-stack">
+          {(task.assignees || []).slice(0, 3).map((u, i) => (
+            <div key={i} className="tm-av-wrap" style={{ zIndex: 10 - i }}>
+              <UserAvatar user={u} size={38} />
+            </div>
+          ))}
+          {(task.assignees || []).length > 3 && (
+            <div className="tm-av-more">+{task.assignees.length - 3}</div>
+          )}
+        </div>
+        <div className="tm-card-badges">
+          {sourceLabel && <span className="tm-dc-badge">{sourceLabel}</span>}
+          <span className={`tm-priority-pill ${pBadgeClass}`}>{task.priority}</span>
+          {acceptedRequests.length > 0 && <span className="tm-request-pill accepted"><FiUserCheck size={13}/> {acceptedRequests.length}</span>}
+          {rejectedRequests.length > 0 && <span className="tm-request-pill rejected"><FiUserX size={13}/> {rejectedRequests.length}</span>}
+          <span className="tm-comment-pill">
+            <FiMessageSquare size={18}/> {commentCount}
+          </span>
+          {(task.activeUsers || []).length > 0 && (
+            <span className="tm-active-pill"><span className="tm-dot"/> {task.activeUsers.length}</span>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
 };
 
-// Create Task Modal
-const PRIORITY_CONFIG = {
-    Low:    { color: '#16a34a', bg: '#dcfce7', dot: '#16a34a' },
-    Medium: { color: '#d97706', bg: '#fef9c3', dot: '#d97706' },
-    High:   { color: '#dc2626', bg: '#fee2e2', dot: '#dc2626' },
-    Urgent: { color: '#7c3aed', bg: '#f5f3ff', dot: '#7c3aed' },
-};
-
+/* ── Create Task Modal ─────────────────────────────────── */
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [priority, setPriority] = useState('Medium');
-    const [assignees, setAssignees] = useState([]);
-    const [dueDate, setDueDate] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
-    const [textFormat, setTextFormat] = useState([]);
+  const [taskType, setTaskType] = useState('One Time');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState('Medium');
+  const [assignees, setAssignees] = useState([]);
+  const [dueDate, setDueDate] = useState('');
+  const [target, setTarget] = useState(100);
+  const [calendarDate, setCalendarDate] = useState('');
+  const [recurrence, setRecurrence] = useState('weekly');
+  const [source, setSource] = useState('Manual');
+  const [requestComment, setRequestComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-    // @mention calendar accounts
-    const [calAccounts, setCalAccounts] = useState([]);
-    const [mentionQuery, setMentionQuery] = useState(null);
-    const [mentionStart, setMentionStart] = useState(0);
-    const descTextareaRef = useRef(null);
-    const assigneeRef = useRef(null);
+  const reset = () => { setTaskType('One Time'); setTitle(''); setDescription(''); setPriority('Medium'); setAssignees([]); setDueDate(''); setTarget(100); setCalendarDate(''); setRecurrence('weekly'); setSource('Manual'); setRequestComment(''); };
+  const usesTarget = taskType === 'Daily' || source === 'Data Center';
 
-    useEffect(() => {
-        if (!isOpen) return;
-        api.get('/social-media-calendar/accounts').then(res => {
-            setCalAccounts(res.data?.accounts || res.data || []);
-        }).catch(() => {});
-    }, [isOpen]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSubmitting(true);
+    const labels = source !== 'Manual' ? [source] : [];
+    try {
+      await api.post('/tasks', {
+        title: title.trim(), description, priority, taskType, assignees,
+        dueDate: dueDate || null, target: usesTarget ? target : null,
+        calendarDate: calendarDate || null, recurrence: taskType === 'Recurring' ? recurrence : null,
+        source, labels, requestComment
+      });
+      toast.success(assignees.length ? 'Task request sent!' : 'Task created!');
+      onTaskCreated(); onClose(); reset();
+    } catch { toast.error('Failed to create task'); }
+    finally { setSubmitting(false); }
+  };
 
-    // Close assignee dropdown on outside click
-    useEffect(() => {
-        if (!showAssigneeDropdown) return;
-        const handler = (e) => {
-            if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
-                setShowAssigneeDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [showAssigneeDropdown]);
+  const toggleAssignee = id => setAssignees(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  if (!isOpen) return null;
 
-    const handleDescChange = (e) => {
-        const val = e.target.value;
-        setDescription(val);
-        const cursor = e.target.selectionStart;
-        const before = val.slice(0, cursor);
-        const atIdx = before.lastIndexOf('@');
-        if (atIdx !== -1 && !before.slice(atIdx + 1).includes(' ')) {
-            setMentionQuery(before.slice(atIdx + 1));
-            setMentionStart(atIdx);
-        } else {
-            setMentionQuery(null);
-        }
-    };
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="tm-create-dialog tm-create-dialog-minimal">
+        <DialogHeader className="tm-create-header tm-create-header-minimal">
+          <DialogTitle>New task</DialogTitle>
+          <DialogDescription>Capture the work, assign the right people, and keep the rest quiet.</DialogDescription>
+          <DialogClose className="tm-dialog-close" aria-label="Close" />
+        </DialogHeader>
 
-    const insertMention = (accountName) => {
-        const ta = descTextareaRef.current;
-        if (!ta) return;
-        const before = description.slice(0, mentionStart);
-        const after = description.slice(ta.selectionStart);
-        const newVal = `${before}@${accountName} ${after}`;
-        setDescription(newVal);
-        setMentionQuery(null);
-        ta.focus();
-        const newCursor = before.length + accountName.length + 2;
-        setTimeout(() => ta.setSelectionRange(newCursor, newCursor), 0);
-    };
+        <form onSubmit={handleSubmit} className="tm-create-form tm-create-form-minimal">
+          <DialogBody className="tm-create-body tm-create-body-minimal">
+            <div className="tm-create-topline">
+              <Badge variant="outline" className="tm-create-type-badge">
+                <span>{TYPE_META[taskType]?.code}</span>
+                {TYPE_META[taskType]?.label}
+              </Badge>
+              <span>{assignees.length ? `${assignees.length} invite${assignees.length === 1 ? '' : 's'} ready` : 'No assignee selected'}</span>
+            </div>
 
-    const filteredAccounts = mentionQuery !== null
-        ? calAccounts.filter(a => a.name?.toLowerCase().includes(mentionQuery.toLowerCase()))
-        : [];
+            <div className="tm-create-field">
+              <label>Task title</label>
+              <Input className="tm-shad-title" type="text" placeholder="Add a clear task name" value={title} onChange={e => setTitle(e.target.value)} autoFocus required />
+            </div>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!title.trim()) return;
-        setIsSubmitting(true);
-        try {
-            await api.post('/tasks', { title: title.trim(), description, priority, assignees, dueDate: dueDate || null });
-            toast.success('Task created!');
-            onTaskCreated();
-            onClose();
-            setTitle(''); setDescription(''); setPriority('Medium'); setAssignees([]); setDueDate(''); setTextFormat([]);
-        } catch {
-            toast.error('Failed to create task');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+            <div className="tm-create-field">
+              <label>Description</label>
+              <textarea className="tm-shad-textarea tm-shad-textarea-compact" placeholder="Optional context" value={description} onChange={e => setDescription(e.target.value)} rows={2} />
+            </div>
 
-    const toggleAssignee = (userId) => {
-        setAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
-    };
+            <div className="tm-create-grid tm-create-grid-minimal">
+              <div className="tm-create-field">
+                <label>Type</label>
+                <ToggleGroup type="single" value={taskType} onValueChange={v => v && setTaskType(v)} className="tm-shad-toggle tm-chip-toggle">
+                  {TASK_TYPES.map(t => (
+                    <ToggleGroupItem key={t.id} value={t.id} className="tm-shad-toggle-item tm-chip-toggle-item">
+                      {t.code}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
 
-    const selectedUsers = companyUsers.filter(u => assignees.includes(u._id));
+              <div className="tm-create-field">
+                <label>Source</label>
+                <ToggleGroup type="single" value={source} onValueChange={v => v && setSource(v)} className="tm-shad-toggle tm-chip-toggle">
+                  {SOURCES.map(s => <ToggleGroupItem key={s} value={s} className="tm-shad-toggle-item tm-chip-toggle-item">{s}</ToggleGroupItem>)}
+                </ToggleGroup>
+              </div>
 
-    if (!isOpen) return null;
+              <div className="tm-create-field">
+                <label>Priority</label>
+                <ToggleGroup type="single" value={priority} onValueChange={v => v && setPriority(v)} className="tm-shad-toggle tm-chip-toggle">
+                  {['Low','Medium','High','Urgent'].map(p => (
+                    <ToggleGroupItem type="button" key={p} value={p} className={`tm-priority-toggle tm-priority-toggle-${p.toLowerCase()} tm-chip-toggle-item`}>
+                      {p}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
 
-    return (
-        <div className="ctm-overlay" onClick={onClose}>
-            <div className="ctm-modal" onClick={e => e.stopPropagation()}>
+              {usesTarget && (
+                <div className="tm-create-field">
+                  <label>{source === 'Data Center' ? 'Data Center Target' : 'Daily Target'}</label>
+                  <Input className="tm-shad-input" type="number" min={1} value={target} onChange={e => setTarget(+e.target.value)} />
+                </div>
+              )}
+              {taskType === 'Calendar' && (
+                <div className="tm-create-field">
+                  <label>Calendar Date</label>
+                  <Input className="tm-shad-input" type="date" value={calendarDate} onChange={e => setCalendarDate(e.target.value)} />
+                </div>
+              )}
+              {taskType === 'Recurring' && (
+                <div className="tm-create-field">
+                  <label>Repeat</label>
+                  <select value={recurrence} onChange={e => setRecurrence(e.target.value)} className="tm-shad-select">
+                    <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                  </select>
+                </div>
+              )}
+              {(taskType === 'One Time' || taskType === 'Milestone' || taskType === 'Sprint') && (
+                <div className="tm-create-field">
+                  <label>Due Date</label>
+                  <Input className="tm-shad-input" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                </div>
+              )}
+            </div>
 
-                {/* Header */}
-                <div className="ctm-header">
-                    <span className="ctm-header-title">New Task</span>
-                    <button type="button" className="ctm-close-btn" onClick={onClose}>
-                        <FiX size={14} />
+            <Separator />
+
+            <div className="tm-create-field">
+              <label>Assign to</label>
+              <ScrollArea className="tm-assignee-scroll tm-assignee-scroll-minimal">
+                <div className="tm-assignee-list tm-assignee-list-shad">
+                  {companyUsers.map(u => (
+                    <button type="button" key={u._id} className={`tm-assignee-row tm-assignee-button ${assignees.includes(u._id) ? 'sel' : ''}`} onClick={() => toggleAssignee(u._id)}>
+                      <UserAvatar user={u} size={24} />
+                      <span>{u.fullName || u.email}</span>
+                      {assignees.includes(u._id) && <FiCheck className="tm-assignee-check" size={15} />}
                     </button>
+                  ))}
+                  {companyUsers.length === 0 && <div className="tm-no-users">No team members found</div>}
                 </div>
-
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <div className="ctm-body">
-
-                        {/* Title */}
-                        <input
-                            className="ctm-title-input"
-                            type="text"
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            placeholder="Task title…"
-                            autoFocus
-                            required
-                        />
-
-                        {/* Description */}
-                        <div>
-                            <div className="ctm-label">Description</div>
-                            <div className="ctm-desc-card">
-                                {/* Toolbar */}
-                                <div className="ctm-toolbar">
-                                    <button
-                                        type="button"
-                                        className={`ctm-fmt-btn${textFormat.includes('bold') ? ' active' : ''}`}
-                                        onClick={() => setTextFormat(f => f.includes('bold') ? f.filter(x => x !== 'bold') : [...f, 'bold'])}
-                                        title="Bold"
-                                    >
-                                        <FiBold size={13} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`ctm-fmt-btn${textFormat.includes('italic') ? ' active' : ''}`}
-                                        onClick={() => setTextFormat(f => f.includes('italic') ? f.filter(x => x !== 'italic') : [...f, 'italic'])}
-                                        title="Italic"
-                                    >
-                                        <FiItalic size={13} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`ctm-fmt-btn${textFormat.includes('list') ? ' active' : ''}`}
-                                        onClick={() => setTextFormat(f => f.includes('list') ? f.filter(x => x !== 'list') : [...f, 'list'])}
-                                        title="List"
-                                    >
-                                        <FiList size={13} />
-                                    </button>
-                                    <div className="ctm-toolbar-sep" />
-                                    <span className="ctm-hint">Type <strong>@</strong> to mention a calendar account</span>
-                                </div>
-
-                                <textarea
-                                    ref={descTextareaRef}
-                                    className="ctm-textarea"
-                                    value={description}
-                                    onChange={handleDescChange}
-                                    onKeyDown={e => { if (e.key === 'Escape') setMentionQuery(null); }}
-                                    onBlur={() => setTimeout(() => setMentionQuery(null), 150)}
-                                    placeholder="Add details, links or references…"
-                                    rows={4}
-                                    style={{
-                                        fontWeight: textFormat.includes('bold') ? 600 : 400,
-                                        fontStyle: textFormat.includes('italic') ? 'italic' : 'normal',
-                                    }}
-                                />
-
-                                {/* @mention dropdown — above */}
-                                {mentionQuery !== null && filteredAccounts.length > 0 && (
-                                    <div className="ctm-mention-drop">
-                                        <div className="ctm-mention-label">Calendar Accounts</div>
-                                        {filteredAccounts.map(acc => (
-                                            <div key={acc._id} className="ctm-mention-item" onMouseDown={() => insertMention(acc.name)}>
-                                                <div className="ctm-mention-icon" style={{ background: acc.color || '#6366f1' }}>
-                                                    {acc.name?.[0]?.toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div className="ctm-mention-name">{acc.name}</div>
-                                                    <div className="ctm-mention-sub">{acc.platform}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Priority + Due Date */}
-                        <div className="ctm-row">
-                            <div>
-                                <div className="ctm-label">Priority</div>
-                                <div className="ctm-priority-group">
-                                    {Object.entries(PRIORITY_CONFIG).map(([p]) => (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            className={`ctm-priority-pill${priority === p ? ` active-${p.toLowerCase()}` : ''}`}
-                                            onClick={() => setPriority(p)}
-                                        >
-                                            <span className="ctm-priority-dot" />
-                                            {p}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="ctm-label">Due Date</div>
-                                <input
-                                    type="date"
-                                    className="ctm-date-input"
-                                    value={dueDate}
-                                    onChange={e => setDueDate(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Assignees */}
-                        <div className="ctm-assignee-area" ref={assigneeRef}>
-                            <div className="ctm-label">Assign to</div>
-                            <div className="ctm-chips">
-                                {selectedUsers.map(user => (
-                                    <div key={user._id} className="ctm-chip">
-                                        <UserAvatar user={user} size={20} />
-                                        <span>{user.fullName || user.email}</span>
-                                        <button type="button" className="ctm-chip-remove" onClick={() => toggleAssignee(user._id)}>
-                                            <FiX size={11} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button type="button" className="ctm-add-btn" onClick={() => setShowAssigneeDropdown(p => !p)}>
-                                    <FiPlus size={12} /> Add
-                                </button>
-                            </div>
-
-                            {/* Dropdown — opens above */}
-                            {showAssigneeDropdown && (
-                                <div className="ctm-assignee-drop">
-                                    <div className="ctm-drop-label">Team Members</div>
-                                    {companyUsers.map(user => (
-                                        <div key={user._id} className="ctm-assignee-item" onClick={() => toggleAssignee(user._id)}>
-                                            <UserAvatar user={user} size={28} />
-                                            <span className="ctm-assignee-item-name">{user.fullName || user.name || user.email}</span>
-                                            {assignees.includes(user._id) && <FiCheck size={14} className="ctm-check" />}
-                                        </div>
-                                    ))}
-                                    {companyUsers.length === 0 && (
-                                        <div className="ctm-no-members">No team members</div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="ctm-footer">
-                        <button type="button" className="ctm-btn-cancel" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="ctm-btn-create" disabled={!title.trim() || isSubmitting}>
-                            {isSubmitting ? 'Creating…' : 'Create Task'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-// Task Detail Panel
-const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUserId }) => {
-    const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [editedTitle, setEditedTitle] = useState(task.title);
-    const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
-
-    const handleStatusChange = async (newStatus) => {
-        try {
-            await api.patch(`/tasks/${task._id}/status`, { status: newStatus });
-            onTaskUpdated();
-        } catch (error) {
-            console.error('Error updating status:', error);
-        }
-    };
-
-    const handleAssigneeToggle = async (userId) => {
-        try {
-            const currentAssigneeIds = task.assignees?.map(a => a._id) || [];
-            const newAssignees = currentAssigneeIds.includes(userId)
-                ? currentAssigneeIds.filter(id => id !== userId)
-                : [...currentAssigneeIds, userId];
-            
-            await api.put(`/tasks/${task._id}`, { assignees: newAssignees });
-            onTaskUpdated();
-        } catch (error) {
-            console.error('Error updating assignees:', error);
-        }
-    };
-
-    const handleTitleSave = async () => {
-        if (!editedTitle.trim() || editedTitle === task.title) {
-            setIsEditingTitle(false);
-            setEditedTitle(task.title);
-            return;
-        }
-        try {
-            await api.put(`/tasks/${task._id}`, { title: editedTitle.trim() });
-            onTaskUpdated();
-            setIsEditingTitle(false);
-        } catch (error) {
-            console.error('Error updating title:', error);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!await confirm('Are you sure you want to delete this task?')) return;
-        try {
-            await api.delete(`/tasks/${task._id}`);
-            onTaskUpdated();
-            onClose();
-        } catch (error) {
-            console.error('Error deleting task:', error);
-        }
-    };
-
-    return (
-        <div className="task-detail-panel">
-            <div className="panel-header-task">
-                <button className="panel-close-btn" onClick={onClose}>
-                    <FiX size={18} />
-                </button>
-                <div className="panel-header-content">
-                    <div className="panel-title-section">
-                        {isEditingTitle ? (
-                            <input
-                                type="text"
-                                value={editedTitle}
-                                onChange={(e) => setEditedTitle(e.target.value)}
-                                onBlur={handleTitleSave}
-                                onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                                autoFocus
-                                className="panel-title-input"
-                            />
-                        ) : (
-                            <h2 className="panel-title" onClick={() => setIsEditingTitle(true)}>{task.title}</h2>
-                        )}
-                        {task.description && (
-                            <p className="panel-description-header">{task.description}</p>
-                        )}
-                    </div>
-                </div>
+              </ScrollArea>
             </div>
 
-            <div className="panel-content">
-                <div className="panel-field">
-                    <label className="panel-label">
-                        <span className="panel-label-text">STATUS</span>
-                    </label>
-                    <div className="panel-status-buttons">
-                        {['Todo', 'In Progress', 'In Review', 'Done'].map(status => (
-                            <button
-                                key={status}
-                                className={`panel-status-btn ${task.status === status ? 'active' : ''}`}
-                                onClick={() => handleStatusChange(status)}
-                            >
-                                {status}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="panel-meta-row">
-                    <div className="panel-meta-left">
-                        <div className="panel-field-inline">
-                            <label className="panel-label-inline">PRIORITY</label>
-                            <PriorityBadge priority={task.priority} />
-                        </div>
-                        {task.dueDate && (
-                            <div className="panel-field-inline">
-                                <label className="panel-label-inline">DUE DATE</label>
-                                <span className="panel-due-date-inline">
-                                    <FiCalendar size={12} />
-                                    {new Date(task.dueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                                </span>
-                            </div>
-                        )}
-                        <div className="panel-field-inline">
-                            <span className="panel-created-inline">
-                                <FiClock size={12} />
-                                {formatRelativeTime(task.createdAt)} by {task.createdBy?.fullName || 'Unknown'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="panel-section">
-                    <div className="panel-section-header">
-                        <label className="panel-label">
-                            <span className="panel-label-text">ASSIGNEES</span>
-                        </label>
-                        <button 
-                            className="panel-add-btn" 
-                            onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-                            title="Add assignee"
-                        >
-                            <FiPlus />
-                        </button>
-                    </div>
-                    <div className="panel-assignee-dropdown">
-                            {showAssigneeDropdown && (
-                                <div className="panel-assignee-menu">
-                                    {companyUsers.map(user => {
-                                        const isAssigned = task.assignees?.some(a => a._id === user._id);
-                                        return (
-                                            <div
-                                                key={user._id}
-                                                className={`panel-assignee-option ${isAssigned ? 'selected' : ''}`}
-                                                onClick={() => handleAssigneeToggle(user._id)}
-                                            >
-                                                <UserAvatar user={user} size={20} />
-                                                <span>{user.fullName || user.name || user.email}</span>
-                                                {isAssigned && <FiCheck size={14} style={{ marginLeft: 'auto' }} />}
-                                            </div>
-                                        );
-                                    })}
-                                    {companyUsers.length === 0 && (
-                                        <div className="panel-assignee-option" style={{ cursor: 'default', color: '#9ca3af' }}>
-                                            No team members available
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <div className="panel-field-content">
-                                {task.assignees?.length > 0 ? (
-                                    <div className="panel-assignees">
-                                        {task.assignees.map(user => (
-                                            <div key={user._id} className="panel-assignee">
-                                                <UserAvatar user={user} size={20} />
-                                                <span>{user.fullName}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <span className="panel-empty-text">No assignees</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                <div className="panel-section">
-                    <div className="panel-section-header">
-                        <label className="panel-label">
-                            <FiMessageSquare size={14} />
-                        </label>
-                        <span className="panel-comments-label">COMMENTS ({task.comments?.length || 0})</span>
-                    </div>
-                    <CommentThread
-                        comments={task.comments || []}
-                        taskId={task._id}
-                        onCommentAdded={onTaskUpdated}
-                        currentUserId={currentUserId}
-                        companyUsers={companyUsers}
-                    />
-                </div>
-            </div>
-
-            <div className="panel-delete-section">
-                <button className="panel-delete-btn" onClick={handleDelete}>
-                    Delete Task
-                </button>
-            </div>
-        </div>
-    );
-};
-
-// Task Row Component (List-based design)
-const TaskRow = ({ task, onClick, onStatusChange }) => {
-    const [isChecked, setIsChecked] = useState(task.status === 'Done');
-
-    const handleCheckboxChange = async (e) => {
-        e.stopPropagation();
-        const newStatus = isChecked ? 'Todo' : 'Done';
-        setIsChecked(!isChecked);
-        if (onStatusChange) {
-            await onStatusChange(task._id, newStatus);
-        }
-    };
-
-    return (
-        <div className="task-row" onClick={onClick}>
-            <input
-                type="checkbox"
-                className="task-row-checkbox"
-                checked={isChecked}
-                onChange={handleCheckboxChange}
-                onClick={(e) => e.stopPropagation()}
-            />
-            <div className="task-row-main">
-                <div className="task-row-content">
-                    <h4 className="task-row-title">{task.title}</h4>
-                    {task.description && (
-                        <p className="task-row-description">
-                            {task.description.length > 100
-                                ? task.description.substring(0, 100) + '...'
-                                : task.description}
-                        </p>
-                    )}
-                </div>
-                <div className="task-row-meta">
-                    <PriorityBadge priority={task.priority} />
-                    {task.dueDate && (
-                        <span className="task-row-due">
-                            <FiCalendar size={12} />
-                            {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                    )}
-                    <div className="task-row-assignees">
-                        {task.assignees?.slice(0, 2).map((user) => (
-                                <UserAvatar key={user._id} user={user} size={24} />
-                        ))}
-                        {task.assignees?.length > 2 && (
-                            <span className="more-assignees">+{task.assignees.length - 2}</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <div className="task-row-actions">
-                <StatusBadge status={task.status} />
-                {task.comments?.length > 0 && (
-                    <span className="task-row-comments">
-                        <FiMessageSquare size={14} />
-                        {task.comments.length}
-                    </span>
-                )}
-                <span className="task-row-time">{formatRelativeTime(task.createdAt)}</span>
-                <button className="task-row-action-btn" onClick={(e) => { e.stopPropagation(); onClick(); }} title="Open task">
-                    <FiExternalLink size={16} />
-                </button>
-                <button className="task-row-action-btn" title="More options">
-                    <FiMoreHorizontal size={16} />
-                </button>
-            </div>
-        </div>
-    );
-};
-
-// Main Task Manager Component
-function TaskManager({ isWidget = false }) {
-    const { currentUser } = useRole();
-    const [tasks, setTasks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [selectedTask, setSelectedTask] = useState(null);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [companyUsers, setCompanyUsers] = useState([]);
-    const [stats, setStats] = useState({ Todo: 0, 'In Progress': 0, 'In Review': 0, Done: 0 });
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Status order: In Review, Todo, In Progress, Done
-    const statuses = ['In Review', 'Todo', 'In Progress', 'Done'];
-
-    const fetchTasks = useCallback(async () => {
-        try {
-            const response = await api.get('/tasks');
-            setTasks(response.data.tasks || []);
-
-            // Calculate stats
-            const newStats = { Todo: 0, 'In Progress': 0, 'In Review': 0, Done: 0 };
-            (response.data.tasks || []).forEach(task => {
-                if (newStats[task.status] !== undefined) {
-                    newStats[task.status]++;
-                }
-            });
-            setStats(newStats);
-        } catch (err) {
-            console.error('Error fetching tasks:', err);
-            setError('Failed to load tasks');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    const fetchCompanyUsers = useCallback(async () => {
-        try {
-            const response = await api.get('/users/company-members');
-            setCompanyUsers(response.data.members || response.data || []);
-        } catch (err) {
-            console.error('Error fetching company users:', err);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchTasks();
-        fetchCompanyUsers();
-    }, [fetchTasks, fetchCompanyUsers]);
-
-    // Live updates — re-fetch when another user mutates a task (socket) or on 30s poll
-    useEffect(() => {
-        const onRefresh = () => fetchTasks();
-        window.addEventListener('dashboard:refresh', onRefresh);
-        window.addEventListener('task:updated', onRefresh);
-        return () => {
-            window.removeEventListener('dashboard:refresh', onRefresh);
-            window.removeEventListener('task:updated', onRefresh);
-        };
-    }, [fetchTasks]);
-
-    const handleTaskClick = async (task) => {
-        try {
-            const response = await api.get(`/tasks/${task._id}`);
-            setSelectedTask(response.data);
-        } catch (err) {
-            console.error('Error fetching task details:', err);
-        }
-    };
-
-    const handleTaskUpdated = () => {
-        fetchTasks();
-        if (selectedTask) {
-            handleTaskClick(selectedTask);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className={`task-manager ${isWidget ? 'widget-mode' : ''}`}>
-                <div className="loading-state">Loading tasks...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className={`task-manager ${isWidget ? 'widget-mode' : ''}`}>
-                <div className="error-state">{error}</div>
-            </div>
-        );
-    }
-
-    // Widget mode - simplified view for Overview
-    if (isWidget) {
-        const recentTasks = tasks.slice(0, 4);
-        const totalTasks = tasks.length;
-        
-        return (
-            <div className="task-manager widget-mode">
-                <div className="widget-header">
-                    <div className="widget-title-row">
-                        <h3>Tasks</h3>
-                        <span className="task-total">{totalTasks}</span>
-                    </div>
-                    <button className="create-btn-sm" onClick={() => setIsCreateModalOpen(true)}>
-                        <FiPlus size={14} />
-                    </button>
-                </div>
-                <div className="widget-stats-row">
-                    {statuses.map(status => (
-                        <div key={status} className="stat-chip">
-                            <span className="stat-count">{stats[status]}</span>
-                            <span className="stat-label">{status === 'In Progress' ? 'Progress' : status === 'In Review' ? 'Review' : status}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="widget-tasks">
-                    {recentTasks.length === 0 ? (
-                        <div className="empty-state-minimal">
-                            <span>No tasks yet</span>
-                        </div>
-                    ) : (
-                        recentTasks.map(task => (
-                            <div key={task._id} className="widget-task-item" onClick={() => handleTaskClick(task)}>
-                                <div className="task-status-dot" data-status={task.status}></div>
-                                <span className="task-title">{task.title}</span>
-                                <span className="task-time">{formatRelativeTime(task.createdAt)}</span>
-                            </div>
-                        ))
-                    )}
-                </div>
-
-                <CreateTaskModal
-                    isOpen={isCreateModalOpen}
-                    onClose={() => setIsCreateModalOpen(false)}
-                    onTaskCreated={fetchTasks}
-                    companyUsers={companyUsers}
+            {assignees.length > 0 && (
+              <div className="tm-create-field">
+                <label>Request note</label>
+                <textarea
+                  className="tm-shad-textarea tm-shad-textarea-compact"
+                  placeholder="Optional note for invitees"
+                  value={requestComment}
+                  onChange={e => setRequestComment(e.target.value)}
+                  rows={2}
                 />
-
-                {selectedTask && (
-                    <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
-                        <div className="detail-modal" onClick={e => e.stopPropagation()}>
-                            <TaskDetailPanel
-                                task={selectedTask}
-                                onClose={() => setSelectedTask(null)}
-                                onTaskUpdated={handleTaskUpdated}
-                                companyUsers={companyUsers}
-                                currentUserId={currentUser?._id}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    }
-
-    const handleStatusChange = async (taskId, newStatus) => {
-        try {
-            await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-            fetchTasks();
-        } catch (error) {
-            console.error('Error updating status:', error);
-        }
-    };
-
-    // Filter tasks by search query
-    const filteredTasks = tasks.filter(task =>
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-
-    // Full Task Manager view - Single list without status grouping
-    return (
-        <div className="task-manager task-manager-list">
-            <div className="task-manager-header">
-                <div className="task-header-left">
-                    <h1 style={{ fontSize: '24px', fontWeight: 600 }}>Task Manager</h1>
-                    <p className="task-header-subtitle">Manage and track your team's tasks efficiently.</p>
-                </div>
-                <div className="task-header-right">
-                    <div className="task-search-box">
-                        <FiSearch size={16} />
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <button className="create-task-btn" onClick={() => setIsCreateModalOpen(true)}>
-                        <FiPlus size={16} />
-                        New
-                    </button>
-                </div>
-            </div>
-
-            <div className="task-list-container">
-                <div className="task-list">
-                    {filteredTasks.length > 0 ? (
-                        filteredTasks.map(task => (
-                            <TaskRow
-                                key={task._id}
-                                task={task}
-                                onClick={() => handleTaskClick(task)}
-                                onStatusChange={handleStatusChange}
-                            />
-                        ))
-                    ) : (
-                        <div className="task-list-empty-state">
-                            <p>{searchQuery ? 'No tasks match your search.' : 'No tasks yet. Create your first task!'}</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <CreateTaskModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onTaskCreated={fetchTasks}
-                companyUsers={companyUsers}
-            />
-
-            {selectedTask && (
-                <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
-                    <div onClick={e => e.stopPropagation()}>
-                        <TaskDetailPanel
-                            task={selectedTask}
-                            onClose={() => setSelectedTask(null)}
-                            onTaskUpdated={handleTaskUpdated}
-                            companyUsers={companyUsers}
-                            currentUserId={currentUser?._id}
-                        />
-                    </div>
-                </div>
+              </div>
             )}
+          </DialogBody>
+
+          <DialogFooter className="tm-create-footer tm-create-footer-minimal">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={!title.trim() || submitting}><FiPlus size={14}/>{submitting ? 'Creating...' : 'Create Task'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* ── Task Detail Panel ─────────────────────────────────── */
+const TaskDetailPanel = ({ task, onClose, onTaskUpdated, companyUsers, currentUserId }) => {
+  const [newComment, setNewComment] = useState('');
+  const [responseComment, setResponseComment] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const myEntry = (task.dailyProgress || []).find(p => sameUser(p.user, currentUserId) && p.date === today);
+  const myCount = myEntry?.count || 0;
+  const isActive = (task.activeUsers || []).some(u => sameUser(u, currentUserId));
+  const isDataCenterProgress = isDataCenterTask(task);
+  const showProgressPanel = task.taskType === 'Daily' || isDataCenterProgress;
+  const progressRows = isDataCenterProgress
+    ? (task.dataCenterProgressByUser || [])
+    : (task.dailyProgress || []).filter(p => p.date === today);
+  const myPendingRequest = getMyPendingRequest(task, currentUserId);
+  const pendingRequests = getPendingRequests(task);
+  const acceptedRequests = getAcceptedRequests(task);
+  const rejectedRequests = getRejectedRequests(task);
+  const createdByMe = sameUser(task.createdBy, currentUserId);
+
+  const patch = async (url, body) => { try { await api.patch(url, body); onTaskUpdated(); } catch {} };
+  const handleDelete = async () => { if (!await confirm('Delete this task?')) return; try { await api.delete(`/tasks/${task._id}`); onTaskUpdated(); onClose(); } catch {} };
+  const handleComment = async (e) => { e.preventDefault(); if (!newComment.trim()) return; try { await api.post(`/tasks/${task._id}/comments`, { content: newComment.trim() }); setNewComment(''); onTaskUpdated(); } catch {} };
+  const handleAssignmentResponse = async (status) => {
+    try {
+      await api.patch(`/tasks/${task._id}/assignment-response`, { status, comment: responseComment.trim() });
+      toast.success(status === 'accepted' ? 'Task accepted' : 'Task rejected');
+      setResponseComment('');
+      onTaskUpdated();
+    } catch {
+      toast.error('Could not update request');
+    }
+  };
+
+  const meta = TYPE_META[task.taskType] || TYPE_META['One Time'];
+
+  return (
+    <div className="tm-detail">
+      <div className="tm-detail-hd">
+        <div style={{ flex: 1 }}>
+          <h2 className="tm-detail-title">{task.title}</h2>
+          {task.description && <p className="tm-detail-sub">{task.description}</p>}
         </div>
+        <button className="tm-detail-x" onClick={onClose}><FiX size={20}/></button>
+      </div>
+
+      <div className="tm-detail-body">
+        {myPendingRequest && (
+          <div className="tm-request-panel">
+            <div>
+              <span className="tm-request-kicker"><FiInbox size={13}/> Task request</span>
+              <h3>{myPendingRequest.requestedBy?.fullName || myPendingRequest.requestedBy?.email || 'A teammate'} wants to assign this to you.</h3>
+              {myPendingRequest.requestComment && <p>{myPendingRequest.requestComment}</p>}
+            </div>
+            <textarea
+              className="tm-request-comment"
+              placeholder="Add a comment before accepting or rejecting..."
+              value={responseComment}
+              onChange={e => setResponseComment(e.target.value)}
+              rows={2}
+            />
+            <div className="tm-request-actions">
+              <button type="button" className="tm-request-btn accept" onClick={() => handleAssignmentResponse('accepted')}><FiCheck size={14}/> Accept</button>
+              <button type="button" className="tm-request-btn reject" onClick={() => handleAssignmentResponse('rejected')}><FiX size={14}/> Reject</button>
+            </div>
+          </div>
+        )}
+
+        {createdByMe && (pendingRequests.length > 0 || acceptedRequests.length > 0 || rejectedRequests.length > 0) && (
+          <div className="tm-request-panel creator">
+            <span className="tm-request-kicker"><FiClock size={13}/> Assignment requests</span>
+            <div className="tm-request-list">
+              {[...pendingRequests, ...acceptedRequests, ...rejectedRequests].map(request => (
+                <div key={request._id || getId(request.user)} className={`tm-request-row ${request.status}`}>
+                  <UserAvatar user={request.user} size={26} />
+                  <span>{request.user?.fullName || request.user?.email || 'User'}</span>
+                  <strong>{request.status}</strong>
+                  {request.responseComment && <em>{request.responseComment}</em>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Badges row */}
+        <div className="tm-detail-badges">
+          <span className="tm-type-badge-sm" style={{ background: meta.color + '18', color: meta.color, border: `1px solid ${meta.color}40` }}>{meta.code} {meta.label}</span>
+          {(task.labels || []).map(l => <span key={l} className="tm-dc-badge">{l}</span>)}
+          <span className={`tm-priority-pill ${{ Low:'tm-pb-low', Medium:'tm-pb-med', High:'tm-pb-high', Urgent:'tm-pb-urg' }[task.priority] || 'tm-pb-med'}`}>{task.priority}</span>
+        </div>
+
+        {/* Status */}
+        <div className="tm-detail-sec">
+          <label>Status</label>
+          <div className="tm-status-btns">
+            {['Todo','In Progress','In Review','Done'].map(s => (
+              <button key={s} className={`tm-status-btn${task.status === s ? ' act' : ''}`} onClick={() => patch(`/tasks/${task._id}/status`, { status: s })}>{s}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Daily progress */}
+        {showProgressPanel && (
+          <div className="tm-detail-sec">
+            <label>Team Progress Today</label>
+            <DailyBar task={task} />
+            {isDataCenterProgress ? (
+              <p className="tm-progress-note">Progress is calculated from Data Center records added by assignees today.</p>
+            ) : (
+              <div className="tm-prog-ctrl">
+                <span className="tm-prog-label">My count:</span>
+                <button className="tm-prog-btn" onClick={() => patch(`/tasks/${task._id}/daily-progress`, { count: Math.max(0, myCount - 1) })}>−</button>
+                <span className="tm-prog-val">{myCount}</span>
+                <button className="tm-prog-btn" onClick={() => patch(`/tasks/${task._id}/daily-progress`, { count: myCount + 1 })}>+</button>
+              </div>
+            )}
+            {/* Per-user breakdown */}
+            {progressRows.length > 0 && (
+              <div className="tm-user-progress">
+                {progressRows.map((p, i) => (
+                  <div key={i} className="tm-up-row">
+                    <UserAvatar user={p.user} size={24}/>
+                    <span>{p.user?.fullName || 'User'}</span>
+                    <span className="tm-up-count">{p.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Active now */}
+        <div className="tm-detail-sec">
+          <label>Active Now</label>
+          <div className="tm-active-list">
+            {(task.activeUsers || []).length === 0
+              ? <span className="tm-empty-txt">No one is working right now</span>
+              : (task.activeUsers || []).map((u, i) => (
+                  <div key={i} className="tm-active-row">
+                    <UserAvatar user={u} size={26}/><span>{u.fullName || u.email}</span><span className="tm-online-dot"/>
+                  </div>
+                ))
+            }
+          </div>
+          <button className={`tm-active-toggle${isActive ? ' stop' : ' start'}`} onClick={() => patch(`/tasks/${task._id}/active`, { isActive: !isActive })}>
+            <FiActivity size={12}/> {isActive ? 'Stop Working' : 'Start Working'}
+          </button>
+        </div>
+
+        {/* Assignees */}
+        <div className="tm-detail-sec">
+          <label>Assignees</label>
+          <div className="tm-av-stack" style={{ flexWrap:'wrap', gap:8 }}>
+            {(task.assignees || []).map((u, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <UserAvatar user={u} size={26}/><span style={{ fontSize:12, color:'#374151' }}>{u.fullName || u.email}</span>
+              </div>
+            ))}
+            {!task.assignees?.length && <span className="tm-empty-txt">No assignees</span>}
+          </div>
+        </div>
+
+        {/* Comments */}
+        <div className="tm-detail-sec">
+          <label>Comments ({task.comments?.length || 0})</label>
+          <div className="tm-comments">
+            {(task.comments || []).filter(c => !c.parentId).map(c => (
+              <div key={c._id} className="tm-comment">
+                <UserAvatar user={c.author} size={26}/>
+                <div><strong>{c.author?.fullName}</strong><p>{c.content}</p></div>
+              </div>
+            ))}
+          </div>
+          <form className="tm-comment-form" onSubmit={handleComment}>
+            <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a comment…"/>
+            <button type="submit" disabled={!newComment.trim()}><FiSend size={14}/></button>
+          </form>
+        </div>
+      </div>
+
+      <div className="tm-detail-ft">
+        <button className="tm-del-btn" onClick={handleDelete}>Delete Task</button>
+      </div>
+    </div>
+  );
+};
+
+/* ── Main TaskManager ──────────────────────────────────── */
+function TaskManager({ isWidget = false }) {
+  const { currentUser } = useRole();
+  const currentUserId = getId(currentUser);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [activeSection, setActiveSection] = useState('tasks');
+  const [respondingRequestId, setRespondingRequestId] = useState('');
+
+  const fetchTasks = useCallback(async () => {
+    try { const r = await api.get('/tasks'); setTasks(r.data.tasks || []); }
+    catch (e) { console.error(e); } finally { setLoading(false); }
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try { const r = await api.get('/users/company-members'); setCompanyUsers(r.data.members || r.data || []); } catch {}
+  }, []);
+
+  useEffect(() => { fetchTasks(); fetchUsers(); }, [fetchTasks, fetchUsers]);
+
+  useEffect(() => {
+    const r = () => fetchTasks();
+    window.addEventListener('task:updated', r);
+    window.addEventListener('dashboard:refresh', r);
+    return () => { window.removeEventListener('task:updated', r); window.removeEventListener('dashboard:refresh', r); };
+  }, [fetchTasks]);
+
+  // Realtime poll every 15s for activeUsers updates
+  useEffect(() => {
+    const iv = setInterval(fetchTasks, 15000);
+    return () => clearInterval(iv);
+  }, [fetchTasks]);
+
+  const handleTaskClick = async (task) => {
+    try { const r = await api.get(`/tasks/${task._id}`); setSelectedTask(r.data); } catch {}
+  };
+  const handleTaskUpdated = () => { fetchTasks(); if (selectedTask) handleTaskClick(selectedTask); };
+  const handleInlineAssignmentResponse = async (task, request, status, event) => {
+    event.stopPropagation();
+    const requestKey = `${task._id}-${request._id || getId(request.user)}-${status}`;
+    setRespondingRequestId(requestKey);
+    try {
+      await api.patch(`/tasks/${task._id}/assignment-response`, { status });
+      toast.success(status === 'accepted' ? 'Task accepted' : 'Task rejected');
+      await fetchTasks();
+      if (selectedTask?._id === task._id) await handleTaskClick(task);
+    } catch {
+      toast.error('Could not update request');
+    } finally {
+      setRespondingRequestId('');
+    }
+  };
+
+  const filtered = tasks.filter(t => {
+    if (filterType !== 'All' && t.taskType !== filterType) return false;
+    if (filterStatus !== 'All' && t.status !== filterStatus) return false;
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const getInvitationItems = (sourceTasks) => sourceTasks
+    .flatMap(task => (task.assignmentRequests || []).flatMap(request => {
+      const isReceived = sameUser(request.user, currentUserId);
+      const isSent = sameUser(request.requestedBy, currentUserId);
+      if (!isReceived && !isSent) return [];
+      return [{
+        id: `${task._id}-${request._id || getId(request.user)}-${isReceived ? 'received' : 'sent'}`,
+        task,
+        request,
+        direction: isReceived ? 'received' : 'sent',
+        timestamp: request.respondedAt || request.requestedAt || task.updatedAt || task.createdAt
+      }];
+    }))
+    .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+  const getActivityItems = (sourceTasks) => sourceTasks
+    .flatMap(task => (task.activity || []).map(activity => ({
+      id: `${task._id}-${activity._id || activity.createdAt || activity.action}`,
+      task,
+      activity,
+      timestamp: activity.createdAt || task.updatedAt || task.createdAt
+    })))
+    .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+  const invitationItems = getInvitationItems(filtered);
+  const allInvitationItems = getInvitationItems(tasks);
+  const activityItems = getActivityItems(filtered);
+  const allActivityItems = getActivityItems(tasks);
+  const pendingReceived = allInvitationItems.filter(item => item.direction === 'received' && item.request.status === 'pending').length;
+  const pendingSent = allInvitationItems.filter(item => item.direction === 'sent' && item.request.status === 'pending').length;
+
+  const stats = {
+    total: tasks.length,
+    requests: pendingReceived,
+    pendingSent,
+    invitations: pendingReceived + pendingSent,
+    activity: allActivityItems.length,
+    activeNow: tasks.filter(t => (t.activeUsers || []).length > 0).length,
+    done: tasks.filter(t => t.status === 'Done').length,
+  };
+
+  if (loading) return <div className="tm-loading">Loading tasks…</div>;
+
+  /* Widget mode */
+  if (isWidget) {
+    const widgetTasks = tasks.slice(0, 4);
+
+    return (
+      <div className="task-manager widget-mode">
+        <div className="widget-header">
+          <div className="widget-title-row"><h3>Tasks</h3><span className="task-total">{tasks.length}</span></div>
+          <button className="create-btn-sm" onClick={() => setIsCreateOpen(true)}><FiPlus size={14}/></button>
+        </div>
+        <div className="widget-tasks">
+          {widgetTasks.map(t => {
+            const progress = getProgressMeta(t);
+            return (
+              <div key={t._id} className="widget-task-item" data-status={t.status} onClick={() => handleTaskClick(t)}>
+                <div className="widget-task-copy">
+                  <div className="widget-task-line">
+                    <span className="task-title">{t.title}</span>
+                    <span className="widget-task-percent">{progress.percent}%</span>
+                  </div>
+                  <div className="widget-task-progress" aria-hidden="true">
+                    <span style={{ width: `${progress.percent}%` }} />
+                  </div>
+                </div>
+                <div className="widget-task-people" aria-label="Assigned people">
+                  {(t.assignees || []).slice(0, 3).map((u, i) => (
+                    <div key={u._id || i} className="widget-task-avatar">
+                      <UserAvatar user={u} size={24} />
+                    </div>
+                  ))}
+                  {(t.assignees || []).length > 3 && (
+                    <span className="widget-task-more">+{t.assignees.length - 3}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {widgetTasks.length === 0 && (
+            <div className="widget-empty-state">
+              <FiActivity size={16} />
+              <span>No tasks in the flow yet.</span>
+            </div>
+          )}
+        </div>
+        <CreateTaskModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onTaskCreated={fetchTasks} companyUsers={companyUsers}/>
+        {selectedTask && (
+          <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
+            <div className="detail-modal" onClick={e => e.stopPropagation()}>
+              <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onTaskUpdated={handleTaskUpdated} companyUsers={companyUsers} currentUserId={currentUserId}/>
+            </div>
+          </div>
+        )}
+      </div>
     );
+  }
+
+  /* Full view */
+  return (
+    <div className="tm-root">
+      {/* Header */}
+      <div className="tm-header">
+        <div>
+          <h1 className="tm-heading">Task Manager</h1>
+          <p className="tm-subheading">Requests, ownership, progress, and live task activity in one queue.</p>
+        </div>
+        <div className="tm-header-actions">
+          <div className="tm-header-stats" aria-label="Task summary">
+            {[['Total', stats.total], ['Requests', stats.requests], ['Pending sent', stats.pendingSent], ['Done', stats.done]].map(([lbl, val]) => (
+              <span className="tm-header-stat" key={lbl}>
+                <strong>{val}</strong>
+                <em>{lbl}</em>
+              </span>
+            ))}
+          </div>
+          <button className="tm-new-btn" onClick={() => setIsCreateOpen(true)}><FiPlus size={16}/> New Task</button>
+        </div>
+      </div>
+
+      <Tabs value={activeSection} onValueChange={setActiveSection} className="tm-section-tabs">
+        <TabsList className="tm-section-rail" aria-label="Task manager sections">
+          {[
+            { id: 'tasks', label: 'All Tasks', count: stats.total, icon: <FiCheck size={15} /> },
+            { id: 'invitations', label: 'Invitations', count: stats.invitations, icon: <FiInbox size={15} /> },
+            { id: 'activity', label: 'Activity', count: stats.activity, icon: <FiActivity size={15} /> }
+          ].map(section => (
+            <TabsTrigger
+              key={section.id}
+              value={section.id}
+              className="tm-section-tab"
+            >
+              <span>{section.icon}{section.label}</span>
+              <strong>{section.count}</strong>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {/* Toolbar */}
+        <div className="tm-toolbar">
+        <div className="tm-search">
+          <FiSearch size={14}/>
+          <input
+            placeholder={activeSection === 'activity' ? 'Search activity by task…' : activeSection === 'invitations' ? 'Search invitations by task…' : 'Search tasks…'}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="tm-filters">
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="tm-filter-sel">
+            <option value="All">All Types</option>
+            {TASK_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="tm-filter-sel">
+            {['All','Todo','In Progress','In Review','Done'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        </div>
+
+        <TabsContent value="tasks" className="tm-tab-content">
+          <div className="tm-cards-grid">
+          {filtered.length === 0 ? (
+            <div className="tm-empty">
+              <span>No tasks found</span>
+              <button onClick={() => setIsCreateOpen(true)}>+ Create Task</button>
+            </div>
+          ) : filtered.map(task => (
+            <TaskCard key={task._id} task={task} onClick={() => handleTaskClick(task)} currentUserId={currentUserId}/>
+          ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="invitations" className="tm-tab-content">
+          <div className="tm-panel-list tm-invitations-list">
+          {invitationItems.length === 0 ? (
+            <div className="tm-empty tm-panel-empty">
+              <span>No invitations found</span>
+              <p>Task requests you send or receive will appear here.</p>
+            </div>
+          ) : invitationItems.map(({ id, task, request, direction, timestamp }) => {
+            const isReceived = direction === 'received';
+            const isPending = request.status === 'pending';
+            const requestBaseKey = `${task._id}-${request._id || getId(request.user)}`;
+            const isResponding = respondingRequestId.startsWith(requestBaseKey);
+
+            return (
+              <Card key={id} className={`tm-invite-row ${request.status} ${direction}`} onClick={() => handleTaskClick(task)}>
+                <div className="tm-invite-avatar">
+                  <UserAvatar user={isReceived ? request.requestedBy : request.user} size={34} />
+                </div>
+                <div className="tm-invite-copy">
+                  <div className="tm-row-kicker">
+                    {isReceived ? <FiInbox size={13}/> : <FiSend size={13}/>}
+                    {isReceived ? 'Received request' : 'Sent request'}
+                  </div>
+                  <h3>{task.title}</h3>
+                  <p>
+                    {isReceived
+                      ? `${getUserLabel(request.requestedBy, 'A teammate')} invited you`
+                      : `Sent to ${getUserLabel(request.user, 'a teammate')}`}
+                    <span>{formatTaskTime(timestamp)}</span>
+                  </p>
+                  {request.requestComment && <em>{request.requestComment}</em>}
+                  {request.responseComment && <em>{request.responseComment}</em>}
+                </div>
+                <div className="tm-invite-side">
+                  <span className={`tm-state-chip ${request.status}`}>{request.status}</span>
+                  {isReceived && isPending && (
+                    <div className="tm-inline-actions">
+                      <button
+                        type="button"
+                        className="tm-inline-btn accept"
+                        disabled={isResponding}
+                        onClick={(event) => handleInlineAssignmentResponse(task, request, 'accepted', event)}
+                      >
+                        <FiCheck size={13}/> Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="tm-inline-btn reject"
+                        disabled={isResponding}
+                        onClick={(event) => handleInlineAssignmentResponse(task, request, 'rejected', event)}
+                      >
+                        <FiX size={13}/> Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="tm-tab-content">
+          <div className="tm-panel-list tm-activity-list">
+          {activityItems.length === 0 ? (
+            <div className="tm-empty tm-panel-empty">
+              <span>No activity found</span>
+              <p>Updates, comments, and assignment responses will appear here.</p>
+            </div>
+          ) : activityItems.map(({ id, task, activity, timestamp }) => (
+            <Card key={id} className="tm-activity-row" onClick={() => handleTaskClick(task)}>
+              <UserAvatar user={activity.user} size={34} />
+              <div className="tm-activity-copy">
+                <div className="tm-activity-line">
+                  <strong>{getUserLabel(activity.user)}</strong>
+                  <span>{getActivityLabel(activity.action)}</span>
+                  <em>{formatTaskTime(timestamp)}</em>
+                </div>
+                {activity.details && <p>{activity.details}</p>}
+                <small>{task.title}</small>
+              </div>
+            </Card>
+          ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <CreateTaskModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onTaskCreated={fetchTasks} companyUsers={companyUsers}/>
+
+      {selectedTask && (
+        <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
+          <div className="tm-detail-modal" onClick={e => e.stopPropagation()}>
+            <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onTaskUpdated={handleTaskUpdated} companyUsers={companyUsers} currentUserId={currentUserId}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default TaskManager;
