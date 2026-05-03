@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect, useContext } from 'react';
+import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import {
   FiGrid, FiTrendingUp, FiUsers, FiTarget, FiFolder, FiPackage,
   FiFileText, FiSettings, FiMail, FiChevronDown, FiChevronRight,
-  FiMessageCircle, FiUserCheck, FiDollarSign, FiShield, FiLinkedin, FiGlobe, FiKey, FiUploadCloud
+  FiMessageCircle, FiUserCheck, FiDollarSign, FiShield, FiLinkedin, FiGlobe, FiKey, FiUploadCloud, FiPlus, FiDatabase, FiX
 } from 'react-icons/fi';
 import splitViewIcon from '../assets/split_view.svg';
 import { useRole } from '../contexts/RoleContext';
@@ -37,6 +37,13 @@ function Sidebar({ activeSection, onSectionChange }) {
   const [socialMediaExpanded, setSocialMediaExpanded] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
+  const [customDbs, setCustomDbs] = useState([]);
+  const [showCreateDb, setShowCreateDb] = useState(false);
+  const [newDbName, setNewDbName] = useState('');
+  const [newDbIcon, setNewDbIcon] = useState(null);
+  const [newDbIconPreview, setNewDbIconPreview] = useState(null);
+  const [creatingDb, setCreatingDb] = useState(false);
+  const iconInputRef = useRef(null);
 
   // Get current user from RoleContext (always up-to-date)
   const { currentUser: contextCurrentUser } = useRole();
@@ -71,6 +78,7 @@ function Sidebar({ activeSection, onSectionChange }) {
     if (currentUser) {
       fetchTotalUnreadCount();
       fetchBusinessName();
+      fetchCustomDbs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
@@ -254,6 +262,42 @@ function Sidebar({ activeSection, onSectionChange }) {
     // This effect will trigger when permissionUpdateTrigger changes
   }, [permissionUpdateTrigger]);
 
+  const fetchCustomDbs = async () => {
+    try {
+      const res = await api.get('/custom-databases');
+      setCustomDbs(res.data.databases || []);
+    } catch (err) {
+      // silent
+    }
+  };
+
+  const handleCreateDb = async (e) => {
+    e.preventDefault();
+    const words = newDbName.trim().split(/\s+/);
+    if (!newDbName.trim()) return;
+    if (words.length > 3) {
+      alert('Name must be 3 words or less');
+      return;
+    }
+    setCreatingDb(true);
+    try {
+      const formData = new FormData();
+      formData.append('name', newDbName.trim());
+      if (newDbIcon) formData.append('icon', newDbIcon);
+      const res = await api.post('/custom-databases', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setCustomDbs(prev => [res.data.database, ...prev]);
+      setNewDbName('');
+      setNewDbIcon(null);
+      setNewDbIconPreview(null);
+      setShowCreateDb(false);
+      onSectionChange('custom-db-' + res.data.database._id);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to create database');
+    } finally {
+      setCreatingDb(false);
+    }
+  };
+
   const toggleHrManagement = () => setHrManagementExpanded(!hrManagementExpanded);
   const toggleFinanceManagement = () => setFinanceManagementExpanded(!financeManagementExpanded);
   const toggleInternalPolicies = () => setInternalPoliciesExpanded(!internalPoliciesExpanded);
@@ -335,7 +379,18 @@ function Sidebar({ activeSection, onSectionChange }) {
             {/* Data Center Section */}
             {hasPermissionForSection('Data Center') && (
               <SidebarGroup>
-                <SidebarGroupLabel>DATA CENTER</SidebarGroupLabel>
+                <div className="sidebar-group-label-row">
+                  <SidebarGroupLabel>DATA CENTER</SidebarGroupLabel>
+                  {!isCollapsed && (
+                    <button
+                      className="sidebar-add-db-btn"
+                      title="Create new database"
+                      onClick={() => setShowCreateDb(true)}
+                    >
+                      <FiPlus size={12} />
+                    </button>
+                  )}
+                </div>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -360,6 +415,28 @@ function Sidebar({ activeSection, onSectionChange }) {
                         <span>Client Management</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+
+                    {/* Custom Databases */}
+                    {customDbs.map(db => (
+                      <SidebarMenuItem key={db._id}>
+                        <SidebarMenuButton
+                          isActive={activeSection === 'custom-db-' + db._id}
+                          tooltip={db.name}
+                          onClick={() => onSectionChange('custom-db-' + db._id)}
+                        >
+                          {db.icon ? (
+                            <img
+                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/custom-databases/icon/${db.icon}`}
+                              alt={db.name}
+                              className="sidebar-custom-db-icon"
+                            />
+                          ) : (
+                            <FiDatabase className="sidebar-icon" />
+                          )}
+                          <span>{db.name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -853,6 +930,75 @@ function Sidebar({ activeSection, onSectionChange }) {
           </>
         )}
       </SidebarContent>
+
+      {/* Create Custom Database Modal */}
+      {showCreateDb && (
+        <div className="sb-createdb-backdrop" onClick={() => setShowCreateDb(false)}>
+          <div className="sb-createdb-modal" onClick={e => e.stopPropagation()}>
+            <div className="sb-createdb-header">
+              <h3>New Database</h3>
+              <button className="sb-createdb-close" onClick={() => setShowCreateDb(false)}><FiX /></button>
+            </div>
+            <form className="sb-createdb-form" onSubmit={handleCreateDb}>
+              {/* Icon upload */}
+              <div className="sb-createdb-field">
+                <label>Icon (SVG / PNG)</label>
+                <div
+                  className="sb-icon-upload-zone"
+                  onClick={() => iconInputRef.current?.click()}
+                >
+                  {newDbIconPreview ? (
+                    <img src={newDbIconPreview} alt="icon preview" className="sb-icon-preview" />
+                  ) : (
+                    <>
+                      <FiUploadCloud size={20} style={{ color: '#71717a' }} />
+                      <span>Upload icon</span>
+                    </>
+                  )}
+                  <input
+                    ref={iconInputRef}
+                    type="file"
+                    accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setNewDbIcon(file);
+                        setNewDbIconPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Name */}
+              <div className="sb-createdb-field">
+                <label>Database name <span>(max 3 words)</span></label>
+                <input
+                  autoFocus
+                  className="sb-createdb-input"
+                  placeholder="e.g. Product Catalog"
+                  value={newDbName}
+                  maxLength={50}
+                  onChange={e => setNewDbName(e.target.value)}
+                />
+                <p className="sb-createdb-hint">
+                  {newDbName.trim().split(/\s+/).filter(Boolean).length} / 3 words
+                </p>
+              </div>
+              <div className="sb-createdb-footer">
+                <button type="button" className="sb-createdb-cancel" onClick={() => setShowCreateDb(false)}>Cancel</button>
+                <button
+                  type="submit"
+                  className="sb-createdb-submit"
+                  disabled={!newDbName.trim() || creatingDb || newDbName.trim().split(/\s+/).length > 3}
+                >
+                  {creatingDb ? 'Creating…' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Plan upgrade card — fixed at bottom, Owner on trial only */}
       {!isCollapsed && currentUser?.subscription?.status === 'trial' && currentUser?.roleInCompany === 'Owner' && (() => {

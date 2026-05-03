@@ -214,6 +214,10 @@ app.use('/api/linkedin-ai', linkedinAiRoutes);
 const googleAuthRoutes = require('./routes/google-auth');
 app.use('/api/auth', googleAuthRoutes);
 
+// Custom Databases routes (user-created data tables)
+const customDatabasesRoutes = require('./routes/custom-databases');
+app.use('/api/custom-databases', customDatabasesRoutes);
+
 // Task Manager routes
 const tasksRoutes = require('./routes/tasks');
 app.use('/api/tasks', tasksRoutes);

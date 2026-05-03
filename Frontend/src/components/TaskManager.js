@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiActivity, FiCheck, FiClock, FiInbox, FiMessageSquare, FiMoreVertical, FiPlus, FiSearch, FiSend, FiUserCheck, FiUserX, FiX } from 'react-icons/fi';
+import { FiActivity, FiCalendar, FiCheck, FiClock, FiEdit3, FiFlag, FiInbox, FiMessageSquare, FiMoreVertical, FiPlus, FiSearch, FiSend, FiTarget, FiTrash2, FiUserCheck, FiUserX, FiUsers, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
 import api from '../config/api';
 import { useRole } from '../contexts/RoleContext';
 import './TaskManager.css';
 import { confirm } from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Calendar } from './ui/calendar';
 import { Card } from './ui/card';
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
+import { InputGroup, InputGroupAddon, InputGroupText } from './ui/input-group';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Select, SelectContent, SelectItem } from './ui/select';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
 const TASK_TYPES = [
@@ -154,7 +160,7 @@ const DailyBar = ({ task }) => {
 };
 
 /* ── Task Card ─────────────────────────────────────────── */
-const TaskCard = ({ task, onClick, currentUserId }) => {
+const TaskCard = ({ task, onClick, onEdit, onDelete, currentUserId }) => {
   const sourceLabel = getCardSource(task);
   const commentCount = task.commentCount ?? task.comments?.length ?? 0;
   const pBadgeClass = { Low:'tm-pb-low', Medium:'tm-pb-med', High:'tm-pb-high', Urgent:'tm-pb-urg' }[task.priority] || 'tm-pb-med';
@@ -163,6 +169,14 @@ const TaskCard = ({ task, onClick, currentUserId }) => {
   const acceptedRequests = getAcceptedRequests(task);
   const rejectedRequests = getRejectedRequests(task);
   const createdByMe = sameUser(task.createdBy, currentUserId);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const close = () => setMenuOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [menuOpen]);
 
   return (
     <Card className={`tm-card${myPendingRequest ? ' tm-card-request' : ''}`} onClick={onClick}>
@@ -182,7 +196,40 @@ const TaskCard = ({ task, onClick, currentUserId }) => {
           <h3 className="tm-card-title">{task.title}</h3>
           {task.description && <p className="tm-card-desc">{task.description.slice(0, 100)}{task.description.length > 100 ? '…' : ''}</p>}
         </div>
-        <button className="tm-card-menu" onClick={e => e.stopPropagation()} aria-label="Task options"><FiMoreVertical size={22}/></button>
+        <div className="tm-card-menu-wrap" onClick={e => e.stopPropagation()}>
+          <button
+            className="tm-card-menu"
+            onClick={() => setMenuOpen(open => !open)}
+            aria-label="Task options"
+            aria-expanded={menuOpen}
+          >
+            <FiMoreVertical size={22}/>
+          </button>
+          {menuOpen && (
+            <div className="tm-card-menu-pop" role="menu" aria-label="Task actions">
+              <button
+                type="button"
+                className="tm-card-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit(task);
+                }}
+              >
+                <FiEdit3 size={14} /> Edit
+              </button>
+              <button
+                type="button"
+                className="tm-card-menu-item danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete(task);
+                }}
+              >
+                <FiTrash2 size={14} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <DailyBar task={task} />
@@ -217,7 +264,8 @@ const TaskCard = ({ task, onClick, currentUserId }) => {
 };
 
 /* ── Create Task Modal ─────────────────────────────────── */
-const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
+const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers, taskToEdit = null }) => {
+  const isEditing = Boolean(taskToEdit);
   const [taskType, setTaskType] = useState('One Time');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -230,9 +278,31 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
   const [source, setSource] = useState('Manual');
   const [requestComment, setRequestComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
 
-  const reset = () => { setTaskType('One Time'); setTitle(''); setDescription(''); setPriority('Medium'); setAssignees([]); setDueDate(''); setTarget(100); setCalendarDate(''); setRecurrence('weekly'); setSource('Manual'); setRequestComment(''); };
+  const reset = () => { setTaskType('One Time'); setTitle(''); setDescription(''); setPriority('Medium'); setAssignees([]); setDueDate(''); setTarget(100); setCalendarDate(''); setRecurrence('weekly'); setSource('Manual'); setRequestComment(''); setAssigneePickerOpen(false); };
   const usesTarget = taskType === 'Daily' || source === 'Data Center';
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!taskToEdit) {
+      reset();
+      return;
+    }
+
+    setTaskType(taskToEdit.taskType || 'One Time');
+    setTitle(taskToEdit.title || '');
+    setDescription(taskToEdit.description || '');
+    setPriority(taskToEdit.priority || 'Medium');
+    setAssignees((taskToEdit.assignees || []).map(user => getId(user)).filter(Boolean));
+    setDueDate(taskToEdit.dueDate ? taskToEdit.dueDate.slice(0, 10) : '');
+    setTarget(getProgressTarget(taskToEdit));
+    setCalendarDate(taskToEdit.calendarDate ? taskToEdit.calendarDate.slice(0, 10) : '');
+    setRecurrence(taskToEdit.recurrence || 'weekly');
+    setSource(taskToEdit.source || getCardSource(taskToEdit) || 'Manual');
+    setRequestComment('');
+    setAssigneePickerOpen(false);
+  }, [isOpen, taskToEdit]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -240,143 +310,301 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated, companyUsers }) => {
     setSubmitting(true);
     const labels = source !== 'Manual' ? [source] : [];
     try {
-      await api.post('/tasks', {
+      const payload = {
         title: title.trim(), description, priority, taskType, assignees,
         dueDate: dueDate || null, target: usesTarget ? target : null,
         calendarDate: calendarDate || null, recurrence: taskType === 'Recurring' ? recurrence : null,
         source, labels, requestComment
-      });
-      toast.success(assignees.length ? 'Task request sent!' : 'Task created!');
+      };
+
+      if (isEditing) {
+        await api.put(`/tasks/${taskToEdit._id}`, payload);
+      } else {
+        await api.post('/tasks', payload);
+      }
+
+      toast.success(
+        isEditing
+          ? 'Task updated!'
+          : (assignees.length ? 'Task request sent!' : 'Task created!')
+      );
       onTaskCreated(); onClose(); reset();
-    } catch { toast.error('Failed to create task'); }
+    } catch { toast.error(isEditing ? 'Failed to update task' : 'Failed to create task'); }
     finally { setSubmitting(false); }
   };
 
   const toggleAssignee = id => setAssignees(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   if (!isOpen) return null;
+  const selectedUsers = companyUsers.filter(user => assignees.includes(user._id));
+  const timingLabel = taskType === 'Calendar'
+    ? (calendarDate || 'No date')
+    : taskType === 'Recurring'
+      ? recurrence
+      : (dueDate || 'No due date');
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="tm-create-dialog tm-create-dialog-minimal">
-        <DialogHeader className="tm-create-header tm-create-header-minimal">
-          <DialogTitle>New task</DialogTitle>
-          <DialogDescription>Capture the work, assign the right people, and keep the rest quiet.</DialogDescription>
+      <DialogContent className="tm-create-dialog tm-create-dialog-redesign">
+        <DialogHeader className="tm-create-header tm-create-header-redesign">
+          <div className="tm-create-title-block">
+            <span className="tm-create-kicker">{isEditing ? 'Task editor' : 'Task studio'}</span>
+            <DialogTitle>{isEditing ? 'Edit task' : 'New task'}</DialogTitle>
+            <DialogDescription>{isEditing ? 'Update the work packet before it moves forward.' : 'Shape the work packet, choose ownership, and send it into motion.'}</DialogDescription>
+          </div>
+          <div className="tm-create-summary-strip" aria-label="Task summary">
+            <Badge variant="outline" className="tm-summary-badge"><FiTarget size={14} /> {TYPE_META[taskType]?.label}</Badge>
+            <Badge variant="outline" className="tm-summary-badge"><FiFlag size={14} /> {priority}</Badge>
+            <Badge variant="outline" className="tm-summary-badge"><FiUsers size={14} /> {assignees.length || 0}</Badge>
+          </div>
           <DialogClose className="tm-dialog-close" aria-label="Close" />
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="tm-create-form tm-create-form-minimal">
-          <DialogBody className="tm-create-body tm-create-body-minimal">
-            <div className="tm-create-topline">
-              <Badge variant="outline" className="tm-create-type-badge">
-                <span>{TYPE_META[taskType]?.code}</span>
-                {TYPE_META[taskType]?.label}
-              </Badge>
-              <span>{assignees.length ? `${assignees.length} invite${assignees.length === 1 ? '' : 's'} ready` : 'No assignee selected'}</span>
-            </div>
+        <form onSubmit={handleSubmit} className="tm-create-form tm-create-form-redesign">
+          <DialogBody className="tm-create-body tm-create-body-redesign">
+            <div className="tm-create-workspace">
+              <section className="tm-create-primary-panel" aria-label="Task brief">
+                <div className="tm-create-field tm-title-field">
+                  <label>Task title</label>
+                  <Input className="tm-shad-title tm-redesign-title" type="text" placeholder="Name the task" value={title} onChange={e => setTitle(e.target.value)} autoFocus required />
+                </div>
 
-            <div className="tm-create-field">
-              <label>Task title</label>
-              <Input className="tm-shad-title" type="text" placeholder="Add a clear task name" value={title} onChange={e => setTitle(e.target.value)} autoFocus required />
-            </div>
-
-            <div className="tm-create-field">
-              <label>Description</label>
-              <textarea className="tm-shad-textarea tm-shad-textarea-compact" placeholder="Optional context" value={description} onChange={e => setDescription(e.target.value)} rows={2} />
-            </div>
-
-            <div className="tm-create-grid tm-create-grid-minimal">
-              <div className="tm-create-field">
-                <label>Type</label>
-                <ToggleGroup type="single" value={taskType} onValueChange={v => v && setTaskType(v)} className="tm-shad-toggle tm-chip-toggle">
-                  {TASK_TYPES.map(t => (
-                    <ToggleGroupItem key={t.id} value={t.id} className="tm-shad-toggle-item tm-chip-toggle-item">
-                      {t.code}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              </div>
-
-              <div className="tm-create-field">
-                <label>Source</label>
-                <ToggleGroup type="single" value={source} onValueChange={v => v && setSource(v)} className="tm-shad-toggle tm-chip-toggle">
-                  {SOURCES.map(s => <ToggleGroupItem key={s} value={s} className="tm-shad-toggle-item tm-chip-toggle-item">{s}</ToggleGroupItem>)}
-                </ToggleGroup>
-              </div>
-
-              <div className="tm-create-field">
-                <label>Priority</label>
-                <ToggleGroup type="single" value={priority} onValueChange={v => v && setPriority(v)} className="tm-shad-toggle tm-chip-toggle">
-                  {['Low','Medium','High','Urgent'].map(p => (
-                    <ToggleGroupItem type="button" key={p} value={p} className={`tm-priority-toggle tm-priority-toggle-${p.toLowerCase()} tm-chip-toggle-item`}>
-                      {p}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              </div>
-
-              {usesTarget && (
                 <div className="tm-create-field">
-                  <label>{source === 'Data Center' ? 'Data Center Target' : 'Daily Target'}</label>
-                  <Input className="tm-shad-input" type="number" min={1} value={target} onChange={e => setTarget(+e.target.value)} />
+                  <label>Description</label>
+                  <Textarea className="tm-shad-textarea tm-redesign-textarea" placeholder="Add context, acceptance notes, or blockers" value={description} onChange={e => setDescription(e.target.value)} rows={4} />
                 </div>
-              )}
-              {taskType === 'Calendar' && (
+
                 <div className="tm-create-field">
-                  <label>Calendar Date</label>
-                  <Input className="tm-shad-input" type="date" value={calendarDate} onChange={e => setCalendarDate(e.target.value)} />
+                  <label>Task type</label>
+                  <ToggleGroup type="single" value={taskType} onValueChange={v => v && setTaskType(v)} className="tm-type-choice-grid">
+                    {TASK_TYPES.map(t => (
+                      <ToggleGroupItem key={t.id} value={t.id} className="tm-type-choice-card">
+                        <span className="tm-type-choice-copy">
+                          <strong>{t.label}</strong>
+                          <em>{t.desc}</em>
+                        </span>
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                 </div>
-              )}
-              {taskType === 'Recurring' && (
+              </section>
+
+              <aside className="tm-create-side-panel" aria-label="Task controls">
+                <div className="tm-create-meta-grid">
+                  <div className="tm-create-meta-cell">
+                    <span>Type</span>
+                    <strong>{TYPE_META[taskType]?.code}</strong>
+                  </div>
+                  <div className="tm-create-meta-cell">
+                    <span>Timing</span>
+                    <strong>{timingLabel}</strong>
+                  </div>
+                </div>
+
                 <div className="tm-create-field">
-                  <label>Repeat</label>
-                  <select value={recurrence} onChange={e => setRecurrence(e.target.value)} className="tm-shad-select">
-                    <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-                  </select>
+                  <label>Source</label>
+                  <ToggleGroup type="single" value={source} onValueChange={v => v && setSource(v)} className="tm-source-segments">
+                    {SOURCES.map(s => <ToggleGroupItem key={s} value={s} className="tm-source-segment">{s}</ToggleGroupItem>)}
+                  </ToggleGroup>
                 </div>
-              )}
-              {(taskType === 'One Time' || taskType === 'Milestone' || taskType === 'Sprint') && (
+
                 <div className="tm-create-field">
-                  <label>Due Date</label>
-                  <Input className="tm-shad-input" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  <label>Priority</label>
+                  <ToggleGroup type="single" value={priority} onValueChange={v => v && setPriority(v)} className="tm-priority-stack">
+                    {['Low','Medium','High','Urgent'].map(p => (
+                      <ToggleGroupItem type="button" key={p} value={p} className={`tm-priority-card tm-priority-card-${p.toLowerCase()}`}>
+                        <span>{p}</span>
+                        <FiCheck size={14} />
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                 </div>
-              )}
+
+                <div className="tm-create-grid tm-create-timing-grid">
+                  {usesTarget && (
+                    <div className="tm-create-field">
+                      <label>{source === 'Data Center' ? 'Data Center target' : 'Daily target'}</label>
+                      <InputGroup className="tm-target-group">
+                        <InputGroupAddon className="tm-target-prefix-addon">
+                          <InputGroupText>{source === 'Data Center' ? '🎯' : '#'}</InputGroupText>
+                        </InputGroupAddon>
+                        <Input
+                          className="tm-shad-input tm-target-input"
+                          type="number"
+                          min={1}
+                          value={target}
+                          onChange={e => setTarget(+e.target.value)}
+                          data-slot="input-group-control"
+                        />
+                        <InputGroupAddon className="tm-target-addon">
+                          <InputGroupText>{source === 'Data Center' ? 'records' : 'items'}</InputGroupText>
+                        </InputGroupAddon>
+                      </InputGroup>
+                    </div>
+                  )}
+                  {taskType === 'Calendar' && (
+                    <div className="tm-create-field">
+                      <label>Calendar date</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className={`tm-date-picker-btn${!calendarDate ? ' tm-date-picker-empty' : ''}`}
+                          >
+                            <CalendarIcon size={15} className="tm-date-picker-icon" />
+                            {calendarDate
+                              ? format(new Date(calendarDate + 'T00:00:00'), 'MMM d, yyyy')
+                              : <span>Pick a date</span>}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="tm-date-picker-pop" align="start" side="top" sideOffset={6}>
+                          <Calendar
+                            mode="single"
+                            selected={calendarDate ? new Date(calendarDate + 'T00:00:00') : undefined}
+                            onSelect={d => setCalendarDate(d ? format(d, 'yyyy-MM-dd') : '')}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                  {taskType === 'Recurring' && (
+                    <div className="tm-create-field">
+                      <label>Repeat</label>
+                      <Select
+                        value={recurrence}
+                        onValueChange={v => setRecurrence(v)}
+                        aria-label="Repeat"
+                        className="tm-repeat-standalone"
+                      >
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {(taskType === 'One Time' || taskType === 'Milestone' || taskType === 'Sprint') && (
+                    <div className="tm-create-field">
+                      <label>Due date</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className={`tm-date-picker-btn${!dueDate ? ' tm-date-picker-empty' : ''}`}
+                          >
+                            <CalendarIcon size={15} className="tm-date-picker-icon" />
+                            {dueDate
+                              ? format(new Date(dueDate + 'T00:00:00'), 'MMM d, yyyy')
+                              : <span>Pick a date</span>}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="tm-date-picker-pop" align="start" side="top" sideOffset={6}>
+                          <Calendar
+                            mode="single"
+                            selected={dueDate ? new Date(dueDate + 'T00:00:00') : undefined}
+                            onSelect={d => setDueDate(d ? format(d, 'yyyy-MM-dd') : '')}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="tm-create-separator" />
+
+                <div className="tm-create-field tm-team-field">
+                  <div className="tm-team-label-row">
+                    <label>Assign to</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {assignees.length > 0 && <span className="tm-assignee-count-badge">{assignees.length} selected</span>}
+                      <button
+                        type="button"
+                        className={`tm-assignee-toggle-btn${assigneePickerOpen ? ' open' : ''}`}
+                        aria-label={assigneePickerOpen ? 'Close assignee picker' : 'Open assignee picker'}
+                        aria-expanded={assigneePickerOpen}
+                        onClick={() => setAssigneePickerOpen(open => !open)}
+                      >
+                        {assigneePickerOpen ? <FiX size={13} /> : <FiPlus size={13} />}
+                        {assigneePickerOpen ? 'Done' : 'Add members'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selected avatar row */}
+                  {selectedUsers.length > 0 && (
+                    <div className="tm-assignee-avatar-row">
+                      {selectedUsers.map(user => (
+                        <div key={user._id} className="tm-assignee-avatar-chip">
+                          <UserAvatar user={user} size={26} />
+                          <span>{(user.fullName || user.email || '').split(' ')[0]}</span>
+                          <button
+                            type="button"
+                            className="tm-assignee-remove"
+                            onClick={() => toggleAssignee(user._id)}
+                            aria-label={`Remove ${user.fullName}`}
+                          >
+                            <FiX size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Inline member list */}
+                  {assigneePickerOpen && (
+                    <div className="tm-assignee-inline-list">
+                      {companyUsers.length === 0 && (
+                        <div className="tm-no-users">No team members found</div>
+                      )}
+                      {companyUsers.map(u => (
+                        <button
+                          type="button"
+                          key={u._id}
+                          className={`tm-assignee-member-row${assignees.includes(u._id) ? ' sel' : ''}`}
+                          onClick={() => toggleAssignee(u._id)}
+                        >
+                          <UserAvatar user={u} size={30} />
+                          <div className="tm-assignee-member-info">
+                            <strong>{u.fullName || u.email}</strong>
+                            {u.fullName && <span>{u.email}</span>}
+                          </div>
+                          <div className={`tm-assignee-member-check${assignees.includes(u._id) ? ' checked' : ''}`}>
+                            {assignees.includes(u._id) && <FiCheck size={11} />}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {assignees.length > 0 && (
+                  <div className="tm-create-field">
+                    <label>Request note</label>
+                    <Textarea
+                      className="tm-shad-textarea tm-request-note-redesign"
+                      placeholder="Optional note for invitees"
+                      value={requestComment}
+                      onChange={e => setRequestComment(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                )}
+              </aside>
             </div>
-
-            <Separator />
-
-            <div className="tm-create-field">
-              <label>Assign to</label>
-              <ScrollArea className="tm-assignee-scroll tm-assignee-scroll-minimal">
-                <div className="tm-assignee-list tm-assignee-list-shad">
-                  {companyUsers.map(u => (
-                    <button type="button" key={u._id} className={`tm-assignee-row tm-assignee-button ${assignees.includes(u._id) ? 'sel' : ''}`} onClick={() => toggleAssignee(u._id)}>
-                      <UserAvatar user={u} size={24} />
-                      <span>{u.fullName || u.email}</span>
-                      {assignees.includes(u._id) && <FiCheck className="tm-assignee-check" size={15} />}
-                    </button>
-                  ))}
-                  {companyUsers.length === 0 && <div className="tm-no-users">No team members found</div>}
-                </div>
-              </ScrollArea>
-            </div>
-
-            {assignees.length > 0 && (
-              <div className="tm-create-field">
-                <label>Request note</label>
-                <textarea
-                  className="tm-shad-textarea tm-shad-textarea-compact"
-                  placeholder="Optional note for invitees"
-                  value={requestComment}
-                  onChange={e => setRequestComment(e.target.value)}
-                  rows={2}
-                />
-              </div>
-            )}
           </DialogBody>
 
-          <DialogFooter className="tm-create-footer tm-create-footer-minimal">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={!title.trim() || submitting}><FiPlus size={14}/>{submitting ? 'Creating...' : 'Create Task'}</Button>
+          <DialogFooter className="tm-create-footer tm-create-footer-redesign">
+            <div className="tm-footer-context">
+              <FiCalendar size={15} />
+              <span>{timingLabel}</span>
+            </div>
+            <Button type="button" variant="outline" className="tm-create-action tm-create-cancel" onClick={onClose}>Cancel</Button>
+            <Button type="submit" className="tm-create-action tm-create-submit" disabled={!title.trim() || submitting}>
+              {isEditing ? <FiEdit3 size={14}/> : <FiPlus size={14}/>}
+              {submitting ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Task' : 'Create Task')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -578,6 +806,7 @@ function TaskManager({ isWidget = false }) {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [companyUsers, setCompanyUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
@@ -611,6 +840,26 @@ function TaskManager({ isWidget = false }) {
 
   const handleTaskClick = async (task) => {
     try { const r = await api.get(`/tasks/${task._id}`); setSelectedTask(r.data); } catch {}
+  };
+  const openEditTask = async (task) => {
+    try {
+      const r = await api.get(`/tasks/${task._id}`);
+      setEditingTask(r.data);
+      setIsCreateOpen(true);
+    } catch {
+      toast.error('Could not open task editor');
+    }
+  };
+  const handleTaskDeleteFromCard = async (task) => {
+    if (!await confirm('Delete this task?')) return;
+    try {
+      await api.delete(`/tasks/${task._id}`);
+      toast.success('Task deleted');
+      if (selectedTask?._id === task._id) setSelectedTask(null);
+      fetchTasks();
+    } catch {
+      toast.error('Failed to delete task');
+    }
   };
   const handleTaskUpdated = () => { fetchTasks(); if (selectedTask) handleTaskClick(selectedTask); };
   const handleInlineAssignmentResponse = async (task, request, status, event) => {
@@ -687,13 +936,13 @@ function TaskManager({ isWidget = false }) {
       <div className="task-manager widget-mode">
         <div className="widget-header">
           <div className="widget-title-row"><h3>Tasks</h3><span className="task-total">{tasks.length}</span></div>
-          <button className="create-btn-sm" onClick={() => setIsCreateOpen(true)}><FiPlus size={14}/></button>
+          <button className="create-btn-sm" onClick={() => { setEditingTask(null); setIsCreateOpen(true); }}><FiPlus size={14}/></button>
         </div>
         <div className="widget-tasks">
           {widgetTasks.map(t => {
             const progress = getProgressMeta(t);
             return (
-              <div key={t._id} className="widget-task-item" data-status={t.status} onClick={() => handleTaskClick(t)}>
+                <div key={t._id} className="widget-task-item" data-status={t.status} onClick={() => handleTaskClick(t)}>
                 <div className="widget-task-copy">
                   <div className="widget-task-line">
                     <span className="task-title">{t.title}</span>
@@ -723,7 +972,7 @@ function TaskManager({ isWidget = false }) {
             </div>
           )}
         </div>
-        <CreateTaskModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onTaskCreated={fetchTasks} companyUsers={companyUsers}/>
+        <CreateTaskModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setEditingTask(null); }} onTaskCreated={fetchTasks} companyUsers={companyUsers} taskToEdit={editingTask}/>
         {selectedTask && (
           <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>
             <div className="detail-modal" onClick={e => e.stopPropagation()}>
@@ -753,7 +1002,7 @@ function TaskManager({ isWidget = false }) {
               </span>
             ))}
           </div>
-          <button className="tm-new-btn" onClick={() => setIsCreateOpen(true)}><FiPlus size={16}/> New Task</button>
+          <button className="tm-new-btn" onClick={() => { setEditingTask(null); setIsCreateOpen(true); }}><FiPlus size={16}/> New Task</button>
         </div>
       </div>
 
@@ -801,10 +1050,17 @@ function TaskManager({ isWidget = false }) {
           {filtered.length === 0 ? (
             <div className="tm-empty">
               <span>No tasks found</span>
-              <button onClick={() => setIsCreateOpen(true)}>+ Create Task</button>
+              <button onClick={() => { setEditingTask(null); setIsCreateOpen(true); }}>+ Create Task</button>
             </div>
           ) : filtered.map(task => (
-            <TaskCard key={task._id} task={task} onClick={() => handleTaskClick(task)} currentUserId={currentUserId}/>
+            <TaskCard
+              key={task._id}
+              task={task}
+              onClick={() => handleTaskClick(task)}
+              onEdit={openEditTask}
+              onDelete={handleTaskDeleteFromCard}
+              currentUserId={currentUserId}
+            />
           ))}
           </div>
         </TabsContent>
@@ -896,7 +1152,7 @@ function TaskManager({ isWidget = false }) {
         </TabsContent>
       </Tabs>
 
-      <CreateTaskModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onTaskCreated={fetchTasks} companyUsers={companyUsers}/>
+      <CreateTaskModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setEditingTask(null); }} onTaskCreated={fetchTasks} companyUsers={companyUsers} taskToEdit={editingTask}/>
 
       {selectedTask && (
         <div className="noxtm-overlay" onClick={() => setSelectedTask(null)}>

@@ -50,6 +50,7 @@ import NoxtmBotAdmin from './NoxtmBotAdmin';
 import NoxtmAssistant from './NoxtmAssistant';
 import GoogleDriveManager from './GoogleDriveManager';
 import SocialMediaUploads from './SocialMediaUploads';
+import CustomDatabaseView from './CustomDatabaseView';
 import splitViewIcon from '../assets/split_view.svg';
 import { SidebarProvider, SidebarInset } from './ui/sidebar';
 import './Dashboard.css';
@@ -114,6 +115,8 @@ function Dashboard({ user, onLogout }) {
   const [selectedTrendingService, setSelectedTrendingService] = useState(null);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [policyPending, setPolicyPending] = useState(false);
+  const [customDbs, setCustomDbs] = useState([]);
+  const [companyUsers, setCompanyUsers] = useState([]);
 
   const isAdmin = currentUser?.role === 'Admin';
 
@@ -213,6 +216,16 @@ function Dashboard({ user, onLogout }) {
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, []);
+
+  // Fetch custom databases + company users for CustomDatabaseView
+  useEffect(() => {
+    if (!currentUser) return;
+    api.get('/custom-databases').then(res => setCustomDbs(res.data.databases || [])).catch(() => {});
+    api.get('/company/members').then(res => setCompanyUsers(res.data.members || [])).catch(() => {
+      // fallback — some installs use /users endpoint
+      api.get('/users').then(r => setCompanyUsers(r.data || [])).catch(() => {});
+    });
+  }, [currentUser]);
 
   // Listen for navigation to messaging from toast notifications
   useEffect(() => {
@@ -411,13 +424,34 @@ function Dashboard({ user, onLogout }) {
         return <NoxtmBotAdmin />;
       case 'drive-assets':
         return <GoogleDriveManager />;
-      default:
+      default: {
+        // Handle dynamic custom-db-:id sections
+        if (activeSection.startsWith('custom-db-')) {
+          const dbId = activeSection.replace('custom-db-', '');
+          const db = customDbs.find(d => d._id === dbId);
+          if (db) {
+            return (
+              <CustomDatabaseView
+                db={db}
+                companyUsers={companyUsers}
+                onUpdated={() => {
+                  api.get('/custom-databases').then(res => setCustomDbs(res.data.databases || [])).catch(() => {});
+                }}
+                onDeleted={() => {
+                  setCustomDbs(prev => prev.filter(d => d._id !== dbId));
+                  setActiveSection('company-data');
+                }}
+              />
+            );
+          }
+        }
         return (
           <div className="dashboard-card">
             <h3>Section Not Found</h3>
             <p>The requested section could not be found.</p>
           </div>
         );
+      }
     }
   };
 

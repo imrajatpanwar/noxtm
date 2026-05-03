@@ -495,3 +495,220 @@
   color: #1a1a1a;
   border-color: #ffffff;
 }
+
+/* ── DATA CENTER — group label row with + button ─────────────────────────── */
+.sidebar-group-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 4px;
+}
+
+.sidebar-add-db-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  color: #71717a;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.sidebar-add-db-btn:hover {
+  background: #09090b;
+  color: #fff;
+  border-color: #09090b;
+}
+
+/* Custom DB icon in sidebar */
+.sidebar-custom-db-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ── Create Database Modal ────────────────────────────────────────────────── */
+.sb-createdb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.sb-createdb-modal {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  width: 100%;
+  max-width: 380px;
+  font-family: 'Switzer', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.sb-createdb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sb-createdb-header h3 {
+  font-size: 16px;
+  font-weight: 900;
+  color: #09090b;
+  margin: 0;
+}
+
+.sb-createdb-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: #71717a;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sb-createdb-close:hover { background: #f4f4f5; color: #09090b; }
+
+.sb-createdb-form {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sb-createdb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-createdb-field > label {
+  font-size: 11px;
+  font-weight: 900;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sb-createdb-field > label span {
+  font-weight: 600;
+  color: #a1a1aa;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Icon upload zone */
+.sb-icon-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 80px;
+  border: 2px dashed #d4d4d8;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #71717a;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sb-icon-upload-zone:hover { border-color: #09090b; background: #f4f4f5; color: #09090b; }
+
+.sb-icon-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* Name input */
+.sb-createdb-input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  font-family: 'Switzer', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #09090b;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.sb-createdb-input:focus { border-color: #a1a1aa; box-shadow: 0 0 0 2px rgba(0,0,0,.05); }
+.sb-createdb-input::placeholder { font-weight: 400; color: #a1a1aa; }
+
+.sb-createdb-hint {
+  font-size: 11px;
+  color: #a1a1aa;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Modal footer */
+.sb-createdb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.sb-createdb-cancel {
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-family: 'Switzer', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sb-createdb-cancel:hover { background: #f4f4f5; }
+
+.sb-createdb-submit {
+  height: 36px;
+  padding: 0 18px;
+  border: 1px solid #09090b;
+  border-radius: 8px;
+  background: #09090b;
+  color: #fff;
+  font-family: 'Switzer', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sb-createdb-submit:hover:not(:disabled) { background: #27272a; }
+.sb-createdb-submit:disabled { opacity: 0.4; cursor: not-allowed; }

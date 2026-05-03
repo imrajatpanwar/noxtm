@@ -23,7 +23,7 @@ function DialogOverlay({ className, ...props }) {
   const { onOpenChange } = React.useContext(DialogContext);
   return (
     <div
-      className={cn('tw-fixed tw-inset-0 tw-z-[9990] tw-bg-black/50 tw-backdrop-blur-sm', className)}
+      className={cn('tm-dialog-overlay', className)}
       onClick={() => onOpenChange?.(false)}
       {...props}
     />
