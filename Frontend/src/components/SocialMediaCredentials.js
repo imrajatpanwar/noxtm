@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiKey, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiEyeOff, FiMail, FiLock, FiSearch, FiX, FiCheck, FiShield, FiUsers, FiGlobe, FiCopy } from 'react-icons/fi';
+import { FiKey, FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiSearch, FiX, FiCheck, FiUsers, FiCopy, FiMoreVertical, FiShare2 } from 'react-icons/fi';
 import api from '../config/api';
 import { Skeleton } from './ui/skeleton';
+import { Button } from './ui/button';
 import './SocialMediaCredentials.css';
 import CredentialsImage from '../assets/Credentials_image.png';
 import { confirm } from './ui/alert-dialog';
-
-const PLATFORMS = ['Instagram', 'LinkedIn', 'YouTube', 'X', 'Facebook', 'Reddit', 'Other'];
 
 function SocialMediaCredentials() {
     const [credentials, setCredentials] = useState([]);
@@ -19,6 +18,7 @@ function SocialMediaCredentials() {
     const [formShowPassword, setFormShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [openCardMenuId, setOpenCardMenuId] = useState(null);
 
     // Form state
     const [form, setForm] = useState({ platform: '', email: '', password: '', description: '' });
@@ -110,6 +110,7 @@ function SocialMediaCredentials() {
     };
 
     const openEditModal = async (cred) => {
+        setOpenCardMenuId(null);
         setEditingCred(cred);
         setForm({
             platform: cred.platform,
@@ -158,6 +159,7 @@ function SocialMediaCredentials() {
     };
 
     const handleDelete = async (credId) => {
+        setOpenCardMenuId(null);
         if (!await confirm('Are you sure you want to delete this credential?')) return;
         try {
             await api.delete(`/social-media-calendar/credentials/${credId}`);
@@ -168,6 +170,7 @@ function SocialMediaCredentials() {
     };
 
     const openShareModal = async (cred) => {
+        setOpenCardMenuId(null);
         setSharingCred(cred);
         setSelectedUsers([]);
         setShareSearch('');
@@ -189,15 +192,6 @@ function SocialMediaCredentials() {
         }
     };
 
-    const handleRevoke = async (credId, userId) => {
-        try {
-            await api.delete(`/social-media-calendar/credentials/${credId}/share/${userId}`);
-            fetchCredentials();
-        } catch (err) {
-            console.error('Error revoking:', err);
-        }
-    };
-
     const toggleUserSelection = (userId) => {
         setSelectedUsers(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
     };
@@ -205,6 +199,39 @@ function SocialMediaCredentials() {
     const getInitials = (name) => {
         if (!name) return '?';
         return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    };
+
+    const getAvatarSrc = (user) => {
+        const src = user?.profileImage || user?.avatarUrl || user?.avatar || user?.image;
+        if (!src) return '';
+        if (src.startsWith('http') || src.startsWith('data:')) return src;
+        const origin = (api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+        return `${origin}${src.startsWith('/') ? src : `/${src}`}`;
+    };
+
+    const formatDate = (date) => {
+        if (!date) return 'Not available';
+        return new Date(date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
+    const getCredentialAccess = (cred) => {
+        const owner = cred.createdBy ? [{ ...cred.createdBy, accessRole: 'Owner' }] : [];
+        const sharedUsers = (cred.sharedWith || [])
+            .map(item => item.user)
+            .filter(Boolean)
+            .map(user => ({ ...user, accessRole: 'Shared access' }));
+
+        const seen = new Set();
+        return [...owner, ...sharedUsers].filter(user => {
+            const id = user._id || user.email || user.fullName;
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
     };
 
     const filteredMembers = teamMembers.filter(m => {
@@ -240,7 +267,7 @@ function SocialMediaCredentials() {
     }
 
     return (
-        <div className="sm-credentials">
+        <div className="sm-credentials" onClick={() => setOpenCardMenuId(null)}>
             {/* Hero Banner */}
             <div className="sm-cred-hero">
                 <div className="sm-cred-hero-left">
@@ -286,65 +313,128 @@ function SocialMediaCredentials() {
                 </div>
             ) : (
                 <div className="sm-cred-grid">
-                    {filteredCredentials.map(cred => (
+                    {filteredCredentials.map(cred => {
+                        const accessUsers = getCredentialAccess(cred);
+                        const description = cred.description || 'Keep all your social media logins organised in one secure space. Share access with your team instantly. No more sending passwords over chat or email.';
+                        return (
                         <div className="sm-cred-card" key={cred._id}>
-                            {/* Card Top */}
                             <div className="sm-cred-card-top">
-                                <span className="sm-cred-card-name">{cred.description || cred.platform}</span>
-                                <span className="sm-cred-card-shared-info">
-                                    {!cred.isOwner && cred.createdBy?.fullName && (
-                                        <>{cred.createdBy.fullName} Shared with you</>
+                                <div className="sm-cred-card-heading">
+                                    <div className="sm-cred-card-title-block">
+                                        <span className="sm-cred-card-name">{cred.platform || 'Title of the card.'}</span>
+                                        <span className="sm-cred-card-date">Updated {formatDate(cred.updatedAt || cred.createdAt)}</span>
+                                    </div>
+                                </div>
+                                <div className="sm-cred-card-tools">
+                                    <button
+                                        className="sm-cred-mini-avatar-stack"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            if (cred.isOwner) openShareModal(cred);
+                                        }}
+                                        title={cred.isOwner ? 'Manage access' : 'People with access'}
+                                        type="button"
+                                    >
+                                        {accessUsers.slice(0, 3).map(user => {
+                                            const avatarSrc = getAvatarSrc(user);
+                                            return (
+                                                <span
+                                                    className="sm-cred-mini-avatar"
+                                                    key={user._id || user.email}
+                                                    title={`${user.fullName || user.email || 'Team member'} • ${user.accessRole}`}
+                                                >
+                                                    {avatarSrc ? (
+                                                        <img src={avatarSrc} alt={user.fullName || user.email || 'Team member'} />
+                                                    ) : (
+                                                        getInitials(user.fullName || user.email)
+                                                    )}
+                                                </span>
+                                            );
+                                        })}
+                                        {accessUsers.length > 3 && (
+                                            <span className="sm-cred-mini-avatar more">+{accessUsers.length - 3}</span>
+                                        )}
+                                    </button>
+                                    {cred.isOwner ? (
+                                        <div className="sm-cred-menu-wrap">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="sm-cred-kebab-btn"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setOpenCardMenuId(prev => prev === cred._id ? null : cred._id);
+                                                }}
+                                                title="More options"
+                                            >
+                                                <FiMoreVertical />
+                                            </Button>
+                                            {openCardMenuId === cred._id && (
+                                                <div className="sm-cred-card-menu" onClick={event => event.stopPropagation()}>
+                                                    <button type="button" onClick={() => openEditModal(cred)}>
+                                                        <FiEdit2 /> Edit
+                                                    </button>
+                                                    <button type="button" className="danger" onClick={() => handleDelete(cred._id)}>
+                                                        <FiTrash2 /> Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span className="sm-cred-shared-badge"><FiShare2 /> Shared</span>
                                     )}
-                                    {cred.isOwner && (
-                                        <span className="sm-cred-card-owner-actions">
-                                            <button className="sm-cred-card-action-btn" onClick={() => openShareModal(cred)} title="Share"><FiUserPlus /></button>
-                                            <button className="sm-cred-card-action-btn" onClick={() => openEditModal(cred)} title="Edit"><FiEdit2 /></button>
-                                            <button className="sm-cred-card-action-btn danger" onClick={() => handleDelete(cred._id)} title="Delete"><FiTrash2 /></button>
-                                        </span>
-                                    )}
-                                </span>
+                                </div>
                             </div>
 
                             {/* Email Field */}
                             <div className="sm-cred-card-field">
-                                <span className="sm-cred-card-field-label">E-MAIL/USERNAME :</span>
-                                <span className="sm-cred-card-field-value">{cred.email}</span>
-                                <div className="sm-cred-card-field-actions">
-                                    <button
+                                <span className="sm-cred-card-field-label">Email / Username</span>
+                                <div className="sm-cred-card-value-row">
+                                    <span className="sm-cred-card-field-value email">{cred.email}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         className={`sm-cred-card-field-btn${copiedField === 'email-' + cred._id ? ' copied' : ''}`}
                                         onClick={() => handleCopy(cred.email, 'email-' + cred._id)}
                                         title="Copy email"
                                     >
                                         {copiedField === 'email-' + cred._id ? <FiCheck /> : <FiCopy />}
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Password Field */}
                             <div className="sm-cred-card-field">
-                                <span className="sm-cred-card-field-label">PASSWORD :</span>
-                                <span className={`sm-cred-card-field-value password${revealedPasswords[cred._id] ? ' revealed' : ''}`}>
-                                    {revealedPasswords[cred._id] || '••••••••'}
-                                </span>
-                                <div className="sm-cred-card-field-actions">
-                                    <button
+                                <span className="sm-cred-card-field-label">Password</span>
+                                <div className="sm-cred-card-value-row">
+                                    <span className={`sm-cred-card-field-value password${revealedPasswords[cred._id] ? ' revealed' : ''}`}>
+                                        {revealedPasswords[cred._id] || '••••••••'}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         className="sm-cred-card-field-btn"
                                         onClick={() => toggleRevealPassword(cred._id)}
                                         title={revealedPasswords[cred._id] ? 'Hide password' : 'Show password'}
                                     >
                                         {revealedPasswords[cred._id] ? <FiEyeOff /> : <FiEye />}
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         className={`sm-cred-card-field-btn${copiedField === 'password-' + cred._id ? ' copied' : ''}`}
                                         onClick={() => handleCopyPassword(cred._id)}
                                         title="Copy password"
                                     >
                                         {copiedField === 'password-' + cred._id ? <FiCheck /> : <FiCopy />}
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
+
+                            <p className="sm-cred-card-description">{description}</p>
                         </div>
-                    ))}
+                    );
+                    })}
                 </div>
             )}
 
@@ -353,47 +443,68 @@ function SocialMediaCredentials() {
                 <div className="sm-cred-modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="sm-cred-modal" onClick={e => e.stopPropagation()}>
                         <div className="sm-cred-modal-header">
-                            <h3>{editingCred ? 'Edit Credential' : 'Add Credential'}</h3>
-                            <button className="sm-cred-modal-close" onClick={() => setShowModal(false)}>
+                            <div>
+                                <h3>{editingCred ? 'Edit Credential' : 'Add Credential'}</h3>
+                                <p>{editingCred ? 'Update the login details, card description, and team access.' : 'Save a secure login and choose who can access it.'}</p>
+                            </div>
+                            <Button variant="ghost" size="icon" className="sm-cred-modal-close" onClick={() => setShowModal(false)}>
                                 <FiX />
-                            </button>
+                            </Button>
                         </div>
                         <div className="sm-cred-modal-body">
-                            <div className="sm-cred-form-group">
-                                <label>Title</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Instagram, LinkedIn, YouTube"
-                                    value={form.platform}
-                                    onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
-                                />
-                            </div>
-                            <div className="sm-cred-form-group">
-                                <label>Email / Username</label>
-                                <input
-                                    type="text"
-                                    placeholder="Enter email or username"
-                                    value={form.email}
-                                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                                />
-                            </div>
-                            <div className="sm-cred-form-group">
-                                <label>Password</label>
-                                <div className="sm-cred-password-input">
-                                    <input
-                                        type={formShowPassword ? 'text' : 'password'}
-                                        placeholder={editingCred ? 'Leave blank to keep current' : 'Enter password'}
-                                        value={form.password}
-                                        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                            <div className="sm-cred-form-panel">
+                                <div className="sm-cred-form-grid">
+                                    <div className="sm-cred-form-group">
+                                        <label>Title</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Mail of Noxtm Studio"
+                                            value={form.platform}
+                                            onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="sm-cred-form-group">
+                                        <label>Email / Username</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Enter email or username"
+                                            value={form.email}
+                                            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="sm-cred-form-group">
+                                    <label>Password</label>
+                                    <div className="sm-cred-password-input">
+                                        <input
+                                            type={formShowPassword ? 'text' : 'password'}
+                                            placeholder={editingCred ? 'Leave blank to keep current' : 'Enter password'}
+                                            value={form.password}
+                                            onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                                        />
+                                        <Button variant="ghost" size="icon" className="toggle-btn" type="button" onClick={() => setFormShowPassword(!formShowPassword)}>
+                                            {formShowPassword ? <FiEyeOff /> : <FiEye />}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="sm-cred-form-group">
+                                    <label>Description</label>
+                                    <textarea
+                                        placeholder="This appears as the bottom text on the credential card."
+                                        value={form.description}
+                                        onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                                        rows={3}
                                     />
-                                    <button className="toggle-btn" type="button" onClick={() => setFormShowPassword(!formShowPassword)}>
-                                        {formShowPassword ? <FiEyeOff /> : <FiEye />}
-                                    </button>
                                 </div>
                             </div>
-                            <div className="sm-cred-form-group">
-                                <label>Grant Access To</label>
-                                <p className="sm-cred-access-hint">Only selected users will be able to see this credential</p>
+                            <div className="sm-cred-form-group sm-cred-access-group">
+                                <div className="sm-cred-access-heading">
+                                    <div>
+                                        <label>Grant Access To</label>
+                                        <p className="sm-cred-access-hint">Only selected users will be able to see this credential.</p>
+                                    </div>
+                                    <span>{formAccessUsers.length} selected</span>
+                                </div>
                                 <div className="sm-cred-access-search">
                                     <FiSearch className="search-icon" />
                                     <input
@@ -419,6 +530,13 @@ function SocialMediaCredentials() {
                                                         prev.includes(member._id) ? prev.filter(id => id !== member._id) : [...prev, member._id]
                                                     )}
                                                 />
+                                                <div className="sm-cred-access-member-avatar">
+                                                    {getAvatarSrc(member) ? (
+                                                        <img src={getAvatarSrc(member)} alt={member.fullName || member.email || 'Team member'} />
+                                                    ) : (
+                                                        getInitials(member.fullName || member.email)
+                                                    )}
+                                                </div>
                                                 <div className="sm-cred-access-info">
                                                     <span className="sm-cred-access-name">{member.fullName || member.email}</span>
                                                     <span className="sm-cred-access-email">{member.email}</span>
@@ -432,14 +550,15 @@ function SocialMediaCredentials() {
                             </div>
                         </div>
                         <div className="sm-cred-modal-footer">
-                            <button className="sm-cred-btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
-                            <button
+                            <Button variant="outline" className="sm-cred-btn-cancel" onClick={() => setShowModal(false)}>Cancel</Button>
+                            <Button
+                                variant="default"
                                 className="sm-cred-btn-save"
                                 disabled={!form.platform.trim() || !form.email.trim() || (!editingCred && !form.password)}
                                 onClick={handleSave}
                             >
                                 {editingCred ? 'Update' : 'Add Credential'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
