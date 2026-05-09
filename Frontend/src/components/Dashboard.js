@@ -559,7 +559,7 @@ function Dashboard({ user, onLogout }) {
                     onMouseLeave={(e) => { if (!isResizingAssistant) e.currentTarget.style.background = 'transparent'; }}
                   />
                 )}
-                <NoxtmAssistant onCollapse={toggleAssistant} />
+                <NoxtmAssistant onCollapse={toggleAssistant} activeSection={activeSection} />
               </aside>
             </div>
           </div>

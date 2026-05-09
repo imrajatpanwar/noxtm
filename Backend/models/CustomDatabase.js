@@ -7,6 +7,7 @@ const columnSchema = new mongoose.Schema({
   order: { type: Number, default: 0 },
   required: { type: Boolean, default: false },
   placeholder: { type: String, default: '', trim: true },
+  showLabelInList: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

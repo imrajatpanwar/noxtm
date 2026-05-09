@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FiPlus, FiSearch, FiX, FiCheck, FiUsers, FiSettings, FiTrash2,
-  FiEdit2, FiChevronDown, FiChevronRight, FiMenu, FiDatabase,
+  FiPlus, FiSearch, FiX, FiCheck, FiSettings, FiTrash2, FiUsers,
+  FiEdit2, FiMenu, FiDatabase,
   FiType, FiHash, FiLink, FiCalendar, FiAlignLeft, FiMail, FiPhone,
   FiToggleLeft, FiMoreVertical
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import './CustomDatabaseView.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const initials = n => !n ? '?' : n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-const iconSrc = f => f ? `${API_BASE}/custom-databases/icon/${f}` : null;
+const iconSrc = f => f ? `${api.defaults.baseURL}/custom-databases/icon/${encodeURIComponent(f)}` : null;
 
 // Field types available for the Settings panel
 const FIELD_TYPES = [
@@ -109,15 +106,24 @@ function RecordModal({ fields, record, onSave, onClose }) {
 
 // ── Record card (Data Center style) ──────────────────────────────────────────
 function RecordCard({ record, fields, onEdit, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef();
 
   const titleField = fields[0];
-  const metaFields = fields.slice(1, 4);   // show up to 3 in the header
-  const extraFields = fields.slice(4);      // rest shown when expanded
+  const detailFields = fields.slice(1);
 
   const val = fid => record.cells?.[fid] ?? '';
+  const renderValue = f => {
+    const v = val(f._id);
+    if (!v) return null;
+    if (f.type === 'url') {
+      return <a href={v} target="_blank" rel="noopener noreferrer">{v}</a>;
+    }
+    if (f.type === 'boolean') {
+      return <span className={`cdb-bool-badge cdb-bool-${String(v).toLowerCase()}`}>{v}</span>;
+    }
+    return v;
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -127,24 +133,35 @@ function RecordCard({ record, fields, onEdit, onDelete }) {
   }, [menuOpen]);
 
   return (
-    <div className={`cdb-card${expanded ? ' cdb-card-expanded-state' : ''}`}>
-      {/* Card header */}
-      <div className="cdb-card-header" onClick={() => setExpanded(e => !e)}>
-        <div className="cdb-card-expand-icon">
-          {expanded ? <FiChevronDown size={15} /> : <FiChevronRight size={15} />}
-        </div>
+    <div className="cdb-card">
+      <div className="cdb-card-header">
+        <label className="cdb-row-check" aria-label="Select record">
+          <input type="checkbox" />
+          <span />
+        </label>
         <div className="cdb-card-info">
-          <h3 className="cdb-card-title">{val(titleField?._id) || <span className="cdb-card-untitled">Untitled</span>}</h3>
-          <div className="cdb-card-meta">
-            {metaFields.map(f => val(f._id) ? (
-              <span key={f._id} className="cdb-card-meta-pill">
-                {typeIcon(f.type)} {val(f._id)}
-              </span>
-            ) : null)}
+          <div className="cdb-card-title-row">
+            <h3 className="cdb-card-title">{val(titleField?._id) || <span className="cdb-card-untitled">Untitled</span>}</h3>
           </div>
+          {detailFields.some(f => val(f._id)) ? (
+            <div className="cdb-card-detail-grid">
+              {detailFields.map(f => {
+                const rendered = renderValue(f);
+                if (!rendered) return null;
+                return (
+                  <div key={f._id} className="cdb-card-detail-item">
+                    {f.showLabelInList && <span className="cdb-card-detail-label">{f.name} :</span>}
+                    <span className="cdb-card-detail-value">{rendered}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="cdb-card-no-details">No extra details added yet.</p>
+          )}
         </div>
-        <div className="cdb-card-actions" onClick={e => e.stopPropagation()} ref={menuRef}>
-          <button className="cdb-card-menu-btn" onClick={() => setMenuOpen(o => !o)}>
+        <div className="cdb-card-actions" ref={menuRef}>
+          <button className="cdb-card-menu-btn" onClick={() => setMenuOpen(o => !o)} aria-label="Record actions">
             <FiMoreVertical size={15} />
           </button>
           {menuOpen && (
@@ -159,30 +176,6 @@ function RecordCard({ record, fields, onEdit, onDelete }) {
           )}
         </div>
       </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="cdb-card-detail">
-          <div className="cdb-card-detail-grid">
-            {fields.map(f => {
-              const v = val(f._id);
-              if (!v) return null;
-              return (
-                <div key={f._id} className="cdb-card-detail-item">
-                  <span className="cdb-card-detail-label">{f.name}</span>
-                  <span className="cdb-card-detail-value">
-                    {f.type === 'url'
-                      ? <a href={v} target="_blank" rel="noopener noreferrer">{v}</a>
-                      : f.type === 'boolean'
-                      ? <span className={`cdb-bool-badge cdb-bool-${v.toLowerCase()}`}>{v}</span>
-                      : v}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -193,6 +186,7 @@ function SettingsPanel({ dbId, dbName, fields, onChange, onDeleted }) {
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('text');
   const [newRequired, setNewRequired] = useState(false);
+  const [newShowLabelInList, setNewShowLabelInList] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
@@ -205,14 +199,14 @@ function SettingsPanel({ dbId, dbName, fields, onChange, onDeleted }) {
     if (!newName.trim()) return;
     try {
       const res = await api.post(`/custom-databases/${dbId}/columns`, {
-        name: newName.trim(), type: newType, required: newRequired, placeholder: newPlaceholder.trim(),
+        name: newName.trim(), type: newType, required: newRequired, placeholder: newPlaceholder.trim(), showLabelInList: newShowLabelInList,
       });
       onChange(res.data.columns);
-      setNewName(''); setNewType('text'); setNewRequired(false); setNewPlaceholder(''); setAdding(false);
+      setNewName(''); setNewType('text'); setNewRequired(false); setNewShowLabelInList(false); setNewPlaceholder(''); setAdding(false);
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to add field'); }
   };
 
-  const startEdit = f => { setEditingId(f._id); setEditDraft({ name: f.name, type: f.type, required: !!f.required, placeholder: f.placeholder || '' }); };
+  const startEdit = f => { setEditingId(f._id); setEditDraft({ name: f.name, type: f.type, required: !!f.required, placeholder: f.placeholder || '', showLabelInList: !!f.showLabelInList }); };
 
   const saveEdit = async fid => {
     try {
@@ -272,6 +266,9 @@ function SettingsPanel({ dbId, dbName, fields, onChange, onDeleted }) {
                 <label className="cdb-field-req-check">
                   <input type="checkbox" checked={editDraft.required} onChange={e => setEditDraft(p => ({ ...p, required: e.target.checked }))} /> Required
                 </label>
+                <label className="cdb-field-req-check">
+                  <input type="checkbox" checked={!!editDraft.showLabelInList} onChange={e => setEditDraft(p => ({ ...p, showLabelInList: e.target.checked }))} /> Show name
+                </label>
                 <button className="cdb-inline-save" onClick={() => saveEdit(f._id)}><FiCheck size={13} /></button>
                 <button className="cdb-inline-cancel" onClick={() => setEditingId(null)}><FiX size={13} /></button>
               </div>
@@ -283,6 +280,7 @@ function SettingsPanel({ dbId, dbName, fields, onChange, onDeleted }) {
                     {f.name}
                     {idx === 0 && <span className="cdb-field-badge">Title</span>}
                     {f.required && <span className="cdb-field-badge cdb-field-badge-req">Required</span>}
+                    {f.showLabelInList && <span className="cdb-field-badge">Shows Name</span>}
                   </span>
                   <span className="cdb-field-type">{typeLabel(f.type)}</span>
                   {f.placeholder && <span className="cdb-field-ph">· "{f.placeholder}"</span>}
@@ -334,6 +332,12 @@ function SettingsPanel({ dbId, dbName, fields, onChange, onDeleted }) {
                   <label className="cdb-req-label">
                     <input type="checkbox" checked={newRequired} onChange={e => setNewRequired(e.target.checked)} />
                     Mark as required
+                  </label>
+                </div>
+                <div className="cdb-rec-field cdb-rec-field-inline">
+                  <label className="cdb-req-label">
+                    <input type="checkbox" checked={newShowLabelInList} onChange={e => setNewShowLabelInList(e.target.checked)} />
+                    Show name before value in list
                   </label>
                 </div>
               </div>
@@ -416,21 +420,25 @@ function CustomDatabaseView({ db, companyUsers, onUpdated, onDeleted }) {
   const [tab, setTab] = useState('records');   // 'records' | 'settings'
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
+  const [accessUsers, setAccessUsers] = useState(db.accessUsers || []);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
+  const [showAccess, setShowAccess] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       const res = await api.get(`/custom-databases/${db._id}/rows`);
       setRows(res.data.rows || []);
       setColumns(res.data.columns || []);
+      setAccessUsers(res.data.accessUsers || []);
     } catch { toast.error('Failed to load records'); }
     finally { setLoading(false); }
   }, [db._id]);
 
   useEffect(() => { setLoading(true); fetchData(); }, [fetchData]);
+  useEffect(() => { setAccessUsers(db.accessUsers || []); }, [db.accessUsers]);
 
   // Filter records by search across all fields
   const filtered = rows.filter(r => {
@@ -460,6 +468,31 @@ function CustomDatabaseView({ db, companyUsers, onUpdated, onDeleted }) {
     toast.success('Record deleted');
   };
 
+  const accessIds = new Set((accessUsers || []).map(u => String(u?._id || u?.userId || u?.user?._id || u)));
+  const accessMembers = (companyUsers || []).map(m => {
+    const user = m.user || m;
+    const id = String(m.userId || user._id || m._id || '');
+    return {
+      id,
+      name: m.fullName || m.name || user.fullName || user.name || user.email || 'User',
+      email: m.email || user.email || '',
+      hasAccess: accessIds.has(id),
+    };
+  }).filter(m => m.id);
+
+  const updateAccess = async memberId => {
+    const nextIds = new Set(accessIds);
+    if (nextIds.has(memberId)) nextIds.delete(memberId);
+    else nextIds.add(memberId);
+
+    const formData = new FormData();
+    formData.append('accessUsers', JSON.stringify([...nextIds]));
+    const res = await api.put(`/custom-databases/${db._id}`, formData);
+    setAccessUsers(res.data.database?.accessUsers || []);
+    onUpdated?.();
+    toast.success('Access updated');
+  };
+
   return (
     <div className="cdb-view">
       {/* Header */}
@@ -475,36 +508,43 @@ function CustomDatabaseView({ db, companyUsers, onUpdated, onDeleted }) {
         </div>
         <div className="cdb-view-actions">
           {tab === 'records' && (
-            <button className="cdb-add-row-btn" onClick={() => {
-              if (columns.length === 0) { setTab('settings'); toast('Add at least one field first'); return; }
-              setShowAdd(true);
-            }}>
-              <FiPlus size={14} /> Add new
-            </button>
+            <>
+              <button className="cdb-add-row-btn" onClick={() => {
+                if (columns.length === 0) { setTab('settings'); toast('Add at least one field first'); return; }
+                setShowAdd(true);
+              }}>
+                <FiPlus size={14} /> Add new
+              </button>
+              <button className="cdb-access-btn" onClick={() => setShowAccess(true)}>
+                <FiUsers size={14} /> Access
+              </button>
+            </>
           )}
         </div>
       </div>
 
       {/* Tabs */}
       <div className="cdb-tabs">
-        <button className={`cdb-tab${tab === 'records' ? ' active' : ''}`} onClick={() => setTab('records')}>
-          <FiDatabase size={13} /> Records
-        </button>
-        <button className={`cdb-tab${tab === 'settings' ? ' active' : ''}`} onClick={() => setTab('settings')}>
-          <FiSettings size={13} /> Settings
-        </button>
+        <div className="cdb-tab-list">
+          <button className={`cdb-tab${tab === 'records' ? ' active' : ''}`} onClick={() => setTab('records')}>
+            <FiDatabase size={13} /> Records
+          </button>
+          <button className={`cdb-tab${tab === 'settings' ? ' active' : ''}`} onClick={() => setTab('settings')}>
+            <FiSettings size={13} /> Settings
+          </button>
+        </div>
+        {tab === 'records' && (
+          <div className="cdb-search-bar">
+            <FiSearch size={15} className="cdb-search-icon" />
+            <input className="cdb-search-input" placeholder="Search records..." value={search} onChange={e => setSearch(e.target.value)} />
+            {search && <button className="cdb-search-clear" onClick={() => setSearch('')}><FiX size={13} /></button>}
+          </div>
+        )}
       </div>
 
       {/* Records tab */}
       {tab === 'records' && (
         <>
-          {/* Search */}
-          <div className="cdb-search-bar">
-            <FiSearch size={15} className="cdb-search-icon" />
-            <input className="cdb-search-input" placeholder="Search records…" value={search} onChange={e => setSearch(e.target.value)} />
-            {search && <button className="cdb-search-clear" onClick={() => setSearch('')}><FiX size={13} /></button>}
-          </div>
-
           {/* Records list */}
           <div className="cdb-records-wrap">
             {columns.length === 0 ? (
@@ -557,6 +597,36 @@ function CustomDatabaseView({ db, companyUsers, onUpdated, onDeleted }) {
           onSave={handleEditRecord}
           onClose={() => setEditRecord(null)}
         />
+      )}
+
+      {showAccess && (
+        <div className="cdb-modal-backdrop" onClick={() => setShowAccess(false)}>
+          <div className="cdb-rec-modal cdb-access-modal" onClick={e => e.stopPropagation()}>
+            <div className="cdb-modal-header">
+              <h3>Access</h3>
+              <button className="cdb-modal-close" onClick={() => setShowAccess(false)}><FiX /></button>
+            </div>
+            <div className="cdb-access-list">
+              {accessMembers.length === 0 ? (
+                <p className="cdb-access-empty">No team members found.</p>
+              ) : accessMembers.map(member => (
+                <div key={member.id} className="cdb-access-row">
+                  <div className="cdb-access-avatar">{member.name.slice(0, 2).toUpperCase()}</div>
+                  <div className="cdb-access-info">
+                    <span className="cdb-access-name">{member.name}</span>
+                    {member.email && <span className="cdb-access-email">{member.email}</span>}
+                  </div>
+                  <button
+                    className={`cdb-access-toggle${member.hasAccess ? ' active' : ''}`}
+                    onClick={() => updateAccess(member.id)}
+                  >
+                    {member.hasAccess ? 'Added' : 'Add'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

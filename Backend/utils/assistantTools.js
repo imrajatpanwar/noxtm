@@ -223,6 +223,20 @@ const toolDefinitions = [
     }
   },
   {
+    name: 'scan_dashboard',
+    description: 'Scan the Noxtm dashboard and return a concise health summary across tasks, projects, campaigns, team, and Data Center. Use this when the user clicks Scan or asks to scan/audit/review the dashboard.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        focus_section: {
+          type: 'string',
+          description: 'Optional current dashboard/sidebar section to emphasize, such as overview, company-data, task-manager, projects, or whatsapp-marketing.'
+        }
+      },
+      required: []
+    }
+  },
+  {
     name: 'save_memory',
     description: 'Save important company information to persistent memory. Use when the user shares important facts, decisions, processes, or preferences about their company that should be remembered across conversations.',
     input_schema: {
@@ -1063,6 +1077,134 @@ const executors = {
     }
 
     return results;
+  },
+
+  // ──────────────────────────────
+  // SCAN DASHBOARD
+  // ──────────────────────────────
+  scan_dashboard: async ({ companyId, input }) => {
+    const { focus_section = 'overview' } = input || {};
+    const companyObjectId = new mongoose.Types.ObjectId(companyId);
+    const now = new Date();
+
+    const [
+      taskStats,
+      overdueTasks,
+      urgentOpenTasks,
+      dueSoonTasks,
+      projectStats,
+      emailCampaignStats,
+      whatsappCampaignStats,
+      company,
+      dataCenterRecords,
+      recentCompanies,
+    ] = await Promise.all([
+      Task.aggregate([
+        { $match: { companyId: companyObjectId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Task.find({
+        companyId,
+        status: { $ne: 'Done' },
+        dueDate: { $lt: now }
+      }).sort({ dueDate: 1 }).limit(5).select('title status priority dueDate').lean(),
+      Task.countDocuments({
+        companyId,
+        status: { $ne: 'Done' },
+        priority: { $in: ['High', 'Urgent'] }
+      }),
+      Task.find({
+        companyId,
+        status: { $ne: 'Done' },
+        dueDate: { $gte: now, $lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) }
+      }).sort({ dueDate: 1 }).limit(5).select('title status priority dueDate').lean(),
+      Project.aggregate([
+        { $match: { companyId: companyObjectId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Campaign.aggregate([
+        { $match: { companyId: companyObjectId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      WhatsAppCampaign.aggregate([
+        { $match: { companyId: companyObjectId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Company.findById(companyId).select('members companyName').lean(),
+      CompanyData.find({ companyId }).select('companyName contacts source updatedAt').lean(),
+      CompanyData.find({ companyId }).sort({ updatedAt: -1 }).limit(5).select('companyName source contacts updatedAt').lean(),
+    ]);
+
+    const toCounts = rows => rows.reduce((acc, row) => {
+      acc[row._id || 'unknown'] = row.count;
+      return acc;
+    }, {});
+
+    const contactStatusCounts = {};
+    let contactCount = 0;
+    let importantContactCount = 0;
+    for (const record of dataCenterRecords) {
+      for (const contact of record.contacts || []) {
+        contactCount += 1;
+        if (contact.isImportant) importantContactCount += 1;
+        const status = contact.status || 'new';
+        contactStatusCounts[status] = (contactStatusCounts[status] || 0) + 1;
+      }
+    }
+
+    const taskCounts = toCounts(taskStats);
+    const projectCounts = toCounts(projectStats);
+    const emailCampaignCounts = toCounts(emailCampaignStats);
+    const whatsappCampaignCounts = toCounts(whatsappCampaignStats);
+
+    const risks = [];
+    if (overdueTasks.length > 0) risks.push(`${overdueTasks.length} overdue task${overdueTasks.length === 1 ? '' : 's'}`);
+    if (urgentOpenTasks > 0) risks.push(`${urgentOpenTasks} high or urgent open task${urgentOpenTasks === 1 ? '' : 's'}`);
+    if ((contactStatusCounts.followup || 0) > 0) risks.push(`${contactStatusCounts.followup} follow-up contact${contactStatusCounts.followup === 1 ? '' : 's'} in Data Center`);
+    if ((projectCounts['On Hold'] || 0) > 0) risks.push(`${projectCounts['On Hold']} project${projectCounts['On Hold'] === 1 ? '' : 's'} on hold`);
+
+    return {
+      focusSection: focus_section,
+      generatedAt: now.toISOString(),
+      company: {
+        name: company?.companyName || '',
+        teamMembers: company?.members?.length || 0
+      },
+      tasks: {
+        total: Object.values(taskCounts).reduce((sum, count) => sum + count, 0),
+        byStatus: taskCounts,
+        overdue: overdueTasks.map(t => ({ title: t.title, status: t.status, priority: t.priority, dueDate: t.dueDate })),
+        highOrUrgentOpen: urgentOpenTasks,
+        dueSoon: dueSoonTasks.map(t => ({ title: t.title, status: t.status, priority: t.priority, dueDate: t.dueDate }))
+      },
+      projects: {
+        total: Object.values(projectCounts).reduce((sum, count) => sum + count, 0),
+        byStatus: projectCounts
+      },
+      campaigns: {
+        email: emailCampaignCounts,
+        whatsapp: whatsappCampaignCounts
+      },
+      dataCenter: {
+        companies: dataCenterRecords.length,
+        contacts: contactCount,
+        importantContacts: importantContactCount,
+        contactsByStatus: contactStatusCounts,
+        recentCompanies: recentCompanies.map(c => ({
+          name: c.companyName,
+          source: c.source,
+          contacts: c.contacts?.length || 0,
+          updatedAt: c.updatedAt
+        }))
+      },
+      risks,
+      nextBestActions: [
+        overdueTasks.length > 0 ? 'Review overdue tasks and update owners or due dates.' : null,
+        urgentOpenTasks > 0 ? 'Check high-priority open work first.' : null,
+        (contactStatusCounts.followup || 0) > 0 ? 'Open Data Center follow-ups and contact the hottest leads.' : null,
+        dataCenterRecords.length > 0 && contactCount === 0 ? 'Add decision-maker contacts to Data Center records.' : null
+      ].filter(Boolean)
+    };
   },
 
   // ──────────────────────────────

@@ -24,6 +24,8 @@ import {
 import './Sidebar.css';
 import api from '../config/api';
 
+const customDbIconSrc = filename => `${api.defaults.baseURL}/custom-databases/icon/${encodeURIComponent(filename)}`;
+
 function Sidebar({ activeSection, onSectionChange }) {
   const { hasPermission, MODULES, permissionUpdateTrigger } = useRole();
   const { socket } = useContext(MessagingContext);
@@ -426,7 +428,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                         >
                           {db.icon ? (
                             <img
-                              src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/custom-databases/icon/${db.icon}`}
+                              src={customDbIconSrc(db.icon)}
                               alt={db.name}
                               className="sidebar-custom-db-icon"
                             />

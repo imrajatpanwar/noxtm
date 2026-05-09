@@ -12,6 +12,7 @@ const LEGACY_STATUS_MAP = {
   'Cold Lead': 'new', 'Warm Lead': 'followup',
   'Qualified (SQL)': 'converted', 'Active': 'active', 'Dead Lead': 'dead',
 };
+const CONTACT_STATUS_VALUES = new Set(['new', 'active', 'followup', 'converted', 'dead']);
 function normalizeStatus(s) { return LEGACY_STATUS_MAP[s] || s || 'new'; }
 
 // ============ PERMISSION HELPER ============
@@ -558,7 +559,13 @@ router.patch('/company-data-contacts/:companyDataId/:contactIndex/status', auth,
       return res.status(404).json({ message: 'Contact not found' });
     }
 
-    if (status) company.contacts[idx].status = status;
+    if (status) {
+      const normalizedStatus = normalizeStatus(status);
+      if (!CONTACT_STATUS_VALUES.has(normalizedStatus)) {
+        return res.status(400).json({ message: 'Invalid contact status' });
+      }
+      company.contacts[idx].status = normalizedStatus;
+    }
     if (followUp !== undefined) company.contacts[idx].followUp = followUp;
 
     await company.save();

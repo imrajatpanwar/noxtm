@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FiSearch, FiPhone, FiActivity, FiChevronRight, FiX, FiUser
+  FiSearch, FiPhone, FiChevronDown, FiCheck, FiX, FiUser
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import api from '../config/api';
@@ -15,14 +15,84 @@ const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
 const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
 const STATUS_LABELS = {
   new:       'New',
+  active:    'Active',
   followup:  'Follow-up',
+  converted: 'Converted',
   dead:      'Dead',
 };
 const STATUS_COLORS = {
   new:       { bg: '#dbeafe', color: '#1d4ed8' },
+  active:    { bg: '#dcfce7', color: '#15803d' },
   followup:  { bg: '#fef3c7', color: '#b45309' },
+  converted: { bg: '#ede9fe', color: '#7c3aed' },
   dead:      { bg: '#fee2e2', color: '#dc2626' },
 };
+
+function StatusDropdown({ contact, onChange }) {
+  const [open, setOpen] = useState(false);
+  const current = normalizeStatus(contact.status);
+  const currentStyle = STATUS_COLORS[current] || { bg: '#f5f5f5', color: '#525252' };
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex' }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          minWidth: 104, height: 26, padding: '0 8px 0 12px', border: 'none', outline: 'none',
+          borderRadius: 999, background: currentStyle.bg, color: currentStyle.color,
+          fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        <span>{STATUS_LABELS[current] || 'New'}</span>
+        <FiChevronDown size={13} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30,
+            minWidth: 144, padding: 6, border: '1px solid #d1d5db', borderRadius: 12,
+            background: '#fff', boxShadow: '0 16px 36px rgba(15, 23, 42, 0.18)',
+          }}
+        >
+          {STATUS_OPTIONS.map(status => {
+            const selected = status === current;
+            const optionStyle = STATUS_COLORS[status] || currentStyle;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (!selected) onChange(contact, status);
+                }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 10px', border: 0, borderRadius: 8,
+                  background: selected ? optionStyle.bg : '#fff',
+                  color: selected ? optionStyle.color : '#111827',
+                  fontSize: 13, fontWeight: selected ? 800 : 600,
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ width: 14, display: 'inline-flex' }}>
+                  {selected && <FiCheck size={14} />}
+                </span>
+                {STATUS_LABELS[status]}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AllContacts() {
   const [contacts, setContacts] = useState([]);
@@ -65,10 +135,6 @@ function AllContacts() {
   useEffect(() => { fetchLabels(); }, [fetchLabels]);
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
 
-  const stats = {
-    total: contacts.length,
-  };
-
   const handleStatusChange = async (contact, newStatus) => {
     try {
       await api.patch(
@@ -83,14 +149,12 @@ function AllContacts() {
     }
   };
 
-  const activeFiltersCount = filterLabelId ? 1 : 0;
+  const activeFiltersCount = (filterStatus !== 'All' ? 1 : 0) + (filterLabelId ? 1 : 0);
 
   const clearAllFilters = () => {
     setFilterStatus('All');
     setFilterLabelId('');
   };
-
-  const getStatusStyle = (status) => STATUS_COLORS[status] || { bg: '#f5f5f5', color: '#525252' };
 
   return (
     <div>
@@ -192,7 +256,6 @@ function AllContacts() {
               </thead>
               <tbody>
                 {contacts.map(contact => {
-                  const style = getStatusStyle(contact.status);
                   return (
                     <tr key={contact._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '10px 12px' }}>
@@ -222,21 +285,7 @@ function AllContacts() {
                         {contact.sourceType === 'extension' ? 'Extension' : contact.sourceType === 'dashboard' ? 'Dashboard' : contact.sourceType === 'import' ? 'Import' : '-'}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <select
-                          value={contact.status || 'new'}
-                          onChange={e => handleStatusChange(contact, e.target.value)}
-                          style={{
-                            fontSize: 11, fontWeight: 500, borderRadius: 20,
-                            padding: '3px 8px', border: 'none', outline: 'none',
-                            background: style.bg, color: style.color, cursor: 'pointer',
-                          }}
-                        >
-                          {STATUS_OPTIONS.map(s => (
-                            <option key={s} value={s} style={{ background: '#fff', color: '#111' }}>
-                              {STATUS_LABELS[s]}
-                            </option>
-                          ))}
-                        </select>
+                        <StatusDropdown contact={contact} onChange={handleStatusChange} />
                       </td>
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>

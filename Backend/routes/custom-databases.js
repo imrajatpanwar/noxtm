@@ -227,7 +227,7 @@ router.delete('/:id/rows/:rowId', authenticateToken, async (req, res) => {
 // Add column
 router.post('/:id/columns', authenticateToken, async (req, res) => {
   try {
-    const { name, type, required, placeholder } = req.body;
+    const { name, type, required, placeholder, showLabelInList } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Column name is required' });
 
     const db = await CustomDatabase.findById(req.params.id);
@@ -239,6 +239,7 @@ router.post('/:id/columns', authenticateToken, async (req, res) => {
       order: db.columns.length,
       required: !!required,
       placeholder: placeholder?.trim() || '',
+      showLabelInList: !!showLabelInList,
     };
     db.columns.push(col);
     await db.save();
@@ -254,7 +255,7 @@ router.post('/:id/columns', authenticateToken, async (req, res) => {
 // Rename / retype column
 router.put('/:id/columns/:colId', authenticateToken, async (req, res) => {
   try {
-    const { name, type, required, placeholder } = req.body;
+    const { name, type, required, placeholder, showLabelInList } = req.body;
     const db = await CustomDatabase.findById(req.params.id);
     if (!db) return res.status(404).json({ message: 'Database not found' });
 
@@ -265,6 +266,7 @@ router.put('/:id/columns/:colId', authenticateToken, async (req, res) => {
     if (type !== undefined) col.type = type;
     if (required !== undefined) col.required = !!required;
     if (placeholder !== undefined) col.placeholder = placeholder.trim();
+    if (showLabelInList !== undefined) col.showLabelInList = !!showLabelInList;
 
     await db.save();
     res.json({ success: true, column: col, columns: db.columns });

@@ -24,12 +24,22 @@ const ClockIcon = () => (
   </svg>
 );
 
+const ScanIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 3H5a2 2 0 0 0-2 2v2" />
+    <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+    <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+    <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+    <path d="M7 12h10" />
+  </svg>
+);
+
 // Quick suggestions shown when chat is empty
 const QUICK_SUGGESTIONS = [
+  'Scan dashboard',
   'Show my tasks',
   'Team overview',
   'Create a task',
-  'Campaign stats',
 ];
 
 // Detect what label to show based on the user's message
@@ -38,6 +48,7 @@ function detectLoadingLabel(msg) {
   if (/\b(edit|update|change|modify|fix|rename|set|correct|adjust|replace)\b/.test(m)) return 'Editing';
   if (/\b(delete|remove|cancel|clear|drop)\b/.test(m)) return 'Processing';
   if (/\b(create|make|add|build|generate|schedule|send|launch|write|compose|draft)\b/.test(m)) return 'Working';
+  if (/\b(scan|audit|inspect|review)\b/.test(m)) return 'Scanning';
   if (/\b(search|find|look|fetch|get|show|list|filter|check)\b/.test(m)) return 'Searching';
   if (/\b(save|remember|store|note|record|memorize)\b/.test(m)) return 'Saving';
   if (/\b(analyz|calculat|stat|analytic|report|summar|breakdown)\b/.test(m)) return 'Analyzing';
@@ -51,12 +62,11 @@ const LOADING_PHASES = [
   { delay: 9000, label: 'Almost there', suffix: '...' },
 ];
 
-function NoxtmAssistant({ onCollapse }) {
+function NoxtmAssistant({ onCollapse, activeSection }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('Thinking');
-  const [hasMore, setHasMore] = useState(false);
   const [scheduledActions, setScheduledActions] = useState([]);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -75,7 +85,6 @@ function NoxtmAssistant({ onCollapse }) {
             id: m._id,
             time: m.createdAt
           })));
-          setHasMore(res.data.hasMore);
         }
       } catch (err) {
         console.debug('[Assistant] History load skipped:', err.message);
@@ -193,6 +202,11 @@ function NoxtmAssistant({ onCollapse }) {
     } catch {}
   };
 
+  const handleDashboardScan = () => {
+    const section = activeSection || 'overview';
+    sendMessage(`Scan my Noxtm dashboard now. Use the scan_dashboard tool and focus especially on the current section: ${section}. Summarize important counts, risks, overdue work, and the next best actions.`);
+  };
+
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -213,11 +227,17 @@ function NoxtmAssistant({ onCollapse }) {
             <span className="na-header-name">Noxtm</span>
           </div>
         </div>
-        {messages.length > 0 && (
-          <button className="na-clear-btn" onClick={handleClearChat} title="Clear chat">
-            <TrashIcon />
+        <div className="na-header-actions">
+          <button className="na-scan-btn" onClick={handleDashboardScan} disabled={loading} title="Scan dashboard">
+            <ScanIcon />
+            <span>Scan</span>
           </button>
-        )}
+          {messages.length > 0 && (
+            <button className="na-clear-btn" onClick={handleClearChat} title="Clear chat">
+              <TrashIcon />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Scheduled Actions Banner */}
