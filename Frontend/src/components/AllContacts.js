@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FiSearch, FiPhone, FiChevronDown, FiCheck, FiX, FiUser
 } from 'react-icons/fi';
@@ -13,6 +13,7 @@ const LEGACY_NORMALIZE = {
 const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
 
 const STATUS_OPTIONS = ['new', 'active', 'followup', 'converted', 'dead'];
+const CONTACT_PAGE_SIZE = 15;
 const STATUS_LABELS = {
   new:       'New',
   active:    'Active',
@@ -97,10 +98,15 @@ function StatusDropdown({ contact, onChange }) {
 function AllContacts() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalContacts, setTotalContacts] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterLabelId, setFilterLabelId] = useState('');
   const [labels, setLabels] = useState([]);
+  const loadMoreRef = useRef(null);
 
   const fetchLabels = useCallback(async () => {
     try {
@@ -111,29 +117,61 @@ function AllContacts() {
     }
   }, []);
 
-  const fetchContacts = useCallback(async () => {
+  const fetchContacts = useCallback(async ({ pageToLoad = 1, append = false } = {}) => {
     try {
-      setLoading(true);
-      const params = {};
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const params = {
+        page: pageToLoad,
+        limit: CONTACT_PAGE_SIZE,
+      };
       if (filterStatus !== 'All') params.status = filterStatus;
       if (searchTerm) params.search = searchTerm;
       if (filterLabelId) params.labelId = filterLabelId;
 
       const response = await api.get('/company-data-contacts', { params });
-      const raw = Array.isArray(response.data) ? response.data : [];
+      const payload = response.data;
+      const raw = Array.isArray(payload) ? payload : (payload.data || []);
       const data = raw.map(c => ({ ...c, status: normalizeStatus(c.status) }));
-      setContacts(data);
+      setContacts(prev => {
+        if (!append) return data;
+        const seen = new Set(prev.map(contact => contact._id));
+        const uniqueNext = data.filter(contact => !seen.has(contact._id));
+        return [...prev, ...uniqueNext];
+      });
+      setPage(pageToLoad);
+      setHasMore(Boolean(payload.pagination?.hasMore));
+      setTotalContacts(payload.pagination?.total ?? data.length);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       toast.error('Failed to load contacts');
-      setContacts([]);
+      if (!append) setContacts([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [filterStatus, searchTerm, filterLabelId]);
 
   useEffect(() => { fetchLabels(); }, [fetchLabels]);
-  useEffect(() => { fetchContacts(); }, [fetchContacts]);
+  useEffect(() => { fetchContacts({ pageToLoad: 1, append: false }); }, [fetchContacts]);
+
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore) return undefined;
+    const target = loadMoreRef.current;
+    if (!target) return undefined;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          fetchContacts({ pageToLoad: page + 1, append: true });
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [fetchContacts, hasMore, loading, loadingMore, page]);
 
   const handleStatusChange = async (contact, newStatus) => {
     try {
@@ -142,7 +180,7 @@ function AllContacts() {
         { status: newStatus }
       );
       toast.success('Status updated');
-      await fetchContacts();
+      await fetchContacts({ pageToLoad: 1, append: false });
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
@@ -206,7 +244,7 @@ function AllContacts() {
         )}
 
         <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 'auto' }}>
-          {contacts.length} contact{contacts.length !== 1 ? 's' : ''}
+          {loading ? '' : `${contacts.length} of ${totalContacts} contact${totalContacts !== 1 ? 's' : ''}`}
         </span>
       </div>
 
@@ -313,6 +351,21 @@ function AllContacts() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+      <div ref={loadMoreRef} style={{ minHeight: hasMore || loadingMore ? 1 : 0 }}>
+        {loadingMore && (
+          <div style={{ marginTop: 12, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 0.8fr 0.8fr 0.7fr', gap: 12, alignItems: 'center' }}>
+                <Skeleton style={{ height: 24, width: '100%' }} />
+                <Skeleton style={{ height: 16, width: '100%' }} />
+                <Skeleton style={{ height: 16, width: '100%' }} />
+                <Skeleton style={{ height: 22, width: 90 }} />
+                <Skeleton style={{ height: 16, width: '70%' }} />
+              </div>
+            ))}
           </div>
         )}
       </div>

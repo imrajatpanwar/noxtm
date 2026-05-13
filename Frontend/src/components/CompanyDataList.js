@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { FiSearch, FiChevronDown, FiChevronRight, FiTrash2, FiGlobe, FiMail, FiPhone, FiMapPin, FiLinkedin, FiUsers, FiX, FiTag, FiPlus, FiEdit2, FiCheck, FiFilter, FiSliders, FiMoreVertical } from 'react-icons/fi';
+import { FiSearch, FiChevronDown, FiChevronRight, FiTrash2, FiGlobe, FiMail, FiPhone, FiMapPin, FiUsers, FiX, FiTag, FiPlus, FiEdit2, FiCheck, FiSliders, FiMoreVertical } from 'react-icons/fi';
 import LinkedInIcon from './assets/LinkedIn_icon.svg';
 import { useRole } from '../contexts/RoleContext';
 import api from '../config/api';
@@ -15,6 +15,7 @@ const LEGACY_NORMALIZE = {
 const normalizeStatus = s => LEGACY_NORMALIZE[s] || s || 'new';
 
 const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9', '#10b981', '#14b8a6', '#f97316'];
+const COMPANY_PAGE_SIZE = 10;
 
 function getInitials(name) {
   return (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -100,11 +101,18 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
   const { currentUser } = useRole();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [addedToday, setAddedToday] = useState(0);
+  const [industryFacets, setIndustryFacets] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [kebabOpenId, setKebabOpenId] = useState(null);
   const kebabRef = useRef(null);
+  const loadMoreRef = useRef(null);
 
   // Data access
   const [dataAccessPermissions, setDataAccessPermissions] = useState([]);
@@ -141,7 +149,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
 
   // View-all / edit-all permissions (Admin/Owner or delegated)
   const [perms, setPerms] = useState({ canViewAll: false, canEditAll: false });
-  const [viewMode, setViewMode] = useState('mine'); // 'mine' | 'all'
+  const [viewMode, setViewMode] = useState('all'); // 'mine' | 'all'
 
   const isOwner = currentUser?.roleInCompany === 'Owner' || currentUser?.role === 'Admin';
 
@@ -186,24 +194,87 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [kebabOpenId]);
 
-  const fetchCompanies = useCallback(async () => {
+  const fetchCompanies = useCallback(async ({ pageToLoad = 1, append = false } = {}) => {
     try {
-      setLoading(true);
-      const params = {};
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      const params = {
+        page: pageToLoad,
+        limit: COMPANY_PAGE_SIZE,
+        sort: sortOrder,
+      };
       if (searchQuery) params.search = searchQuery;
       if (labelFilter) params.labelId = labelFilter;
       if (viewMode === 'all' && perms.canViewAll) params.scope = 'all';
+      if (filterIndustries.length > 0) params.industries = filterIndustries.join(',');
+      if (filterAssignedTo) params.assignedTo = filterAssignedTo;
+      if (filterContactsMin !== '') params.contactsMin = filterContactsMin;
+      if (filterHasWebsite) params.hasWebsite = 'true';
+      if (filterDateAdded) params.dateAdded = filterDateAdded;
+      if (filterDateFrom) params.dateFrom = filterDateFrom;
+      if (filterDateTo) params.dateTo = filterDateTo;
+
       const response = await api.get('/company-data', { params });
-      setCompanies(response.data);
+      const payload = response.data;
+      const nextCompanies = Array.isArray(payload) ? payload : (payload.data || []);
+      const nextPagination = payload.pagination || {};
+
+      setCompanies(prev => {
+        if (!append) return nextCompanies;
+        const seen = new Set(prev.map(company => company._id));
+        const uniqueNext = nextCompanies.filter(company => !seen.has(company._id));
+        return [...prev, ...uniqueNext];
+      });
+      setPage(pageToLoad);
+      setHasMore(Boolean(nextPagination.hasMore));
+      setTotalRecords(nextPagination.total ?? nextCompanies.length);
+      setAddedToday(payload.stats?.addedToday ?? 0);
+      setIndustryFacets(payload.facets?.industries || []);
     } catch (error) {
       console.error('Error fetching companies:', error);
       toast.error('Failed to load companies');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [searchQuery, labelFilter, viewMode, perms.canViewAll]);
+  }, [
+    searchQuery,
+    labelFilter,
+    viewMode,
+    perms.canViewAll,
+    filterIndustries,
+    filterAssignedTo,
+    filterContactsMin,
+    filterHasWebsite,
+    filterDateAdded,
+    filterDateFrom,
+    filterDateTo,
+    sortOrder,
+  ]);
 
-  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+  useEffect(() => {
+    setSelectedCards(new Set());
+    setExpandedId(null);
+    fetchCompanies({ pageToLoad: 1, append: false });
+  }, [fetchCompanies]);
+
+  useEffect(() => {
+    if (activeTab === 'contacts' || loading || loadingMore || !hasMore) return undefined;
+    const target = loadMoreRef.current;
+    if (!target) return undefined;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          fetchCompanies({ pageToLoad: page + 1, append: true });
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeTab, fetchCompanies, hasMore, loading, loadingMore, page]);
 
   // Fetch view-all / edit-all permissions once on mount
   useEffect(() => {
@@ -262,7 +333,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
       await api.delete(`/company-data/${id}`);
       toast.success('Company deleted');
       setDeleteConfirm(null);
-      fetchCompanies();
+      fetchCompanies({ pageToLoad: 1, append: false });
     } catch (error) { toast.error('Failed to delete company'); }
   };
 
@@ -289,7 +360,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
       await api.put(`/company-data/${id}`, editFormData);
       toast.success('Company updated');
       setEditingCompany(null);
-      fetchCompanies();
+      fetchCompanies({ pageToLoad: 1, append: false });
     } catch (error) { toast.error('Failed to update company'); }
   };
 
@@ -300,7 +371,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
       await api.patch(`/company-data-contacts/${companyDataId}/${contactIndex}/labels`, {
         labelId, action: hasLabel ? 'remove' : 'add'
       });
-      fetchCompanies();
+      fetchCompanies({ pageToLoad: 1, append: false });
       toast.success(hasLabel ? 'Label removed' : 'Label applied');
     } catch (error) { toast.error('Failed to update label'); }
   };
@@ -312,7 +383,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
         companyIds.map(id => api.patch(`/company-data/${id}/bulk-labels`, { labelId, action: 'add' }))
       );
       toast.success(`Label applied to ${companyIds.length} companies`);
-      fetchCompanies();
+      fetchCompanies({ pageToLoad: 1, append: false });
       setSelectedCards(new Set());
       setShowBulkLabelDropdown(false);
     } catch (error) { toast.error('Failed to apply label'); }
@@ -377,59 +448,19 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
 
   // Unique industries for filter
   const uniqueIndustries = useMemo(() =>
-    [...new Set(companies.map(c => c.industry).filter(Boolean))].sort(),
-    [companies]
+    industryFacets.length > 0
+      ? industryFacets.map(industry => industry.name).filter(Boolean)
+      : [...new Set(companies.map(c => c.industry).filter(Boolean))].sort(),
+    [companies, industryFacets]
+  );
+  const industryCountByName = useMemo(
+    () => new Map(industryFacets.map(industry => [industry.name, industry.count])),
+    [industryFacets]
   );
 
-  // Client-side filtered + sorted companies
-  const displayedCompanies = useMemo(() => {
-    let result = [...companies];
-    if (filterIndustries.length > 0) result = result.filter(c => filterIndustries.includes(c.industry));
-    if (filterAssignedTo) result = result.filter(c => (c.createdBy?._id || c.createdBy) === filterAssignedTo);
-    if (filterContactsMin !== '') result = result.filter(c => (c.contacts?.length || 0) >= parseInt(filterContactsMin));
-    if (filterHasWebsite) result = result.filter(c => !!c.website);
-    if (filterDateAdded === 'today') {
-      const today = new Date().toDateString();
-      result = result.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === today);
-    } else if (filterDateAdded === 'week') {
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      result = result.filter(c => c.createdAt && new Date(c.createdAt) >= weekAgo);
-    } else if (filterDateAdded === 'month') {
-      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      result = result.filter(c => c.createdAt && new Date(c.createdAt) >= monthAgo);
-    } else if (filterDateAdded === 'custom') {
-      if (filterDateFrom) {
-        const from = new Date(filterDateFrom);
-        from.setHours(0, 0, 0, 0);
-        result = result.filter(c => c.createdAt && new Date(c.createdAt) >= from);
-      }
-      if (filterDateTo) {
-        const to = new Date(filterDateTo);
-        to.setHours(23, 59, 59, 999);
-        result = result.filter(c => c.createdAt && new Date(c.createdAt) <= to);
-      }
-    }
-    result.sort((a, b) => {
-      if (sortOrder === 'az') return (a.companyName || '').localeCompare(b.companyName || '');
-      if (sortOrder === 'za') return (b.companyName || '').localeCompare(a.companyName || '');
-      if (sortOrder === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      if (sortOrder === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-      return 0;
-    });
-    return result;
-  }, [companies, filterIndustries, filterAssignedTo, filterContactsMin, filterHasWebsite, filterDateAdded, filterDateFrom, filterDateTo, sortOrder]);
-
-  const statsSource = useMemo(() =>
-    filterAssignedTo ? companies.filter(c => (c.createdBy?._id || c.createdBy) === filterAssignedTo) : companies,
-    [companies, filterAssignedTo]
-  );
-
-  const addedTodayCount = useMemo(() =>
-    statsSource.filter(c => c.createdAt && new Date(c.createdAt).toDateString() === new Date().toDateString()).length,
-    [statsSource]
-  );
-
-  const totalRecordsCount = statsSource.length;
+  const displayedCompanies = companies;
+  const addedTodayCount = addedToday;
+  const totalRecordsCount = totalRecords;
 
   const contactsStats = useMemo(() => {
     let total = 0, newCount = 0, activeCount = 0, convertedCount = 0;
@@ -736,8 +767,8 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
             </span>
           )}
           <button className="cd-clear-all-btn" onClick={clearAllFilters}>Clear all</button>
-          {!loading && companies.length > 0 && displayedCompanies.length !== companies.length && (
-            <span className="cd-filter-result-count">Showing {displayedCompanies.length} of {companies.length} companies</span>
+          {!loading && totalRecords > 0 && (
+            <span className="cd-filter-result-count">Loaded {displayedCompanies.length} of {totalRecords} companies</span>
           )}
         </div>
       )}
@@ -760,13 +791,14 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
           {hasActiveFilters && <button className="cd-btn-outline" onClick={clearAllFilters} style={{ marginTop: 12 }}>Clear filters</button>}
         </div>
       ) : (
-        <div className="cd-list">
-          {displayedCompanies.map((company) => {
-            const isEditing = editingCompany === company._id;
-            const linkedinUrl = company.linkedin
-              ? (company.linkedin.startsWith('http') ? company.linkedin : `https://${company.linkedin}`)
-              : null;
-            return (
+        <>
+          <div className="cd-list">
+            {displayedCompanies.map((company) => {
+              const isEditing = editingCompany === company._id;
+              const linkedinUrl = company.linkedin
+                ? (company.linkedin.startsWith('http') ? company.linkedin : `https://${company.linkedin}`)
+                : null;
+              return (
               <div key={company._id} className={`cd-card${selectedCards.has(company._id) ? ' cd-card-selected' : ''}`}>
                 <div className="cd-card-header" onClick={() => !isEditing && setExpandedId(expandedId === company._id ? null : company._id)}>
                   <div className="cd-card-checkbox" onClick={(e) => e.stopPropagation()}>
@@ -935,7 +967,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
                                           <FiTag size={11} />
                                         </button>
                                         {labelAssignCompany === company._id && labelAssignContact === idx && (
-                                          <div style={{ position: 'absolute', top: 26, left: 0, zIndex: 10, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: 6, minWidth: 140 }}>
+                                          <div className="cd-contact-label-dropdown">
                                             {labels.map(l => {
                                               const hasIt = (contact.labels || []).some(lid => (lid._id || lid) === l._id);
                                               return (
@@ -963,9 +995,24 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+          <div ref={loadMoreRef} className={`cd-load-more${loadingMore ? ' cd-load-more-skeletons' : ''}`}>
+            {loadingMore ? (
+              [1, 2].map(i => (
+                <div key={i} className="cd-skeleton-card cd-load-more-card">
+                  <Skeleton className="tw-h-5 tw-w-2/5" />
+                  <Skeleton className="tw-h-4 tw-w-full" />
+                </div>
+              ))
+            ) : hasMore ? (
+              <span className="cd-load-more-sentinel" aria-hidden="true" />
+            ) : (
+              <span>Showing {displayedCompanies.length} of {totalRecords} companies</span>
+            )}
+          </div>
+        </>
       )}
 
       {editingCompany && (
@@ -1165,7 +1212,7 @@ function CompanyDataList({ activeTab, tabs, onTabChange }) {
                     <input type="checkbox" checked={filterIndustries.includes(ind)}
                       onChange={() => setFilterIndustries(prev => prev.includes(ind) ? prev.filter(i => i !== ind) : [...prev, ind])} />
                     <span>{ind}</span>
-                    <span className="cd-filter-row-count">{companies.filter(c => c.industry === ind).length}</span>
+                    <span className="cd-filter-row-count">{industryCountByName.get(ind) ?? companies.filter(c => c.industry === ind).length}</span>
                   </label>
                 ))}
               </div>

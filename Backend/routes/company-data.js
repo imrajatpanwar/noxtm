@@ -14,6 +14,9 @@ const LEGACY_STATUS_MAP = {
 };
 const CONTACT_STATUS_VALUES = new Set(['new', 'active', 'followup', 'converted', 'dead']);
 function normalizeStatus(s) { return LEGACY_STATUS_MAP[s] || s || 'new'; }
+function escapeRegex(value = '') {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // ============ PERMISSION HELPER ============
 // Resolves whether the current user can view/edit every company-data record in their
@@ -234,7 +237,24 @@ router.get('/company-data', auth, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { search, industry, labelId, scope } = req.query;
+    const {
+      search,
+      industry,
+      industries,
+      labelId,
+      scope,
+      assignedTo,
+      contactsMin,
+      hasWebsite,
+      dateAdded,
+      dateFrom,
+      dateTo,
+      sort,
+    } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+    const skip = (page - 1) * limit;
+
     const query = { companyId: user.companyId };
 
     // canViewAll grants permission to see all records, but only when explicitly
@@ -244,28 +264,141 @@ router.get('/company-data', auth, async (req, res) => {
       query.createdBy = user._id;
     }
 
-    if (industry) query.industry = industry;
+    const scopeQuery = { ...query };
+
+    const industryFilter = industries || industry;
+    if (industryFilter) {
+      const industryValues = String(industryFilter)
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+      if (industryValues.length === 1) query.industry = industryValues[0];
+      if (industryValues.length > 1) query.industry = { $in: industryValues };
+    }
+
+    if (canViewAll && scope === 'all' && assignedTo && mongoose.Types.ObjectId.isValid(assignedTo)) {
+      query.createdBy = assignedTo;
+    }
 
     // If filtering by label, find companies whose contacts have this label
     if (labelId) {
       query['contacts.labels'] = labelId;
     }
 
-    let companies = await CompanyData.find(query)
-      .populate('createdBy', 'fullName email')
-      .sort({ createdAt: -1 });
-
-    if (search) {
-      const q = search.toLowerCase();
-      companies = companies.filter(c =>
-        c.companyName.toLowerCase().includes(q) ||
-        (c.companyEmail && c.companyEmail.toLowerCase().includes(q)) ||
-        (c.industry && c.industry.toLowerCase().includes(q))
-      );
+    const parsedContactsMin = parseInt(contactsMin, 10);
+    if (!Number.isNaN(parsedContactsMin) && parsedContactsMin > 0) {
+      query.$expr = {
+        $gte: [
+          { $size: { $ifNull: ['$contacts', []] } },
+          parsedContactsMin,
+        ],
+      };
     }
 
+    if (hasWebsite === 'true') {
+      query.website = { $exists: true, $nin: ['', null] };
+    }
+
+    if (dateAdded || dateFrom || dateTo) {
+      const createdAt = {};
+      const now = new Date();
+      if (dateAdded === 'today') {
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        createdAt.$gte = start;
+        createdAt.$lte = end;
+      } else if (dateAdded === 'week') {
+        createdAt.$gte = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      } else if (dateAdded === 'month') {
+        createdAt.$gte = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      } else if (dateAdded === 'custom' || dateFrom || dateTo) {
+        if (dateFrom) {
+          const from = new Date(dateFrom);
+          from.setHours(0, 0, 0, 0);
+          createdAt.$gte = from;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo);
+          to.setHours(23, 59, 59, 999);
+          createdAt.$lte = to;
+        }
+      }
+      if (Object.keys(createdAt).length > 0) query.createdAt = createdAt;
+    }
+
+    if (search) {
+      const regex = new RegExp(escapeRegex(search), 'i');
+      query.$or = [
+        { companyName: regex },
+        { companyEmail: regex },
+        { industry: regex },
+      ];
+    }
+
+    const sortMap = {
+      az: { companyName: 1 },
+      za: { companyName: -1 },
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+    };
+    const sortBy = sortMap[sort] || sortMap.newest;
+
+    const wantsPagedResponse = req.query.page !== undefined || req.query.limit !== undefined;
+    if (!wantsPagedResponse) {
+      const companies = await CompanyData.find(query)
+        .populate('createdBy', 'fullName email')
+        .sort(sortBy);
+
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return res.json(companies);
+    }
+
+    const [companies, total, addedToday, industriesFacet] = await Promise.all([
+      CompanyData.find(query)
+        .populate('createdBy', 'fullName email')
+        .sort(sortBy)
+        .skip(skip)
+        .limit(limit),
+      CompanyData.countDocuments(query),
+      (() => {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        return CompanyData.countDocuments({
+          ...scopeQuery,
+          createdAt: { $gte: start, $lte: end },
+        });
+      })(),
+      CompanyData.aggregate([
+        { $match: scopeQuery },
+        { $match: { industry: { $exists: true, $nin: ['', null] } } },
+        { $group: { _id: '$industry', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, name: '$_id', count: 1 } },
+      ]),
+    ]);
+
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.json(companies);
+    res.json({
+      data: companies,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + companies.length < total,
+      },
+      stats: {
+        totalRecords: total,
+        addedToday,
+      },
+      facets: {
+        industries: industriesFacet,
+      },
+    });
   } catch (error) {
     console.error('Error fetching company data:', error);
     res.status(500).json({ message: 'Server error' });
@@ -463,10 +596,127 @@ router.get('/company-data-contacts', auth, async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const { status, search, important, labelId } = req.query;
+    const wantsPagedResponse = req.query.page !== undefined || req.query.limit !== undefined;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 15, 1), 100);
+    const skip = (page - 1) * limit;
 
     const { canViewAll } = await resolveCompanyDataPermissions(user);
     const listFilter = { companyId: user.companyId };
     if (!canViewAll) listFilter.createdBy = user._id;
+
+    if (wantsPagedResponse) {
+      const contactMatch = {
+        $or: [
+          { 'contacts.fullName': { $exists: true, $ne: '' } },
+          { 'contacts.email': { $exists: true, $ne: '' } },
+        ],
+      };
+
+      if (status && status !== 'All') {
+        const normalized = normalizeStatus(status);
+        const legacyValues = Object.entries(LEGACY_STATUS_MAP)
+          .filter(([, value]) => value === normalized)
+          .map(([key]) => key);
+        contactMatch['contacts.status'] = { $in: [normalized, ...legacyValues] };
+      }
+
+      if (important === 'true') {
+        contactMatch['contacts.isImportant'] = true;
+      }
+
+      if (labelId && mongoose.Types.ObjectId.isValid(labelId)) {
+        contactMatch['contacts.labels'] = new mongoose.Types.ObjectId(labelId);
+      }
+
+      if (search) {
+        const regex = new RegExp(escapeRegex(search), 'i');
+        contactMatch.$and = [
+          ...(contactMatch.$and || []),
+          {
+            $or: [
+              { 'contacts.fullName': regex },
+              { companyName: regex },
+              { 'contacts.email': regex },
+              { 'contacts.designation': regex },
+            ],
+          },
+        ];
+      }
+
+      const [result, allLabels, company] = await Promise.all([
+        CompanyData.aggregate([
+          { $match: listFilter },
+          { $sort: { createdAt: -1 } },
+          { $unwind: { path: '$contacts', includeArrayIndex: 'contactIndex' } },
+          { $match: contactMatch },
+          {
+            $facet: {
+              data: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                  $project: {
+                    companyDataId: '$_id',
+                    contactIndex: 1,
+                    contact: '$contacts',
+                    companyName: 1,
+                    website: 1,
+                    companyId: 1,
+                    createdAt: 1,
+                  },
+                },
+              ],
+              total: [{ $count: 'count' }],
+            },
+          },
+        ]),
+        ContactLabel.find({ companyId: user.companyId }).lean(),
+        Company.findById(user.companyId).lean(),
+      ]);
+
+      const labelMap = {};
+      allLabels.forEach(l => { labelMap[l._id.toString()] = l; });
+      const companyLocation = company?.address || company?.headquarters || company?.companyCity || company?.companyState || company?.companyCountry || '';
+      const rows = result[0]?.data || [];
+      const total = result[0]?.total?.[0]?.count || 0;
+      const contacts = rows.map(row => {
+        const c = row.contact || {};
+        const contactLabels = (c.labels || []).map(lid => labelMap[lid.toString()]).filter(Boolean);
+
+        return {
+          _id: `${row.companyDataId}_${row.contactIndex}`,
+          companyDataId: row.companyDataId,
+          contactIndex: row.contactIndex,
+          fullName: c.fullName || '',
+          designation: c.designation || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          location: c.location || '',
+          companyLocation,
+          socialLinks: c.socialLinks || [],
+          status: normalizeStatus(c.status),
+          followUp: c.followUp || '',
+          isImportant: c.isImportant || false,
+          labels: contactLabels,
+          companyName: row.companyName,
+          website: row.website,
+          sourceType: 'company-data',
+          createdAt: row.createdAt
+        };
+      });
+
+      return res.json({
+        data: contacts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasMore: skip + contacts.length < total,
+        },
+      });
+    }
 
     const companies = await CompanyData.find(listFilter)
       .sort({ createdAt: -1 });
