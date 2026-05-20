@@ -182,11 +182,21 @@ const statusBadge = (saved) => ({
 
 const AI_MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Fast, Default)', tier: 'fast' },
-  { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Legacy Fast)', tier: 'fast' },
   { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Balanced)', tier: 'balanced' },
-  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (Legacy Balanced)', tier: 'balanced' },
-  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Most Capable)', tier: 'premium' },
+  { value: 'claude-opus-4-7', label: 'Claude Opus 4.7 (Most Capable)', tier: 'premium' },
+  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Premium)', tier: 'premium' },
 ];
+
+const normalizeClaudeModel = (model) => ({
+  'claude-3-haiku-20240307': 'claude-haiku-4-5-20251001',
+  'claude-3-5-haiku-20241022': 'claude-haiku-4-5-20251001',
+  'claude-3-sonnet-20240229': 'claude-sonnet-4-6',
+  'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
+  'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
+  'claude-sonnet-4-20250514': 'claude-sonnet-4-6',
+  'claude-3-opus-20240229': 'claude-opus-4-7',
+  'claude-opus-4-20250514': 'claude-opus-4-7',
+}[model] || model || 'claude-haiku-4-5-20251001');
 
 function NoxtmBotAdmin() {
   const [activeTab, setActiveTab] = useState('settings');
@@ -224,7 +234,10 @@ function NoxtmBotAdmin() {
     try {
       const res = await api.get('/noxtm-bot/config');
       if (res.data.success) {
-        setConfig(res.data.config);
+        setConfig({
+          ...res.data.config,
+          aiModel: normalizeClaudeModel(res.data.config?.aiModel),
+        });
       }
     } catch (err) {
       console.error('[NoxtmBotAdmin] Error fetching config:', err);

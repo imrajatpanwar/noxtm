@@ -29,6 +29,7 @@ const {
 const { initializeEmailLogger, sendAndLogEmail, logEmail } = require('./middleware/emailLogger');
 const { validateEmail, validateEmailMiddleware } = require('./middleware/emailValidator');
 const { hasActiveSubscription } = require('./utils/subscriptionHelpers');
+const { normalizeAnthropicModel } = require('./utils/anthropicModels');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -2807,7 +2808,7 @@ app.put('/api/company/ai-settings', authenticateToken, async (req, res) => {
     const update = {};
     if (provider !== undefined) update['aiSettings.provider'] = provider;
     if (apiKey !== undefined) update['aiSettings.apiKey'] = apiKey;
-    if (model !== undefined) update['aiSettings.model'] = model;
+    if (model !== undefined) update['aiSettings.model'] = normalizeAnthropicModel(model);
     if (customEndpoint !== undefined) update['aiSettings.customEndpoint'] = customEndpoint;
 
     const company = await Company.findByIdAndUpdate(
@@ -2855,13 +2856,14 @@ app.post('/api/company/ai-settings/test', authenticateToken, async (req, res) =>
       // Anthropic has different API format
       const Anthropic = require('@anthropic-ai/sdk');
       const client = new Anthropic({ apiKey: ai.apiKey });
+      const model = normalizeAnthropicModel(ai.model);
       const response = await client.messages.create({
-        model: ai.model || 'claude-haiku-4-5-20251001',
+        model,
         max_tokens: 100,
         messages: [{ role: 'user', content: testMessage }]
       });
       const reply = response.content?.[0]?.text || 'No response';
-      return res.json({ success: true, reply, model: ai.model, provider: ai.provider });
+      return res.json({ success: true, reply, model, provider: ai.provider });
     }
 
     const config = providerConfigs[ai.provider];

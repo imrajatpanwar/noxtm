@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { normalizeAnthropicModel } = require('./anthropicModels');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const Project = require('../models/Project');
@@ -402,7 +403,7 @@ const callClaude = async (messages, model = 'claude-haiku-4-5-20251001', maxWord
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model,
+        model: normalizeAnthropicModel(model),
         max_tokens: calculatedTokens,
         system: systemMessage?.content || '',
         messages: conversationMessages

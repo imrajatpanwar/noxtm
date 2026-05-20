@@ -11,6 +11,7 @@ const NoxtmBotConfig = require('../models/NoxtmBotConfig');
 const { NoxtmBotDefaultMemory, LearnedMemory } = require('../models/NoxtmMemory');
 const { authenticateToken } = require('../middleware/auth');
 const { callClaude } = require('../utils/aiHelpers');
+const { normalizeAnthropicModel } = require('../utils/anthropicModels');
 
 // Default AI model
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
@@ -281,7 +282,7 @@ async function verifyCodeAndCreateUser(email, code) {
 
 // Get the AI model to use (from config or default)
 function getModel(session) {
-  return session?.aiModel || DEFAULT_MODEL;
+  return normalizeAnthropicModel(session?.aiModel || DEFAULT_MODEL);
 }
 
 // ============ MAIN CHAT ENDPOINT ============
@@ -750,6 +751,9 @@ router.put('/config', authenticateToken, async (req, res) => {
 
     // If custom API key is masked (from a previous GET), don't overwrite
     const updateData = { ...req.body, updatedBy: user._id };
+    if (updateData.aiModel) {
+      updateData.aiModel = normalizeAnthropicModel(updateData.aiModel);
+    }
     if (updateData.customApiKey && updateData.customApiKey.includes('...')) {
       delete updateData.customApiKey;
     }

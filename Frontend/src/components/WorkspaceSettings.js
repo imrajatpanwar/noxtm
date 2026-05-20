@@ -104,7 +104,7 @@ function WorkspaceSettings({ user, onLogout }) {
   const AI_PROVIDERS = [
     { id: 'openrouter', name: 'OpenRouter', desc: 'Access 100+ models (Gemini, Claude, Llama, etc.)', placeholder: 'sk-or-...' },
     { id: 'openai', name: 'OpenAI', desc: 'GPT-4o, GPT-4, GPT-3.5', placeholder: 'sk-...' },
-    { id: 'anthropic', name: 'Anthropic', desc: 'Claude 4, Claude 3.5 Sonnet', placeholder: 'sk-ant-...' },
+    { id: 'anthropic', name: 'Anthropic', desc: 'Claude Haiku 4.5, Sonnet 4.6, Opus 4.7', placeholder: 'sk-ant-...' },
     { id: 'groq', name: 'Groq', desc: 'Ultra-fast Llama, Mixtral inference', placeholder: 'gsk_...' },
     { id: 'together', name: 'Together AI', desc: 'Open-source models at scale', placeholder: 'tok_...' },
     { id: 'custom', name: 'Custom Endpoint', desc: 'Any OpenAI-compatible API', placeholder: 'your-api-key' }
@@ -133,13 +133,11 @@ function WorkspaceSettings({ user, onLogout }) {
       { id: 'o1-mini', label: 'o1 Mini' },
     ],
     anthropic: [
-      { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-      { id: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-      { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-      { id: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
-      { id: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-      { id: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+      { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+      { id: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
+      { id: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+      { id: 'claude-opus-4-1-20250805', label: 'Claude Opus 4.1' },
     ],
     groq: [
       { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
@@ -152,6 +150,17 @@ function WorkspaceSettings({ user, onLogout }) {
     ],
     custom: []
   };
+
+  const normalizeClaudeModel = (model) => ({
+    'claude-3-haiku-20240307': 'claude-haiku-4-5-20251001',
+    'claude-3-5-haiku-20241022': 'claude-haiku-4-5-20251001',
+    'claude-3-sonnet-20240229': 'claude-sonnet-4-6',
+    'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
+    'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
+    'claude-sonnet-4-20250514': 'claude-sonnet-4-6',
+    'claude-3-opus-20240229': 'claude-opus-4-7',
+    'claude-opus-4-20250514': 'claude-opus-4-7',
+  }[model] || model || 'claude-haiku-4-5-20251001');
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -196,10 +205,13 @@ function WorkspaceSettings({ user, onLogout }) {
     try {
       const res = await api.get('/company/ai-settings');
       if (res.data.success && res.data.aiSettings) {
+        const provider = res.data.aiSettings.provider || 'openrouter';
         setAiSettings({
-          provider: res.data.aiSettings.provider || 'openrouter',
+          provider,
           apiKey: res.data.aiSettings.apiKey || '',
-          model: res.data.aiSettings.model || 'deepseek/deepseek-chat-v3-0324:free',
+          model: provider === 'anthropic'
+            ? normalizeClaudeModel(res.data.aiSettings.model)
+            : res.data.aiSettings.model || 'deepseek/deepseek-chat-v3-0324:free',
           customEndpoint: res.data.aiSettings.customEndpoint || ''
         });
       }
@@ -225,7 +237,12 @@ function WorkspaceSettings({ user, onLogout }) {
     }
     setAiSaving(true);
     try {
-      await api.put('/company/ai-settings', aiSettings);
+      await api.put('/company/ai-settings', {
+        ...aiSettings,
+        model: aiSettings.provider === 'anthropic'
+          ? normalizeClaudeModel(aiSettings.model)
+          : aiSettings.model,
+      });
       toast.success('AI settings saved');
       setAiDirty(false);
     } catch (e) {

@@ -16,9 +16,8 @@ const noxtmBotConfigSchema = new mongoose.Schema({
   aiModel: { type: String, default: 'claude-haiku-4-5-20251001', enum: [
     'claude-haiku-4-5-20251001',
     'claude-sonnet-4-6',
+    'claude-opus-4-7',
     'claude-opus-4-6',
-    'claude-3-5-haiku-20241022',
-    'claude-3-5-sonnet-20241022',
   ]},
   // API Key management (admin can provide their own key)
   apiKeySource: { type: String, enum: ['platform', 'custom'], default: 'platform' },

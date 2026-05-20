@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 const LinkedInAISettings = require('../models/LinkedInAISettings');
 const LinkedInAIComment = require('../models/LinkedInAIComment');
 const Company = require('../models/Company');
+const { normalizeAnthropicModel } = require('../utils/anthropicModels');
 
 const auth = authenticateToken;
 
@@ -60,7 +61,9 @@ router.post('/generate-comment', auth, async (req, res) => {
         const ai = company?.aiSettings || {};
         const aiProvider = ai.provider || 'anthropic';
         const aiKey = ai.apiKey || process.env.ANTHROPIC_API_KEY;
-        const aiModel = ai.model || 'claude-sonnet-4-20250514';
+        const aiModel = aiProvider === 'anthropic'
+            ? normalizeAnthropicModel(ai.model)
+            : ai.model;
 
         if (!aiKey) {
             return res.status(500).json({
@@ -230,7 +233,9 @@ router.post('/generate-tweet', auth, async (req, res) => {
         const ai = company?.aiSettings || {};
         const aiProvider = ai.provider || 'anthropic';
         const aiKey = ai.apiKey || process.env.ANTHROPIC_API_KEY;
-        const aiModel = ai.model || 'claude-sonnet-4-20250514';
+        const aiModel = aiProvider === 'anthropic'
+            ? normalizeAnthropicModel(ai.model)
+            : ai.model;
 
         if (!aiKey) {
             return res.status(500).json({

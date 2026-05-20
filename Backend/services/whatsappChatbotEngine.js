@@ -5,6 +5,7 @@ const WhatsAppScheduledMsg = require('../models/WhatsAppScheduledMsg');
 const Note = require('../models/Note');
 const Company = require('../models/Company');
 const axios = require('axios');
+const { normalizeAnthropicModel } = require('../utils/anthropicModels');
 
 // Provider endpoint configs
 const PROVIDERS = {
@@ -271,7 +272,7 @@ async function callAnthropicAPI(bot, systemPrompt, messages, aiConfig) {
   const headers = PROVIDERS.anthropic.headerFn(aiConfig.apiKey);
 
   const payload = {
-    model: aiConfig.model || 'claude-sonnet-4-20250514',
+    model: normalizeAnthropicModel(aiConfig.model),
     max_tokens: bot.maxTokens || 300,
     system: systemPrompt,
     messages: messages.map(m => ({
@@ -333,7 +334,7 @@ Categories: info=shared information, interest=showed interest in product/service
     if (bot.provider === 'anthropic') {
       const headers = PROVIDERS.anthropic.headerFn(bot.apiKey);
       const response = await axios.post(PROVIDERS.anthropic.url, {
-        model: bot.model || 'claude-sonnet-4-20250514',
+        model: normalizeAnthropicModel(bot.model),
         max_tokens: 300,
         system: extractPrompt,
         messages: messages.map(m => ({ role: m.role, content: m.content }))
