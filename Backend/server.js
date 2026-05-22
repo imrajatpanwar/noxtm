@@ -39,7 +39,9 @@ const io = new Server(server, {
       'http://mail.noxtm.com',     // Mail subdomain
       'https://mail.noxtm.com',    // Mail subdomain (HTTPS)
       'http://localhost:3000',
-      'http://localhost:3001'
+      'http://localhost:3001',
+      'http://localhost:5173',     // Orion electron-vite dev
+      'http://localhost:5174',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS']
@@ -87,7 +89,9 @@ app.use(cors({
       'https://mail.noxtm.com',
       'http://localhost:3000',
       'http://localhost:3001',
-      'http://localhost:3002'
+      'http://localhost:3002',
+      'http://localhost:5173',  // Orion (electron-vite dev)
+      'http://localhost:5174',
     ];
 
     // Check if origin is in allowed list or is a chrome-extension
