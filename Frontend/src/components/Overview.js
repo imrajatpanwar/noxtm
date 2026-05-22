@@ -85,6 +85,7 @@ function Overview({ dashboardData, error, onNavigate }) {
   const [overviewStats, setOverviewStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState('');
+  const [coreData, setCoreData] = useState(null);
 
   const fetchOverviewStats = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoadingStats(true);
@@ -102,6 +103,11 @@ function Overview({ dashboardData, error, onNavigate }) {
 
   useEffect(() => {
     fetchOverviewStats();
+    // Fetch Core Data Center stats — no auth needed
+    fetch('http://localhost:5001/api/core-data/stats/summary')
+      .then(r => r.json())
+      .then(d => setCoreData(d))
+      .catch(() => {});
   }, [fetchOverviewStats]);
 
   useEffect(() => {
@@ -135,12 +141,12 @@ function Overview({ dashboardData, error, onNavigate }) {
       section: 'task-manager',
     },
     {
-      label: 'Data Center',
-      value: compactNumber(stats.companiesData.total),
-      meta: 'Companies',
+      label: 'Core Data',
+      value: coreData ? compactNumber(coreData.byType?.reduce((s, t) => s + t.totalRecords, 0) || 0) : '—',
+      meta: coreData ? `${compactNumber(coreData.total || 0)} datasets` : 'Loading...',
       icon: FiDatabase,
       tone: 'purple',
-      section: 'company-data',
+      section: 'core-data-center',
     },
     {
       label: 'Projects',
@@ -166,7 +172,7 @@ function Overview({ dashboardData, error, onNavigate }) {
       tone: 'cyan',
       section: 'hr-overview',
     },
-  ]), [stats, activeTasks]);
+  ]), [stats, activeTasks, coreData]);
 
   const attentionItems = useMemo(() => ([
     {
@@ -384,6 +390,98 @@ function Overview({ dashboardData, error, onNavigate }) {
 
         <div className="overview-chart-radar">
           <LeadsRadarChart />
+        </div>
+      </section>
+
+      {/* Core Data Center Activity */}
+      <section className="overview-leads-below" style={{ marginTop: 16 }}>
+        <Card className="overview-leads-summary tw-rounded-lg">
+          <CardHeader className="overview-card-header">
+            <div>
+              <Badge variant="outline" className="overview-card-badge" style={{ color: '#E8602C', borderColor: '#FDDCCA', background: '#FFF4EE' }}>
+                <FiDatabase size={12} style={{ marginRight: 4 }} /> Core Data Center
+              </Badge>
+              <CardTitle className="overview-panel-title">
+                {coreData ? `${compactNumber(coreData.total || 0)} dataset${coreData.total !== 1 ? 's' : ''}` : 'Loading...'}
+              </CardTitle>
+            </div>
+            <Button className="overview-card-action" variant="ghost" size="sm" onClick={() => navigateTo('core-data-center')}>
+              Open Data Center
+              <FiArrowRight size={13} />
+            </Button>
+          </CardHeader>
+          <CardContent className="overview-leads-content">
+            {!coreData ? (
+              <div style={{ color: '#9CA3AF', fontSize: 13 }}>Fetching Core Data stats...</div>
+            ) : coreData.total === 0 ? (
+              <div style={{ color: '#9CA3AF', fontSize: 13 }}>
+                No data yet. Send leads from Orion → Leads → "Send to Core Data".
+              </div>
+            ) : (
+              <>
+                <div className="overview-leads-hero">
+                  <div>
+                    <span>Total records stored</span>
+                    <strong>{compactNumber(coreData.byType?.reduce((s, t) => s + t.totalRecords, 0) || 0)}</strong>
+                    <small>{compactNumber(coreData.bySource?.length || 0)} source{(coreData.bySource?.length || 0) !== 1 ? 's' : ''}</small>
+                  </div>
+                  <div className="overview-leads-health">
+                    <strong>{compactNumber(coreData.total || 0)}</strong>
+                    <span>Datasets</span>
+                  </div>
+                </div>
+
+                <div className="overview-lead-signal-grid">
+                  {(coreData.byType || []).map(t => (
+                    <span key={t._id}>
+                      <strong>{compactNumber(t.totalRecords)}</strong> {t._id}
+                    </span>
+                  ))}
+                  {(coreData.bySource || []).map(s => (
+                    <span key={s._id}>
+                      <strong>{compactNumber(s.count)}</strong> from {s._id}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="overview-leads-insight">
+                  <FiDatabase size={14} />
+                  <span>
+                    {(coreData.byType || []).map(t => `${t.totalRecords} ${t._id}`).join(' · ')} stored across all datasets.
+                  </span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Breakdown mini cards */}
+        <div className="overview-chart-radar" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(coreData?.byType || []).map(t => {
+            const totalRecs = coreData.byType.reduce((s, x) => s + x.totalRecords, 0) || 1;
+            const pct = Math.round((t.totalRecords / totalRecs) * 100);
+            const colors = { leads: '#E8602C', contacts: '#16A34A', custom: '#7C3AED' };
+            const color = colors[t._id] || '#6B7280';
+            return (
+              <div key={t._id} style={{ background: '#fff', border: '1px solid #F0F0F0', borderRadius: 10, padding: '12px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>{t._id}</span>
+                  <span style={{ fontSize: 12, color, fontWeight: 700 }}>{compactNumber(t.totalRecords)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div key={i} style={{ flex: 1, height: 5, borderRadius: 2, background: i < Math.round(pct / 5) ? color : '#F0F0F0' }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>{t.count} dataset{t.count !== 1 ? 's' : ''} · {pct}% of total</div>
+              </div>
+            );
+          })}
+          {(!coreData || coreData.total === 0) && (
+            <div style={{ background: '#fff', border: '1px solid #F0F0F0', borderRadius: 10, padding: '20px 16px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+              No datasets yet
+            </div>
+          )}
         </div>
       </section>
     </div>

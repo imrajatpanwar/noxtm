@@ -51,6 +51,7 @@ import NoxtmAssistant from './NoxtmAssistant';
 import GoogleDriveManager from './GoogleDriveManager';
 import SocialMediaUploads from './SocialMediaUploads';
 import CustomDatabaseView from './CustomDatabaseView';
+import CoreDataCenter from './CoreDataCenter';
 import splitViewIcon from '../assets/split_view.svg';
 import { SidebarProvider, SidebarInset } from './ui/sidebar';
 import './Dashboard.css';
@@ -424,6 +425,8 @@ function Dashboard({ user, onLogout }) {
         return <NoxtmBotAdmin />;
       case 'drive-assets':
         return <GoogleDriveManager />;
+      case 'core-data-center':
+        return <CoreDataCenter />;
       default: {
         // Handle dynamic custom-db-:id sections
         if (activeSection.startsWith('custom-db-')) {

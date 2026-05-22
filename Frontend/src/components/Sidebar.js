@@ -395,6 +395,18 @@ function Sidebar({ activeSection, onSectionChange }) {
                 </div>
                 <SidebarGroupContent>
                   <SidebarMenu>
+                    {/* Core Data Center — top of section */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'core-data-center'}
+                        tooltip="Core Data Center"
+                        onClick={() => onSectionChange('core-data-center')}
+                      >
+                        <FiDatabase className="sidebar-icon" style={{ color: '#E8602C' }} />
+                        <span>Core Data Center</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         isActive={activeSection === 'company-data'}
@@ -617,6 +629,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                         <span>Upload Files</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

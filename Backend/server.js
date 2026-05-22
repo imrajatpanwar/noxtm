@@ -4721,6 +4721,10 @@ app.use('/api/user-domains', authenticateToken, userVerifiedDomainsRoutes);
 const linkedInSessionsRoutes = require('./routes/linkedin-sessions');
 app.use('/api/linkedin-sessions', linkedInSessionsRoutes);
 
+// ===== CORE DATA CENTER (no auth) =====
+const coreDataRoutes = require('./routes/core-data');
+app.use('/api/core-data', coreDataRoutes);
+
 // API-only backend - no frontend serving
 // Frontend is served on a different port
 
