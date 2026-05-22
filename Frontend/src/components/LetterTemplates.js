@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
-import { FiPlus, FiEdit2, FiTrash2, FiFileText, FiCopy, FiX, FiEye, FiPackage } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFileText, FiCopy, FiX, FiEye, FiPackage, FiDownload, FiExternalLink, FiLink } from 'react-icons/fi';
 import { Skeleton } from './ui/skeleton';
 import { confirm } from './ui/alert-dialog';
 import './LetterTemplates.css';
@@ -14,31 +14,37 @@ const BUILTIN_TEMPLATES = [
     name: 'Offer Letter',
     category: 'offer',
     subject: 'Offer of Employment – {{jobTitle}} at {{companyName}}',
-    variables: ['employeeName','jobTitle','companyName','department','date','address'],
+    variables: [
+      'employeeName','jobTitle','companyName','department','date','joiningDate',
+      'workLocation','reportingManager','grossMonthlySalary','annualCTC',
+      'probationPeriod','acceptanceDeadline','companyAddress'
+    ],
     content: `Dear {{employeeName}},
 
-We are pleased to offer you the position of {{jobTitle}} in the {{department}} department at {{companyName}}, effective {{date}}.
+We are pleased to offer you the position of {{jobTitle}} in the {{department}} department at {{companyName}}, effective {{joiningDate}}.
 
 This offer is contingent upon the successful completion of your background verification and submission of required documents on or before your joining date.
 
 COMPENSATION & BENEFITS
-- Gross Monthly Salary: [Amount]
-- Annual CTC: [Amount]
-- Probation Period: 3 months
+- Gross Monthly Salary: {{grossMonthlySalary}}
+- Annual CTC: {{annualCTC}}
+- Probation Period: {{probationPeriod}}
+- Work Location: {{workLocation}}
+- Reporting Manager: {{reportingManager}}
 
 TERMS & CONDITIONS
 1. You will be required to maintain the confidentiality of all company information.
 2. During the probation period, either party may terminate this agreement with 7 days' written notice.
 3. Post-probation, 30 days' notice is required from either party.
 
-Please confirm your acceptance of this offer by signing and returning a copy of this letter by {{date}}.
+Please confirm your acceptance of this offer by signing and returning a copy of this letter by {{acceptanceDeadline}}.
 
 We look forward to welcoming you to the team.
 
 Warm regards,
 HR Department
 {{companyName}}
-{{address}}`
+{{companyAddress}}`
   },
   {
     id: 'builtin-employment',
@@ -170,6 +176,7 @@ function LetterTemplates() {
   const [saving, setSaving] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
 
   const [form, setForm] = useState({
     name: '', category: 'custom', subject: '', content: '', variables: []
@@ -191,8 +198,37 @@ function LetterTemplates() {
 
   const defaultVariables = [
     'employeeName','employeeEmail','department','jobTitle',
-    'companyName','date','year','address','city','country'
+    'companyName','companyEmail','companyPhone','companyWebsite','companyAddress',
+    'date','year','joiningDate','workLocation','reportingManager',
+    'grossMonthlySalary','annualCTC','probationPeriod','acceptanceDeadline',
+    'address','city','state','country','phoneNumber'
   ];
+
+  const variableLabels = {
+    employeeName: 'Candidate name',
+    employeeEmail: 'Candidate email',
+    department: 'Department',
+    jobTitle: 'Job title',
+    companyName: 'Company name',
+    companyEmail: 'Company email',
+    companyPhone: 'Company phone',
+    companyWebsite: 'Company website',
+    companyAddress: 'Company address',
+    date: 'Letter date',
+    year: 'Year',
+    joiningDate: 'Joining date',
+    workLocation: 'Work location',
+    reportingManager: 'Reporting manager',
+    grossMonthlySalary: 'Gross monthly salary',
+    annualCTC: 'Annual CTC',
+    probationPeriod: 'Probation period',
+    acceptanceDeadline: 'Acceptance deadline',
+    address: 'Candidate address',
+    city: 'City',
+    state: 'State',
+    country: 'Country',
+    phoneNumber: 'Phone number'
+  };
 
   const getCategoryClass = (cat) => `lt-cat-${cat || 'custom'}`;
 
@@ -272,6 +308,10 @@ function LetterTemplates() {
     }
   };
 
+  const handleUseBuiltIn = async (tpl) => {
+    openGenerateModal({ ...tpl, isBuiltIn: true });
+  };
+
   const handleDelete = async (id) => {
     if (!await confirm('Delete this template?')) return;
     try {
@@ -284,24 +324,71 @@ function LetterTemplates() {
 
   const openGenerateModal = (template) => {
     setSelectedTemplate(template);
-    setGenerateForm({ employeeId: '', customValues: {} });
+    setGenerateForm({
+      employeeId: '',
+      customValues: {
+        date: new Date().toLocaleDateString(),
+        year: new Date().getFullYear().toString(),
+        probationPeriod: template.category === 'offer' ? '3 months' : ''
+      }
+    });
     setGeneratedLetter(null);
+    setGenerateError('');
     setShowGenerate(true);
+  };
+
+  const getPublicLetterUrl = (letter) => {
+    if (!letter?.token) return letter?.publicUrl || '';
+    return `${window.location.origin}/public/letters/${letter.token}`;
+  };
+
+  const getDownloadUrl = (letter) => {
+    if (!letter?.downloadUrl) return '';
+    if (letter.downloadUrl.startsWith('http')) return letter.downloadUrl;
+    if (letter.downloadUrl.startsWith('/api')) {
+      return `${(api.defaults.baseURL || '').replace(/\/api\/?$/, '')}${letter.downloadUrl}`;
+    }
+    return letter.downloadUrl;
+  };
+
+  const updateCustomValue = (key, value) => {
+    setGenerateForm(prev => ({
+      ...prev,
+      customValues: {
+        ...prev.customValues,
+        [key]: value
+      }
+    }));
   };
 
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     try {
       setGenerating(true);
-      const response = await api.post(`/letter-templates/${selectedTemplate._id}/generate`, {
+      setGenerateError('');
+      const payload = {
         employeeId: generateForm.employeeId,
         customValues: generateForm.customValues
-      });
+      };
+      const response = selectedTemplate.isBuiltIn
+        ? await api.post('/letter-templates/generate-built-in', {
+            ...payload,
+            template: {
+              name: selectedTemplate.name,
+              category: selectedTemplate.category,
+              subject: selectedTemplate.subject,
+              content: selectedTemplate.content,
+              variables: selectedTemplate.variables || []
+            }
+          })
+        : await api.post(`/letter-templates/${selectedTemplate._id}/generate`, payload);
+
       if (response.data.success) {
         setGeneratedLetter(response.data.generated);
       }
     } catch (err) {
       console.error('Error generating letter:', err);
+      setGenerateError(err.response?.data?.message || 'Could not generate this letter. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -311,6 +398,11 @@ function LetterTemplates() {
     if (generatedLetter?.content) {
       navigator.clipboard.writeText(generatedLetter.content);
     }
+  };
+
+  const copyPublicLink = () => {
+    const url = getPublicLetterUrl(generatedLetter);
+    if (url) navigator.clipboard.writeText(url);
   };
 
   const insertVariable = (varName) => {
@@ -373,7 +465,7 @@ function LetterTemplates() {
             <FiPackage size={14} style={{ color: '#9ca3af' }} />
             <span className="lt-section-title">Built-in Templates</span>
             <span className="lt-section-badge">{filteredBuiltins.length}</span>
-            <span className="lt-section-hint">Click "Use Template" to edit content and save</span>
+            <span className="lt-section-hint">Create letters directly or customize a template first</span>
           </div>
           <div className="lt-grid">
             {filteredBuiltins.map(tpl => (
@@ -390,9 +482,17 @@ function LetterTemplates() {
                   <span className="lt-card-vars">{tpl.variables?.length || 0} variables</span>
                   <span className="lt-card-date">Built-in</span>
                 </div>
-                <button className="lt-use-btn" onClick={() => openBuiltinModal(tpl)}>
-                  Use Template →
-                </button>
+                <div className="lt-builtin-actions">
+                  <button
+                    className="lt-use-btn"
+                    onClick={() => handleUseBuiltIn(tpl)}
+                  >
+                    Create Letter
+                  </button>
+                  <button className="lt-use-btn secondary" onClick={() => openBuiltinModal(tpl)}>
+                    Customize
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -526,6 +626,26 @@ function LetterTemplates() {
                     </select>
                     <p className="lt-form-hint">Employee data will auto-fill template variables (name, title, department, etc.)</p>
                   </div>
+                  {(selectedTemplate?.variables || []).length > 0 && (
+                    <div className="lt-form-group">
+                      <label>Add Letter Details</label>
+                      <p className="lt-form-hint">Fill the fields you want to override or add. These values will be used in the public letter and PDF.</p>
+                      <div className="lt-detail-grid">
+                        {(selectedTemplate.variables || []).map(variable => (
+                          <div className="lt-detail-field" key={variable}>
+                            <label>{variableLabels[variable] || variable}</label>
+                            <input
+                              type={variable.toLowerCase().includes('date') ? 'date' : 'text'}
+                              value={generateForm.customValues[variable] || ''}
+                              onChange={e => updateCustomValue(variable, e.target.value)}
+                              placeholder={`{{${variable}}}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {generateError && <div className="lt-error-message">{generateError}</div>}
                   <button
                     className="lt-generate-btn"
                     onClick={handleGenerate}
@@ -539,6 +659,13 @@ function LetterTemplates() {
                   <div className="lt-generated-header">
                     <h4>Generated Letter</h4>
                     <div className="lt-generated-actions">
+                      {generatedLetter.token && (
+                        <>
+                          <button onClick={copyPublicLink}><FiLink /> Copy Public Link</button>
+                          <a href={getPublicLetterUrl(generatedLetter)} target="_blank" rel="noopener noreferrer"><FiExternalLink /> Open Public</a>
+                          <a href={getDownloadUrl(generatedLetter)}><FiDownload /> Download PDF</a>
+                        </>
+                      )}
                       <button onClick={copyGeneratedLetter}><FiCopy /> Copy</button>
                     </div>
                   </div>

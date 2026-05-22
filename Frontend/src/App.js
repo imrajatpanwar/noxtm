@@ -39,6 +39,7 @@ import ApiReferencePage from './components/ApiReferencePage';
 import SecurityPage from './components/SecurityPage';
 import PaymentCheckout from './components/PaymentCheckout';
 import SharedCalendarView from './components/SharedCalendarView';
+import PublicLetterView from './components/PublicLetterView';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // API configuration is now handled in config/api.js
@@ -46,7 +47,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 function ConditionalHeader({ user, onLogout }) {
   const location = useLocation();
   const hideHeaderRoutes = ['/signup', '/login', '/company-setup'];
-  if (hideHeaderRoutes.includes(location.pathname)) {
+  if (hideHeaderRoutes.includes(location.pathname) || location.pathname.startsWith('/public/letters/')) {
     return null;
   }
   return <Header user={user} onLogout={onLogout} />;
@@ -57,7 +58,7 @@ function ConditionalFooter() {
   const hideFooterRoutes = ['/login', '/signup', '/forgot-password', '/dashboard', '/access-restricted', '/pricing', '/company-setup', '/join-company', '/extension-login', '/extension-auth-callback', '/auth/callback', '/api-reference', '/checkout'];
 
   // Also hide footer on invite pages
-  if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/')) {
+  if (hideFooterRoutes.includes(location.pathname) || location.pathname.startsWith('/invite/') || location.pathname.startsWith('/public/letters/')) {
     return null;
   }
 
@@ -503,6 +504,7 @@ function App() {
                 <Route path="/blog" element={<PublicBlogList />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/shared-calendar/:token" element={<SharedCalendarView />} />
+                <Route path="/public/letters/:token" element={<PublicLetterView />} />
                 <Route path="/legal/*" element={<Legal />} />
                 <Route path="/invite/:token" element={<JoinCompany />} />
                 <Route path="/extension-login" element={<ExtensionLogin />} />
