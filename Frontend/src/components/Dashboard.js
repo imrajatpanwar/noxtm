@@ -22,7 +22,7 @@ import Credentials from './Credentials';
 import Messaging from './Messaging';
 import HrOverview from './HrOverview';
 import InterviewManagement from './InterviewManagement';
-import LetterTemplates from './LetterTemplates';
+import LetterManagement from './LetterManagement';
 import EmployeeDetails from './EmployeeDetails';
 import HolidayCalendar from './HolidayCalendar';
 import Incentives from './Incentives';
@@ -52,6 +52,7 @@ import GoogleDriveManager from './GoogleDriveManager';
 import SocialMediaUploads from './SocialMediaUploads';
 import CustomDatabaseView from './CustomDatabaseView';
 import CoreDataCenter from './CoreDataCenter';
+import SalesPipeline from './SalesPipeline';
 import splitViewIcon from '../assets/split_view.svg';
 import { SidebarProvider, SidebarInset } from './ui/sidebar';
 import './Dashboard.css';
@@ -381,7 +382,7 @@ function Dashboard({ user, onLogout }) {
       case 'interview-management':
         return <InterviewManagement />;
       case 'letter-templates':
-        return <LetterTemplates />;
+        return <LetterManagement />;
       case 'employee-details':
       case 'attendance-summary':
         return <EmployeeDetails />;
@@ -427,6 +428,8 @@ function Dashboard({ user, onLogout }) {
         return <GoogleDriveManager />;
       case 'core-data-center':
         return <CoreDataCenter />;
+      case 'sales-pipeline':
+        return <SalesPipeline />;
       default: {
         // Handle dynamic custom-db-:id sections
         if (activeSection.startsWith('custom-db-')) {

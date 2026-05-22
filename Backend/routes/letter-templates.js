@@ -5,6 +5,7 @@ const PDFDocument = require('pdfkit');
 const { authenticateToken } = require('../middleware/auth');
 const LetterTemplate = require('../models/LetterTemplate');
 const GeneratedLetter = require('../models/GeneratedLetter');
+const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Company = require('../models/Company');
 
@@ -101,6 +102,21 @@ const buildLetterPayload = async ({ template, user, userId, employeeId, customVa
         generatedAt: new Date(),
         createdBy: userId
     };
+};
+
+const notifyEmployee = async ({ employeeId, companyId, letterName, issuedBy }) => {
+    try {
+        if (!employeeId) return;
+        await Notification.create({
+            userId: employeeId,
+            companyId,
+            type: 'letter_issued',
+            title: 'New Letter Issued',
+            message: `${issuedBy || 'HR'} has issued you a "${letterName}". Check your Letter Management section.`,
+            icon: 'letter',
+            link: 'letter-templates',
+        });
+    } catch (e) { /* non-critical */ }
 };
 
 const makeFilename = (letter) => {
@@ -392,6 +408,7 @@ router.post('/generate-built-in', async (req, res) => {
             ]
         };
 
+        const { signature } = req.body;
         const payload = await buildLetterPayload({ template, user, userId, employeeId, customValues });
         const token = crypto.randomBytes(18).toString('hex');
         const generatedLetter = await GeneratedLetter.create({
@@ -404,7 +421,18 @@ router.post('/generate-built-in', async (req, res) => {
             values: payload.values,
             recipient: payload.recipient,
             companySnapshot: payload.companySnapshot,
+            signature: signature || undefined,
+            status: 'issued',
+            issuedAt: new Date(),
             createdBy: userId
+        });
+
+        const issuedByUser = await User.findById(userId).select('fullName').lean();
+        await notifyEmployee({
+            employeeId: payload.recipient?.employeeId,
+            companyId: user.companyId,
+            letterName: payload.templateName,
+            issuedBy: issuedByUser?.fullName || 'HR',
         });
 
         const publicUrl = `${getPublicOrigin(req)}/public/letters/${token}`;
@@ -423,7 +451,9 @@ router.post('/generate-built-in', async (req, res) => {
                 publicUrl,
                 downloadUrl,
                 recipient: payload.recipient,
-                companySnapshot: payload.companySnapshot
+                companySnapshot: payload.companySnapshot,
+                signature: generatedLetter.signature,
+                status: generatedLetter.status,
             }
         });
     } catch (error) {
@@ -448,7 +478,7 @@ router.post('/:id/generate', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Template not found' });
         }
 
-        const { employeeId, customValues } = req.body;
+        const { employeeId, customValues, signature } = req.body;
         const payload = await buildLetterPayload({ template, user, userId, employeeId, customValues });
         const token = crypto.randomBytes(18).toString('hex');
         const generatedLetter = await GeneratedLetter.create({
@@ -462,7 +492,18 @@ router.post('/:id/generate', async (req, res) => {
             values: payload.values,
             recipient: payload.recipient,
             companySnapshot: payload.companySnapshot,
+            signature: signature || undefined,
+            status: 'issued',
+            issuedAt: new Date(),
             createdBy: userId
+        });
+
+        const issuedByUser = await User.findById(userId).select('fullName').lean();
+        await notifyEmployee({
+            employeeId: payload.recipient?.employeeId,
+            companyId: user.companyId,
+            letterName: payload.templateName,
+            issuedBy: issuedByUser?.fullName || 'HR',
         });
 
         const publicUrl = `${getPublicOrigin(req)}/public/letters/${token}`;
@@ -481,11 +522,132 @@ router.post('/:id/generate', async (req, res) => {
                 publicUrl,
                 downloadUrl,
                 recipient: payload.recipient,
-                companySnapshot: payload.companySnapshot
+                companySnapshot: payload.companySnapshot,
+                signature: generatedLetter.signature,
+                status: generatedLetter.status,
             }
         });
     } catch (error) {
         console.error('Error generating letter:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// GET /api/letter-templates/issued — all issued letters for company
+// ============================================
+router.get('/issued', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await getCompanyId(userId);
+        if (!user?.companyId) return res.json({ success: true, letters: [] });
+
+        const { category, employeeId, status, search } = req.query;
+        const filter = { companyId: user.companyId };
+        if (category) filter.category = category;
+        if (employeeId) filter['recipient.employeeId'] = employeeId;
+        if (status) filter.status = status;
+
+        let letters = await GeneratedLetter.find(filter)
+            .populate('createdBy', 'fullName email profileImage')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        if (search) {
+            const s = search.toLowerCase();
+            letters = letters.filter(l =>
+                (l.recipient?.name || '').toLowerCase().includes(s) ||
+                (l.templateName || '').toLowerCase().includes(s) ||
+                (l.subject || '').toLowerCase().includes(s)
+            );
+        }
+
+        const origin = getPublicOrigin(req);
+        letters = letters.map(l => ({
+            ...l,
+            publicUrl: `${origin}/public/letters/${l.token}`,
+            downloadUrl: `/api/letter-templates/public/${l.token}/download`,
+        }));
+
+        res.json({ success: true, letters });
+    } catch (error) {
+        console.error('Error fetching issued letters:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// GET /api/letter-templates/employee/:employeeId/letters — letters for one employee
+// ============================================
+router.get('/employee/:employeeId/letters', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await getCompanyId(userId);
+        if (!user?.companyId) return res.json({ success: true, letters: [] });
+
+        const letters = await GeneratedLetter.find({
+            companyId: user.companyId,
+            'recipient.employeeId': req.params.employeeId,
+        })
+            .populate('createdBy', 'fullName email')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const origin = getPublicOrigin(req);
+        const enriched = letters.map(l => ({
+            ...l,
+            publicUrl: `${origin}/public/letters/${l.token}`,
+            downloadUrl: `/api/letter-templates/public/${l.token}/download`,
+        }));
+
+        res.json({ success: true, letters: enriched });
+    } catch (error) {
+        console.error('Error fetching employee letters:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// PUT /api/letter-templates/issued/:id/sign — add/update signature
+// ============================================
+router.put('/issued/:id/sign', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await getCompanyId(userId);
+        if (!user?.companyId) return res.status(400).json({ success: false, message: 'No company' });
+
+        const letter = await GeneratedLetter.findOne({ _id: req.params.id, companyId: user.companyId });
+        if (!letter) return res.status(404).json({ success: false, message: 'Letter not found' });
+
+        const { data, signatureType, signerName, designation } = req.body;
+        letter.signature = { data, signatureType: signatureType || 'typed', signerName, designation, signedAt: new Date() };
+        await letter.save();
+
+        res.json({ success: true, letter: { _id: letter._id, signature: letter.signature } });
+    } catch (error) {
+        console.error('Error signing letter:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ============================================
+// PUT /api/letter-templates/issued/:id/revoke — revoke letter
+// ============================================
+router.put('/issued/:id/revoke', async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const user = await getCompanyId(userId);
+        if (!user?.companyId) return res.status(400).json({ success: false, message: 'No company' });
+
+        const letter = await GeneratedLetter.findOne({ _id: req.params.id, companyId: user.companyId });
+        if (!letter) return res.status(404).json({ success: false, message: 'Letter not found' });
+
+        letter.status = 'revoked';
+        await letter.save();
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error revoking letter:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

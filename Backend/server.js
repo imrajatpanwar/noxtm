@@ -4729,6 +4729,10 @@ app.use('/api/linkedin-sessions', linkedInSessionsRoutes);
 const coreDataRoutes = require('./routes/core-data');
 app.use('/api/core-data', coreDataRoutes);
 
+// ===== SALES PIPELINE =====
+const salesPipelineRoutes = require('./routes/sales-pipeline');
+app.use('/api/sales-pipeline', salesPipelineRoutes);
+
 // API-only backend - no frontend serving
 // Frontend is served on a different port
 

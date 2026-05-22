@@ -25,6 +25,8 @@ function EmployeeDetails() {
   const [sortBy, setSortBy] = useState('fullName');
   const [sortDir, setSortDir] = useState('asc');
   const [activeTab, setActiveTab] = useState('info');
+  const [empLetters, setEmpLetters] = useState([]);
+  const [loadingLetters, setLoadingLetters] = useState(false);
 
   // ── Attendance state ─────────────────────────────
   const [attRecords, setAttRecords] = useState([]);
@@ -129,14 +131,25 @@ function EmployeeDetails() {
     }
   };
 
+  const fetchEmpLetters = async (id) => {
+    setLoadingLetters(true);
+    try {
+      const res = await api.get(`/letter-templates/employee/${id}/letters`);
+      if (res.data.success) setEmpLetters(res.data.letters || []);
+    } catch { setEmpLetters([]); }
+    setLoadingLetters(false);
+  };
+
   const handleEmployeeClick = (emp) => {
     if (selectedEmployee === emp._id) {
       setSelectedEmployee(null);
       setEmployeeDetail(null);
+      setEmpLetters([]);
     } else {
       setSelectedEmployee(emp._id);
       setActiveTab('info');
       fetchEmployeeDetail(emp._id);
+      fetchEmpLetters(emp._id);
     }
   };
 
@@ -401,6 +414,7 @@ function EmployeeDetails() {
                     <div className="emp-detail-tabs">
                       <button className={activeTab === 'info' ? 'active' : ''} onClick={() => setActiveTab('info')}>Info</button>
                       <button className={activeTab === 'attendance' ? 'active' : ''} onClick={() => setActiveTab('attendance')}>Attendance</button>
+                      <button className={activeTab === 'letters' ? 'active' : ''} onClick={() => setActiveTab('letters')}>Letters{empLetters.length > 0 ? ` (${empLetters.length})` : ''}</button>
                     </div>
                     {activeTab === 'info' && (
                       <div className="emp-detail-info">
@@ -450,6 +464,52 @@ function EmployeeDetails() {
                           <div className="emp-att-card"><span className="emp-att-value">{employeeDetail.attendance?.lateArrivals || 0}</span><span className="emp-att-label">Late Arrivals</span></div>
                         </div>
                         <div className="emp-att-note"><FiClock size={12} /> Showing current month's data</div>
+                      </div>
+                    )}
+                    {activeTab === 'letters' && (
+                      <div style={{ padding: '4px 0' }}>
+                        {loadingLetters ? (
+                          <div style={{ padding: '20px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>Loading letters...</div>
+                        ) : empLetters.length === 0 ? (
+                          <div style={{ padding: '28px 16px', textAlign: 'center', color: '#9CA3AF' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>No letters issued yet</div>
+                            <div style={{ fontSize: 12 }}>Issue a letter from Letter Management</div>
+                          </div>
+                        ) : (
+                          <div>
+                            {empLetters.map((l, i) => {
+                              const catColors = { offer:'#16A34A', employment:'#2563eb', appointment:'#7C3AED', promotion:'#D97706', salary:'#0891B2', warning:'#DC2626', termination:'#7F1D1D', experience:'#374151', noc:'#065F46', internship:'#9D174D', custom:'#6B7280' };
+                              const color = catColors[l.category] || '#6B7280';
+                              return (
+                                <div key={l._id} style={{ padding: '12px 16px', borderBottom: i < empLetters.length - 1 ? '1px solid #F5F5F5' : 'none' }}>
+                                  {/* Most recent letter gets prominent treatment */}
+                                  {i === 0 && (
+                                    <div style={{ fontSize: 10, fontWeight: 600, color: '#2563eb', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Most Recent</div>
+                                  )}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontWeight: 600, fontSize: 13, color: '#111', marginBottom: 2 }}>{l.templateName}</div>
+                                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>
+                                        {new Date(l.issuedAt || l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {l.createdBy?.fullName ? ` · by ${l.createdBy.fullName.split(' ')[0]}` : ''}
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                      <span style={{ background: `${color}15`, color, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 600 }}>{l.category}</span>
+                                      {l.status === 'revoked'
+                                        ? <span style={{ background: '#FEF2F2', color: '#DC2626', borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 600 }}>Revoked</span>
+                                        : <a href={l.publicUrl || '#'} target="_blank" rel="noreferrer" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#fff', fontSize: 11, color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>View</a>
+                                      }
+                                    </div>
+                                  </div>
+                                  {l.signature?.signerName && (
+                                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Signed by {l.signature.signerName}{l.signature.designation ? ` · ${l.signature.designation}` : ''}</div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </>

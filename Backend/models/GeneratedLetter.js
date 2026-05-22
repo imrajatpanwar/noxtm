@@ -28,10 +28,21 @@ const generatedLetterSchema = new mongoose.Schema({
     country: { type: String, trim: true },
     zipCode: { type: String, trim: true }
   },
+  signature: {
+    data:          { type: String },        // base64 image (drawn) or typed text
+    signatureType: { type: String, enum: ['typed', 'drawn'], default: 'typed' },
+    signerName:    { type: String, trim: true },
+    designation:   { type: String, trim: true },
+    signedAt:      { type: Date }
+  },
+  status:   { type: String, enum: ['issued', 'viewed', 'revoked'], default: 'issued' },
+  issuedAt: { type: Date, default: Date.now },
+  viewedAt: { type: Date },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
 generatedLetterSchema.index({ companyId: 1, createdAt: -1 });
+generatedLetterSchema.index({ 'recipient.employeeId': 1, companyId: 1 });
 
 module.exports = mongoose.model('GeneratedLetter', generatedLetterSchema);

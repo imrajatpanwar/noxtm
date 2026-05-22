@@ -402,8 +402,20 @@ function Sidebar({ activeSection, onSectionChange }) {
                         tooltip="Core Data Center"
                         onClick={() => onSectionChange('core-data-center')}
                       >
-                        <FiDatabase className="sidebar-icon" style={{ color: '#E8602C' }} />
+                        <FiDatabase className="sidebar-icon" />
                         <span>Core Data Center</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    {/* Sales Pipeline */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeSection === 'sales-pipeline'}
+                        tooltip="Sales Pipeline"
+                        onClick={() => onSectionChange('sales-pipeline')}
+                      >
+                        <FiTarget className="sidebar-icon" />
+                        <span>Sales Pipeline</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
 
@@ -697,7 +709,7 @@ function Sidebar({ activeSection, onSectionChange }) {
                             className="sidebar-subitem"
                             onClick={() => onSectionChange('letter-templates')}
                           >
-                            <span>Letter Templates</span>
+                            <span>Letter Management</span>
                           </SidebarMenuButton>
                           <SidebarMenuButton
                             isActive={activeSection === 'employee-details'}
