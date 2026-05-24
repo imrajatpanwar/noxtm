@@ -24,7 +24,6 @@ const LEAD_COLS = [
   { key: 'phone',          label: 'Phone' },
   { key: 'currentCompany', label: 'Company' },
   { key: 'location',       label: 'Location' },
-  { key: 'headline',       label: 'Headline' },
 ];
 
 const CONTACT_COLS = [
@@ -36,7 +35,6 @@ const CONTACT_COLS = [
 ];
 
 const SKIP_DISPLAY = new Set(['_id','__v','profilePictureUrl','scrapeStatus','scrapeError']);
-const SKIP_DETECT  = new Set([...SKIP_DISPLAY, 'linkedinId','publicIdentifier','linkedinUrl','connectedAt','enrichedAt','createdAt','updatedAt','connectionDegree','enrichmentStatus']);
 
 const AVATAR_COLORS = ['#111827','#374151','#1d4ed8','#7c3aed','#059669','#b45309'];
 const avatarColor = (s='') => AVATAR_COLORS[(s.charCodeAt(0)||0) % AVATAR_COLORS.length];
@@ -88,8 +86,8 @@ function DetailPanel({ lead, onClose, onShare }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.08)', zIndex:40 }} />
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, width:420, background:'#fff', zIndex:50, boxShadow:'-4px 0 24px rgba(0,0,0,0.08)', display:'flex', flexDirection:'column', fontFamily:'Inter,-apple-system,sans-serif' }}>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.08)', zIndex:998 }} />
+      <div style={{ position:'fixed', top:0, right:0, bottom:0, width:420, background:'#fff', zIndex:999, boxShadow:'-4px 0 24px rgba(0,0,0,0.08)', display:'flex', flexDirection:'column', fontFamily:'Inter,-apple-system,sans-serif' }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px', borderBottom:'1px solid #F0F0F0' }}>
@@ -140,8 +138,8 @@ const OVERSCAN = 12; // extra rows rendered above/below viewport
 
 function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
   const [selectedKeys, setSelectedKeys] = useState(new Set());
-  const [scrollTop, setScrollTop] = useState(0);
-  const containerRef = useRef(null);
+  const [scrollTop, setScrollTop] = useState(0); // px of list scrolled above the viewport top
+  const wrapRef = useRef(null);
 
   const rowKey = useCallback((r, idx) =>
     (r._coreDataId && r._rowIndex != null) ? `${r._coreDataId}__${r._rowIndex}` : `i${idx}`, []);
@@ -151,7 +149,20 @@ function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
     [rows, search]);
 
   // Reset on data/search change
-  useEffect(() => { setSelectedKeys(new Set()); setScrollTop(0); if (containerRef.current) containerRef.current.scrollTop = 0; }, [rows, search]);
+  useEffect(() => { setSelectedKeys(new Set()); setScrollTop(0); }, [rows, search]);
+
+  // Virtualize against the page scroll (no inner scroll box)
+  useEffect(() => {
+    const onScroll = () => {
+      const top = wrapRef.current ? wrapRef.current.getBoundingClientRect().top : 0;
+      setScrollTop(Math.max(0, -top));
+    };
+    onScroll();
+    // capture=true so scroll on ANY ancestor scroll container is caught (scroll doesn't bubble)
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); };
+  }, [filtered.length]);
 
   // Notify parent of selected leads (actual row objects)
   const selectedKeysRef = useRef(selectedKeys);
@@ -162,15 +173,7 @@ function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKeys, filtered]);
 
-  // ── Column detection ──
-  const cols = React.useMemo(() => {
-    if (!rows.length) return colDefs;
-    const minFill = Math.max(1, Math.floor(rows.length * 0.05));
-    const active = colDefs.filter(c => rows.filter(r => r[c.key] != null && r[c.key] !== '').length >= minFill);
-    return active.length > 0 ? active : Object.keys(rows[0]||{}).filter(k=>!SKIP_DETECT.has(k)).slice(0,6).map(k=>({key:k,label:k}));
-  }, [rows, colDefs]);
-
-  const allKeys = React.useMemo(() => filtered.map((r, i) => rowKey(r, i)), [filtered, rowKey]);
+  const cols = colDefs;
 
   // ── Empty state ──
   if (!rows || rows.length === 0) {
@@ -186,27 +189,16 @@ function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
   }
 
   // ── Virtualization math ──
-  const containerH = containerRef.current ? containerRef.current.clientHeight : 600;
-  const totalH = filtered.length * ROW_H;
+  const containerH = typeof window !== 'undefined' ? window.innerHeight : 800;
   const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
   const endIdx = Math.min(filtered.length, Math.ceil((scrollTop + containerH) / ROW_H) + OVERSCAN);
   const sliceRows = filtered.slice(startIdx, endIdx);
 
   // ── Selection ──
-  const allChecked = allKeys.length > 0 && allKeys.every(k => selectedKeys.has(k));
-  const someChecked = !allChecked && allKeys.some(k => selectedKeys.has(k));
-
   const toggleRow = (key, e) => {
     e.stopPropagation();
     setSelectedKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
-
-  const toggleAll = () => {
-    if (allChecked) setSelectedKeys(new Set());
-    else setSelectedKeys(new Set(allKeys));
-  };
-
-  const handleScroll = (e) => setScrollTop(e.currentTarget.scrollTop);
 
   return (
     <div>
@@ -215,24 +207,9 @@ function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
         {selectedKeys.size > 0 && <span>{selectedKeys.size} selected</span>}
       </div>
 
-      {/* Scrollable virtualized container */}
-      <div ref={containerRef} onScroll={handleScroll} style={{ height:'calc(100vh - 360px)', minHeight:300, overflowY:'auto', overflowX:'auto' }}>
+      {/* Virtualized list — flows in page, no inner scroll box */}
+      <div ref={wrapRef}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-          <thead style={{ position:'sticky', top:0, zIndex:2 }}>
-            <tr style={{ background:'#FAFAFA' }}>
-              <th style={{ padding:'10px 16px', width:44, borderBottom:'1px solid #F0F0F0', background:'#FAFAFA' }}>
-                <input type="checkbox" checked={allChecked}
-                  ref={el => { if (el) el.indeterminate = someChecked; }}
-                  onChange={toggleAll} style={{ cursor:'pointer', width:15, height:15 }} />
-              </th>
-              {cols.map(c => (
-                <th key={c.key} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9CA3AF', letterSpacing:'0.05em', textTransform:'uppercase', borderBottom:'1px solid #F0F0F0', whiteSpace:'nowrap', background:'#FAFAFA' }}>
-                  {c.label}
-                </th>
-              ))}
-              <th style={{ padding:'10px 12px', width:32, borderBottom:'1px solid #F0F0F0', background:'#FAFAFA' }} />
-            </tr>
-          </thead>
           <tbody>
             {/* Top spacer */}
             {startIdx > 0 && <tr><td style={{ height: startIdx * ROW_H, padding:0, border:'none' }} /></tr>}
@@ -418,24 +395,24 @@ export default function CoreDataCenter() {
   useEffect(() => { loadEntries(); }, [loadEntries]);
   useEffect(() => { if(entries.length>0) loadAllData(entries); }, [entries, loadAllData]);
 
-  const flatByType = (type) => {
-    const rel = type==='all' ? entries : entries.filter(e=>e.dataType===type);
-    return rel.flatMap(e => Array.isArray(allData[e._id])
-      ? allData[e._id].map((r, idx) => ({ ...r, _coreDataId: e._id, _rowIndex: idx }))
-      : []);
-  };
-  const applyFilters = (rows) => {
-    let r = rows;
-    if (filterStatus!=='all') r = r.filter(x=>(x.enrichmentStatus||'none')===filterStatus);
-    if (filterEmail) r = r.filter(x=>x.email&&x.email!=='');
-    if (filterPhone) r = r.filter(x=>x.phone&&x.phone!=='');
-    if (filterNoContact) r = r.filter(x=>(!x.email||x.email==='')&&(!x.phone||x.phone===''));
-    return r;
-  };
-
   const totalRecords = entries.reduce((s,e)=>s+(e.count||0),0);
   const byType = (t) => (stats?.byType||[]).find(x=>x._id===t);
-  const tabRows = activeTab==='history' ? [] : applyFilters(flatByType(activeTab));
+
+  // Memoized so the rows reference is stable across re-renders (e.g. selection
+  // changes). An unstable reference makes LeadsTable's reset effect fire and
+  // wipe the selection / scroll position on every checkbox click.
+  const tabRows = React.useMemo(() => {
+    if (activeTab === 'history') return [];
+    const rel = entries.filter(e => e.dataType === activeTab);
+    let r = rel.flatMap(e => Array.isArray(allData[e._id])
+      ? allData[e._id].map((row, idx) => ({ ...row, _coreDataId: e._id, _rowIndex: idx }))
+      : []);
+    if (filterStatus !== 'all') r = r.filter(x => (x.enrichmentStatus||'none') === filterStatus);
+    if (filterEmail) r = r.filter(x => x.email && x.email !== '');
+    if (filterPhone) r = r.filter(x => x.phone && x.phone !== '');
+    if (filterNoContact) r = r.filter(x => (!x.email||x.email==='') && (!x.phone||x.phone===''));
+    return r;
+  }, [entries, allData, activeTab, filterStatus, filterEmail, filterPhone, filterNoContact]);
   const colDefs = activeTab==='contacts' ? CONTACT_COLS : LEAD_COLS;
 
   const handleDeleteSelected = async () => {
@@ -521,11 +498,11 @@ export default function CoreDataCenter() {
         </div>
       )}
 
-      {/* Main card */}
-      <div style={{ background:'#fff', border:'1px solid #F0F0F0', borderRadius:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
+      {/* Tabs + filters — boxless toolbar */}
+      <div>
 
         {/* Tab bar + filters */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #F0F0F0', padding:'0 20px', flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #E5E7EB', padding:'0 4px', flexWrap:'wrap', gap:8 }}>
           <div style={{ display:'flex' }}>
             {TABS.map(t => (
               <button key={t.key} onClick={() => { setActiveTab(t.key); setSearch(''); setSelectedLeads([]); setFilterNoContact(false); }} style={{
@@ -559,20 +536,27 @@ export default function CoreDataCenter() {
           )}
         </div>
 
-        {activeTab === 'history' ? (
+        {activeTab === 'history' && (
           <HistoryList entries={entries} loading={loading} user={user} />
-        ) : loadingData && tabRows.length === 0 ? (
-          <div style={{ padding:60, textAlign:'center', color:'#9CA3AF', fontSize:13 }}>Loading records...</div>
-        ) : (
-          <LeadsTable
-            rows={tabRows}
-            colDefs={colDefs}
-            search={search}
-            onSelectionChange={setSelectedLeads}
-            onDetail={setDetailLead}
-          />
         )}
       </div>
+
+      {/* List — outside the card, scrolls with the page */}
+      {activeTab !== 'history' && (
+        <div style={{ marginTop:0 }}>
+          {loadingData && tabRows.length === 0 ? (
+            <div style={{ padding:60, textAlign:'center', color:'#9CA3AF', fontSize:13 }}>Loading records...</div>
+          ) : (
+            <LeadsTable
+              rows={tabRows}
+              colDefs={colDefs}
+              search={search}
+              onSelectionChange={setSelectedLeads}
+              onDetail={setDetailLead}
+            />
+          )}
+        </div>
+      )}
 
       {/* Detail panel */}
       {detailLead && (
