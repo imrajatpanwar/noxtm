@@ -128,6 +128,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PATCH — remove specific records by index from entry's data array
+router.patch('/:id/remove-records', async (req, res) => {
+  try {
+    const { indices } = req.body; // array of numeric indices to remove
+    if (!Array.isArray(indices) || indices.length === 0) {
+      return res.status(400).json({ success: false, error: 'indices array required' });
+    }
+    const entry = await CoreData.findById(req.params.id);
+    if (!entry) return res.status(404).json({ success: false, error: 'Not found' });
+    const toRemove = new Set(indices.map(Number));
+    entry.data = entry.data.filter((_, i) => !toRemove.has(i));
+    entry.count = entry.data.length;
+    entry.markModified('data');
+    await entry.save();
+    res.json({ success: true, removed: indices.length, remaining: entry.count });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // DELETE
 router.delete('/:id', async (req, res) => {
   try {

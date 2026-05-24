@@ -398,6 +398,8 @@ export default function CoreDataCenter() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEmail, setFilterEmail]   = useState(false);
   const [filterPhone, setFilterPhone]   = useState(false);
+  const [filterNoContact, setFilterNoContact] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // Multi-select — lifted up so action bar is above card
   const [selectedLeads, setSelectedLeads] = useState([]);
   // Detail panel
@@ -440,13 +442,16 @@ export default function CoreDataCenter() {
 
   const flatByType = (type) => {
     const rel = type==='all' ? entries : entries.filter(e=>e.dataType===type);
-    return rel.flatMap(e => Array.isArray(allData[e._id]) ? allData[e._id] : []);
+    return rel.flatMap(e => Array.isArray(allData[e._id])
+      ? allData[e._id].map((r, idx) => ({ ...r, _coreDataId: e._id, _rowIndex: idx }))
+      : []);
   };
   const applyFilters = (rows) => {
     let r = rows;
     if (filterStatus!=='all') r = r.filter(x=>(x.enrichmentStatus||'none')===filterStatus);
     if (filterEmail) r = r.filter(x=>x.email&&x.email!=='');
     if (filterPhone) r = r.filter(x=>x.phone&&x.phone!=='');
+    if (filterNoContact) r = r.filter(x=>(!x.email||x.email==='')&&(!x.phone||x.phone===''));
     return r;
   };
 
@@ -454,6 +459,39 @@ export default function CoreDataCenter() {
   const byType = (t) => (stats?.byType||[]).find(x=>x._id===t);
   const tabRows = activeTab==='history' ? [] : applyFilters(flatByType(activeTab));
   const colDefs = activeTab==='contacts' ? CONTACT_COLS : LEAD_COLS;
+
+  const handleDeleteSelected = async () => {
+    if (selectedLeads.length === 0 || deleting) return;
+    if (!window.confirm(`Delete ${selectedLeads.length} record${selectedLeads.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      // Group by _coreDataId
+      const byEntry = {};
+      selectedLeads.forEach(lead => {
+        if (lead._coreDataId == null || lead._rowIndex == null) return;
+        if (!byEntry[lead._coreDataId]) byEntry[lead._coreDataId] = [];
+        byEntry[lead._coreDataId].push(lead._rowIndex);
+      });
+      await Promise.all(
+        Object.entries(byEntry).map(([entryId, indices]) =>
+          fetch(`${API_CDC}/${entryId}/remove-records`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ indices }),
+          })
+        )
+      );
+      setSelectedLeads([]);
+      // Reload: fetch fresh entries then reload data
+      const eRes = await fetch(API_CDC).then(r => r.json());
+      const freshEntries = eRes.entries || [];
+      setEntries(freshEntries);
+      await loadAllData(freshEntries);
+    } catch (e) {
+      alert('Delete failed');
+    }
+    setDeleting(false);
+  };
 
   const handleShared = () => {
     setShareTarget(null);
@@ -495,6 +533,9 @@ export default function CoreDataCenter() {
             <button onClick={() => setSelectedLeads([])} style={{ padding:'7px 16px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:13, fontWeight:500, cursor:'pointer', color:'#6B7280' }}>
               Clear
             </button>
+            <button onClick={handleDeleteSelected} disabled={deleting} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#DC2626', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', opacity:deleting?0.6:1 }}>
+              {deleting ? 'Deleting...' : `Delete ${selectedLeads.length}`}
+            </button>
             <button onClick={() => setShareTarget(selectedLeads)} style={{ padding:'7px 18px', borderRadius:8, border:'none', background:'#111', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>
               Share to Sales Pipeline
             </button>
@@ -509,7 +550,7 @@ export default function CoreDataCenter() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #F0F0F0', padding:'0 20px', flexWrap:'wrap', gap:8 }}>
           <div style={{ display:'flex' }}>
             {TABS.map(t => (
-              <button key={t.key} onClick={() => { setActiveTab(t.key); setSearch(''); setSelectedLeads([]); }} style={{
+              <button key={t.key} onClick={() => { setActiveTab(t.key); setSearch(''); setSelectedLeads([]); setFilterNoContact(false); }} style={{
                 padding:'13px 18px', fontSize:13, fontWeight: activeTab===t.key ? 600 : 400,
                 color: activeTab===t.key ? '#111' : '#9CA3AF',
                 background:'none', border:'none', cursor:'pointer',
@@ -535,6 +576,7 @@ export default function CoreDataCenter() {
               </select>
               <button onClick={()=>setFilterEmail(p=>!p)} style={{ height:34, padding:'0 12px', borderRadius:7, border:'1px solid #E5E7EB', background:filterEmail?'#111':'#fff', color:filterEmail?'#fff':'#374151', fontSize:12, fontWeight:500, cursor:'pointer' }}>Has Email</button>
               <button onClick={()=>setFilterPhone(p=>!p)} style={{ height:34, padding:'0 12px', borderRadius:7, border:'1px solid #E5E7EB', background:filterPhone?'#2563eb':'#fff', color:filterPhone?'#fff':'#374151', fontSize:12, fontWeight:500, cursor:'pointer' }}>Has Phone</button>
+              <button onClick={()=>{ setFilterNoContact(p=>!p); setFilterEmail(false); setFilterPhone(false); }} style={{ height:34, padding:'0 12px', borderRadius:7, border:`1px solid ${filterNoContact?'#DC2626':'#E5E7EB'}`, background:filterNoContact?'#FEF2F2':'#fff', color:filterNoContact?'#DC2626':'#374151', fontSize:12, fontWeight:500, cursor:'pointer' }}>No Email &amp; Phone</button>
             </div>
           )}
         </div>
