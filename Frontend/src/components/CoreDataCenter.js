@@ -1,9 +1,9 @@
 // v6 — action bar above card, detail panel on row click, no emojis
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // eslint-disable-line no-unused-vars
 import api from '../config/api';
 
 const API_CDC = 'http://localhost:5001/api/core-data';
-const PAGE_SIZE = 15;
+// Virtualization uses ROW_H + OVERSCAN instead of pagination
 
 const TABS = [
   { key: 'leads',    label: 'All Leads' },
@@ -134,48 +134,45 @@ function DetailPanel({ lead, onClose, onShare }) {
   );
 }
 
-/* ── Leads table — multi-select checkboxes ── */
+/* ── Virtualized leads table ── */
+const ROW_H = 46; // fixed row height in px
+const OVERSCAN = 12; // extra rows rendered above/below viewport
+
 function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
-  const [visible, setVisible]   = useState(PAGE_SIZE);
-  const [selected, setSelected] = useState(new Set()); // Set of row indices within visibleRows
-  const loaderRef = useRef(null);
+  const [selectedKeys, setSelectedKeys] = useState(new Set());
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef(null);
 
-  useEffect(() => { setVisible(PAGE_SIZE); setSelected(new Set()); }, [rows, search]);
+  const rowKey = useCallback((r, idx) =>
+    (r._coreDataId && r._rowIndex != null) ? `${r._coreDataId}__${r._rowIndex}` : `i${idx}`, []);
 
-  // Notify parent of selected leads
+  const filtered = React.useMemo(() =>
+    search ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(search.toLowerCase())) : rows,
+    [rows, search]);
+
+  // Reset on data/search change
+  useEffect(() => { setSelectedKeys(new Set()); setScrollTop(0); if (containerRef.current) containerRef.current.scrollTop = 0; }, [rows, search]);
+
+  // Notify parent of selected leads (actual row objects)
+  const selectedKeysRef = useRef(selectedKeys);
+  selectedKeysRef.current = selectedKeys;
   useEffect(() => {
-    const filtered = search ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(search.toLowerCase())) : rows;
-    const leads = Array.from(selected).map(i => filtered[i]).filter(Boolean);
-    onSelectionChange(leads);
+    const sel = filtered.filter((r, i) => selectedKeys.has(rowKey(r, i)));
+    onSelectionChange(sel);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selectedKeys, filtered]);
 
-  const filtered = search
-    ? rows.filter(r => JSON.stringify(r).toLowerCase().includes(search.toLowerCase()))
-    : rows;
+  // ── Column detection ──
+  const cols = React.useMemo(() => {
+    if (!rows.length) return colDefs;
+    const minFill = Math.max(1, Math.floor(rows.length * 0.05));
+    const active = colDefs.filter(c => rows.filter(r => r[c.key] != null && r[c.key] !== '').length >= minFill);
+    return active.length > 0 ? active : Object.keys(rows[0]||{}).filter(k=>!SKIP_DETECT.has(k)).slice(0,6).map(k=>({key:k,label:k}));
+  }, [rows, colDefs]);
 
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
+  const allKeys = React.useMemo(() => filtered.map((r, i) => rowKey(r, i)), [filtered, rowKey]);
 
-    // Find nearest scrollable ancestor (layout divs often use overflow:auto)
-    const getScrollParent = (node) => {
-      while (node && node !== document.body) {
-        const { overflow, overflowY } = window.getComputedStyle(node);
-        if (/auto|scroll/.test(overflow + overflowY)) return node;
-        node = node.parentElement;
-      }
-      return null; // falls back to viewport
-    };
-    const scrollParent = getScrollParent(el.parentElement);
-
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) setVisible(v => Math.min(v + PAGE_SIZE, filtered.length));
-    }, { root: scrollParent, threshold: 0.1, rootMargin: '100px' });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [filtered.length]);
-
+  // ── Empty state ──
   if (!rows || rows.length === 0) {
     return (
       <div style={{ textAlign:'center', padding:'60px 24px', color:'#9CA3AF' }}>
@@ -188,118 +185,99 @@ function LeadsTable({ rows, colDefs, search, onSelectionChange, onDetail }) {
     );
   }
 
-  // Only show column if ≥5% of rows have data (avoids mostly-empty "—" columns)
-  const minFill = Math.max(1, Math.floor(rows.length * 0.05));
-  const activeCols = colDefs.filter(c => rows.filter(r => r[c.key] != null && r[c.key] !== '').length >= minFill);
-  const cols = activeCols.length > 0 ? activeCols
-    : Object.keys(rows[0]||{}).filter(k=>!SKIP_DETECT.has(k)).slice(0,6).map(k=>({key:k,label:k}));
+  // ── Virtualization math ──
+  const containerH = containerRef.current ? containerRef.current.clientHeight : 600;
+  const totalH = filtered.length * ROW_H;
+  const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const endIdx = Math.min(filtered.length, Math.ceil((scrollTop + containerH) / ROW_H) + OVERSCAN);
+  const sliceRows = filtered.slice(startIdx, endIdx);
 
-  const visibleRows = filtered.slice(0, visible);
-  const hasMore = visible < filtered.length;
-  const allChecked = visibleRows.length > 0 && visibleRows.every((_, i) => selected.has(i));
-  const someChecked = !allChecked && visibleRows.some((_, i) => selected.has(i));
+  // ── Selection ──
+  const allChecked = allKeys.length > 0 && allKeys.every(k => selectedKeys.has(k));
+  const someChecked = !allChecked && allKeys.some(k => selectedKeys.has(k));
 
-  const toggleRow = (i, e) => {
+  const toggleRow = (key, e) => {
     e.stopPropagation();
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
+    setSelectedKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
 
   const toggleAll = () => {
-    if (allChecked) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(visibleRows.map((_, i) => i)));
-    }
+    if (allChecked) setSelectedKeys(new Set());
+    else setSelectedKeys(new Set(allKeys));
   };
+
+  const handleScroll = (e) => setScrollTop(e.currentTarget.scrollTop);
 
   return (
     <div>
-      {search && filtered.length !== rows.length && (
-        <div style={{ padding:'8px 20px', fontSize:12, color:'#9CA3AF', borderBottom:'1px solid #F5F5F5' }}>
-          {filtered.length} of {rows.length} records
-        </div>
-      )}
-      <div style={{ overflowX:'auto' }}>
+      <div style={{ padding:'6px 20px', fontSize:12, color:'#9CA3AF', borderBottom:'1px solid #F5F5F5', display:'flex', justifyContent:'space-between' }}>
+        <span>{search && filtered.length !== rows.length ? `${filtered.length} of ${rows.length}` : filtered.length} records</span>
+        {selectedKeys.size > 0 && <span>{selectedKeys.size} selected</span>}
+      </div>
+
+      {/* Scrollable virtualized container */}
+      <div ref={containerRef} onScroll={handleScroll} style={{ height:'calc(100vh - 360px)', minHeight:300, overflowY:'auto', overflowX:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-          <thead>
+          <thead style={{ position:'sticky', top:0, zIndex:2 }}>
             <tr style={{ background:'#FAFAFA' }}>
-              <th style={{ padding:'10px 16px', width:44, borderBottom:'1px solid #F0F0F0' }}>
-                <input
-                  type="checkbox"
-                  checked={allChecked}
+              <th style={{ padding:'10px 16px', width:44, borderBottom:'1px solid #F0F0F0', background:'#FAFAFA' }}>
+                <input type="checkbox" checked={allChecked}
                   ref={el => { if (el) el.indeterminate = someChecked; }}
-                  onChange={toggleAll}
-                  style={{ cursor:'pointer', width:15, height:15 }}
-                />
+                  onChange={toggleAll} style={{ cursor:'pointer', width:15, height:15 }} />
               </th>
               {cols.map(c => (
-                <th key={c.key} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9CA3AF', letterSpacing:'0.05em', textTransform:'uppercase', borderBottom:'1px solid #F0F0F0', whiteSpace:'nowrap' }}>
+                <th key={c.key} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#9CA3AF', letterSpacing:'0.05em', textTransform:'uppercase', borderBottom:'1px solid #F0F0F0', whiteSpace:'nowrap', background:'#FAFAFA' }}>
                   {c.label}
                 </th>
               ))}
-              <th style={{ padding:'10px 12px', width:32, borderBottom:'1px solid #F0F0F0' }} />
+              <th style={{ padding:'10px 12px', width:32, borderBottom:'1px solid #F0F0F0', background:'#FAFAFA' }} />
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((row, i) => {
+            {/* Top spacer */}
+            {startIdx > 0 && <tr><td style={{ height: startIdx * ROW_H, padding:0, border:'none' }} /></tr>}
+
+            {sliceRows.map((row, si) => {
+              const realIdx = startIdx + si;
+              const key = rowKey(row, realIdx);
               const name = getName(row);
               const color = avatarColor(name);
-              const isChecked = selected.has(i);
-
+              const isChecked = selectedKeys.has(key);
               return (
-                <tr key={i}
-                  style={{ borderBottom:'1px solid #F5F5F5', background: isChecked ? '#F8F8F8' : 'transparent', cursor:'pointer', borderLeft: isChecked ? '3px solid #111' : '3px solid transparent' }}
+                <tr key={key}
+                  style={{ height:ROW_H, borderBottom:'1px solid #F5F5F5', background: isChecked ? '#F0F4FF' : 'transparent', cursor:'pointer', borderLeft: isChecked ? '3px solid #111' : '3px solid transparent' }}
                   onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background='#FAFAFA'; }}
-                  onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background='transparent'; }}
+                  onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = isChecked ? '#F0F4FF' : 'transparent'; }}
                 >
-                  {/* Checkbox */}
-                  <td style={{ padding:'11px 16px', width:44 }} onClick={e => toggleRow(i, e)}>
+                  <td style={{ padding:'0 16px', width:44 }} onClick={e => toggleRow(key, e)}>
                     <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ cursor:'pointer', width:15, height:15 }} />
                   </td>
-
-                  {/* Data cells — click to open detail */}
                   {cols.map((c, ci) => {
                     const val = row[c.key];
                     const display = val==null||val==='' ? '—' : String(val);
-
-                    if (ci===0 && (c.key==='fullName'||c.key==='name')) {
-                      return (
-                        <td key={c.key} style={{ padding:'11px 16px', whiteSpace:'nowrap' }} onClick={() => onDetail(row)}>
-                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                            <div style={{ width:30, height:30, borderRadius:'50%', background:color, color:'#fff', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>
-                              {(name||'?')[0].toUpperCase()}
-                            </div>
-                            <span style={{ fontWeight:600, color:'#111' }}>{display}</span>
-                          </div>
-                        </td>
-                      );
-                    }
-                    if (c.key==='email' && val) return <td key={c.key} style={{ padding:'11px 16px' }} onClick={() => onDetail(row)}><span style={{ fontFamily:'monospace', fontSize:12, color:'#111', fontWeight:500 }}>{val}</span></td>;
-                    if (c.key==='phone' && val) return <td key={c.key} style={{ padding:'11px 16px' }} onClick={() => onDetail(row)}><span style={{ fontFamily:'monospace', fontSize:12, color:'#2563eb', fontWeight:600 }}>{val}</span></td>;
-                    return <td key={c.key} style={{ padding:'11px 16px', color:'#374151', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} onClick={() => onDetail(row)}>{display}</td>;
+                    if (ci===0 && (c.key==='fullName'||c.key==='name')) return (
+                      <td key={c.key} style={{ padding:'0 16px', whiteSpace:'nowrap' }} onClick={() => onDetail(row)}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <div style={{ width:28, height:28, borderRadius:'50%', background:color, color:'#fff', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700 }}>{(name||'?')[0].toUpperCase()}</div>
+                          <span style={{ fontWeight:600, color:'#111' }}>{display}</span>
+                        </div>
+                      </td>
+                    );
+                    if (c.key==='email' && val) return <td key={c.key} style={{ padding:'0 16px' }} onClick={() => onDetail(row)}><span style={{ fontFamily:'monospace', fontSize:12, color:'#111', fontWeight:500 }}>{val}</span></td>;
+                    if (c.key==='phone' && val) return <td key={c.key} style={{ padding:'0 16px' }} onClick={() => onDetail(row)}><span style={{ fontFamily:'monospace', fontSize:12, color:'#2563eb', fontWeight:600 }}>{val}</span></td>;
+                    return <td key={c.key} style={{ padding:'0 16px', color:'#374151', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} onClick={() => onDetail(row)}>{display}</td>;
                   })}
-
-                  {/* Arrow */}
-                  <td style={{ padding:'11px 12px', width:32 }} onClick={() => onDetail(row)}>
+                  <td style={{ padding:'0 12px', width:32 }} onClick={() => onDetail(row)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
                   </td>
                 </tr>
               );
             })}
+
+            {/* Bottom spacer */}
+            {endIdx < filtered.length && <tr><td style={{ height: (filtered.length - endIdx) * ROW_H, padding:0, border:'none' }} /></tr>}
           </tbody>
         </table>
-      </div>
-      <div ref={loaderRef} style={{ padding: hasMore ? '14px 20px' : '0' }}>
-        {hasMore && (
-          <button onClick={() => setVisible(v => Math.min(v+PAGE_SIZE, filtered.length))}
-            style={{ width:'100%', padding:'10px', borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:13, fontWeight:500, cursor:'pointer', color:'#374151' }}>
-            Load more ({filtered.length - visible} remaining)
-          </button>
-        )}
       </div>
     </div>
   );
